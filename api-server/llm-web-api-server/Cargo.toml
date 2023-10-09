@@ -1,0 +1,19 @@
+[package]
+name = "llm-web-api-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+futures = { version = "0.3.6", default-features = false, features = [
+    "async-await",
+] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+xin = { git = "https://github.com/apepkuss/xin.git", branch = "main" }
+prompt = { git = "https://github.com/apepkuss/prompt.git", branch = "main" }
+serde_yaml = "0.9"
+hyper_wasi = { version = "0.15", features = ["full"] }
+tokio_wasi = { version = "1", features = ["full"] }
+wasmedge_hyper_rustls = "0.1.0"
+wasmedge_rustls_api = { version = "0.1.0", features = ["tokio_async"] }
+wasi-nn = { git = "https://github.com/second-state/wasmedge-wasi-nn", branch = "dm4/ggml" }
