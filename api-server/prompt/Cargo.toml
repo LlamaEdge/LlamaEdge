@@ -6,5 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-xin = { git = "https://github.com/apepkuss/xin.git", branch = "main" }
+# xin = { path = "xin", version = "0.1" }
+xin.workspace = true
 thiserror = "1"

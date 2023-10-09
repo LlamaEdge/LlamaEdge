@@ -40,7 +40,8 @@ async fn main() {
     //     ip = gateway_config.socket_addr.ip,
     //     port = gateway_config.socket_addr.port
     // );
-    let socket_addr = String::from(SOCKET_ADDRESS);
+    // let socket_addr = String::from(SOCKET_ADDRESS);
+    let socket_addr = std::env::var("SOCKET_ADDRESS").unwrap_or(SOCKET_ADDRESS.to_string());
     let addr: SocketAddr = match socket_addr.parse() {
         Ok(addr) => addr,
         Err(e) => {

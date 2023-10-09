@@ -1,5 +1,5 @@
 [package]
-name = "llm-web-api-server"
+name = "llm-api-server"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,10 +7,13 @@ edition = "2021"
 futures = { version = "0.3.6", default-features = false, features = [
     "async-await",
 ] }
-serde = { version = "1.0", features = ["derive"] }
+# serde = { version = "1.0", features = ["derive"] }
+serde.workspace = true
 serde_json = "1.0"
-xin = { git = "https://github.com/apepkuss/xin.git", branch = "main" }
-prompt = { git = "https://github.com/apepkuss/prompt.git", branch = "main" }
+# xin = { path = "xin", version = "0.1" }
+xin.workspace = true
+# prompt = { path = "prompt", version = "0.1" }
+prompt.workspace = true
 serde_yaml = "0.9"
 hyper_wasi = { version = "0.15", features = ["full"] }
 tokio_wasi = { version = "1", features = ["full"] }
