@@ -13,7 +13,7 @@ curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/insta
 Download the wasm file:
 
 ```bash
-curl -LO https://github.com/second-state/llama-utils/raw/main/llama-simple/llama-simple.wasm
+curl -LO https://github.com/second-state/llama-utils/raw/main/simple/llama-simple.wasm
 ```
 
 ## Get Model
@@ -24,7 +24,7 @@ Download llama model:
 curl -LO https://huggingface.co/TheBloke/Llama-2-7B-GGUF/resolve/main/llama-2-7b.Q5_K_M.gguf
 ```
 
-### Execute
+## Execute
 
 Execute the WASM with the `wasmedge` using the named model feature to preload large model:
 
