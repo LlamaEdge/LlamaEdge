@@ -1,10 +1,5 @@
 use hyper::{Body, Response};
-
-pub(crate) fn not_found() -> Result<Response<Body>, hyper::Error> {
-    let mut response = Response::new(Body::from("404 Not Found"));
-    *response.status_mut() = hyper::StatusCode::NOT_FOUND;
-    Ok(response)
-}
+use thiserror::Error;
 
 pub(crate) fn not_implemented() -> Result<Response<Body>, hyper::Error> {
     let mut response = Response::new(Body::from("501 Not Implemented"));
@@ -20,4 +15,12 @@ pub(crate) fn internal_server_error(msg: impl AsRef<str>) -> Result<Response<Bod
     let mut response = Response::new(Body::from(err_msg));
     *response.status_mut() = hyper::StatusCode::INTERNAL_SERVER_ERROR;
     Ok(response)
+}
+
+#[derive(Error, Clone, Debug, PartialEq, Eq)]
+pub enum ServerError {
+    #[error("Failed to parse socket address: {0}")]
+    SocketAddr(String),
+    #[error("Internal server error: {0}")]
+    InternalServerError(String),
 }

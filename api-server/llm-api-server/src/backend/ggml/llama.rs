@@ -9,17 +9,17 @@ use xin::{
     common::Usage,
 };
 
-pub(crate) async fn llama_models_handler() -> Result<Response<Body>, hyper::Error> {
+pub(crate) async fn _llama_models_handler() -> Result<Response<Body>, hyper::Error> {
     println!("llama_models_handler not implemented");
     error::not_implemented()
 }
 
-pub(crate) async fn llama_embeddings_handler() -> Result<Response<Body>, hyper::Error> {
+pub(crate) async fn _llama_embeddings_handler() -> Result<Response<Body>, hyper::Error> {
     println!("llama_embeddings_handler not implemented");
     error::not_implemented()
 }
 
-pub(crate) async fn llama_completions_handler() -> Result<Response<Body>, hyper::Error> {
+pub(crate) async fn _llama_completions_handler() -> Result<Response<Body>, hyper::Error> {
     println!("llama_completions_handler not implemented");
     error::not_implemented()
 }

@@ -6,3 +6,4 @@ resolver = "2"
 serde = { version = "1.0", features = ["derive"] }
 xin = { path = "xin", version = "0.1" }
 prompt = { path = "prompt", version = "0.1" }
+thiserror = "1"
