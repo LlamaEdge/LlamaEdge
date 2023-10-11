@@ -31,3 +31,12 @@ impl FromStr for PromptTemplateType {
         }
     }
 }
+impl std::fmt::Display for PromptTemplateType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PromptTemplateType::Llama2Chat => write!(f, "llama-2-chat"),
+            PromptTemplateType::MistralInstructV01 => write!(f, "mistral-instruct-v0.1"),
+            PromptTemplateType::CodeLlama => write!(f, "codellama-instruct"),
+        }
+    }
+}
