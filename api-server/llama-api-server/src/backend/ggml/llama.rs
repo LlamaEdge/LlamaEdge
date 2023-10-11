@@ -1,6 +1,6 @@
 use crate::error;
 use hyper::{body::to_bytes, Body, Request, Response};
-use prompt::BuildPrompt;
+use prompt::{BuildPrompt, PromptTemplateType};
 use xin::{
     chat::{
         ChatCompletionResponse, ChatCompletionResponseChoice, ChatCompletionResponseMessage,
@@ -10,6 +10,7 @@ use xin::{
     models::{ListModelsResponse, Model},
 };
 
+/// Lists models available
 pub(crate) async fn llama_models_handler() -> Result<Response<Body>, hyper::Error> {
     let llama_2_7b_chat_q5_k_m = Model {
         id: String::from("llama-2-7b-chat.Q5_K_M.gguf"),
@@ -78,9 +79,10 @@ pub(crate) async fn _llama_completions_handler() -> Result<Response<Body>, hyper
 pub(crate) async fn llama_chat_completions_handler(
     mut req: Request<Body>,
     model_name: impl AsRef<str>,
+    template_ty: PromptTemplateType,
 ) -> Result<Response<Body>, hyper::Error> {
     if req.method().eq(&hyper::http::Method::OPTIONS) {
-        println!("[CHAT] Empty request received! Returns empty response!");
+        println!("[CHAT] Empty in, empty out!");
 
         let result = Response::builder()
             .header("Access-Control-Allow-Origin", "*")
@@ -96,6 +98,19 @@ pub(crate) async fn llama_chat_completions_handler(
         }
     }
 
+    fn create_prompt_template(template_ty: PromptTemplateType) -> Box<dyn BuildPrompt> {
+        match template_ty {
+            PromptTemplateType::Llama2Chat => Box::new(prompt::llama::Llama2ChatPrompt::default()),
+            PromptTemplateType::MistralInstructV01 => {
+                Box::new(prompt::mistral::MistralInstructPrompt::default())
+            }
+            PromptTemplateType::CodeLlama => {
+                Box::new(prompt::llama::CodeLlamaInstructPrompt::default())
+            }
+        }
+    }
+    let template = create_prompt_template(template_ty);
+
     println!("[CHAT] New chat begins ...");
 
     // parse request
@@ -103,28 +118,8 @@ pub(crate) async fn llama_chat_completions_handler(
     let mut chat_request: xin::chat::ChatCompletionRequest =
         serde_json::from_slice(&body_bytes).unwrap();
 
-    // ! todo: according to the model name in the request, dynamically build the prompt
-    // * build prompt for codellama
-    // let prompt = match prompt::llama::CodeLlamaInstructPrompt::build(chat_request.messages.as_mut())
-    // {
-    //     Ok(prompt) => prompt,
-    //     Err(e) => {
-    //         return error::internal_server_error(e.to_string());
-    //     }
-    // };
-    // * build prompt for mistral
-    // if chat_request.messages[0].role == ChatCompletionRole::System {
-    //     chat_request.messages.remove(0);
-    // }
-    // let prompt = match prompt::mistral::MistralInstructPrompt::build(chat_request.messages.as_mut())
-    // {
-    //     Ok(prompt) => prompt,
-    //     Err(e) => {
-    //         return error::internal_server_error(e.to_string());
-    //     }
-    // };
-    // * build prompt for llama2chat
-    let prompt = match prompt::llama::Llama2ChatPrompt::build(chat_request.messages.as_mut()) {
+    // build prompt
+    let prompt = match template.build(chat_request.messages.as_mut()) {
         Ok(prompt) => prompt,
         Err(e) => {
             return error::internal_server_error(e.to_string());
