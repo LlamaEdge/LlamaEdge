@@ -8,6 +8,7 @@ pub(crate) async fn handle_llama_request(
     req: Request<Body>,
     model_name: impl AsRef<str>,
     template_ty: PromptTemplateType,
+    created: u64,
 ) -> Result<Response<Body>, hyper::Error> {
     match req.uri().path() {
         "/v1/chat/completions" => {
@@ -15,7 +16,7 @@ pub(crate) async fn handle_llama_request(
         }
         // "/v1/completions" => llama::llama_completions_handler().await,
         // "/v1/embeddings" => llama::llama_embeddings_handler().await,
-        "/v1/models" => llama::llama_models_handler().await,
+        "/v1/models" => llama::llama_models_handler(created).await,
         _ => error::not_implemented(),
     }
 }

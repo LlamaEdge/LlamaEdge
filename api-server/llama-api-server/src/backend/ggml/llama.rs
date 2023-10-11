@@ -11,33 +11,24 @@ use xin::{
 };
 
 /// Lists models available
-pub(crate) async fn llama_models_handler() -> Result<Response<Body>, hyper::Error> {
+pub(crate) async fn llama_models_handler(created: u64) -> Result<Response<Body>, hyper::Error> {
     let llama_2_7b_chat_q5_k_m = Model {
         id: String::from("llama-2-7b-chat.Q5_K_M.gguf"),
-        created: std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
+        created: created.clone(),
         object: String::from("model"),
         owned_by: String::from("https://huggingface.co/TheBloke"),
     };
 
     let codellama_13b_instruct_q4_0 = Model {
         id: String::from("codellama-13b-instruct.Q4_0.gguf"),
-        created: std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
+        created: created.clone(),
         object: String::from("model"),
         owned_by: String::from("https://huggingface.co/TheBloke"),
     };
 
     let mistral_7b_instruct_v0_1 = Model {
         id: String::from("Mistral-7B-Instruct-v0.1.gguf"),
-        created: std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
+        created: created.clone(),
         object: String::from("model"),
         owned_by: String::from("https://huggingface.co/TheBloke"),
     };

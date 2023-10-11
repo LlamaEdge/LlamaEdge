@@ -56,12 +56,24 @@ async fn main() -> Result<(), ServerError> {
         }
     };
 
+    let created = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let ref_created = std::sync::Arc::new(created);
+
     let new_service = make_service_fn(move |_| {
         let model_name = ref_model_name.clone();
         let prompt_template_ty = ref_template_ty.clone();
+        let created = ref_created.clone();
         async {
             Ok::<_, Error>(service_fn(move |req| {
-                handle_request(req, model_name.to_string(), *prompt_template_ty.clone())
+                handle_request(
+                    req,
+                    model_name.to_string(),
+                    *prompt_template_ty.clone(),
+                    *created.clone(),
+                )
             }))
         }
     });
@@ -79,11 +91,12 @@ async fn handle_request(
     req: Request<Body>,
     model_name: impl AsRef<str>,
     template_ty: PromptTemplateType,
+    created: u64,
 ) -> Result<Response<Body>, hyper::Error> {
     match req.uri().path() {
         "/echo" => {
             return Ok(Response::new(Body::from("echo test")));
         }
-        _ => ggml::handle_llama_request(req, model_name.as_ref(), template_ty).await,
+        _ => ggml::handle_llama_request(req, model_name.as_ref(), template_ty, created).await,
     }
 }
