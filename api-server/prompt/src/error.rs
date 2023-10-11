@@ -9,4 +9,6 @@ pub enum PromptError {
     NoMessages,
     #[error("Unknown chat completion role: {0:?}")]
     UnknownRole(ChatCompletionRole),
+    #[error("Unknown prompt template type: {0}")]
+    UnknownPromptTemplateType(String),
 }
