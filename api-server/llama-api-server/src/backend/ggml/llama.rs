@@ -11,35 +11,20 @@ use xin::{
 };
 
 /// Lists models available
-pub(crate) async fn llama_models_handler(created: u64) -> Result<Response<Body>, hyper::Error> {
-    let llama_2_7b_chat_q5_k_m = Model {
-        id: String::from("llama-2-7b-chat.Q5_K_M.gguf"),
+pub(crate) async fn llama_models_handler(
+    template_ty: PromptTemplateType,
+    created: u64,
+) -> Result<Response<Body>, hyper::Error> {
+    let model = Model {
+        id: format!("{}", template_ty.to_string()),
         created: created.clone(),
         object: String::from("model"),
-        owned_by: String::from("https://huggingface.co/TheBloke"),
-    };
-
-    let codellama_13b_instruct_q4_0 = Model {
-        id: String::from("codellama-13b-instruct.Q4_0.gguf"),
-        created: created.clone(),
-        object: String::from("model"),
-        owned_by: String::from("https://huggingface.co/TheBloke"),
-    };
-
-    let mistral_7b_instruct_v0_1 = Model {
-        id: String::from("Mistral-7B-Instruct-v0.1.gguf"),
-        created: created.clone(),
-        object: String::from("model"),
-        owned_by: String::from("https://huggingface.co/TheBloke"),
+        owned_by: String::from("Not specified"),
     };
 
     let list_models_response = ListModelsResponse {
         object: String::from("list"),
-        data: vec![
-            llama_2_7b_chat_q5_k_m,
-            codellama_13b_instruct_q4_0,
-            mistral_7b_instruct_v0_1,
-        ],
+        data: vec![model],
     };
 
     // return response
