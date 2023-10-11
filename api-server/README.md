@@ -1,4 +1,4 @@
-# LLM API SERVER
+# LLAMA API SERVER
 
 > Note: Before reading the following content, please make sure that you are working in an environment of Ubuntu 20.04/22.04 and have installed the following necessary dependencies:
 >
@@ -34,12 +34,14 @@ Now let's build and run the API server.
 * Run the API server:
 
   ```bash
-  wasmedge --dir .:. --env SOCKET_ADDRESS=<ip-address>:<port> --nn-preload default:GGML:CPU:llama-2-7b-chat.Q5_K_M.gguf target/wasm32-wasi/release/llama-api-server.wasm default
+  wasmedge --dir .:. --env SOCKET_ADDRESS=0.0.0.0:8080 --nn-preload default:GGML:CPU:llama-2-7b-chat.Q5_K_M.gguf target/wasm32-wasi/release/llama-api-server.wasm default llama-2-chat
   ```
 
   * The `--env SOCKET_ADDRESS=<ip-address>:<port>` option specifies the socket address of the API server. The default socket address `0.0.0.0:8080` is used if this option is not specified.
 
   * The `--nn-preload default:GGML:CPU:llama-2-7b-chat.Q5_K_M.gguf` option specifies the Llama model to be used by the API server. The pattern of the argument is `<name>:<encoding>:<target>:<model path>`. Here, the model used is `llama-2-7b-chat.Q5_K_M.gguf`; and we give it an alias `default` as its name in the runtime environment.
+  * The `default` value in the second-to-latt argument of the command specifies the alias of the model to be used in the runtime. This name should be the same as the name specified in the `--nn-preload` option.
+  * The `llama-2-chat` value in the last argument of the command specifies the name of the prompt template to be used. Currently,the available prompt templates are `llama-2-chat`, `codellama-instruct`, and `mistral-instruct-v0.1`.
 
   Please guarantee that the port is not occupied by other processes. If the port specified is available on your machine and the command is successful, you should see the following output in the terminal:
 
@@ -49,16 +51,38 @@ Now let's build and run the API server.
 
 ## Test the API server
 
-`llm-api-server` provides a POST API `/echo` for testing. You can use `curl` to test it:
+`llama-api-server` provides a POST API `/v1/models` to list currently available models. You can use `curl` to test it:
 
 ```bash
-curl -X POST http://<ip-address>:<port>/echo
+curl -X POST http://<ip-address>:<port>/v1/models -H 'accept:application/json'
 ```
 
-If the command is successful, you should see the following output in the terminal:
+If the command is successful, you should see the similar output as below in your terminal:
 
 ```bash
-echo test
+{
+    "object": "list",
+    "data": [
+        {
+            "id": "llama-2-7b-chat.Q5_K_M.gguf",
+            "created": 1697024910,
+            "object": "model",
+            "owned_by": "https://huggingface.co/TheBloke"
+        },
+        {
+            "id": "codellama-13b-instruct.Q4_0.gguf",
+            "created": 1697024910,
+            "object": "model",
+            "owned_by": "https://huggingface.co/TheBloke"
+        },
+        {
+            "id": "Mistral-7B-Instruct-v0.1.gguf",
+            "created": 1697024910,
+            "object": "model",
+            "owned_by": "https://huggingface.co/TheBloke"
+        }
+    ]
+}
 ```
 
 ## Multi-turn Conversations
