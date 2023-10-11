@@ -1,5 +1,5 @@
 [workspace]
-members = ["llm-api-server", "prompt", "xin"]
+members = ["llama-api-server", "prompt", "xin"]
 resolver = "2"
 
 [workspace.dependencies]
