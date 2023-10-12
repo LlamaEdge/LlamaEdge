@@ -154,6 +154,7 @@ pub(crate) async fn llama_chat_completions_handler(
             completion_tokens,
             total_tokens: prompt_tokens + completion_tokens,
         },
+        uuid: uuid::Uuid::new_v4().to_string(),
     };
 
     // return response
