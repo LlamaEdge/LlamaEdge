@@ -10,6 +10,15 @@ use xin::{
     models::{ListModelsResponse, Model},
 };
 
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref N_CTX: usize = std::env::var("CTX_SIZE")
+        .unwrap_or_else(|_| "512".to_string())
+        .parse()
+        .unwrap_or(512);
+}
+
 /// Lists models available
 pub(crate) async fn llama_models_handler(
     template_ty: PromptTemplateType,
@@ -94,10 +103,8 @@ pub(crate) async fn llama_chat_completions_handler(
     let mut chat_request: xin::chat::ChatCompletionRequest =
         serde_json::from_slice(&body_bytes).unwrap();
 
-    dbg!(&chat_request);
-
     // set `LLAMA_N_PREDICT` env var
-    let max_tokens = chat_request.max_tokens.unwrap_or(512);
+    let max_tokens = chat_request.max_tokens.unwrap_or(128);
     std::env::set_var("LLAMA_N_PREDICT", format!("{}", max_tokens));
 
     // build prompt
@@ -180,7 +187,7 @@ pub(crate) async fn infer(model_name: impl AsRef<str>, prompt: impl AsRef<str>) 
     // println!("Executed model inference");
 
     // Retrieve the output.
-    let mut output_buffer = vec![0u8; 2048];
+    let mut output_buffer = vec![0u8; *N_CTX];
     let size = context.get_output(0, &mut output_buffer).unwrap();
     output_buffer[..size].to_vec()
 }
