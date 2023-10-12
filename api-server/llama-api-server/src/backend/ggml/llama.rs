@@ -1,5 +1,6 @@
 use crate::error;
 use hyper::{body::to_bytes, Body, Request, Response};
+use lazy_static::lazy_static;
 use prompt::{BuildPrompt, PromptTemplateType};
 use xin::{
     chat::{
@@ -10,13 +11,11 @@ use xin::{
     models::{ListModelsResponse, Model},
 };
 
-use lazy_static::lazy_static;
-
 lazy_static! {
     static ref N_CTX: usize = std::env::var("CTX_SIZE")
-        .unwrap_or_else(|_| "512".to_string())
+        .unwrap_or_else(|_| "2048".to_string())
         .parse()
-        .unwrap_or(512);
+        .unwrap_or(2048);
 }
 
 /// Lists models available
@@ -115,12 +114,18 @@ pub(crate) async fn llama_chat_completions_handler(
         }
     };
 
+    // ! todo: a temp solution of computing the number of tokens in prompt
+    let prompt_tokens = prompt.split_whitespace().count() as u32;
+
     // run inference
     let buffer = infer(model_name.as_ref(), prompt.trim()).await;
 
     // convert inference result to string
     let model_answer = String::from_utf8(buffer.clone()).unwrap();
     let assistant_message = model_answer.trim();
+
+    // ! todo: a temp solution of computing the number of tokens in assistant_message
+    let completion_tokens = assistant_message.split_whitespace().count() as u32;
 
     println!("[CHAT] Bot answer: {}", assistant_message);
 
@@ -145,9 +150,9 @@ pub(crate) async fn llama_chat_completions_handler(
             finish_reason: FinishReason::stop,
         }],
         usage: Usage {
-            prompt_tokens: 9,
-            completion_tokens: 12,
-            total_tokens: 21,
+            prompt_tokens,
+            completion_tokens,
+            total_tokens: prompt_tokens + completion_tokens,
         },
     };
 
