@@ -1,0 +1,23 @@
+{
+    "object": "list",
+    "data": [
+        {
+            "id": "llama-2-7b-chat.Q5_K_M.gguf",
+            "created": 1697024910,
+            "object": "model",
+            "owned_by": "https://huggingface.co/TheBloke"
+        },
+        {
+            "id": "codellama-13b-instruct.Q4_0.gguf",
+            "created": 1697024910,
+            "object": "model",
+            "owned_by": "https://huggingface.co/TheBloke"
+        },
+        {
+            "id": "Mistral-7B-Instruct-v0.1.gguf",
+            "created": 1697024910,
+            "object": "model",
+            "owned_by": "https://huggingface.co/TheBloke"
+        }
+    ]
+}

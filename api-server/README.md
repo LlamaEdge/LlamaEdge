@@ -34,13 +34,17 @@ Now let's build and run the API server.
 * Run the API server:
 
   ```bash
-  wasmedge --dir .:. --env SOCKET_ADDRESS=0.0.0.0:8080 --nn-preload default:GGML:CPU:llama-2-7b-chat.Q5_K_M.gguf target/wasm32-wasi/release/llama-api-server.wasm default llama-2-chat
+  wasmedge --dir .:. --env SOCKET_ADDRESS=0.0.0.0:8080 --env CTX_SIZE=1024 --nn-preload default:GGML:CPU:llama-2-7b-chat.Q5_K_M.gguf target/wasm32-wasi/release/llama-api-server.wasm default llama-2-chat
   ```
 
   * The `--env SOCKET_ADDRESS=<ip-address>:<port>` option specifies the socket address of the API server. The default socket address `0.0.0.0:8080` is used if this option is not specified.
 
+  * The `--env CTX_SIZE=<size>` option the size of the prompt context (default: 512).
+
   * The `--nn-preload default:GGML:CPU:llama-2-7b-chat.Q5_K_M.gguf` option specifies the Llama model to be used by the API server. The pattern of the argument is `<name>:<encoding>:<target>:<model path>`. Here, the model used is `llama-2-7b-chat.Q5_K_M.gguf`; and we give it an alias `default` as its name in the runtime environment.
+
   * The `default` value in the second-to-last argument of the command specifies the alias of the model to be used in the runtime. This name should be the same as the name specified in the `--nn-preload` option.
+
   * The `llama-2-chat` value in the last argument of the command specifies the name of the prompt template to be used. Currently,the available prompt templates are `llama-2-chat`, `codellama-instruct`, and `mistral-instruct-v0.1`.
 
   Please guarantee that the port is not occupied by other processes. If the port specified is available on your machine and the command is successful, you should see the following output in the terminal:
