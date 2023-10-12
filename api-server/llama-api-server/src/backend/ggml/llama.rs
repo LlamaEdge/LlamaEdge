@@ -102,9 +102,9 @@ pub(crate) async fn llama_chat_completions_handler(
     let mut chat_request: xin::chat::ChatCompletionRequest =
         serde_json::from_slice(&body_bytes).unwrap();
 
-    // set `LLAMA_N_PREDICT` env var
-    let max_tokens = chat_request.max_tokens.unwrap_or(128);
-    std::env::set_var("LLAMA_N_PREDICT", format!("{}", max_tokens));
+    // // set `LLAMA_N_PREDICT` env var
+    // let max_tokens = chat_request.max_tokens.unwrap_or(128);
+    // std::env::set_var("LLAMA_N_PREDICT", format!("{}", max_tokens));
 
     // build prompt
     let prompt = match template.build(chat_request.messages.as_mut()) {
