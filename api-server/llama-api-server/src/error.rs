@@ -23,8 +23,6 @@ pub enum ServerError {
     SocketAddr(String),
     #[error("Internal server error: {0}")]
     InternalServerError(String),
-    #[error("Invalid CLI arguments: {0}")]
-    InvalidCLIArguments(String),
     #[error("Invalid prompt template type: {0}")]
     InvalidPromptTemplateType(String),
 }

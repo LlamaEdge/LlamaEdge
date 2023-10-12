@@ -18,3 +18,4 @@ wasi-nn = { git = "https://github.com/second-state/wasmedge-wasi-nn", branch = "
 thiserror.workspace = true
 lazy_static = "1.4"
 uuid = { version = "1.4", features = ["v4", "fast-rng", "macro-diagnostics"] }
+clap = "4.4.6"

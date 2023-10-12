@@ -14,7 +14,9 @@ use error::ServerError;
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
-const SOCKET_ADDRESS: &str = "0.0.0.0:8080";
+const DEFAULT_SOCKET_ADDRESS: &str = "0.0.0.0:8080";
+
+use clap::{Arg, Command};
 
 #[derive(Clone, Debug)]
 pub struct AppState {
@@ -23,39 +25,79 @@ pub struct AppState {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), ServerError> {
-    println!("[SERVER] Starting server ...");
+    let matches = Command::new("Llama API Server")
+        .arg(
+            Arg::new("model_alias")
+                .short('m')
+                .long("model-alias")
+                .value_name("ALIAS")
+                .help("Sets the model alias")
+                .required(true),
+        )
+        .arg(
+            Arg::new("prompt_template")
+                .short('p')
+                .long("prompt-template")
+                .value_parser([
+                    "llama-2-chat",
+                    "codellama-instruct",
+                    "mistral-instruct-v0.1",
+                ])
+                .value_name("TEMPLATE")
+                .help("Sets the prompt template.")
+                .required(true),
+        )
+        .arg(
+            Arg::new("socket_addr")
+                .short('s')
+                .long("socket-addr")
+                .value_name("IP:PORT")
+                .help("Sets the socket address")
+                .default_value(DEFAULT_SOCKET_ADDRESS),
+        )
+        .get_matches();
 
-    let args: Vec<String> = std::env::args().collect();
-    let (model_name, template) = match args.len() == 3 {
-        true => (args[1].clone(), args[2].clone()),
-        false => return Err(ServerError::InvalidCLIArguments(String::from("The <model_alias> and <prompt_template> arguments must be specified. The available prompt templates are: llama-2-chat, codellama-instruct, mistral-instruct-v0.1"))),
-    };
     // model alias
+    let model_name = matches
+        .get_one::<String>("model_alias")
+        .unwrap()
+        .to_string();
     println!("[SERVER] Model alias: {alias}", alias = &model_name);
     let ref_model_name = std::sync::Arc::new(model_name);
 
     // type of prompt template
-    let template_ty = match PromptTemplateType::from_str(&template) {
+    let prompt_template = matches
+        .get_one::<String>("prompt_template")
+        .unwrap()
+        .to_string();
+    let template_ty = match PromptTemplateType::from_str(&prompt_template) {
         Ok(template) => template,
         Err(e) => {
             return Err(ServerError::InvalidPromptTemplateType(e.to_string()));
         }
     };
-    println!(
-        "[SERVER] Prompt template: {prompt_template:?}",
-        prompt_template = &template_ty
-    );
+    println!("[SERVER] Prompt template: {ty:?}", ty = &template_ty);
     let ref_template_ty = std::sync::Arc::new(template_ty);
 
-    // read socket address
-    let socket_addr = std::env::var("SOCKET_ADDRESS").unwrap_or(SOCKET_ADDRESS.to_string());
+    // socket address
+    let socket_addr = matches
+        .get_one::<String>("socket_addr")
+        .unwrap()
+        .to_string();
     let addr: SocketAddr = match socket_addr.parse() {
         Ok(addr) => addr,
         Err(e) => {
             return Err(ServerError::SocketAddr(e.to_string()));
         }
     };
+    println!(
+        "[SERVER] Socket address: {socket_addr}",
+        socket_addr = socket_addr
+    );
 
+    println!("[SERVER] Starting server ...");
+
+    // the timestamp when the server is created
     let created = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
