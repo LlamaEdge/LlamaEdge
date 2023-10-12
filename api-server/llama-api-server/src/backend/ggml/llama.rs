@@ -33,6 +33,7 @@ pub(crate) async fn llama_models_handler(
     let list_models_response = ListModelsResponse {
         object: String::from("list"),
         data: vec![model],
+        uuid: uuid::Uuid::new_v4().to_string(),
     };
 
     // return response
