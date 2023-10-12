@@ -66,10 +66,7 @@ impl BuildPrompt for Llama2ChatPrompt {
         // systemp prompt
         let system_prompt = if messages[0].role == ChatCompletionRole::System {
             let system_message = messages.remove(0);
-            let _system_prompt = self.create_system_prompt(&system_message);
-
-            // ! debug
-            String::from("<<SYS>>\nYou are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe. <</SYS>>")
+            self.create_system_prompt(&system_message)
         } else {
             String::new()
         };
