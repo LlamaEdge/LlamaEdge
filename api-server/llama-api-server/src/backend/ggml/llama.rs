@@ -121,7 +121,7 @@ pub(crate) async fn llama_chat_completions_handler(
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs(),
-        model: chat_request.model.clone(),
+        model: chat_request.model.clone().unwrap_or_default(),
         choices: vec![ChatCompletionResponseChoice {
             index: 0,
             message: ChatCompletionResponseMessage {

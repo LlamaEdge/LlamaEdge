@@ -18,7 +18,7 @@ impl ChatCompletionRequestBuilder {
     pub fn new(model: impl Into<String>, messages: Vec<ChatCompletionRequestMessage>) -> Self {
         Self {
             req: ChatCompletionRequest {
-                model: model.into(),
+                model: Some(model.into()),
                 messages,
                 temperature: None,
                 top_p: None,
@@ -118,7 +118,8 @@ impl ChatCompletionRequestBuilder {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ChatCompletionRequest {
     /// The model to use for generating completions.
-    pub model: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
     /// A list of messages comprising the conversation so far.
     pub messages: Vec<ChatCompletionRequestMessage>,
     /// Adjust the randomness of the generated text. Between 0.0 and 2.0. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.
