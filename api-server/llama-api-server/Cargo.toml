@@ -17,4 +17,4 @@ tokio_wasi = { version = "1", features = ["full"] }
 wasi-nn = { git = "https://github.com/second-state/wasmedge-wasi-nn", branch = "dm4/ggml" }
 thiserror.workspace = true
 lazy_static = "1.4"
-uuid.workspace = true
+uuid = { version = "1.4", features = ["v4", "fast-rng", "macro-diagnostics"] }

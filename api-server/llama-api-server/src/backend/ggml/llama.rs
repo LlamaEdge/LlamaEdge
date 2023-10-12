@@ -33,7 +33,6 @@ pub(crate) async fn llama_models_handler(
     let list_models_response = ListModelsResponse {
         object: String::from("list"),
         data: vec![model],
-        uuid: uuid::Uuid::new_v4().to_string(),
     };
 
     // return response
@@ -134,7 +133,7 @@ pub(crate) async fn llama_chat_completions_handler(
 
     // create ChatCompletionResponse
     let chat_completion_obejct = ChatCompletionResponse {
-        id: String::new(),
+        id: uuid::Uuid::new_v4().to_string(),
         object: String::from("chat.completion"),
         created: std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -155,7 +154,6 @@ pub(crate) async fn llama_chat_completions_handler(
             completion_tokens,
             total_tokens: prompt_tokens + completion_tokens,
         },
-        uuid: uuid::Uuid::new_v4().to_string(),
     };
 
     // return response

@@ -277,8 +277,6 @@ pub struct ChatCompletionResponse {
     pub choices: Vec<ChatCompletionResponseChoice>,
     /// Usage statistics for the completion request.
     pub usage: Usage,
-    /// random uuid
-    pub uuid: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

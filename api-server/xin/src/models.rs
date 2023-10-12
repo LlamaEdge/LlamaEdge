@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 pub struct ListModelsResponse {
     pub object: String,
     pub data: Vec<Model>,
-    pub uuid: String,
 }
 
 /// Describes a model offering that can be used with the API.
