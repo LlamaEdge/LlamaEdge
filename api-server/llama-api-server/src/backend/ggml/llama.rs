@@ -1,6 +1,5 @@
-use crate::error;
+use crate::{error, CTX_SIZE};
 use hyper::{body::to_bytes, Body, Request, Response};
-use lazy_static::lazy_static;
 use prompt::{BuildPrompt, PromptTemplateType};
 use wasi_nn::Error as WasiNnError;
 use xin::{
@@ -11,13 +10,6 @@ use xin::{
     common::Usage,
     models::{ListModelsResponse, Model},
 };
-
-lazy_static! {
-    static ref N_CTX: usize = std::env::var("CTX_SIZE")
-        .unwrap_or_else(|_| "2048".to_string())
-        .parse()
-        .unwrap_or(2048);
-}
 
 /// Lists models available
 pub(crate) async fn llama_models_handler(
@@ -198,7 +190,7 @@ pub(crate) async fn infer(
     // println!("Executed model inference");
 
     // Retrieve the output.
-    let mut output_buffer = vec![0u8; *N_CTX];
+    let mut output_buffer = vec![0u8; *CTX_SIZE.get().unwrap()];
     let size = context.get_output(0, &mut output_buffer)?;
     Ok(output_buffer[..size].to_vec())
 }

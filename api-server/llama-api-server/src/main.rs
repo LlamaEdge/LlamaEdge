@@ -2,6 +2,7 @@ use hyper::{
     service::{make_service_fn, service_fn},
     Body, Request, Response, Server,
 };
+use once_cell::sync::OnceCell;
 use prompt::PromptTemplateType;
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -15,6 +16,9 @@ use error::ServerError;
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 const DEFAULT_SOCKET_ADDRESS: &str = "0.0.0.0:8080";
+const DEFAULT_CTX_SIZE: &str = "2048";
+
+static CTX_SIZE: OnceCell<usize> = OnceCell::new();
 
 use clap::{Arg, Command};
 
@@ -55,6 +59,15 @@ async fn main() -> Result<(), ServerError> {
                 .help("Sets the socket address")
                 .default_value(DEFAULT_SOCKET_ADDRESS),
         )
+        .arg(
+            Arg::new("ctx_size")
+                .short('c')
+                .long("ctx-size")
+                .value_parser(clap::value_parser!(u32))
+                .value_name("CTX_SIZE")
+                .help("Sets the prompt context size")
+                .default_value(DEFAULT_CTX_SIZE),
+        )
         .get_matches();
 
     // model alias
@@ -94,6 +107,13 @@ async fn main() -> Result<(), ServerError> {
         "[SERVER] Socket address: {socket_addr}",
         socket_addr = socket_addr
     );
+
+    // prompt context size
+    let ctx_size = matches.get_one::<u32>("ctx_size").unwrap();
+    if CTX_SIZE.set(*ctx_size as usize).is_err() {
+        return Err(ServerError::PromptContextSize);
+    }
+    println!("[SERVER] Prompt context size: {size}", size = ctx_size);
 
     println!("[SERVER] Starting server ...");
 
