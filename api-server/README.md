@@ -44,6 +44,7 @@ Now let's build and run the API server.
     -m, --model-alias <ALIAS>         Sets the model alias
     -p, --prompt-template <TEMPLATE>  Sets the prompt template. [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1]
     -s, --socket-addr <IP:PORT>       Sets the socket address [default: 0.0.0.0:8080]
+    -c, --ctx-size <CONTEXT_SIZE>     Sets the prompt context size [default: 2048]
     -h, --help                        Print help
   ```
 
@@ -62,7 +63,7 @@ Now let's build and run the API server.
   Please guarantee that the port is not occupied by other processes. If the port specified is available on your machine and the command is successful, you should see the following output in the terminal:
 
   ```bash
-  Listening on http://0.0.0.0:8080
+  Listening on http://0.0.0.0:8000
   ```
 
 ## Test the API server
@@ -120,7 +121,3 @@ Here is the response.
     }
 }
 ```
-
-## Multi-turn Conversations
-
-(Todo: add steps to run `chatbot-ui`)
