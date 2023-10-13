@@ -2,6 +2,7 @@ use crate::error;
 use hyper::{body::to_bytes, Body, Request, Response};
 use lazy_static::lazy_static;
 use prompt::{BuildPrompt, PromptTemplateType};
+use wasi_nn::Error as WasiNnError;
 use xin::{
     chat::{
         ChatCompletionResponse, ChatCompletionResponseChoice, ChatCompletionResponseMessage,
@@ -118,7 +119,12 @@ pub(crate) async fn llama_chat_completions_handler(
     let prompt_tokens = prompt.split_whitespace().count() as u32;
 
     // run inference
-    let buffer = infer(model_name.as_ref(), prompt.trim()).await;
+    let buffer = match infer(model_name.as_ref(), prompt.trim()).await {
+        Ok(buffer) => buffer,
+        Err(e) => {
+            return error::internal_server_error(e.to_string());
+        }
+    };
 
     // convert inference result to string
     let model_answer = String::from_utf8(buffer.clone()).unwrap();
@@ -171,28 +177,28 @@ pub(crate) async fn llama_chat_completions_handler(
 }
 
 /// Runs inference on the model with the given name and returns the output.
-pub(crate) async fn infer(model_name: impl AsRef<str>, prompt: impl AsRef<str>) -> Vec<u8> {
+pub(crate) async fn infer(
+    model_name: impl AsRef<str>,
+    prompt: impl AsRef<str>,
+) -> std::result::Result<Vec<u8>, WasiNnError> {
     let graph =
         wasi_nn::GraphBuilder::new(wasi_nn::GraphEncoding::Ggml, wasi_nn::ExecutionTarget::CPU)
-            .build_from_cache(model_name.as_ref())
-            .unwrap();
+            .build_from_cache(model_name.as_ref())?;
     // println!("Loaded model into wasi-nn with ID: {:?}", graph);
 
-    let mut context = graph.init_execution_context().unwrap();
+    let mut context = graph.init_execution_context()?;
     // println!("Created wasi-nn execution context with ID: {:?}", context);
 
     let tensor_data = prompt.as_ref().trim().as_bytes().to_vec();
     // println!("Read input tensor, size in bytes: {}", tensor_data.len());
-    context
-        .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
-        .unwrap();
+    context.set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)?;
 
     // Execute the inference.
-    context.compute().unwrap();
+    context.compute()?;
     // println!("Executed model inference");
 
     // Retrieve the output.
     let mut output_buffer = vec![0u8; *N_CTX];
-    let size = context.get_output(0, &mut output_buffer).unwrap();
-    output_buffer[..size].to_vec()
+    let size = context.get_output(0, &mut output_buffer)?;
+    Ok(output_buffer[..size].to_vec())
 }
