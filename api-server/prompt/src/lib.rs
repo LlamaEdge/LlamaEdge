@@ -8,6 +8,7 @@ pub enum PromptTemplateType {
     Llama2Chat,
     MistralInstructV01,
     CodeLlama,
+    BelleLlama2Chat,
 }
 impl FromStr for PromptTemplateType {
     type Err = error::PromptError;
@@ -17,6 +18,7 @@ impl FromStr for PromptTemplateType {
             "llama-2-chat" => Ok(PromptTemplateType::Llama2Chat),
             "mistral-instruct-v0.1" => Ok(PromptTemplateType::MistralInstructV01),
             "codellama-instruct" => Ok(PromptTemplateType::CodeLlama),
+            "belle-llama-2-chat" => Ok(PromptTemplateType::BelleLlama2Chat),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
                 template.to_string(),
             )),
@@ -29,6 +31,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::Llama2Chat => write!(f, "llama-2-chat"),
             PromptTemplateType::MistralInstructV01 => write!(f, "mistral-instruct-v0.1"),
             PromptTemplateType::CodeLlama => write!(f, "codellama-instruct"),
+            PromptTemplateType::BelleLlama2Chat => write!(f, "belle-llama-2-chat"),
         }
     }
 }

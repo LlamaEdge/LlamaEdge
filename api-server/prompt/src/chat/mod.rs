@@ -1,3 +1,4 @@
+pub mod belle;
 pub mod llama;
 pub mod mistral;
 
