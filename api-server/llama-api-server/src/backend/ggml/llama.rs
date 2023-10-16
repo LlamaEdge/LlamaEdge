@@ -2,6 +2,7 @@ use crate::{error, CTX_SIZE};
 use hyper::{body::to_bytes, Body, Request, Response};
 use prompt::{
     chat::{
+        belle::BelleLlama2ChatPrompt,
         llama::{CodeLlamaInstructPrompt, Llama2ChatPrompt},
         mistral::MistralInstructPrompt,
         BuildChatPrompt,
@@ -87,6 +88,7 @@ pub(crate) async fn llama_chat_completions_handler(
             PromptTemplateType::Llama2Chat => Box::new(Llama2ChatPrompt::default()),
             PromptTemplateType::MistralInstructV01 => Box::new(MistralInstructPrompt::default()),
             PromptTemplateType::CodeLlama => Box::new(CodeLlamaInstructPrompt::default()),
+            PromptTemplateType::BelleLlama2Chat => Box::new(BelleLlama2ChatPrompt::default()),
         }
     }
     let template = create_prompt_template(template_ty);
