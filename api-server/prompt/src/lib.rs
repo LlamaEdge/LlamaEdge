@@ -1,6 +1,5 @@
+pub mod chat;
 pub mod error;
-pub mod llama;
-pub mod mistral;
 
 use std::str::FromStr;
 
