@@ -4,8 +4,9 @@ use prompt::{
     chat::{
         llama::{CodeLlamaInstructPrompt, Llama2ChatPrompt},
         mistral::MistralInstructPrompt,
+        BuildChatPrompt,
     },
-    BuildPrompt, PromptTemplateType,
+    PromptTemplateType,
 };
 use wasi_nn::Error as WasiNnError;
 use xin::{
@@ -81,7 +82,7 @@ pub(crate) async fn llama_chat_completions_handler(
         }
     }
 
-    fn create_prompt_template(template_ty: PromptTemplateType) -> Box<dyn BuildPrompt> {
+    fn create_prompt_template(template_ty: PromptTemplateType) -> Box<dyn BuildChatPrompt> {
         match template_ty {
             PromptTemplateType::Llama2Chat => Box::new(Llama2ChatPrompt::default()),
             PromptTemplateType::MistralInstructV01 => Box::new(MistralInstructPrompt::default()),
