@@ -1,4 +1,5 @@
-use crate::{error::Result, BuildPrompt};
+use super::BuildChatPrompt;
+use crate::error::Result;
 use xin::chat::{ChatCompletionRequestMessage, ChatCompletionRole};
 
 /// Generate prompts for the `Llama-2-chat` model.
@@ -57,7 +58,7 @@ impl Llama2ChatPrompt {
         )
     }
 }
-impl BuildPrompt for Llama2ChatPrompt {
+impl BuildChatPrompt for Llama2ChatPrompt {
     fn build(&self, messages: &mut Vec<ChatCompletionRequestMessage>) -> Result<String> {
         if messages.is_empty() {
             return Ok(String::new());
@@ -183,7 +184,7 @@ impl CodeLlamaInstructPrompt {
         )
     }
 }
-impl BuildPrompt for CodeLlamaInstructPrompt {
+impl BuildChatPrompt for CodeLlamaInstructPrompt {
     fn build(&self, messages: &mut Vec<ChatCompletionRequestMessage>) -> Result<String> {
         if messages.is_empty() {
             return Ok(String::new());

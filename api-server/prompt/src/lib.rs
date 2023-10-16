@@ -3,13 +3,6 @@ pub mod error;
 
 use std::str::FromStr;
 
-use error::Result;
-use xin::chat::ChatCompletionRequestMessage;
-
-pub trait BuildPrompt: Send {
-    fn build(&self, messages: &mut Vec<ChatCompletionRequestMessage>) -> Result<String>;
-}
-
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
 pub enum PromptTemplateType {
     Llama2Chat,

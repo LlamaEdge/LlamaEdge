@@ -1,4 +1,5 @@
-use crate::{error::Result, BuildPrompt};
+use super::BuildChatPrompt;
+use crate::error::Result;
 use xin::chat::{ChatCompletionRequestMessage, ChatCompletionRole};
 
 /// Generate prompts for the `Mistral-instruct-v0.1` model.
@@ -45,7 +46,11 @@ impl MistralInstructPrompt {
     }
 
     /// create an assistant prompt from a chat completion request message.
-    fn append_assistant_message(&self, chat_history: impl AsRef<str>, content: impl AsRef<str>) -> String {
+    fn append_assistant_message(
+        &self,
+        chat_history: impl AsRef<str>,
+        content: impl AsRef<str>,
+    ) -> String {
         format!(
             "{prompt} {assistant_message} </s>",
             prompt = chat_history.as_ref().trim(),
@@ -53,7 +58,7 @@ impl MistralInstructPrompt {
         )
     }
 }
-impl BuildPrompt for MistralInstructPrompt {
+impl BuildChatPrompt for MistralInstructPrompt {
     fn build(&self, messages: &mut Vec<ChatCompletionRequestMessage>) -> Result<String> {
         if messages.is_empty() {
             return Ok(String::new());
@@ -78,16 +83,10 @@ impl BuildPrompt for MistralInstructPrompt {
         let mut prompt = String::new();
         for message in messages {
             if message.role == ChatCompletionRole::User {
-                prompt = self.append_user_message(
-                    &prompt,
-                    &system_prompt,
-                    message.content.as_str(),
-                );
+                prompt =
+                    self.append_user_message(&prompt, &system_prompt, message.content.as_str());
             } else if message.role == ChatCompletionRole::Assistant {
-                prompt = self.append_assistant_message(
-                    &prompt,
-                    message.content.as_str(),
-                );
+                prompt = self.append_assistant_message(&prompt, message.content.as_str());
             } else {
                 return Err(crate::error::PromptError::UnknownRole(message.role));
             }
