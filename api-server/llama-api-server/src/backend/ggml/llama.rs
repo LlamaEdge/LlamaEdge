@@ -1,6 +1,12 @@
 use crate::{error, CTX_SIZE};
 use hyper::{body::to_bytes, Body, Request, Response};
-use prompt::{BuildPrompt, PromptTemplateType};
+use prompt::{
+    chat::{
+        llama::{CodeLlamaInstructPrompt, Llama2ChatPrompt},
+        mistral::MistralInstructPrompt,
+    },
+    BuildPrompt, PromptTemplateType,
+};
 use wasi_nn::Error as WasiNnError;
 use xin::{
     chat::{
@@ -77,13 +83,9 @@ pub(crate) async fn llama_chat_completions_handler(
 
     fn create_prompt_template(template_ty: PromptTemplateType) -> Box<dyn BuildPrompt> {
         match template_ty {
-            PromptTemplateType::Llama2Chat => Box::new(prompt::llama::Llama2ChatPrompt::default()),
-            PromptTemplateType::MistralInstructV01 => {
-                Box::new(prompt::mistral::MistralInstructPrompt::default())
-            }
-            PromptTemplateType::CodeLlama => {
-                Box::new(prompt::llama::CodeLlamaInstructPrompt::default())
-            }
+            PromptTemplateType::Llama2Chat => Box::new(Llama2ChatPrompt::default()),
+            PromptTemplateType::MistralInstructV01 => Box::new(MistralInstructPrompt::default()),
+            PromptTemplateType::CodeLlama => Box::new(CodeLlamaInstructPrompt::default()),
         }
     }
     let template = create_prompt_template(template_ty);
