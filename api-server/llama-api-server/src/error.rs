@@ -1,6 +1,7 @@
 use hyper::{Body, Response};
 use thiserror::Error;
 
+#[allow(dead_code)]
 pub(crate) fn not_implemented() -> Result<Response<Body>, hyper::Error> {
     let mut response = Response::new(Body::from("501 Not Implemented"));
     *response.status_mut() = hyper::StatusCode::NOT_IMPLEMENTED;
@@ -14,6 +15,19 @@ pub(crate) fn internal_server_error(msg: impl AsRef<str>) -> Result<Response<Bod
     };
     let mut response = Response::new(Body::from(err_msg));
     *response.status_mut() = hyper::StatusCode::INTERNAL_SERVER_ERROR;
+    Ok(response)
+}
+
+pub(crate) fn invalid_endpoint(msg: impl AsRef<str>) -> Result<Response<Body>, hyper::Error> {
+    let err_msg = match msg.as_ref().is_empty() {
+        true => format!("404 The requested service endpoint is not found"),
+        false => format!(
+            "404 The requested service endpoint is not found: {}",
+            msg.as_ref()
+        ),
+    };
+    let mut response = Response::new(Body::from(err_msg));
+    *response.status_mut() = hyper::StatusCode::NOT_FOUND;
     Ok(response)
 }
 

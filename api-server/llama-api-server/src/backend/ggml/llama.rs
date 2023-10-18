@@ -9,13 +9,15 @@ use prompt::{
     },
     PromptTemplateType,
 };
+use std::time::SystemTime;
 use wasi_nn::Error as WasiNnError;
 use xin::{
     chat::{
-        ChatCompletionResponse, ChatCompletionResponseChoice, ChatCompletionResponseMessage,
-        ChatCompletionRole, FinishReason,
+        ChatCompletionRequest, ChatCompletionResponse, ChatCompletionResponseChoice,
+        ChatCompletionResponseMessage, ChatCompletionRole,
     },
-    common::Usage,
+    common::{FinishReason, Usage},
+    completions::{CompletionChoice, CompletionObject, CompletionRequest},
     models::{ListModelsResponse, Model},
 };
 
@@ -55,9 +57,72 @@ pub(crate) async fn _llama_embeddings_handler() -> Result<Response<Body>, hyper:
     error::not_implemented()
 }
 
-pub(crate) async fn _llama_completions_handler() -> Result<Response<Body>, hyper::Error> {
-    println!("llama_completions_handler not implemented");
-    error::not_implemented()
+pub(crate) async fn llama_completions_handler(
+    mut req: Request<Body>,
+    model_name: impl AsRef<str>,
+) -> Result<Response<Body>, hyper::Error> {
+    println!("[COMPLETION] New completion begins ...");
+
+    // parse request
+    let body_bytes = to_bytes(req.body_mut()).await?;
+    let completion_request: CompletionRequest = serde_json::from_slice(&body_bytes).unwrap();
+
+    let prompt = completion_request.prompt.join(" ");
+
+    // ! todo: a temp solution of computing the number of tokens in prompt
+    let prompt_tokens = prompt.split_whitespace().count() as u32;
+
+    let buffer = match infer(model_name.as_ref(), prompt.trim()).await {
+        Ok(buffer) => buffer,
+        Err(e) => {
+            return error::internal_server_error(e.to_string());
+        }
+    };
+
+    // convert inference result to string
+    let model_answer = String::from_utf8(buffer.clone()).unwrap();
+    let answer = model_answer.trim();
+
+    // ! todo: a temp solution of computing the number of tokens in answer
+    let completion_tokens = answer.split_whitespace().count() as u32;
+
+    println!("[COMPLETION] Bot answer: {}", answer);
+
+    println!("[COMPLETION] New completion ends.");
+
+    let completion_object = CompletionObject {
+        id: uuid::Uuid::new_v4().to_string(),
+        object: String::from("text_completion"),
+        created: SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
+        model: completion_request.model.clone().unwrap_or_default(),
+        choices: vec![CompletionChoice {
+            index: 0,
+            text: String::from(answer),
+            finish_reason: FinishReason::stop,
+            logprobs: None,
+        }],
+        usage: Usage {
+            prompt_tokens,
+            completion_tokens,
+            total_tokens: prompt_tokens + completion_tokens,
+        },
+    };
+
+    // return response
+    let result = Response::builder()
+        .header("Access-Control-Allow-Origin", "*")
+        .header("Access-Control-Allow-Methods", "*")
+        .header("Access-Control-Allow-Headers", "*")
+        .body(Body::from(
+            serde_json::to_string(&completion_object).unwrap(),
+        ));
+    match result {
+        Ok(response) => Ok(response),
+        Err(e) => error::internal_server_error(e.to_string()),
+    }
 }
 
 /// Processes a chat-completion request and returns a chat-completion response with the answer from the model.
@@ -83,7 +148,7 @@ pub(crate) async fn llama_chat_completions_handler(
         }
     }
 
-    fn create_prompt_template_new(template_ty: PromptTemplateType) -> ChatPrompt {
+    fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         match template_ty {
             PromptTemplateType::Llama2Chat => {
                 ChatPrompt::Llama2ChatPrompt(Llama2ChatPrompt::default())
@@ -99,14 +164,13 @@ pub(crate) async fn llama_chat_completions_handler(
             }
         }
     }
-    let template = create_prompt_template_new(template_ty);
+    let template = create_prompt_template(template_ty);
 
     println!("[CHAT] New chat begins ...");
 
     // parse request
     let body_bytes = to_bytes(req.body_mut()).await?;
-    let mut chat_request: xin::chat::ChatCompletionRequest =
-        serde_json::from_slice(&body_bytes).unwrap();
+    let mut chat_request: ChatCompletionRequest = serde_json::from_slice(&body_bytes).unwrap();
 
     // // set `LLAMA_N_PREDICT` env var
     // let max_tokens = chat_request.max_tokens.unwrap_or(128);
@@ -146,7 +210,7 @@ pub(crate) async fn llama_chat_completions_handler(
     let chat_completion_obejct = ChatCompletionResponse {
         id: uuid::Uuid::new_v4().to_string(),
         object: String::from("chat.completion"),
-        created: std::time::SystemTime::now()
+        created: SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs(),
