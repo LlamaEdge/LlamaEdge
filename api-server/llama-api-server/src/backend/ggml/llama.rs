@@ -5,7 +5,7 @@ use prompt::{
         belle::BelleLlama2ChatPrompt,
         llama::{CodeLlamaInstructPrompt, Llama2ChatPrompt},
         mistral::MistralInstructPrompt,
-        BuildChatPrompt,
+        BuildChatPrompt, ChatPrompt,
     },
     PromptTemplateType,
 };
@@ -83,15 +83,23 @@ pub(crate) async fn llama_chat_completions_handler(
         }
     }
 
-    fn create_prompt_template(template_ty: PromptTemplateType) -> Box<dyn BuildChatPrompt> {
+    fn create_prompt_template_new(template_ty: PromptTemplateType) -> ChatPrompt {
         match template_ty {
-            PromptTemplateType::Llama2Chat => Box::new(Llama2ChatPrompt::default()),
-            PromptTemplateType::MistralInstructV01 => Box::new(MistralInstructPrompt::default()),
-            PromptTemplateType::CodeLlama => Box::new(CodeLlamaInstructPrompt::default()),
-            PromptTemplateType::BelleLlama2Chat => Box::new(BelleLlama2ChatPrompt::default()),
+            PromptTemplateType::Llama2Chat => {
+                ChatPrompt::Llama2ChatPrompt(Llama2ChatPrompt::default())
+            }
+            PromptTemplateType::MistralInstructV01 => {
+                ChatPrompt::MistralInstructPrompt(MistralInstructPrompt::default())
+            }
+            PromptTemplateType::CodeLlama => {
+                ChatPrompt::CodeLlamaInstructPrompt(CodeLlamaInstructPrompt::default())
+            }
+            PromptTemplateType::BelleLlama2Chat => {
+                ChatPrompt::BelleLlama2ChatPrompt(BelleLlama2ChatPrompt::default())
+            }
         }
     }
-    let template = create_prompt_template(template_ty);
+    let template = create_prompt_template_new(template_ty);
 
     println!("[CHAT] New chat begins ...");
 

@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 xin.workspace = true
 thiserror.workspace = true
+enum_dispatch = "0.3.12"
