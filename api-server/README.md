@@ -121,3 +121,21 @@ Here is the response.
     }
 }
 ```
+
+## Models
+
+- [x] [Llama-2-7b-Chat-GGUF](https://huggingface.co/TheBloke/Llama-2-7b-Chat-GGUF)
+
+- [x] [Llama-2-13B-chat-GGUF](https://huggingface.co/TheBloke/Llama-2-13B-chat-GGUF)
+
+- [x] [Mistral-7B-Instruct-v0.1-GGUF](https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF)
+
+- [x] [BELLE-Llama2-13B-Chat-GGUF](https://huggingface.co/apepkuss79/BELLE-Llama2-13B-Chat-GGUF)
+
+- [ ] [Baichuan2-7B-Chat-GGUF](https://huggingface.co/apepkuss79/Baichuan2-7B-Chat-GGUF)
+
+- [ ] [Baichuan2-7B-Chat-GGUF](https://huggingface.co/apepkuss79/Baichuan2-7B-Chat-GGUF)
+
+- [ ] [Baichuan-13B-Chat-GGUF](https://huggingface.co/apepkuss79/Baichuan-13B-Chat-GGUF)
+
+- [ ] [CodeShell-7B-Chat-GGUF](https://huggingface.co/apepkuss79/CodeShell-7B-Chat-GGUF)
