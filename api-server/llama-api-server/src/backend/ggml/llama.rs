@@ -1,6 +1,15 @@
 use crate::{error, CTX_SIZE};
+use endpoints::{
+    chat::{
+        ChatCompletionRequest, ChatCompletionResponse, ChatCompletionResponseChoice,
+        ChatCompletionResponseMessage, ChatCompletionRole,
+    },
+    common::{FinishReason, Usage},
+    completions::{CompletionChoice, CompletionObject, CompletionRequest},
+    models::{ListModelsResponse, Model},
+};
 use hyper::{body::to_bytes, Body, Request, Response};
-use prompt::{
+use prompts::{
     chat::{
         belle::BelleLlama2ChatPrompt,
         llama::{CodeLlamaInstructPrompt, Llama2ChatPrompt},
@@ -11,15 +20,6 @@ use prompt::{
 };
 use std::time::SystemTime;
 use wasi_nn::Error as WasiNnError;
-use endpoints::{
-    chat::{
-        ChatCompletionRequest, ChatCompletionResponse, ChatCompletionResponseChoice,
-        ChatCompletionResponseMessage, ChatCompletionRole,
-    },
-    common::{FinishReason, Usage},
-    completions::{CompletionChoice, CompletionObject, CompletionRequest},
-    models::{ListModelsResponse, Model},
-};
 
 /// Lists models available
 pub(crate) async fn llama_models_handler(

@@ -1,9 +1,9 @@
 [workspace]
-members = ["llama-api-server", "prompt", "endpoints"]
+members = ["llama-api-server", "prompts", "endpoints"]
 resolver = "2"
 
 [workspace.dependencies]
 serde = { version = "1.0", features = ["derive"] }
 endpoints = { path = "endpoints", version = "0.1" }
-prompt = { path = "prompt", version = "0.1" }
+prompts = { path = "prompts", version = "0.1" }
 thiserror = "1"
