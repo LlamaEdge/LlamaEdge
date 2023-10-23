@@ -14,11 +14,11 @@ impl BelleLlama2ChatPrompt {
     ) -> String {
         match chat_history.as_ref().is_empty() {
             true => format!(
-                "Human: {user_message}",
+                "Human: \n{user_message}",
                 user_message = content.as_ref().trim(),
             ),
             false => format!(
-                "{chat_history}Human: {user_message}",
+                "{chat_history}\nHuman: \n{user_message}",
                 chat_history = chat_history.as_ref().trim(),
                 user_message = content.as_ref().trim(),
             ),
@@ -54,6 +54,8 @@ impl BuildChatPrompt for BelleLlama2ChatPrompt {
                 return Err(crate::error::PromptError::UnknownRole(message.role));
             }
         }
+
+        prompt.push_str("\n\nAssistant:\n");
 
         println!("*** [prompt begin] ***");
         println!("{}", &prompt);
