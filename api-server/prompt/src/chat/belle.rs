@@ -57,9 +57,9 @@ impl BuildChatPrompt for BelleLlama2ChatPrompt {
 
         prompt.push_str("\n\nAssistant:\n");
 
-        println!("*** [prompt begin] ***");
-        println!("{}", &prompt);
-        println!("*** [prompt end] ***");
+        // println!("*** [prompt begin] ***");
+        // println!("{}", &prompt);
+        // println!("*** [prompt end] ***");
 
         Ok(prompt)
     }
