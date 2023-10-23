@@ -188,7 +188,7 @@ pub(crate) async fn llama_chat_completions_handler(
     let prompt_tokens = prompt.split_whitespace().count() as u32;
 
     // run inference
-    let buffer = match infer(model_name.as_ref(), prompt.trim()).await {
+    let buffer = match infer(model_name.as_ref(), prompt).await {
         Ok(buffer) => buffer,
         Err(e) => {
             return error::internal_server_error(e.to_string());
@@ -258,7 +258,7 @@ pub(crate) async fn infer(
     let mut context = graph.init_execution_context()?;
     // println!("Created wasi-nn execution context with ID: {:?}", context);
 
-    let tensor_data = prompt.as_ref().trim().as_bytes().to_vec();
+    let tensor_data = prompt.as_ref().as_bytes().to_vec();
     // println!("Read input tensor, size in bytes: {}", tensor_data.len());
     context.set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)?;
 
