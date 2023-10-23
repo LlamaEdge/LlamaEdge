@@ -40,8 +40,6 @@ impl BelleLlama2ChatPrompt {
 }
 impl BuildChatPrompt for BelleLlama2ChatPrompt {
     fn build(&self, messages: &mut Vec<ChatCompletionRequestMessage>) -> Result<String> {
-        dbg!("this is belle llama 2 chat prompt");
-
         if messages.is_empty() {
             return Ok(String::new());
         }
