@@ -1,8 +1,8 @@
 pub(crate) mod llama;
 
 use crate::error;
+use chat_prompts::PromptTemplateType;
 use hyper::{Body, Request, Response};
-use prompts::PromptTemplateType;
 
 pub(crate) async fn handle_llama_request(
     req: Request<Body>,

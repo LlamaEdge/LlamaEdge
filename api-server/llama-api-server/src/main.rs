@@ -3,7 +3,7 @@ use hyper::{
     Body, Request, Response, Server,
 };
 use once_cell::sync::OnceCell;
-use prompts::PromptTemplateType;
+use chat_prompts::PromptTemplateType;
 use std::net::SocketAddr;
 use std::str::FromStr;
 

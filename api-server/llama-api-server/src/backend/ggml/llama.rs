@@ -1,4 +1,13 @@
 use crate::{error, CTX_SIZE};
+use chat_prompts::{
+    chat::{
+        belle::BelleLlama2ChatPrompt,
+        llama::{CodeLlamaInstructPrompt, Llama2ChatPrompt},
+        mistral::MistralInstructPrompt,
+        BuildChatPrompt, ChatPrompt,
+    },
+    PromptTemplateType,
+};
 use endpoints::{
     chat::{
         ChatCompletionRequest, ChatCompletionResponse, ChatCompletionResponseChoice,
@@ -9,15 +18,6 @@ use endpoints::{
     models::{ListModelsResponse, Model},
 };
 use hyper::{body::to_bytes, Body, Request, Response};
-use prompts::{
-    chat::{
-        belle::BelleLlama2ChatPrompt,
-        llama::{CodeLlamaInstructPrompt, Llama2ChatPrompt},
-        mistral::MistralInstructPrompt,
-        BuildChatPrompt, ChatPrompt,
-    },
-    PromptTemplateType,
-};
 use std::time::SystemTime;
 use wasi_nn::Error as WasiNnError;
 
