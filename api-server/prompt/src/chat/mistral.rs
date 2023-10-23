@@ -1,6 +1,6 @@
 use super::BuildChatPrompt;
 use crate::error::Result;
-use xin::chat::{ChatCompletionRequestMessage, ChatCompletionRole};
+use endpoints::chat::{ChatCompletionRequestMessage, ChatCompletionRole};
 
 /// Generate prompts for the `Mistral-instruct-v0.1` model.
 #[derive(Debug, Default, Clone)]

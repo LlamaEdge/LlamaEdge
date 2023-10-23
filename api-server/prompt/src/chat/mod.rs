@@ -4,9 +4,9 @@ pub mod mistral;
 
 use crate::error::Result;
 use belle::*;
+use endpoints::chat::ChatCompletionRequestMessage;
 use llama::*;
 use mistral::*;
-use xin::chat::ChatCompletionRequestMessage;
 
 #[enum_dispatch::enum_dispatch]
 pub trait BuildChatPrompt: Send {

@@ -1,5 +1,5 @@
+use endpoints::chat::ChatCompletionRole;
 use thiserror::Error;
-use xin::chat::ChatCompletionRole;
 
 pub type Result<T> = std::result::Result<T, PromptError>;
 

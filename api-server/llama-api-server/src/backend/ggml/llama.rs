@@ -11,7 +11,7 @@ use prompt::{
 };
 use std::time::SystemTime;
 use wasi_nn::Error as WasiNnError;
-use xin::{
+use endpoints::{
     chat::{
         ChatCompletionRequest, ChatCompletionResponse, ChatCompletionResponseChoice,
         ChatCompletionResponseMessage, ChatCompletionRole,
