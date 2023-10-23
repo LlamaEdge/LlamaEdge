@@ -10,7 +10,7 @@ futures = { version = "0.3.6", default-features = false, features = [
 serde.workspace = true
 serde_json = "1.0"
 endpoints.workspace = true
-prompts.workspace = true
+chat-prompts.workspace = true
 serde_yaml = "0.9"
 hyper_wasi = { version = "0.15", features = ["full"] }
 tokio_wasi = { version = "1", features = ["full"] }
