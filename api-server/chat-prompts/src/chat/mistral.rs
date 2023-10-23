@@ -92,9 +92,9 @@ impl BuildChatPrompt for MistralInstructPrompt {
             }
         }
 
-        println!("*** [prompt begin] ***");
-        println!("{}", &prompt);
-        println!("*** [prompt end] ***");
+        // println!("*** [prompt begin] ***");
+        // println!("{}", &prompt);
+        // println!("*** [prompt end] ***");
 
         Ok(prompt)
     }

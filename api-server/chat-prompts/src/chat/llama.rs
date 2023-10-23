@@ -89,40 +89,9 @@ impl BuildChatPrompt for Llama2ChatPrompt {
             }
         }
 
-        // ! DO NOT REMOVE THE CODE BELOW
-        // let len = messages.len();
-        // let mut left = 0;
-        // while left < len {
-        //     if messages[left].role == ChatCompletionRole::User {
-        //         let mut content: String = messages[left].content.clone();
-
-        //         let mut right = left + 1;
-        //         while right < len && messages[right].role == ChatCompletionRole::User {
-        //             content = format!("{} {}", content, messages[right].content.as_str().trim());
-        //             right += 1;
-        //         }
-        //         left = right;
-
-        //         prompt = Llama2ChatPrompt::append_user_message(&prompt, &system_prompt, &content);
-        //     } else if messages[left].role == ChatCompletionRole::Assistant {
-        //         let mut content: String = messages[left].content.clone();
-
-        //         let mut right = left + 1;
-        //         while right < len && messages[right].role == ChatCompletionRole::Assistant {
-        //             content = format!("{} {}", content, messages[right].content.as_str().trim());
-        //             right += 1;
-        //         }
-        //         left = right;
-
-        //         prompt = Llama2ChatPrompt::append_assistant_message(&prompt, &content);
-        //     } else {
-        //         return Err(crate::error::PromptError::UnknownRole(messages[left].role));
-        //     }
-        // }
-
-        println!("*** [prompt begin] ***");
-        println!("{}", &prompt);
-        println!("*** [prompt end] ***");
+        // println!("*** [prompt begin] ***");
+        // println!("{}", &prompt);
+        // println!("*** [prompt end] ***");
 
         Ok(prompt)
     }
@@ -218,9 +187,9 @@ impl BuildChatPrompt for CodeLlamaInstructPrompt {
             }
         }
 
-        println!("*** [prompt begin] ***");
-        println!("{}", &prompt);
-        println!("*** [prompt end] ***");
+        // println!("*** [prompt begin] ***");
+        // println!("{}", &prompt);
+        // println!("*** [prompt end] ***");
 
         Ok(prompt)
     }
