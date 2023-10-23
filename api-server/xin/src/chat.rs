@@ -115,7 +115,7 @@ impl ChatCompletionRequestBuilder {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Default)]
 pub struct ChatCompletionRequest {
     /// The model to use for generating completions.
     #[serde(skip_serializing_if = "Option::is_none")]
