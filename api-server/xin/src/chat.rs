@@ -195,6 +195,16 @@ pub struct ChatCompletionRequestMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub function_call: Option<ChatMessageFunctionCall>,
 }
+impl ChatCompletionRequestMessage {
+    pub fn new(role: ChatCompletionRole, content: impl Into<String>) -> Self {
+        Self {
+            role,
+            content: content.into(),
+            name: None,
+            function_call: None,
+        }
+    }
+}
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq)]
 pub enum ChatCompletionRequestSampling {
