@@ -44,6 +44,7 @@ async fn main() -> Result<(), ServerError> {
                     "mistral-instruct-v0.1",
                     "belle-llama-2-chat",
                     "vicuna-chat",
+                    "chatml",
                 ])
                 .value_name("TEMPLATE")
                 .help("Sets the prompt template.")

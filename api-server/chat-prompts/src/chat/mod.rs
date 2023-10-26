@@ -1,10 +1,12 @@
 pub mod belle;
+pub mod chatml;
 pub mod llama;
 pub mod mistral;
 pub mod vicuna;
 
 use crate::error::Result;
 use belle::*;
+use chatml::*;
 use endpoints::chat::ChatCompletionRequestMessage;
 use llama::*;
 use mistral::*;
@@ -22,4 +24,5 @@ pub enum ChatPrompt {
     CodeLlamaInstructPrompt,
     BelleLlama2ChatPrompt,
     VicunaChatPrompt,
+    ChatMLPrompt,
 }

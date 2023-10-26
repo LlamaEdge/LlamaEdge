@@ -165,6 +165,9 @@ pub(crate) async fn chat_completions_handler(
             PromptTemplateType::VicunaChat => {
                 ChatPrompt::VicunaChatPrompt(chat_prompts::chat::vicuna::VicunaChatPrompt::default())
             }
+            PromptTemplateType::ChatML => {
+                ChatPrompt::ChatMLPrompt(chat_prompts::chat::chatml::ChatMLPrompt::default())
+            }
         }
     }
     let template = create_prompt_template(template_ty);
@@ -260,6 +263,10 @@ pub(crate) async fn infer(
 
     let mut context = graph.init_execution_context()?;
     // println!("Created wasi-nn execution context with ID: {:?}", context);
+
+    println!("*** [prompt begin] ***");
+    println!("{}", prompt.as_ref());
+    println!("*** [prompt end] ***");
 
     let tensor_data = prompt.as_ref().as_bytes().to_vec();
     // println!("Read input tensor, size in bytes: {}", tensor_data.len());
