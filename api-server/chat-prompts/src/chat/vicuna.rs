@@ -78,9 +78,9 @@ impl BuildChatPrompt for VicunaChatPrompt {
 
         prompt.push_str(" ASSISTANT:");
 
-        println!("*** [prompt begin] ***");
-        println!("{}", &prompt);
-        println!("*** [prompt end] ***");
+        // println!("*** [prompt begin] ***");
+        // println!("{}", &prompt);
+        // println!("*** [prompt end] ***");
 
         Ok(prompt)
     }
