@@ -1,9 +1,9 @@
+use chat_prompts::PromptTemplateType;
 use hyper::{
     service::{make_service_fn, service_fn},
     Body, Request, Response, Server,
 };
 use once_cell::sync::OnceCell;
-use chat_prompts::PromptTemplateType;
 use std::net::SocketAddr;
 use std::str::FromStr;
 
@@ -47,6 +47,7 @@ async fn main() -> Result<(), ServerError> {
                     "codellama-instruct",
                     "mistral-instruct-v0.1",
                     "belle-llama-2-chat",
+                    "vicuna-chat",
                 ])
                 .value_name("TEMPLATE")
                 .help("Sets the prompt template.")

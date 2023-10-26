@@ -9,6 +9,7 @@ pub enum PromptTemplateType {
     MistralInstructV01,
     CodeLlama,
     BelleLlama2Chat,
+    VicunaChat,
 }
 impl FromStr for PromptTemplateType {
     type Err = error::PromptError;
@@ -19,6 +20,7 @@ impl FromStr for PromptTemplateType {
             "mistral-instruct-v0.1" => Ok(PromptTemplateType::MistralInstructV01),
             "codellama-instruct" => Ok(PromptTemplateType::CodeLlama),
             "belle-llama-2-chat" => Ok(PromptTemplateType::BelleLlama2Chat),
+            "vicuna-chat" => Ok(PromptTemplateType::VicunaChat),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
                 template.to_string(),
             )),
@@ -32,6 +34,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::MistralInstructV01 => write!(f, "mistral-instruct-v0.1"),
             PromptTemplateType::CodeLlama => write!(f, "codellama-instruct"),
             PromptTemplateType::BelleLlama2Chat => write!(f, "belle-llama-2-chat"),
+            PromptTemplateType::VicunaChat => write!(f, "vicuna-chat"),
         }
     }
 }

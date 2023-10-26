@@ -162,6 +162,9 @@ pub(crate) async fn llama_chat_completions_handler(
             PromptTemplateType::BelleLlama2Chat => {
                 ChatPrompt::BelleLlama2ChatPrompt(BelleLlama2ChatPrompt::default())
             }
+            PromptTemplateType::VicunaChat => {
+                ChatPrompt::VicunaChatPrompt(chat_prompts::chat::vicuna::VicunaChatPrompt::default())
+            }
         }
     }
     let template = create_prompt_template(template_ty);

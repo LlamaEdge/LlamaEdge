@@ -69,7 +69,7 @@ impl BuildChatPrompt for Llama2ChatPrompt {
             let system_message = messages.remove(0);
             self.create_system_prompt(&system_message)
         } else {
-            String::new()
+            String::from("You are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe.")
         };
 
         // append user/assistant messages
