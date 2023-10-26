@@ -22,7 +22,7 @@ use std::time::SystemTime;
 use wasi_nn::Error as WasiNnError;
 
 /// Lists models available
-pub(crate) async fn llama_models_handler(
+pub(crate) async fn models_handler(
     template_ty: PromptTemplateType,
     created: u64,
 ) -> Result<Response<Body>, hyper::Error> {
@@ -52,12 +52,12 @@ pub(crate) async fn llama_models_handler(
     }
 }
 
-pub(crate) async fn _llama_embeddings_handler() -> Result<Response<Body>, hyper::Error> {
+pub(crate) async fn _embeddings_handler() -> Result<Response<Body>, hyper::Error> {
     println!("llama_embeddings_handler not implemented");
     error::not_implemented()
 }
 
-pub(crate) async fn llama_completions_handler(
+pub(crate) async fn completions_handler(
     mut req: Request<Body>,
     model_name: impl AsRef<str>,
 ) -> Result<Response<Body>, hyper::Error> {
@@ -126,7 +126,7 @@ pub(crate) async fn llama_completions_handler(
 }
 
 /// Processes a chat-completion request and returns a chat-completion response with the answer from the model.
-pub(crate) async fn llama_chat_completions_handler(
+pub(crate) async fn chat_completions_handler(
     mut req: Request<Body>,
     model_name: impl AsRef<str>,
     template_ty: PromptTemplateType,

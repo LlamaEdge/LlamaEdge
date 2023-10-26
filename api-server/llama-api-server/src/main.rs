@@ -1,17 +1,15 @@
+mod backend;
+mod error;
+
 use chat_prompts::PromptTemplateType;
+use clap::{Arg, Command};
+use error::ServerError;
 use hyper::{
     service::{make_service_fn, service_fn},
     Body, Request, Response, Server,
 };
 use once_cell::sync::OnceCell;
-use std::net::SocketAddr;
-use std::str::FromStr;
-
-mod backend;
-use backend::ggml;
-
-mod error;
-use error::ServerError;
+use std::{net::SocketAddr, str::FromStr};
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -19,8 +17,6 @@ const DEFAULT_SOCKET_ADDRESS: &str = "0.0.0.0:8080";
 const DEFAULT_CTX_SIZE: &str = "2048";
 
 static CTX_SIZE: OnceCell<usize> = OnceCell::new();
-
-use clap::{Arg, Command};
 
 #[derive(Clone, Debug)]
 pub struct AppState {
@@ -161,6 +157,6 @@ async fn handle_request(
         "/echo" => {
             return Ok(Response::new(Body::from("echo test")));
         }
-        _ => ggml::handle_llama_request(req, model_name.as_ref(), template_ty, created).await,
+        _ => backend::handle_llama_request(req, model_name.as_ref(), template_ty, created).await,
     }
 }
