@@ -132,6 +132,8 @@ Here is the response.
 
 - [x] [BELLE-Llama2-13B-Chat-GGUF](https://huggingface.co/apepkuss79/BELLE-Llama2-13B-Chat-GGUF)
 
+- [x] [wizard-vicuna-13B-GGUF](https://huggingface.co/second-state/wizard-vicuna-13B-GGUF)
+
 - [ ] [Baichuan2-7B-Chat-GGUF](https://huggingface.co/apepkuss79/Baichuan2-7B-Chat-GGUF)
 
 - [ ] [Baichuan2-7B-Chat-GGUF](https://huggingface.co/apepkuss79/Baichuan2-7B-Chat-GGUF)
