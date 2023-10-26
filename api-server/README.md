@@ -134,6 +134,8 @@ Here is the response.
 
 - [x] [wizard-vicuna-13B-GGUF](https://huggingface.co/second-state/wizard-vicuna-13B-GGUF)
 
+- [x] [rpguild-chatml-13B-GGUF](https://huggingface.co/second-state/rpguild-chatml-13B-GGUF)
+
 - [ ] [Baichuan2-7B-Chat-GGUF](https://huggingface.co/apepkuss79/Baichuan2-7B-Chat-GGUF)
 
 - [ ] [Baichuan2-7B-Chat-GGUF](https://huggingface.co/apepkuss79/Baichuan2-7B-Chat-GGUF)
