@@ -37,7 +37,7 @@ fn main() -> Result<(), String> {
                 .value_parser([
                     "llama-2-chat",
                     "codellama-instruct",
-                    "mistral-instruct-v0.1",
+                    "mistral-chat",
                     "belle-llama-2-chat",
                     "vicuna-chat",
                     "chatml",
@@ -196,9 +196,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         PromptTemplateType::Llama2Chat => {
             ChatPrompt::Llama2ChatPrompt(chat_prompts::chat::llama::Llama2ChatPrompt::default())
         }
-        PromptTemplateType::MistralInstructV01 => ChatPrompt::MistralInstructPrompt(
-            chat_prompts::chat::mistral::MistralInstructPrompt::default(),
-        ),
+        PromptTemplateType::MistralChat => {
+            ChatPrompt::MistralChatPrompt(chat_prompts::chat::mistral::MistralChatPrompt::default())
+        }
         PromptTemplateType::CodeLlama => ChatPrompt::CodeLlamaInstructPrompt(
             chat_prompts::chat::llama::CodeLlamaInstructPrompt::default(),
         ),

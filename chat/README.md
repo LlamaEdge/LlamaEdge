@@ -62,11 +62,9 @@ Usage: chat.wasm [OPTIONS] --model-alias <ALIAS> --prompt-template <TEMPLATE>
 Options:
   -m, --model-alias <ALIAS>         Sets the model alias
   -c, --ctx-size <CTX_SIZE>         Sets the prompt context size [default: 2048]
-  -p, --prompt-template <TEMPLATE>  Sets the prompt template. [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, belle-llama-2-chat, vicuna-chat, chatml]
+  -p, --prompt-template <TEMPLATE>  Sets the prompt template. [possible values: llama-2-chat, codellama-instruct, mistral-chat, belle-llama-2-chat, vicuna-chat, chatml]
   -h, --help                        Print help
 ```
-
-
 
 ## Get Model
 
@@ -96,11 +94,11 @@ Options:
   curl -LO https://huggingface.co/second-state/BELLE-Llama2-13B-Chat-GGUF/resolve/main/BELLE-Llama2-13B-Chat-0.4M-ggml-model-q4_0.gguf
   ```
 
-- [x] Mistral-Instruct-v0.1
+- [x] Mistral-7B-clause-chat
 
   ```console
-  # mistral-7b-instruct-v0.1
-  curl -LO https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF/resolve/main/mistral-7b-instruct-v0.1.Q5_K_M.gguf
+  # mistral-7b-clause-chat
+  curl -LO https://huggingface.co/Undi95/Mistral-7B-claude-chat-GGUF/resolve/main/Mistral-7B-claude-chat.q5_k_m.gguf
   ```
 
 - [x] Wizard-Vicuna
