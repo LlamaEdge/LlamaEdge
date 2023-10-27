@@ -1,7 +1,11 @@
-use chat_prompts::chat::{belle::BelleLlama2ChatPrompt, BuildChatPrompt, ChatPrompt};
+use chat_prompts::{
+    chat::{BuildChatPrompt, ChatPrompt},
+    PromptTemplateType,
+};
 use clap::{Arg, Command};
 use endpoints::chat::{ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRole};
 use once_cell::sync::OnceCell;
+use std::str::FromStr;
 
 const DEFAULT_CTX_SIZE: &str = "2048";
 static CTX_SIZE: OnceCell<usize> = OnceCell::new();
@@ -26,6 +30,22 @@ fn main() -> Result<(), String> {
                 .help("Sets the prompt context size")
                 .default_value(DEFAULT_CTX_SIZE),
         )
+        .arg(
+            Arg::new("prompt_template")
+                .short('p')
+                .long("prompt-template")
+                .value_parser([
+                    "llama-2-chat",
+                    "codellama-instruct",
+                    "mistral-instruct-v0.1",
+                    "belle-llama-2-chat",
+                    "vicuna-chat",
+                    "chatml",
+                ])
+                .value_name("TEMPLATE")
+                .help("Sets the prompt template.")
+                .required(true),
+        )
         .get_matches();
 
     // model alias
@@ -42,7 +62,24 @@ fn main() -> Result<(), String> {
     }
     println!("[INFO] Prompt context size: {size}", size = ctx_size);
 
-    let template = ChatPrompt::BelleLlama2ChatPrompt(BelleLlama2ChatPrompt::default());
+    // type of prompt template
+    let prompt_template = matches
+        .get_one::<String>("prompt_template")
+        .unwrap()
+        .to_string();
+    let template_ty = match PromptTemplateType::from_str(&prompt_template) {
+        Ok(template) => template,
+        Err(e) => {
+            return Err(format!(
+                "Fail to parse prompt template type: {msg}",
+                msg = e.to_string()
+            ))
+        }
+    };
+    println!("[INFO] Prompt template: {ty:?}", ty = &template_ty);
+
+    let template = create_prompt_template(template_ty);
+    // let template = ChatPrompt::BelleLlama2ChatPrompt(BelleLlama2ChatPrompt::default());
 
     let mut chat_request = ChatCompletionRequest::default();
 
@@ -152,4 +189,27 @@ fn read_input() -> String {
 
 fn print_separator() {
     println!("---------------------------------------");
+}
+
+fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
+    match template_ty {
+        PromptTemplateType::Llama2Chat => {
+            ChatPrompt::Llama2ChatPrompt(chat_prompts::chat::llama::Llama2ChatPrompt::default())
+        }
+        PromptTemplateType::MistralInstructV01 => ChatPrompt::MistralInstructPrompt(
+            chat_prompts::chat::mistral::MistralInstructPrompt::default(),
+        ),
+        PromptTemplateType::CodeLlama => ChatPrompt::CodeLlamaInstructPrompt(
+            chat_prompts::chat::llama::CodeLlamaInstructPrompt::default(),
+        ),
+        PromptTemplateType::BelleLlama2Chat => ChatPrompt::BelleLlama2ChatPrompt(
+            chat_prompts::chat::belle::BelleLlama2ChatPrompt::default(),
+        ),
+        PromptTemplateType::VicunaChat => {
+            ChatPrompt::VicunaChatPrompt(chat_prompts::chat::vicuna::VicunaChatPrompt::default())
+        }
+        PromptTemplateType::ChatML => {
+            ChatPrompt::ChatMLPrompt(chat_prompts::chat::chatml::ChatMLPrompt::default())
+        }
+    }
 }
