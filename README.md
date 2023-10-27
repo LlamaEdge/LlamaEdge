@@ -1,5 +1,11 @@
 # llama-utils
 
+## How to use?
+
+* The folder `api-server` includes the source code and instructions yto build OpenAI-compatible APIs for your llama2 model or the LLama2 model itself.
+* The folder `chat` includes the source code and instructions to run llama2 models that can have continuous conversations.
+* The folder `simple` includes the source code and instructions to run llama2 models that can answer one question.
+
 ## Requirements
 
 ### For macOS (apple silicon)
