@@ -20,7 +20,7 @@ pub trait BuildChatPrompt: Send {
 #[enum_dispatch::enum_dispatch(BuildChatPrompt)]
 pub enum ChatPrompt {
     Llama2ChatPrompt,
-    MistralChatPrompt,
+    MistralInstructPrompt,
     CodeLlamaInstructPrompt,
     BelleLlama2ChatPrompt,
     VicunaChatPrompt,
