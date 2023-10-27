@@ -8,7 +8,7 @@ Install the latest WasmEdge with plugins:
 
 <details> <summary> For macOS (apple silicon) </summary>
 
-```bash
+```console
 # install WasmEdge-0.13.4 with wasi-nn-ggml plugin
 curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml
 
@@ -20,7 +20,7 @@ source $HOME/.zshenv
 
 <details> <summary> For Ubuntu (>= 20.04) </summary>
 
-```bash
+```console
 # install libopenblas-dev
 apt update && apt install -y libopenblas-dev
 
@@ -35,7 +35,7 @@ source $HOME/.bashrc
 
 <details> <summary> For General Linux </summary>
 
-```bash
+```console
 # install WasmEdge-0.13.4 with wasi-nn-ggml plugin
 curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml
 
@@ -50,17 +50,31 @@ source $HOME/.bashrc
 Download the `chat.wasm`:
 
 ```bash
-
+curl -LO https://github.com/second-state/llama-utils/raw/main/chat/chat.wasm
 ```
+
+The options for chat.wasm are:
+
+```console
+~/llama-utils/chat$ wasmedge chat.wasm -h
+Usage: chat.wasm [OPTIONS] --model-alias <ALIAS> --prompt-template <TEMPLATE>
+
+Options:
+  -m, --model-alias <ALIAS>         Sets the model alias
+  -c, --ctx-size <CTX_SIZE>         Sets the prompt context size [default: 2048]
+  -p, --prompt-template <TEMPLATE>  Sets the prompt template. [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, belle-llama-2-chat, vicuna-chat, chatml]
+  -h, --help                        Print help
+```
+
 
 
 ## Get Model
 
-<details> <summary> Choose the model you'd like to run: </summary>
+<details> <summary> Choose the model you want to download: </summary>
 
 - [x] Llama2-Chat
 
-  ```bash
+  ```console
   # llama-2-7b
   curl -LO https://huggingface.co/TheBloke/Llama-2-7b-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf
 
@@ -70,35 +84,35 @@ Download the `chat.wasm`:
 
 - [x] CodeLlama-Instruct
 
-  ```bash
+  ```console
   # codellama-13b-instruct
   curl -LO curl -LO https://huggingface.co/TheBloke/CodeLlama-13B-Instruct-GGUF/resolve/main/codellama-13b-instruct.Q4_0.gguf
   ```
 
 - [x] BELLE-Llama2-Chat
 
-  ```bash
+  ```console
   # BELLE-Llama2-13B-Chat-0.4M
   curl -LO https://huggingface.co/second-state/BELLE-Llama2-13B-Chat-GGUF/resolve/main/BELLE-Llama2-13B-Chat-0.4M-ggml-model-q4_0.gguf
   ```
 
 - [x] Mistral-Instruct-v0.1
 
-  ```bash
+  ```console
   # mistral-7b-instruct-v0.1
   curl -LO https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF/resolve/main/mistral-7b-instruct-v0.1.Q5_K_M.gguf
   ```
 
 - [x] Wizard-Vicuna
 
-  ```bash
+  ```console
   # wizard-vicuna-13b
   curl -LO https://huggingface.co/second-state/wizard-vicuna-13B-GGUF/resolve/main/wizard-vicuna-13b-ggml-model-q8_0.gguf
   ```
 
 - [x] rpguild-chatml
 
-  ```bash
+  ```console
   # rpguild-chatml-13b
   curl -LO https://huggingface.co/second-state/rpguild-chatml-13B-GGUF/resolve/main/rpguild-chatml-13b.Q5_K_M.gguf
   ```
@@ -115,7 +129,7 @@ Download the `chat.wasm`:
 
 Execute the WASM with the `wasmedge` using the named model feature to preload large model. Here we use the `Llama-2-7B-Chat` model as an example:
 
-```bash
+```console
 # download model
 curl -LO https://huggingface.co/TheBloke/Llama-2-7b-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf
 
@@ -157,7 +171,7 @@ Currently, we support the following parameters:
 
 These parameters can be set by adding the following environment variables before the `wasmedge` command:
 
-```bash
+```console
 LLAMA_LOG=1 LLAMA_N_CTX=2048 LLAMA_N_PREDICT=512 \
 wasmedge --dir .:. \
   --nn-preload default:GGML:CPU:llama-2-7b-chat.Q5_K_M.gguf \
@@ -168,7 +182,7 @@ wasmedge --dir .:. \
 
 Run the following command:
 
-```bash
+```console
 cargo build --target wasm32-wasi --release
 ```
 
