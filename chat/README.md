@@ -1,83 +1,128 @@
-# Chat with `BELLE-Llama2-13B-GGUF`
+# Chat on the CLI
 
-## Requirement
+[See it in action!](https://x.com/juntao/status/1705588244602114303)
 
-### For macOS (apple silicon)
+## Dependencies
 
-Install WasmEdge 0.13.4+WASI-NN ggml plugin(Metal enabled on apple silicon) via installer
+Install the latest WasmEdge with plugins:
+
+<details> <summary> For macOS (apple silicon) </summary>
 
 ```bash
+# install WasmEdge-0.13.4 with wasi-nn-ggml plugin
 curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml
-# After install the wasmedge, you have to activate the environment.
-# Assuming you use zsh (the default shell on macOS), you will need to run the following command
+
+# Assuming you use zsh (the default shell on macOS), run the following command to activate the environment
 source $HOME/.zshenv
 ```
 
-### For Ubuntu (>= 20.04)
+</details>
 
-Because we enabled OpenBLAS on Ubuntu, you must install `libopenblas-dev` by `apt update && apt install -y libopenblas-dev`.
-
-Install WasmEdge 0.13.4+WASI-NN ggml plugin(OpenBLAS enabled) via installer
+<details> <summary> For Ubuntu (>= 20.04) </summary>
 
 ```bash
-apt update && apt install -y libopenblas-dev # You may need sudo if the user is not root.
+# install libopenblas-dev
+apt update && apt install -y libopenblas-dev
+
+# install WasmEdge-0.13.4 with wasi-nn-ggml plugin
 curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml
-# After install the wasmedge, you have to activate the environment.
-# Assuming you use bash (the default shell on Ubuntu), you will need to run the following command
+
+# Assuming you use bash (the default shell on Ubuntu), run the following command to activate the environment
 source $HOME/.bashrc
 ```
 
-### For General Linux
+</details>
 
-Install WasmEdge 0.13.4+WASI-NN ggml plugin via installer
+<details> <summary> For General Linux </summary>
 
 ```bash
+# install WasmEdge-0.13.4 with wasi-nn-ggml plugin
 curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml
-# After install the wasmedge, you have to activate the environment.
-# Assuming you use bash (the default shell on Ubuntu), you will need to run the following command
+
+# Assuming you use bash (the default shell on Ubuntu), run the following command to activate the environment
 source $HOME/.bashrc
 ```
 
-## Prepare WASM application
+</details>
 
-### (Recommend) Use the pre-built one bundled in this repo
+## Get `chat` wasm app
 
-We built a wasm of this example under the folder, check `chat-with-belle.wasm`
-
-### (Optional) Build from source
-
-If you want to do some modifications, you can build from source.
-
-Compile the application to WebAssembly:
+Download the `chat.wasm`:
 
 ```bash
-cargo build --target wasm32-wasi --release
+
 ```
 
-The output WASM file will be at `target/wasm32-wasi/release/`.
-
-```bash
-cp target/wasm32-wasi/release/chat-with-belle.wasm ./chat-with-belle.wasm
-```
 
 ## Get Model
 
-In this example, we are going to use `BELLE-Llama2-13B-Chat-0.4M-ggml-model-q4_0.gguf`.
+<details> <summary> Choose the model you'd like to run: </summary>
 
-Download llama model:
+- [x] Llama2-Chat
 
-```bash
-curl -LO https://huggingface.co/second-state/BELLE-Llama2-13B-Chat-GGUF/resolve/main/BELLE-Llama2-13B-Chat-0.4M-ggml-model-q4_0.gguf
-```
+  ```bash
+  # llama-2-7b
+  curl -LO https://huggingface.co/TheBloke/Llama-2-7b-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf
+
+  # llama-2-13b
+  curl -LO https://huggingface.co/TheBloke/Llama-2-13B-chat-GGUF/resolve/main/llama-2-13b-chat.Q5_K_M.gguf
+  ```
+
+- [x] CodeLlama-Instruct
+
+  ```bash
+  # codellama-13b-instruct
+  curl -LO curl -LO https://huggingface.co/TheBloke/CodeLlama-13B-Instruct-GGUF/resolve/main/codellama-13b-instruct.Q4_0.gguf
+  ```
+
+- [x] BELLE-Llama2-Chat
+
+  ```bash
+  # BELLE-Llama2-13B-Chat-0.4M
+  curl -LO https://huggingface.co/second-state/BELLE-Llama2-13B-Chat-GGUF/resolve/main/BELLE-Llama2-13B-Chat-0.4M-ggml-model-q4_0.gguf
+  ```
+
+- [x] Mistral-Instruct-v0.1
+
+  ```bash
+  # mistral-7b-instruct-v0.1
+  curl -LO https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF/resolve/main/mistral-7b-instruct-v0.1.Q5_K_M.gguf
+  ```
+
+- [x] Wizard-Vicuna
+
+  ```bash
+  # wizard-vicuna-13b
+  curl -LO https://huggingface.co/second-state/wizard-vicuna-13B-GGUF/resolve/main/wizard-vicuna-13b-ggml-model-q8_0.gguf
+  ```
+
+- [x] rpguild-chatml
+
+  ```bash
+  # rpguild-chatml-13b
+  curl -LO https://huggingface.co/second-state/rpguild-chatml-13B-GGUF/resolve/main/rpguild-chatml-13b.Q5_K_M.gguf
+  ```
+
+- [ ] Baichuan2-Chat (Coming soon)
+
+- [ ] Baichuan-Chat (Coming soon)
+
+- [ ] CodeShell-Chat (Coming soon)
+
+</details>
 
 ## Execute
 
-Execute the WASM with the `wasmedge` using the named model feature to preload large model:
+Execute the WASM with the `wasmedge` using the named model feature to preload large model. Here we use the `Llama-2-7B-Chat` model as an example:
 
 ```bash
+# download model
+curl -LO https://huggingface.co/TheBloke/Llama-2-7b-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf
+
+# run chat.wasm with the model
 wasmedge --dir .:. \
-  --nn-preload default:GGML:CPU:BELLE-Llama2-13B-Chat-0.4M-ggml-model-q4_0.gguf \
-  chat-with-belle.wasm --model-alias default
+  --nn-preload default:GGML:CPU:llama-2-7b-chat.Q5_K_M.gguf \
+  chat.wasm --model-alias default --prompt-template llama-2-chat
 ```
 
 After executing the command, you may need to wait a moment for the input prompt to appear.
@@ -89,46 +134,18 @@ What's the capital of France?
 [ASSISTANT]:
 The capital of France is Paris.
 [USER]:
-挪威的首都是哪里?
+what about Norway?
 [ASSISTANT]:
-挪威的首都是奥斯陆。
+The capital of Norway is Oslo.
 [USER]:
-如果一个苹果5元钱,我有两个苹果,一共花了多少钱?
+I have two apples, each costing 5 dollars. What is the total cost of these apples?
 [ASSISTANT]:
-如果一个苹果元钱，两个苹果，一共花了2元钱。
+The total cost of the two apples is 10 dollars.
 [USER]:
-如果我有三个苹果要花多少钱?
+What if I have 3 apples?
 [ASSISTANT]:
-如果一个苹果元钱，三个苹果，一共花了3元钱。
+If you have 3 apples, each costing 5 dollars, the total cost of the apples is 15 dollars.
 ```
-
-## Errors
-
-- After running `apt update && apt install -y libopenblas-dev`, you may encountered the following error:
-
-  ```bash
-  ...
-  E: Could not open lock file /var/lib/dpkg/lock-frontend - open (13: Permission denied)
-  E: Unable to acquire the dpkg frontend lock (/var/lib/dpkg/lock-frontend), are you root?
-  ```
-
-   This indicates that you are not logged in as `root`. Please try installing again using the `sudo` command:
-
-  ```bash
-  sudo apt update && sudo apt install -y libopenblas-dev
-  ```
-
-- After running the `wasmedge` command, you may received the following error:
-
-  ```bash
-  [2023-10-02 14:30:31.227] [error] loading failed: invalid path, Code: 0x20
-  [2023-10-02 14:30:31.227] [error]     load library failed:libblas.so.3: cannot open shared object file: No such file or directory
-  [2023-10-02 14:30:31.227] [error] loading failed: invalid path, Code: 0x20
-  [2023-10-02 14:30:31.227] [error]     load library failed:libblas.so.3: cannot open shared object file: No such file or directory
-  unknown option: nn-preload
-  ```
-
-  This suggests that your plugin installation was not successful. To resolve this issue, please attempt to install your desired plugin again.
 
 ## Parameters
 
@@ -143,10 +160,16 @@ These parameters can be set by adding the following environment variables before
 ```bash
 LLAMA_LOG=1 LLAMA_N_CTX=2048 LLAMA_N_PREDICT=512 \
 wasmedge --dir .:. \
-  --nn-preload default:GGML:CPU:BELLE-Llama2-13B-Chat-0.4M-ggml-model-q4_0.gguf \
-  chat-with-belle.wasm --model-alias default --ctx-size 2048
+  --nn-preload default:GGML:CPU:llama-2-7b-chat.Q5_K_M.gguf \
+  chat.wasm --model-alias default --ctx-size 2048
 ```
 
-## Credit
+## Optional: Build `chat.wasm` yourself
 
-The WASI-NN ggml plugin embedded [`llama.cpp`](git://github.com/ggerganov/llama.cpp.git@b1217) as its backend.
+Run the following command:
+
+```bash
+cargo build --target wasm32-wasi --release
+```
+
+The `chat.wasm` will be generated in the `target/wasm32-wasi/release` folder.
