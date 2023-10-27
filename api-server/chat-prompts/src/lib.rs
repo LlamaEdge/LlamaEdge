@@ -6,7 +6,7 @@ use std::str::FromStr;
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
 pub enum PromptTemplateType {
     Llama2Chat,
-    MistralInstructV01,
+    MistralChat,
     CodeLlama,
     BelleLlama2Chat,
     VicunaChat,
@@ -18,7 +18,7 @@ impl FromStr for PromptTemplateType {
     fn from_str(template: &str) -> std::result::Result<Self, Self::Err> {
         match template {
             "llama-2-chat" => Ok(PromptTemplateType::Llama2Chat),
-            "mistral-instruct-v0.1" => Ok(PromptTemplateType::MistralInstructV01),
+            "mistral-chat" => Ok(PromptTemplateType::MistralChat),
             "codellama-instruct" => Ok(PromptTemplateType::CodeLlama),
             "belle-llama-2-chat" => Ok(PromptTemplateType::BelleLlama2Chat),
             "vicuna-chat" => Ok(PromptTemplateType::VicunaChat),
@@ -33,7 +33,7 @@ impl std::fmt::Display for PromptTemplateType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             PromptTemplateType::Llama2Chat => write!(f, "llama-2-chat"),
-            PromptTemplateType::MistralInstructV01 => write!(f, "mistral-instruct-v0.1"),
+            PromptTemplateType::MistralChat => write!(f, "mistral-chat"),
             PromptTemplateType::CodeLlama => write!(f, "codellama-instruct"),
             PromptTemplateType::BelleLlama2Chat => write!(f, "belle-llama-2-chat"),
             PromptTemplateType::VicunaChat => write!(f, "vicuna-chat"),

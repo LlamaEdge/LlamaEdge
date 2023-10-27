@@ -4,14 +4,11 @@ use endpoints::chat::{ChatCompletionRequestMessage, ChatCompletionRole};
 
 /// Generate prompts for the `Mistral-instruct-v0.1` model.
 #[derive(Debug, Default, Clone)]
-pub struct MistralInstructPrompt;
-impl MistralInstructPrompt {
+pub struct MistralChatPrompt;
+impl MistralChatPrompt {
     /// Create a system prompt from a chat completion request message.
     fn create_system_prompt(&self, system_message: &ChatCompletionRequestMessage) -> String {
-        format!(
-            "<<SYS>>\n{content} <</SYS>>",
-            content = system_message.content.as_str()
-        )
+        format!("{content}", content = system_message.content.as_str())
     }
 
     /// Create a user prompt from a chat completion request message.
@@ -25,20 +22,20 @@ impl MistralInstructPrompt {
             true => match system_prompt.as_ref().is_empty() {
                 true => {
                     format!(
-                        "<s>[INST] {user_message} [/INST]",
+                        "USER: {user_message}",
                         user_message = content.as_ref().trim(),
                     )
                 }
                 false => {
                     format!(
-                        "<s>[INST] {system_prompt}\n\n{user_message} [/INST]",
+                        "{system_prompt}\n\nUSER: {user_message}",
                         system_prompt = system_prompt.as_ref().trim(),
                         user_message = content.as_ref().trim(),
                     )
                 }
             },
             false => format!(
-                "{chat_history}<s>[INST] {user_message} [/INST]",
+                "{chat_history}\nUSER: {user_message}",
                 chat_history = chat_history.as_ref().trim(),
                 user_message = content.as_ref().trim(),
             ),
@@ -52,13 +49,13 @@ impl MistralInstructPrompt {
         content: impl AsRef<str>,
     ) -> String {
         format!(
-            "{prompt} {assistant_message} </s>",
+            "{prompt}\nASSISTANT: {assistant_message}",
             prompt = chat_history.as_ref().trim(),
             assistant_message = content.as_ref().trim(),
         )
     }
 }
-impl BuildChatPrompt for MistralInstructPrompt {
+impl BuildChatPrompt for MistralChatPrompt {
     fn build(&self, messages: &mut Vec<ChatCompletionRequestMessage>) -> Result<String> {
         if messages.is_empty() {
             return Ok(String::new());
@@ -69,7 +66,7 @@ impl BuildChatPrompt for MistralInstructPrompt {
             let system_message = messages.remove(0);
             self.create_system_prompt(&system_message)
         } else {
-            String::from("<<SYS>>\nYou are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe. <</SYS>>")
+            String::from("You are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe.")
         };
 
         // append user/assistant messages
@@ -88,6 +85,8 @@ impl BuildChatPrompt for MistralInstructPrompt {
                 return Err(crate::error::PromptError::UnknownRole(message.role));
             }
         }
+
+        prompt.push_str("\nASSISTANT:");
 
         // println!("*** [prompt begin] ***");
         // println!("{}", &prompt);
