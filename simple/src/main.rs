@@ -115,12 +115,12 @@ fn main() -> Result<(), String> {
         }
     };
 
+    // execute the inference
+    let output = infer(model_name, &prompt)?;
+
     println!("*** [prompt begin] ***");
     println!("{}", &prompt);
     println!("*** [prompt end] ***");
-
-    // execute the inference
-    let output = infer(model_name, &prompt)?;
 
     println!("\n[ASSISTANT] {}", output);
 
