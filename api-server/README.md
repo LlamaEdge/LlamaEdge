@@ -17,7 +17,7 @@ Now let's build and run the API server.
 
     cd api-server
 
-    // build the wasm app
+    # build the wasm app
     cargo build -p llama-api-server --target wasm32-wasi --release
     ```
 
@@ -35,16 +35,16 @@ Now let's build and run the API server.
 
   The `-h` or `--help` option can list the available options of the `llama-api-server` wasm app:
 
-  ```bash
-  wasmedge target/wasm32-wasi/release/llama-api-server.wasm -h
+  ```console
+  ~/llama-utils/api-server$ wasmedge llama-api-server.wasm -h
 
-  Usage: llama-api-server.wasm [OPTIONS] --model-alias <ALIAS> --prompt-template <TEMPLATE>
+  Usage: llama-api-server.wasm [OPTIONS] --prompt-template <TEMPLATE>
 
   Options:
-    -m, --model-alias <ALIAS>         Sets the model alias
-    -p, --prompt-template <TEMPLATE>  Sets the prompt template. [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1]
+    -m, --model-alias <ALIAS>         Sets the model alias [default: default]
+    -p, --prompt-template <TEMPLATE>  Sets the prompt template. [possible values: llama-2-chat, codellama-instruct, mistral-chat, belle-llama-2-chat, vicuna-chat, chatml]
     -s, --socket-addr <IP:PORT>       Sets the socket address [default: 0.0.0.0:8080]
-    -c, --ctx-size <CONTEXT_SIZE>     Sets the prompt context size [default: 2048]
+    -c, --ctx-size <CTX_SIZE>         Sets the prompt context size [default: 2048]
     -h, --help                        Print help
   ```
 
@@ -62,7 +62,7 @@ Now let's build and run the API server.
 
   Please guarantee that the port is not occupied by other processes. If the port specified is available on your machine and the command is successful, you should see the following output in the terminal:
 
-  ```bash
+  ```console
   Listening on http://0.0.0.0:8000
   ```
 
