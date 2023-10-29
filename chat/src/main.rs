@@ -79,7 +79,6 @@ fn main() -> Result<(), String> {
     println!("[INFO] Prompt template: {ty:?}", ty = &template_ty);
 
     let template = create_prompt_template(template_ty);
-    // let template = ChatPrompt::BelleLlama2ChatPrompt(BelleLlama2ChatPrompt::default());
 
     let mut chat_request = ChatCompletionRequest::default();
 
