@@ -45,19 +45,19 @@ source $HOME/.bashrc
 
 </details>
 
-## Get `chat` wasm app
+## Get `llama-chat` wasm app
 
-Download the `chat.wasm`:
+Download the `llama-chat.wasm`:
 
 ```bash
-curl -LO https://github.com/second-state/llama-utils/raw/main/chat/chat.wasm
+curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
 ```
 
-The options for chat.wasm are:
+The options for `llama-chat` wasm app are:
 
 ```console
-~/llama-utils/chat$ wasmedge chat.wasm -h
-Usage: chat.wasm [OPTIONS] --model-alias <ALIAS> --prompt-template <TEMPLATE>
+~/llama-utils/chat$ wasmedge llama-chat.wasm -h
+Usage: llama-chat.wasm [OPTIONS] --model-alias <ALIAS> --prompt-template <TEMPLATE>
 
 Options:
   -m, --model-alias <ALIAS>         Sets the model alias
@@ -131,10 +131,10 @@ Execute the WASM with the `wasmedge` using the named model feature to preload la
 # download model
 curl -LO https://huggingface.co/TheBloke/Llama-2-7b-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf
 
-# run chat.wasm with the model
+# run the `llama-chat` wasm app with the model
 wasmedge --dir .:. \
   --nn-preload default:GGML:CPU:llama-2-7b-chat.Q5_K_M.gguf \
-  chat.wasm --model-alias default --prompt-template llama-2-chat
+  llama-chat.wasm --model-alias default --prompt-template llama-2-chat
 ```
 
 After executing the command, you may need to wait a moment for the input prompt to appear.
@@ -173,10 +173,10 @@ These parameters can be set by adding the following environment variables before
 LLAMA_LOG=1 LLAMA_N_CTX=2048 LLAMA_N_PREDICT=512 \
 wasmedge --dir .:. \
   --nn-preload default:GGML:CPU:llama-2-7b-chat.Q5_K_M.gguf \
-  chat.wasm --model-alias default --ctx-size 2048
+  llama-chat.wasm --model-alias default --ctx-size 2048
 ```
 
-## Optional: Build `chat.wasm` yourself
+## Optional: Build the `llama-chat` wasm app yourself
 
 Run the following command:
 
@@ -184,4 +184,4 @@ Run the following command:
 cargo build --target wasm32-wasi --release
 ```
 
-The `chat.wasm` will be generated in the `target/wasm32-wasi/release` folder.
+The `llama-chat.wasm` will be generated in the `target/wasm32-wasi/release` folder.
