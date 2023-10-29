@@ -19,7 +19,7 @@ fn main() -> Result<(), String> {
                 .long("model-alias")
                 .value_name("ALIAS")
                 .help("Sets the model alias")
-                .required(true),
+                .default_value("default"),
         )
         .arg(
             Arg::new("ctx_size")
