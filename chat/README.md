@@ -57,12 +57,12 @@ The options for `llama-chat` wasm app are:
 
 ```console
 ~/llama-utils/chat$ wasmedge llama-chat.wasm -h
-Usage: llama-chat.wasm [OPTIONS] --model-alias <ALIAS> --prompt-template <TEMPLATE>
+Usage: llama-chat.wasm [OPTIONS] --prompt-template <TEMPLATE>
 
 Options:
-  -m, --model-alias <ALIAS>         Sets the model alias
+  -m, --model-alias <ALIAS>         Sets the model alias [default: default]
   -c, --ctx-size <CTX_SIZE>         Sets the prompt context size [default: 2048]
-  -p, --prompt-template <TEMPLATE>  Sets the prompt template. [possible values: llama-2-chat, codellama-instruct, mistral-chat, belle-llama-2-chat, vicuna-chat, chatml]
+  -p, --prompt-template <TEMPLATE>  Sets the prompt template. [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, belle-llama-2-chat, vicuna-chat, chatml]
   -h, --help                        Print help
 ```
 
