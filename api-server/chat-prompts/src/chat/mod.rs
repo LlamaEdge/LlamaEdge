@@ -1,3 +1,4 @@
+pub mod baichuan;
 pub mod belle;
 pub mod chatml;
 pub mod llama;
@@ -5,6 +6,7 @@ pub mod mistral;
 pub mod vicuna;
 
 use crate::error::Result;
+use baichuan::*;
 use belle::*;
 use chatml::*;
 use endpoints::chat::ChatCompletionRequestMessage;
@@ -27,4 +29,5 @@ pub enum ChatPrompt {
     BelleLlama2ChatPrompt,
     VicunaChatPrompt,
     ChatMLPrompt,
+    Baichuan2ChatPrompt,
 }

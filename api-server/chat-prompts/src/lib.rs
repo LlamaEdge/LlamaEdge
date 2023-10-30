@@ -13,6 +13,7 @@ pub enum PromptTemplateType {
     BelleLlama2Chat,
     VicunaChat,
     ChatML,
+    Baichuan2,
 }
 impl FromStr for PromptTemplateType {
     type Err = error::PromptError;
@@ -27,6 +28,7 @@ impl FromStr for PromptTemplateType {
             "vicuna-chat" => Ok(PromptTemplateType::VicunaChat),
             "chatml" => Ok(PromptTemplateType::ChatML),
             "openchat" => Ok(PromptTemplateType::OpenChat),
+            "baichuan-2" => Ok(PromptTemplateType::Baichuan2),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
                 template.to_string(),
             )),
@@ -44,6 +46,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::BelleLlama2Chat => write!(f, "belle-llama-2-chat"),
             PromptTemplateType::VicunaChat => write!(f, "vicuna-chat"),
             PromptTemplateType::ChatML => write!(f, "chatml"),
+            PromptTemplateType::Baichuan2 => write!(f, "baichuan-2"),
         }
     }
 }
