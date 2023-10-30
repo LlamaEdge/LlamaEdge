@@ -2,180 +2,68 @@
 
 ## Dependencies
 
-Install the latest WasmEdge with plugins:
+Install the latest wasmedge with plugins:
 
-<details> <summary> For macOS (apple silicon) </summary>
-
-```console
-# install WasmEdge-0.13.4 with wasi-nn-ggml plugin
-curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml
-
-# Assuming you use zsh (the default shell on macOS), run the following command to activate the environment
-source $HOME/.zshenv
+```bash
+curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugins wasi_nn-ggml
 ```
 
-</details>
+## Get the compiled wasm binary program
 
-<details> <summary> For Ubuntu (>= 20.04) </summary>
-
-```console
-# install libopenblas-dev
-apt update && apt install -y libopenblas-dev
-
-# install WasmEdge-0.13.4 with wasi-nn-ggml plugin
-curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml
-
-# Assuming you use bash (the default shell on Ubuntu), run the following command to activate the environment
-source $HOME/.bashrc
-```
-
-</details>
-
-<details> <summary> For General Linux </summary>
-
-```console
-# install WasmEdge-0.13.4 with wasi-nn-ggml plugin
-curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml
-
-# Assuming you use bash (the default shell on Ubuntu), run the following command to activate the environment
-source $HOME/.bashrc
-```
-
-</details>
-
-## Get `llama-simple` wasm app
-
-Download the `llama-simple.wasm`:
+Download the wasm file:
 
 ```bash
 curl -LO https://github.com/second-state/llama-utils/raw/main/simple/llama-simple.wasm
 ```
 
-The options for `llama-simple` wasm app are:
-
-```console
-~/llama-utils/chat$ wasmedge llama-simple.wasm -h
-Usage: llama-simple.wasm [OPTIONS] --prompt-template <TEMPLATE> --user-message <MESSAGE>
-
-Options:
-  -p, --prompt-template <TEMPLATE>  Sets the prompt template. [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, belle-llama-2-chat, vicuna-chat, chatml]
-  -u, --user-message <MESSAGE>      Sets the user message.
-  -m, --model-alias <ALIAS>         Sets the model alias [default: default]
-  -c, --ctx-size <CTX_SIZE>         Sets the prompt context size [default: 2048]
-  -h, --help                        Print help
-```
-
 ## Get Model
 
-<details> <summary> Choose the model you want to download: </summary>
+Download llama model:
 
-- [x] Llama2-Chat
-
-  ```console
-  # llama-2-7b
-  curl -LO https://huggingface.co/TheBloke/Llama-2-7b-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf
-
-  # llama-2-13b
-  curl -LO https://huggingface.co/TheBloke/Llama-2-13B-chat-GGUF/resolve/main/llama-2-13b-chat.Q5_K_M.gguf
-  ```
-
-- [x] CodeLlama-Instruct
-
-  ```console
-  # codellama-13b-instruct
-  curl -LO curl -LO https://huggingface.co/TheBloke/CodeLlama-13B-Instruct-GGUF/resolve/main/codellama-13b-instruct.Q4_0.gguf
-  ```
-
-- [x] BELLE-Llama2-Chat
-
-  ```console
-  # BELLE-Llama2-13B-Chat-0.4M
-  curl -LO https://huggingface.co/second-state/BELLE-Llama2-13B-Chat-GGUF/resolve/main/BELLE-Llama2-13B-Chat-0.4M-ggml-model-q4_0.gguf
-  ```
-
-- [x] Mistral-7B-Instruct-v0.1
-
-  ```console
-  # mistral-7b-instruct-v0.1
-  curl -LO https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF/resolve/main/mistral-7b-instruct-v0.1.Q5_K_M.gguf
-  ```
-
-- [x] Wizard-Vicuna
-
-  ```console
-  # wizard-vicuna-13b
-  curl -LO https://huggingface.co/second-state/wizard-vicuna-13B-GGUF/resolve/main/wizard-vicuna-13b-ggml-model-q8_0.gguf
-  ```
-
-- [x] rpguild-chatml
-
-  ```console
-  # rpguild-chatml-13b
-  curl -LO https://huggingface.co/second-state/rpguild-chatml-13B-GGUF/resolve/main/rpguild-chatml-13b.Q5_K_M.gguf
-  ```
-
-- [ ] Baichuan2-Chat (Coming soon)
-
-- [ ] Baichuan-Chat (Coming soon)
-
-- [ ] CodeShell-Chat (Coming soon)
-
-</details>
+```bash
+curl -LO https://huggingface.co/TheBloke/Llama-2-7B-GGUF/resolve/main/llama-2-7b.Q5_K_M.gguf
+```
 
 ## Execute
 
-Execute the WASM with the `wasmedge` using the named model feature to preload large model. Here we use the `Llama-2-7B-Chat` model as an example:
+Execute the WASM with the `wasmedge` using the named model feature to preload large model:
 
-```console
-# download model
-curl -LO https://huggingface.co/TheBloke/Llama-2-7b-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf
-
-# run the `llama-simple` wasm app with the model
-wasmedge --dir .:. \
-  --nn-preload default:GGML:CPU:llama-2-7b-chat.Q5_K_M.gguf \
-  llama-simple.wasm \
-  --prompt-template llama-2-chat \
-  --user-message "What's the capital of France?"
+```bash
+LLAMA_LOG=1 LLAMA_N_CTX=4096 LLAMA_N_PREDICT=128 wasmedge --dir .:. \
+  --nn-preload default:GGML:CPU:llama-2-7b.Q5_K_M.gguf llama-simple.wasm default \
+  'Robert Oppenheimer most important achievement is '
 ```
 
-After executing the command, you may need to wait a moment for the input prompt and the reponse to appear:
+After executing the command, it takes some time to wait for the output.
+Once the execution is complete, the following output will be generated:
 
 ```console
-*** [prompt begin] ***
-<s>[INST] You are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe.
+...................................................................................................
+[2023-10-08 23:13:10.272] [info] [WASI-NN] GGML backend: set n_ctx to 4096
+llama_new_context_with_model: kv self size  = 2048.00 MB
+llama_new_context_with_model: compute buffer total size =  297.47 MB
+llama_new_context_with_model: max tensor size =   102.54 MB
+[2023-10-08 23:13:10.472] [info] [WASI-NN] GGML backend: llama_system_info: AVX = 0 | AVX2 = 0 | AVX512 = 0 | AVX512_VBMI = 0 | AVX512_VNNI = 0 | FMA = 0 | NEON = 1 | ARM_FMA = 1 | F16C = 0 | FP16_VA = 1 | WASM_SIMD = 0 | BLAS = 0 | SSE3 = 0 | SSSE3 = 0 | VSX = 0 |
+[2023-10-08 23:13:10.472] [info] [WASI-NN] GGML backend: set n_predict to 128
+[2023-10-08 23:13:16.014] [info] [WASI-NN] GGML backend: llama_get_kv_cache_token_count 128
 
-What's the capital of France? [/INST]
-*** [prompt end] ***
-
-[ASSISTANT] The capital of France is Paris.
+llama_print_timings:        load time =  1431.58 ms
+llama_print_timings:      sample time =     3.53 ms /   118 runs   (    0.03 ms per token, 33446.71 tokens per second)
+llama_print_timings: prompt eval time =  1230.69 ms /    11 tokens (  111.88 ms per token,     8.94 tokens per second)
+llama_print_timings:        eval time =  4295.81 ms /   117 runs   (   36.72 ms per token,    27.24 tokens per second)
+llama_print_timings:       total time =  5742.71 ms
+Robert Oppenheimer most important achievement is
+1945 Manhattan Project.
+Robert Oppenheimer was born in New York City on April 22, 1904. He was the son of Julius Oppenheimer, a wealthy German-Jewish textile merchant, and Ella Friedman Oppenheimer.
+Robert Oppenheimer was a brilliant student. He attended the Ethical Culture School in New York City and graduated from the Ethical Culture Fieldston School in 1921. He then attended Harvard University, where he received his bachelor's degree
 ```
 
-## Parameters
+## Optional: Build the wasm file yourself
 
-Currently, we support the following parameters:
+Compile the application to WebAssembly:
 
-- `LLAMA_LOG`: Set it to a non-empty value to enable logging.
-- `LLAMA_N_CTX`: Set the context size, the same as the `--ctx-size` parameter in llama.cpp (default: 512).
-- `LLAMA_N_PREDICT`: Set the number of tokens to predict, the same as the `--n-predict` parameter in llama.cpp (default: 512).
-
-These parameters can be set by adding the following environment variables before the `wasmedge` command:
-
-```console
-LLAMA_LOG=1 LLAMA_N_CTX=2048 LLAMA_N_PREDICT=512 \
-wasmedge --dir .:. \
-  --nn-preload default:GGML:CPU:llama-2-7b-chat.Q5_K_M.gguf \
-  llama-simple.wasm \
-  --prompt-template llama-2-chat \
-  --user-message "What's the capital of France?" \
-  --ctx-size 2048
-```
-
-## Optional: Build the `llama-simple` wasm app yourself
-
-Run the following command:
-
-```console
+```bash
 cargo build --target wasm32-wasi --release
 ```
 
-The `llama-simple.wasm` will be generated in the `target/wasm32-wasi/release` folder.
+The output wasm file will be at `target/wasm32-wasi/release/`.
