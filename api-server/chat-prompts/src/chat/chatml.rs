@@ -2,7 +2,7 @@ use super::BuildChatPrompt;
 use crate::error::Result;
 use endpoints::chat::{ChatCompletionRequestMessage, ChatCompletionRole};
 
-/// Generate prompts for the `Mistral-instruct-v0.1` model.
+/// Generate prompts for the models using ChatML template.
 #[derive(Debug, Default, Clone)]
 pub struct ChatMLPrompt;
 impl ChatMLPrompt {
@@ -25,20 +25,20 @@ impl ChatMLPrompt {
             true => match system_prompt.as_ref().is_empty() {
                 true => {
                     format!(
-                        "<|im_start|>{user_message}<|im_end|>",
+                        "<|im_start|>user\n{user_message}<|im_end|>",
                         user_message = content.as_ref().trim(),
                     )
                 }
                 false => {
                     format!(
-                        "{system_prompt}\n<|im_start|>{user_message}<|im_end|>",
+                        "{system_prompt}\n<|im_start|>user\n{user_message}<|im_end|>",
                         system_prompt = system_prompt.as_ref().trim(),
                         user_message = content.as_ref().trim(),
                     )
                 }
             },
             false => format!(
-                "{chat_history}\n<|im_start|>{user_message}<|im_end|>",
+                "{chat_history}\n<|im_start|>user\n{user_message}<|im_end|>",
                 chat_history = chat_history.as_ref().trim(),
                 user_message = content.as_ref().trim(),
             ),
@@ -52,7 +52,7 @@ impl ChatMLPrompt {
         content: impl AsRef<str>,
     ) -> String {
         format!(
-            "{chat_history}\n<|im_start|>{assistant_message}<|im_end|>",
+            "{chat_history}\n<|im_start|>assistant\n{assistant_message}<|im_end|>",
             chat_history = chat_history.as_ref().trim(),
             assistant_message = content.as_ref().trim(),
         )
@@ -69,7 +69,8 @@ impl BuildChatPrompt for ChatMLPrompt {
             let system_message = messages.remove(0);
             self.create_system_prompt(&system_message)
         } else {
-            String::new()
+            String::from("<|im_start|>system\nAnswer as concisely as possible.<|im_end|>")
+            // String::from("<|im_start|>system\nEnter roleplay mode. You are Steve.\n\nSteve is a nasty little man and solves all his problems by punching people in the face.<|im_end|>")
         };
 
         // append user/assistant messages
@@ -89,7 +90,7 @@ impl BuildChatPrompt for ChatMLPrompt {
             }
         }
 
-        // prompt.push_str("\n<|im_start|>assistant");
+        prompt.push_str("\n<|im_start|>assistant");
 
         // println!("*** [prompt begin] ***");
         // println!("{}", &prompt);
