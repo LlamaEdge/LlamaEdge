@@ -173,6 +173,9 @@ pub(crate) async fn chat_completions_handler(
             PromptTemplateType::ChatML => {
                 ChatPrompt::ChatMLPrompt(chat_prompts::chat::chatml::ChatMLPrompt::default())
             }
+            PromptTemplateType::Baichuan2 => ChatPrompt::Baichuan2ChatPrompt(
+                chat_prompts::chat::baichuan::Baichuan2ChatPrompt::default(),
+            ),
         }
     }
     let template = create_prompt_template(template_ty);
