@@ -35,6 +35,19 @@ LLAMA_LOG=1 LLAMA_N_CTX=4096 LLAMA_N_PREDICT=128 wasmedge --dir .:. \
   --ctx-size 4096
 ```
 
+- The CLI options of `llama-simple` wasm app:
+
+  ```console
+  ~/llama-utils/simple$ wasmedge llama-simple.wasm -h
+  Usage: llama-simple.wasm [OPTIONS] --prompt <PROMPT>
+
+  Options:
+    -p, --prompt <PROMPT>      Sets the prompt.
+    -m, --model-alias <ALIAS>  Sets the model alias [default: default]
+    -c, --ctx-size <CTX_SIZE>  Sets the prompt context size [default: 2048]
+    -h, --help                 Print help
+  ```
+
 After executing the command, it takes some time to wait for the output.
 Once the execution is complete, the following output will be generated:
 
