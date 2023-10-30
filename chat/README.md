@@ -108,7 +108,14 @@ Options:
   curl -LO https://huggingface.co/second-state/wizard-vicuna-13B-GGUF/resolve/main/wizard-vicuna-13b-ggml-model-q8_0.gguf
   ```
 
-- [x] rpguild-chatml
+- [x] CausalLM-14B
+
+  ```console
+  # CausalLM-14B
+  curl -LO https://huggingface.co/TheBloke/CausalLM-14B-GGUF/resolve/main/causallm_14b.Q5_1.gguf
+  ```
+
+- [ ] rpguild-chatml (Coming soon)
 
   ```console
   # rpguild-chatml-13b
