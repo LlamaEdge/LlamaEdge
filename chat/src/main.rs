@@ -86,6 +86,7 @@ fn main() -> Result<(), String> {
                     "belle-llama-2-chat",
                     "vicuna-chat",
                     "chatml",
+                    "baichuan-2",
                 ])
                 .value_name("TEMPLATE")
                 .help("Prompt template.")
@@ -408,6 +409,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         PromptTemplateType::ChatML => {
             ChatPrompt::ChatMLPrompt(chat_prompts::chat::chatml::ChatMLPrompt::default())
         }
+        PromptTemplateType::Baichuan2 => ChatPrompt::Baichuan2ChatPrompt(
+            chat_prompts::chat::baichuan::Baichuan2ChatPrompt::default(),
+        ),
     }
 }
 
