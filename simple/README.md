@@ -31,7 +31,8 @@ Execute the WASM with the `wasmedge` using the named model feature to preload la
 ```bash
 LLAMA_LOG=1 LLAMA_N_CTX=4096 LLAMA_N_PREDICT=128 wasmedge --dir .:. \
   --nn-preload default:GGML:CPU:llama-2-7b.Q5_K_M.gguf llama-simple.wasm default \
-  'Robert Oppenheimer most important achievement is '
+  --prompt 'Robert Oppenheimer most important achievement is ' \
+  --ctx-size 4096
 ```
 
 After executing the command, it takes some time to wait for the output.
