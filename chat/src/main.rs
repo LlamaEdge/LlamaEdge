@@ -36,7 +36,7 @@ fn main() -> Result<(), String> {
                 .long("system-prompt")
                 .value_name("SYSTEM_PROMPT")
                 .help("Sets the system prompt message string")
-                .default_value("<EMPTY STRING>"),
+                .default_value("[Default system message for the prompt template]"),
         )
         .arg(
             Arg::new("prompt_template")
@@ -75,7 +75,7 @@ fn main() -> Result<(), String> {
         .get_one::<String>("system_prompt")
         .unwrap()
         .to_string();
-    let system_prompt = match system_prompt == "<EMPTY STRING>" {
+    let system_prompt = match system_prompt == "[Default system message for the prompt template]" {
         true => {
             println!("[INFO] Use default system prompt");
             String::new()
