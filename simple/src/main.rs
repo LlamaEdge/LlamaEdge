@@ -11,7 +11,7 @@ fn main() -> Result<(), String> {
                 .short('p')
                 .long("prompt")
                 .value_name("PROMPT")
-                .help("Sets the prompt.")
+                .help("Sets the prompt string, including system message if required.")
                 .required(true),
         )
         .arg(
