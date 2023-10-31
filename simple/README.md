@@ -42,7 +42,7 @@ LLAMA_LOG=1 LLAMA_N_CTX=4096 LLAMA_N_PREDICT=128 wasmedge --dir .:. \
   Usage: llama-simple.wasm [OPTIONS] --prompt <PROMPT>
 
   Options:
-    -p, --prompt <PROMPT>      Sets the prompt.
+    -p, --prompt <PROMPT>      Sets the prompt string, including system message if required.
     -m, --model-alias <ALIAS>  Sets the model alias [default: default]
     -c, --ctx-size <CTX_SIZE>  Sets the prompt context size [default: 2048]
     -h, --help                 Print help
