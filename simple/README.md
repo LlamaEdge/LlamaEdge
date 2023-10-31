@@ -21,7 +21,7 @@ curl -LO https://github.com/second-state/llama-utils/raw/main/simple/llama-simpl
 Download llama model:
 
 ```bash
-curl -LO https://huggingface.co/TheBloke/Llama-2-7B-GGUF/resolve/main/llama-2-7b.Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf
 ```
 
 ## Execute

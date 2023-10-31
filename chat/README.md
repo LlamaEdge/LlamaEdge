@@ -137,7 +137,7 @@ Execute the WASM with the `wasmedge` using the named model feature to preload la
 
 ```console
 # download model
-curl -LO https://huggingface.co/TheBloke/Llama-2-7b-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf
 
 # run the `llama-chat` wasm app with the model
 wasmedge --dir .:. \
