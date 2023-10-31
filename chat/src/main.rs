@@ -31,6 +31,14 @@ fn main() -> Result<(), String> {
                 .default_value(DEFAULT_CTX_SIZE),
         )
         .arg(
+            Arg::new("system_prompt")
+                .short('s')
+                .long("system-prompt")
+                .value_name("SYSTEM_PROMPT")
+                .help("Sets the system prompt")
+                .default_value("<EMPTY STRING>"),
+        )
+        .arg(
             Arg::new("prompt_template")
                 .short('p')
                 .long("prompt-template")
@@ -62,6 +70,25 @@ fn main() -> Result<(), String> {
     }
     println!("[INFO] Prompt context size: {size}", size = ctx_size);
 
+    // system prompt
+    let system_prompt = matches
+        .get_one::<String>("system_prompt")
+        .unwrap()
+        .to_string();
+    let system_prompt = match system_prompt == "<EMPTY STRING>" {
+        true => {
+            println!("[INFO] Use default system prompt");
+            String::new()
+        }
+        false => {
+            println!(
+                "[INFO] Use custom system prompt: {prompt}",
+                prompt = &system_prompt
+            );
+            system_prompt
+        }
+    };
+
     // type of prompt template
     let prompt_template = matches
         .get_one::<String>("prompt_template")
@@ -81,6 +108,15 @@ fn main() -> Result<(), String> {
     let template = create_prompt_template(template_ty);
 
     let mut chat_request = ChatCompletionRequest::default();
+    // put system_prompt into the `messages` of chat_request
+    if !system_prompt.is_empty() {
+        chat_request
+            .messages
+            .push(ChatCompletionRequestMessage::new(
+                ChatCompletionRole::System,
+                system_prompt,
+            ));
+    }
 
     // load the model into wasi-nn
     let graph = match wasi_nn::GraphBuilder::new(
@@ -131,6 +167,10 @@ fn main() -> Result<(), String> {
                 ))
             }
         };
+
+        println!("*** [prompt begin] ***");
+        println!("{}", &prompt);
+        println!("*** [prompt end] ***");
 
         // read input tensor
         let tensor_data = prompt.trim().as_bytes().to_vec();
