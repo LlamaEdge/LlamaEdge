@@ -68,7 +68,6 @@ impl BuildChatPrompt for ChatMLPrompt {
         let system_prompt = if messages[0].role == ChatCompletionRole::System {
             self.create_system_prompt(&messages[0])
         } else {
-            dbg!("[DEBUG] use default system prompt");
             String::from("<|im_start|>system\nAnswer as concisely as possible.<|im_end|>")
             // String::from("<|im_start|>system\nEnter roleplay mode. You are Steve.\n\nSteve is a nasty little man and solves all his problems by punching people in the face.<|im_end|>")
         };

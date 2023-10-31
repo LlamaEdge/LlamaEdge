@@ -55,7 +55,6 @@ impl BuildChatPrompt for VicunaChatPrompt {
         let system_prompt = if messages[0].role == ChatCompletionRole::System {
             self.create_system_prompt(&messages[0])
         } else {
-            dbg!("[DEBUG] use default system prompt");
             String::from("A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.")
         };
 
