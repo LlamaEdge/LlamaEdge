@@ -124,7 +124,7 @@ Here is the response.
 
 ## Models
 
-- [x] [Llama-2-7b-Chat-GGUF](https://huggingface.co/TheBloke/Llama-2-7b-Chat-GGUF)
+- [x] [Llama-2-7B-Chat-GGUF](https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF)
 
 - [x] [Llama-2-13B-chat-GGUF](https://huggingface.co/TheBloke/Llama-2-13B-chat-GGUF)
 
