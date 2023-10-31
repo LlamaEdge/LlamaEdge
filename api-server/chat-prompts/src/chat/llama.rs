@@ -66,10 +66,10 @@ impl BuildChatPrompt for Llama2ChatPrompt {
 
         // systemp prompt
         let system_prompt = if messages[0].role == ChatCompletionRole::System {
-            let system_message = messages.remove(0);
-            self.create_system_prompt(&system_message)
+            self.create_system_prompt(&messages[0])
         } else {
-            String::from("You are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe.")
+            dbg!("[DEBUG] use default system prompt");
+            String::from("<<SYS>>\nYou are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe. <</SYS>>")
         };
 
         // append user/assistant messages
@@ -79,13 +79,18 @@ impl BuildChatPrompt for Llama2ChatPrompt {
 
         let mut prompt = String::new();
         for message in messages {
-            if message.role == ChatCompletionRole::User {
-                prompt =
-                    self.append_user_message(&prompt, &system_prompt, message.content.as_str());
-            } else if message.role == ChatCompletionRole::Assistant {
-                prompt = self.append_assistant_message(&prompt, message.content.as_str());
-            } else {
-                return Err(crate::error::PromptError::UnknownRole(message.role));
+            match message.role {
+                ChatCompletionRole::System => continue,
+                ChatCompletionRole::User => {
+                    prompt =
+                        self.append_user_message(&prompt, &system_prompt, message.content.as_str());
+                }
+                ChatCompletionRole::Assistant => {
+                    prompt = self.append_assistant_message(&prompt, message.content.as_str());
+                }
+                _ => {
+                    return Err(crate::error::PromptError::UnknownRole(message.role));
+                }
             }
         }
 
@@ -161,13 +166,9 @@ impl BuildChatPrompt for CodeLlamaInstructPrompt {
 
         // systemp prompt
         let system_prompt = if messages[0].role == ChatCompletionRole::System {
-            let system_message = messages.remove(0);
-            let _system_prompt = self.create_system_prompt(&system_message);
-
-            // ! debug
-            String::from("<<SYS>>\nYou are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe. <</SYS>>")
+            self.create_system_prompt(&messages[0])
         } else {
-            String::new()
+            String::from("<<SYS>>\nYou are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe. <</SYS>>")
         };
 
         // append user/assistant messages
@@ -177,13 +178,18 @@ impl BuildChatPrompt for CodeLlamaInstructPrompt {
 
         let mut prompt = String::new();
         for message in messages {
-            if message.role == ChatCompletionRole::User {
-                prompt =
-                    self.append_user_message(&prompt, &system_prompt, message.content.as_str());
-            } else if message.role == ChatCompletionRole::Assistant {
-                prompt = self.append_assistant_message(&prompt, message.content.as_str());
-            } else {
-                return Err(crate::error::PromptError::UnknownRole(message.role));
+            match message.role {
+                ChatCompletionRole::System => continue,
+                ChatCompletionRole::User => {
+                    prompt =
+                        self.append_user_message(&prompt, &system_prompt, message.content.as_str());
+                }
+                ChatCompletionRole::Assistant => {
+                    prompt = self.append_assistant_message(&prompt, message.content.as_str());
+                }
+                _ => {
+                    return Err(crate::error::PromptError::UnknownRole(message.role));
+                }
             }
         }
 
