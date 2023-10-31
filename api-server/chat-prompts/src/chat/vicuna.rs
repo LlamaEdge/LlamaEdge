@@ -53,9 +53,9 @@ impl BuildChatPrompt for VicunaChatPrompt {
 
         // systemp prompt
         let system_prompt = if messages[0].role == ChatCompletionRole::System {
-            let system_message = messages.remove(0);
-            self.create_system_prompt(&system_message)
+            self.create_system_prompt(&messages[0])
         } else {
+            dbg!("[DEBUG] use default system prompt");
             String::from("A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.")
         };
 
@@ -66,13 +66,18 @@ impl BuildChatPrompt for VicunaChatPrompt {
 
         let mut prompt = String::new();
         for message in messages {
-            if message.role == ChatCompletionRole::User {
-                prompt =
-                    self.append_user_message(&prompt, &system_prompt, message.content.as_str());
-            } else if message.role == ChatCompletionRole::Assistant {
-                prompt = self.append_assistant_message(&prompt, message.content.as_str());
-            } else {
-                return Err(crate::error::PromptError::UnknownRole(message.role));
+            match message.role {
+                ChatCompletionRole::System => continue,
+                ChatCompletionRole::User => {
+                    prompt =
+                        self.append_user_message(&prompt, &system_prompt, message.content.as_str());
+                }
+                ChatCompletionRole::Assistant => {
+                    prompt = self.append_assistant_message(&prompt, message.content.as_str());
+                }
+                _ => {
+                    return Err(crate::error::PromptError::UnknownRole(message.role));
+                }
             }
         }
 

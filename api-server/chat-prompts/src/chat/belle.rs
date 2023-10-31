@@ -46,12 +46,17 @@ impl BuildChatPrompt for BelleLlama2ChatPrompt {
 
         let mut prompt = String::new();
         for message in messages {
-            if message.role == ChatCompletionRole::User {
-                prompt = self.append_user_message(&prompt, message.content.as_str());
-            } else if message.role == ChatCompletionRole::Assistant {
-                prompt = self.append_assistant_message(&prompt, message.content.as_str());
-            } else {
-                return Err(crate::error::PromptError::UnknownRole(message.role));
+            match message.role {
+                ChatCompletionRole::System => continue,
+                ChatCompletionRole::User => {
+                    prompt = self.append_user_message(&prompt, message.content.as_str());
+                }
+                ChatCompletionRole::Assistant => {
+                    prompt = self.append_assistant_message(&prompt, message.content.as_str());
+                }
+                _ => {
+                    return Err(crate::error::PromptError::UnknownRole(message.role));
+                }
             }
         }
 

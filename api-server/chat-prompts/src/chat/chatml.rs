@@ -66,9 +66,9 @@ impl BuildChatPrompt for ChatMLPrompt {
 
         // systemp prompt
         let system_prompt = if messages[0].role == ChatCompletionRole::System {
-            let system_message = messages.remove(0);
-            self.create_system_prompt(&system_message)
+            self.create_system_prompt(&messages[0])
         } else {
+            dbg!("[DEBUG] use default system prompt");
             String::from("<|im_start|>system\nAnswer as concisely as possible.<|im_end|>")
             // String::from("<|im_start|>system\nEnter roleplay mode. You are Steve.\n\nSteve is a nasty little man and solves all his problems by punching people in the face.<|im_end|>")
         };
@@ -80,13 +80,18 @@ impl BuildChatPrompt for ChatMLPrompt {
 
         let mut prompt = String::new();
         for message in messages {
-            if message.role == ChatCompletionRole::User {
-                prompt =
-                    self.append_user_message(&prompt, &system_prompt, message.content.as_str());
-            } else if message.role == ChatCompletionRole::Assistant {
-                prompt = self.append_assistant_message(&prompt, message.content.as_str());
-            } else {
-                return Err(crate::error::PromptError::UnknownRole(message.role));
+            match message.role {
+                ChatCompletionRole::System => continue,
+                ChatCompletionRole::User => {
+                    prompt =
+                        self.append_user_message(&prompt, &system_prompt, message.content.as_str());
+                }
+                ChatCompletionRole::Assistant => {
+                    prompt = self.append_assistant_message(&prompt, message.content.as_str());
+                }
+                _ => {
+                    return Err(crate::error::PromptError::UnknownRole(message.role));
+                }
             }
         }
 

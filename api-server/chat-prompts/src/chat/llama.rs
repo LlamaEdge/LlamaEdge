@@ -168,6 +168,7 @@ impl BuildChatPrompt for CodeLlamaInstructPrompt {
         let system_prompt = if messages[0].role == ChatCompletionRole::System {
             self.create_system_prompt(&messages[0])
         } else {
+            dbg!("use default system prompt");
             String::from("<<SYS>>\nYou are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe. <</SYS>>")
         };
 
