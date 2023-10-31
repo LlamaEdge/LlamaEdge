@@ -48,7 +48,7 @@ async fn main() -> Result<(), ServerError> {
                 ])
                 .value_name("TEMPLATE")
                 .help("Sets the prompt template.")
-                .required(true),
+                .default_value("llama-2-chat"),
         )
         .arg(
             Arg::new("socket_addr")
