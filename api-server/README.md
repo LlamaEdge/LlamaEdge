@@ -126,15 +126,17 @@ Here is the response.
 
 - [x] [Llama-2-7B-Chat-GGUF](https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF)
 
-- [x] [Llama-2-13B-chat-GGUF](https://huggingface.co/TheBloke/Llama-2-13B-chat-GGUF)
+- [x] [Llama-2-13B-chat-GGUF](https://huggingface.co/second-state/Llama-2-13B-Chat-GGUF)
 
-- [x] [Mistral-7B-Instruct-v0.1-GGUF](https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF)
+- [x] [CodeLlama-13B-GGUF](https://huggingface.co/second-state/CodeLlama-13B-Instruct-GGUF)
 
-- [x] [BELLE-Llama2-13B-Chat-GGUF](https://huggingface.co/apepkuss79/BELLE-Llama2-13B-Chat-GGUF)
+- [x] [Mistral-7B-Instruct-v0.1-GGUF](https://huggingface.co/second-state/Mistral-7B-Instruct-v0.1-GGUF)
+
+- [x] [BELLE-Llama2-13B-Chat-0.4M-GGUF](https://huggingface.co/second-state/BELLE-Llama2-13B-Chat-0.4M-GGUF)
 
 - [x] [wizard-vicuna-13B-GGUF](https://huggingface.co/second-state/wizard-vicuna-13B-GGUF)
 
-- [x] [CausalLM-14B](https://huggingface.co/TheBloke/CausalLM-14B-GGUF)
+- [x] [CausalLM-14B](https://huggingface.co/second-state/CausalLM-14B-GGUF)
 
 - [ ] [rpguild-chatml-13B-GGUF](https://huggingface.co/second-state/rpguild-chatml-13B-GGUF)
 
