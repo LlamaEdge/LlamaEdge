@@ -35,7 +35,7 @@ fn main() -> Result<(), String> {
                 .short('s')
                 .long("system-prompt")
                 .value_name("SYSTEM_PROMPT")
-                .help("Sets the system prompt")
+                .help("Sets the system prompt message string")
                 .default_value("<EMPTY STRING>"),
         )
         .arg(
