@@ -52,7 +52,7 @@ fn main() -> Result<(), String> {
                 ])
                 .value_name("TEMPLATE")
                 .help("Sets the prompt template.")
-                .required(true),
+                .default_value("llama-2-chat"),
         )
         .get_matches();
 

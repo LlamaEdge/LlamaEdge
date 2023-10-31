@@ -63,7 +63,7 @@ Options:
   -m, --model-alias <ALIAS>            Sets the model alias [default: default]
   -c, --ctx-size <CTX_SIZE>            Sets the prompt context size [default: 2048]
   -s, --system-prompt <SYSTEM_PROMPT>  Sets the system prompt message string [default: "<EMPTY STRING>"]
-  -p, --prompt-template <TEMPLATE>     Sets the prompt template. [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, belle-llama-2-chat, vicuna-chat, chatml]
+  -p, --prompt-template <TEMPLATE>     Sets the prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, belle-llama-2-chat, vicuna-chat, chatml]
   -h, --help                           Print help
 ```
 
