@@ -42,10 +42,24 @@ LLAMA_LOG=1 LLAMA_N_CTX=4096 LLAMA_N_PREDICT=128 wasmedge --dir .:. \
   Usage: llama-simple.wasm [OPTIONS] --prompt <PROMPT>
 
   Options:
-    -p, --prompt <PROMPT>      Sets the prompt string, including system message if required.
-    -m, --model-alias <ALIAS>  Sets the model alias [default: default]
-    -c, --ctx-size <CTX_SIZE>  Sets the prompt context size [default: 2048]
-    -h, --help                 Print help
+    -p, --prompt <PROMPT>
+            Sets the prompt string, including system message if required.
+    -m, --model-alias <ALIAS>
+            Sets the model alias [default: default]
+    -c, --ctx-size <CTX_SIZE>
+            Sets the prompt context size [default: 2048]
+    -n, --n-predict <N_PRDICT>
+            Number of tokens to predict [default: 1024]
+    -g, --n-gpu-layers <N_GPU_LAYERS>
+            Number of layers to run on the GPU [default: 0]
+    -b, --batch-size <BATCH_SIZE>
+            Batch size for prompt processing [default: 512]
+    -r, --reverse-prompt <REVERSE_PROMPT>
+            Halt generation at PROMPT, return control.
+        --log-enable
+            Enable trace logs
+    -h, --help
+            Print help
   ```
 
 After executing the command, it takes some time to wait for the output.
