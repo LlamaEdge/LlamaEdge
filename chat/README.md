@@ -102,6 +102,13 @@ Options:
   curl -LO https://huggingface.co/second-state/Mistral-7B-Instruct-v0.1-GGUF/resolve/main/mistral-7b-instruct-v0.1.Q5_K_M.gguf
   ```
 
+- [x] MistralLite-7B
+
+  ```console
+  # mistral-lite-7b
+  curl -LO https://huggingface.co/second-state/MistralLite-7B-GGUF/resolve/main/mistrallite.Q5_K_M.gguf
+  ```
+
 - [x] Wizard-Vicuna
 
   ```console
