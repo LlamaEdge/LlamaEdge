@@ -46,6 +46,7 @@ fn main() -> Result<(), String> {
                     "llama-2-chat",
                     "codellama-instruct",
                     "mistral-instruct-v0.1",
+                    "mistrallite",
                     "belle-llama-2-chat",
                     "vicuna-chat",
                     "chatml",
@@ -121,7 +122,7 @@ fn main() -> Result<(), String> {
     // load the model into wasi-nn
     let graph = match wasi_nn::GraphBuilder::new(
         wasi_nn::GraphEncoding::Ggml,
-        wasi_nn::ExecutionTarget::CPU,
+        wasi_nn::ExecutionTarget::AUTO,
     )
     .build_from_cache(model_name.as_ref())
     {
@@ -238,6 +239,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         PromptTemplateType::MistralInstructV01 => ChatPrompt::MistralInstructPrompt(
             chat_prompts::chat::mistral::MistralInstructPrompt::default(),
         ),
+        PromptTemplateType::MistralLite => {
+            ChatPrompt::MistralLitePrompt(chat_prompts::chat::mistral::MistralLitePrompt::default())
+        }
         PromptTemplateType::CodeLlama => ChatPrompt::CodeLlamaInstructPrompt(
             chat_prompts::chat::llama::CodeLlamaInstructPrompt::default(),
         ),
