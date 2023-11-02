@@ -3,7 +3,7 @@ use chat_prompts::{
     chat::{
         belle::BelleLlama2ChatPrompt,
         llama::{CodeLlamaInstructPrompt, Llama2ChatPrompt},
-        mistral::MistralInstructPrompt,
+        mistral::{MistralInstructPrompt, MistralLitePrompt},
         BuildChatPrompt, ChatPrompt,
     },
     PromptTemplateType,
@@ -155,6 +155,9 @@ pub(crate) async fn chat_completions_handler(
             }
             PromptTemplateType::MistralInstructV01 => {
                 ChatPrompt::MistralInstructPrompt(MistralInstructPrompt::default())
+            }
+            PromptTemplateType::MistralLite => {
+                ChatPrompt::MistralLitePrompt(MistralLitePrompt::default())
             }
             PromptTemplateType::CodeLlama => {
                 ChatPrompt::CodeLlamaInstructPrompt(CodeLlamaInstructPrompt::default())

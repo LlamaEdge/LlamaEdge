@@ -41,7 +41,8 @@ async fn main() -> Result<(), ServerError> {
                 .value_parser([
                     "llama-2-chat",
                     "codellama-instruct",
-                    "mistral-chat",
+                    "mistral-instruct-v0.1",
+                    "mistrallite",
                     "belle-llama-2-chat",
                     "vicuna-chat",
                     "chatml",

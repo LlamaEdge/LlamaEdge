@@ -21,6 +21,7 @@ pub trait BuildChatPrompt: Send {
 pub enum ChatPrompt {
     Llama2ChatPrompt,
     MistralInstructPrompt,
+    MistralLitePrompt,
     CodeLlamaInstructPrompt,
     BelleLlama2ChatPrompt,
     VicunaChatPrompt,
