@@ -2,12 +2,13 @@ use chat_prompts::{
     chat::{BuildChatPrompt, ChatPrompt},
     PromptTemplateType,
 };
-use clap::{Arg, Command};
+use clap::{Arg, ArgAction, Command};
 use endpoints::chat::{ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRole};
 use once_cell::sync::OnceCell;
+use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-const DEFAULT_CTX_SIZE: &str = "2048";
+const DEFAULT_CTX_SIZE: &str = "512";
 static CTX_SIZE: OnceCell<usize> = OnceCell::new();
 
 #[allow(unreachable_code)]
@@ -18,7 +19,7 @@ fn main() -> Result<(), String> {
                 .short('m')
                 .long("model-alias")
                 .value_name("ALIAS")
-                .help("Sets the model alias")
+                .help("Model alias")
                 .default_value("default"),
         )
         .arg(
@@ -27,15 +28,49 @@ fn main() -> Result<(), String> {
                 .long("ctx-size")
                 .value_parser(clap::value_parser!(u32))
                 .value_name("CTX_SIZE")
-                .help("Sets the prompt context size")
+                .help("Size of the prompt context")
                 .default_value(DEFAULT_CTX_SIZE),
+        )
+        .arg(
+            Arg::new("n_predict")
+                .short('n')
+                .long("n-predict")
+                .value_parser(clap::value_parser!(u32))
+                .value_name("N_PRDICT")
+                .help("Number of tokens to predict")
+                .default_value("1024"),
+        )
+        .arg(
+            Arg::new("n_gpu_layers")
+                .short('g')
+                .long("n-gpu-layers")
+                .value_parser(clap::value_parser!(u32))
+                .value_name("N_GPU_LAYERS")
+                .help("Number of layers to run on the GPU")
+                .default_value("0"),
+        )
+        .arg(
+            Arg::new("batch_size")
+                .short('b')
+                .long("batch-size")
+                .value_parser(clap::value_parser!(u32))
+                .value_name("BATCH_SIZE")
+                .help("Batch size for prompt processing")
+                .default_value("512"),
+        )
+        .arg(
+            Arg::new("reverse_prompt")
+                .short('r')
+                .long("reverse-prompt")
+                .value_name("REVERSE_PROMPT")
+                .help("Halt generation at PROMPT, return control."),
         )
         .arg(
             Arg::new("system_prompt")
                 .short('s')
                 .long("system-prompt")
                 .value_name("SYSTEM_PROMPT")
-                .help("Sets the system prompt message string")
+                .help("System prompt message string")
                 .default_value("[Default system message for the prompt template]"),
         )
         .arg(
@@ -52,10 +87,27 @@ fn main() -> Result<(), String> {
                     "chatml",
                 ])
                 .value_name("TEMPLATE")
-                .help("Sets the prompt template.")
+                .help("Prompt template.")
                 .default_value("llama-2-chat"),
         )
+        .arg(
+            Arg::new("log_enable")
+                .long("log-enable")
+                .value_name("LOG_ENABLE")
+                .help("Enable trace logs")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("stream_stdout")
+                .long("stream-stdout")
+                .value_name("STREAM_STDOUT")
+                .help("Print the output to stdout in the streaming way")
+                .action(ArgAction::SetTrue),
+        )
         .get_matches();
+
+    // create an `Options` instance
+    let mut options = Options::default();
 
     // model alias
     let model_name = matches
@@ -70,6 +122,34 @@ fn main() -> Result<(), String> {
         return Err(String::from("Fail to parse prompt context size"));
     }
     println!("[INFO] Prompt context size: {size}", size = ctx_size);
+    options.ctx_size = *ctx_size as u64;
+
+    // number of tokens to predict
+    let n_predict = matches.get_one::<u32>("n_predict").unwrap();
+    println!("[INFO] Number of tokens to predict: {n}", n = n_predict);
+    options.n_predict = *n_predict as u64;
+
+    // n_gpu_layers
+    let n_gpu_layers = matches.get_one::<u32>("n_gpu_layers").unwrap();
+    println!(
+        "[INFO] Number of layers to run on the GPU: {n}",
+        n = n_gpu_layers
+    );
+    options.n_gpu_layers = *n_gpu_layers as u64;
+
+    // batch size
+    let batch_size = matches.get_one::<u32>("batch_size").unwrap();
+    println!(
+        "[INFO] Batch size for prompt processing: {size}",
+        size = batch_size
+    );
+    options.batch_size = *batch_size as u64;
+
+    // reverse_prompt
+    if let Some(reverse_prompt) = matches.get_one::<String>("reverse_prompt") {
+        println!("[INFO] Reverse prompt: {prompt}", prompt = &reverse_prompt);
+        options.reverse_prompt = Some(reverse_prompt.to_string());
+    }
 
     // system prompt
     let system_prompt = matches
@@ -106,8 +186,17 @@ fn main() -> Result<(), String> {
     };
     println!("[INFO] Prompt template: {ty:?}", ty = &template_ty);
 
-    let template = create_prompt_template(template_ty);
+    // stream stdout
+    let stream_stdout = matches.get_flag("stream_stdout");
+    println!("[INFO] Stream stdout: {enable}", enable = stream_stdout);
+    options.stream_stdout = stream_stdout;
 
+    // log
+    let log_enable = matches.get_flag("log_enable");
+    println!("[INFO] Log enable: {enable}", enable = log_enable);
+    options.log_enable = log_enable;
+
+    let template = create_prompt_template(template_ty);
     let mut chat_request = ChatCompletionRequest::default();
     // put system_prompt into the `messages` of chat_request
     if !system_prompt.is_empty() {
@@ -144,6 +233,28 @@ fn main() -> Result<(), String> {
                 msg = e.to_string()
             ))
         }
+    };
+
+    // set metadata
+    let metadata = match serde_json::to_string(&options) {
+        Ok(metadata) => metadata,
+        Err(e) => {
+            return Err(format!(
+                "Fail to serialize options into json: {msg}",
+                msg = e.to_string()
+            ))
+        }
+    };
+    if context
+        .set_input(
+            1,
+            wasi_nn::TensorType::U8,
+            &[1],
+            metadata.as_bytes().to_owned(),
+        )
+        .is_err()
+    {
+        return Err(String::from("Fail to set metadata"));
     };
 
     print_separator();
@@ -255,4 +366,22 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
             ChatPrompt::ChatMLPrompt(chat_prompts::chat::chatml::ChatMLPrompt::default())
         }
     }
+}
+
+#[derive(Debug, Default, Deserialize, Serialize)]
+struct Options {
+    #[serde(rename = "enable-log")]
+    log_enable: bool,
+    #[serde(rename = "stream-stdout")]
+    stream_stdout: bool,
+    #[serde(rename = "ctx-size")]
+    ctx_size: u64,
+    #[serde(rename = "n-predict")]
+    n_predict: u64,
+    #[serde(rename = "n-gpu-layers")]
+    n_gpu_layers: u64,
+    #[serde(rename = "batch-size")]
+    batch_size: u64,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
+    reverse_prompt: Option<String>,
 }
