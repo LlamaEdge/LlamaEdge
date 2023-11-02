@@ -240,7 +240,7 @@ fn main() -> Result<(), String> {
         Ok(metadata) => metadata,
         Err(e) => {
             return Err(format!(
-                "Fail to serialize options into json: {msg}",
+                "Fail to serialize options: {msg}",
                 msg = e.to_string()
             ))
         }
