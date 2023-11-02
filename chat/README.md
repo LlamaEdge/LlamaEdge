@@ -56,15 +56,32 @@ curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wa
 The options for `llama-chat` wasm app are:
 
 ```console
-~/llama-utils/chat$ wasmedge llama-chat.wasm -h
-Usage: llama-chat.wasm [OPTIONS] --prompt-template <TEMPLATE>
+~/workspace/llama-utils/chat$ wasmedge llama-chat.wasm -h
+Usage: llama-chat.wasm [OPTIONS]
 
 Options:
-  -m, --model-alias <ALIAS>            Sets the model alias [default: default]
-  -c, --ctx-size <CTX_SIZE>            Sets the prompt context size [default: 2048]
-  -s, --system-prompt <SYSTEM_PROMPT>  Sets the system prompt message string [default: "[Default system message for the prompt template]"]
-  -p, --prompt-template <TEMPLATE>     Sets the prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, belle-llama-2-chat, vicuna-chat, chatml]
-  -h, --help                           Print help
+  -m, --model-alias <ALIAS>
+          Model alias [default: default]
+  -c, --ctx-size <CTX_SIZE>
+          Size of the prompt context [default: 512]
+  -n, --n-predict <N_PRDICT>
+          Number of tokens to predict [default: 1024]
+  -g, --n-gpu-layers <N_GPU_LAYERS>
+          Number of layers to run on the GPU [default: 0]
+  -b, --batch-size <BATCH_SIZE>
+          Batch size for prompt processing [default: 512]
+  -r, --reverse-prompt <REVERSE_PROMPT>
+          Halt generation at PROMPT, return control.
+  -s, --system-prompt <SYSTEM_PROMPT>
+          System prompt message string [default: "[Default system message for the prompt template]"]
+  -p, --prompt-template <TEMPLATE>
+          Prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, belle-llama-2-chat, vicuna-chat, chatml]
+      --log-enable
+          Enable trace logs
+      --stream-stdout
+          Print the output to stdout in the streaming way
+  -h, --help
+          Print help
 ```
 
 ## Get Model
