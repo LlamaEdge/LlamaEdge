@@ -82,6 +82,7 @@ fn main() -> Result<(), String> {
                     "codellama-instruct",
                     "mistral-instruct-v0.1",
                     "mistrallite",
+                    "openchat",
                     "belle-llama-2-chat",
                     "vicuna-chat",
                     "chatml",
@@ -280,9 +281,9 @@ fn main() -> Result<(), String> {
             }
         };
 
-        println!("*** [prompt begin] ***");
-        println!("{}", &prompt);
-        println!("*** [prompt end] ***");
+        // println!("*** [prompt begin] ***");
+        // println!("{}", &prompt);
+        // println!("*** [prompt end] ***");
 
         // read input tensor
         let tensor_data = prompt.trim().as_bytes().to_vec();
@@ -352,6 +353,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         ),
         PromptTemplateType::MistralLite => {
             ChatPrompt::MistralLitePrompt(chat_prompts::chat::mistral::MistralLitePrompt::default())
+        }
+        PromptTemplateType::OpenChat => {
+            ChatPrompt::OpenChatPrompt(chat_prompts::chat::mistral::OpenChatPrompt::default())
         }
         PromptTemplateType::CodeLlama => ChatPrompt::CodeLlamaInstructPrompt(
             chat_prompts::chat::llama::CodeLlamaInstructPrompt::default(),
