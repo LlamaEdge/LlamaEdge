@@ -19,7 +19,6 @@ use endpoints::{
 };
 use hyper::{body::to_bytes, Body, Request, Response};
 use std::time::SystemTime;
-use wasi_nn::Error as WasiNnError;
 
 /// Lists models available
 pub(crate) async fn models_handler(
@@ -60,6 +59,7 @@ pub(crate) async fn _embeddings_handler() -> Result<Response<Body>, hyper::Error
 pub(crate) async fn completions_handler(
     mut req: Request<Body>,
     model_name: impl AsRef<str>,
+    metadata: String,
 ) -> Result<Response<Body>, hyper::Error> {
     println!("[COMPLETION] New completion begins ...");
 
@@ -72,7 +72,7 @@ pub(crate) async fn completions_handler(
     // ! todo: a temp solution of computing the number of tokens in prompt
     let prompt_tokens = prompt.split_whitespace().count() as u32;
 
-    let buffer = match infer(model_name.as_ref(), prompt.trim()).await {
+    let buffer = match infer(model_name.as_ref(), prompt.trim(), metadata).await {
         Ok(buffer) => buffer,
         Err(e) => {
             return error::internal_server_error(e.to_string());
@@ -130,6 +130,7 @@ pub(crate) async fn chat_completions_handler(
     mut req: Request<Body>,
     model_name: impl AsRef<str>,
     template_ty: PromptTemplateType,
+    metadata: String,
 ) -> Result<Response<Body>, hyper::Error> {
     if req.method().eq(&hyper::http::Method::OPTIONS) {
         println!("[CHAT] Empty in, empty out!");
@@ -198,7 +199,7 @@ pub(crate) async fn chat_completions_handler(
     let prompt_tokens = prompt.split_whitespace().count() as u32;
 
     // run inference
-    let buffer = match infer(model_name.as_ref(), prompt).await {
+    let buffer = match infer(model_name.as_ref(), prompt, metadata).await {
         Ok(buffer) => buffer,
         Err(e) => {
             return error::internal_server_error(e.to_string());
@@ -259,14 +260,49 @@ pub(crate) async fn chat_completions_handler(
 pub(crate) async fn infer(
     model_name: impl AsRef<str>,
     prompt: impl AsRef<str>,
-) -> std::result::Result<Vec<u8>, WasiNnError> {
-    let graph =
-        wasi_nn::GraphBuilder::new(wasi_nn::GraphEncoding::Ggml, wasi_nn::ExecutionTarget::CPU)
-            .build_from_cache(model_name.as_ref())?;
+    metadata: String,
+) -> std::result::Result<Vec<u8>, String> {
+    // load the model into wasi-nn
+    let graph = match wasi_nn::GraphBuilder::new(
+        wasi_nn::GraphEncoding::Ggml,
+        wasi_nn::ExecutionTarget::AUTO,
+    )
+    .build_from_cache(model_name.as_ref())
+    {
+        Ok(graph) => graph,
+        Err(e) => {
+            return Err(format!(
+                "Fail to load model into wasi-nn: {msg}",
+                msg = e.to_string()
+            ))
+        }
+    };
     // println!("Loaded model into wasi-nn with ID: {:?}", graph);
 
-    let mut context = graph.init_execution_context()?;
+    // initialize the execution context
+    let mut context = match graph.init_execution_context() {
+        Ok(context) => context,
+        Err(e) => {
+            return Err(format!(
+                "Fail to create wasi-nn execution context: {msg}",
+                msg = e.to_string()
+            ))
+        }
+    };
     // println!("Created wasi-nn execution context with ID: {:?}", context);
+
+    // set metadata
+    if context
+        .set_input(
+            1,
+            wasi_nn::TensorType::U8,
+            &[1],
+            metadata.as_bytes().to_owned(),
+        )
+        .is_err()
+    {
+        return Err(String::from("Fail to set metadata"));
+    };
 
     println!("*** [prompt begin] ***");
     println!("{}", prompt.as_ref());
@@ -274,14 +310,30 @@ pub(crate) async fn infer(
 
     let tensor_data = prompt.as_ref().as_bytes().to_vec();
     // println!("Read input tensor, size in bytes: {}", tensor_data.len());
-    context.set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)?;
+    if context
+        .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
+        .is_err()
+    {
+        return Err(String::from("Fail to set input tensor"));
+    };
 
-    // Execute the inference.
-    context.compute()?;
+    // execute the inference
+    if context.compute().is_err() {
+        return Err(String::from("Fail to execute model inference"));
+    }
     // println!("Executed model inference");
 
     // Retrieve the output.
     let mut output_buffer = vec![0u8; *CTX_SIZE.get().unwrap()];
-    let size = context.get_output(0, &mut output_buffer)?;
-    Ok(output_buffer[..size].to_vec())
+    let mut output_size = match context.get_output(0, &mut output_buffer) {
+        Ok(size) => size,
+        Err(e) => {
+            return Err(format!(
+                "Fail to get output tensor: {msg}",
+                msg = e.to_string()
+            ))
+        }
+    };
+    output_size = std::cmp::min(*CTX_SIZE.get().unwrap(), output_size);
+    Ok(output_buffer[..output_size].to_vec())
 }

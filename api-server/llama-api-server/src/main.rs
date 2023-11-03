@@ -2,13 +2,14 @@ mod backend;
 mod error;
 
 use chat_prompts::PromptTemplateType;
-use clap::{Arg, Command};
+use clap::{Arg, ArgAction, Command};
 use error::ServerError;
 use hyper::{
     service::{make_service_fn, service_fn},
     Body, Request, Response, Server,
 };
 use once_cell::sync::OnceCell;
+use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, str::FromStr};
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
@@ -27,12 +28,71 @@ pub struct AppState {
 async fn main() -> Result<(), ServerError> {
     let matches = Command::new("Llama API Server")
         .arg(
+            Arg::new("socket_addr")
+                .short('s')
+                .long("socket-addr")
+                .value_name("IP:PORT")
+                .help("Sets the socket address")
+                .default_value(DEFAULT_SOCKET_ADDRESS),
+        )
+        .arg(
             Arg::new("model_alias")
                 .short('m')
                 .long("model-alias")
                 .value_name("ALIAS")
                 .help("Sets the model alias")
                 .default_value("default"),
+        )
+        .arg(
+            Arg::new("ctx_size")
+                .short('c')
+                .long("ctx-size")
+                .value_parser(clap::value_parser!(u32))
+                .value_name("CTX_SIZE")
+                .help("Sets the prompt context size")
+                .default_value(DEFAULT_CTX_SIZE),
+        )
+        .arg(
+            Arg::new("n_predict")
+                .short('n')
+                .long("n-predict")
+                .value_parser(clap::value_parser!(u32))
+                .value_name("N_PRDICT")
+                .help("Number of tokens to predict")
+                .default_value("1024"),
+        )
+        .arg(
+            Arg::new("n_gpu_layers")
+                .short('g')
+                .long("n-gpu-layers")
+                .value_parser(clap::value_parser!(u32))
+                .value_name("N_GPU_LAYERS")
+                .help("Number of layers to run on the GPU")
+                .default_value("0"),
+        )
+        .arg(
+            Arg::new("batch_size")
+                .short('b')
+                .long("batch-size")
+                .value_parser(clap::value_parser!(u32))
+                .value_name("BATCH_SIZE")
+                .help("Batch size for prompt processing")
+                .default_value("512"),
+        )
+        .arg(
+            Arg::new("ngl")
+                .long("ngl")
+                .value_parser(clap::value_parser!(u32))
+                .value_name("NGL")
+                .help("Number of layers to offload to the GPU")
+                .default_value("100"),
+        )
+        .arg(
+            Arg::new("reverse_prompt")
+                .short('r')
+                .long("reverse-prompt")
+                .value_name("REVERSE_PROMPT")
+                .help("Halt generation at PROMPT, return control."),
         )
         .arg(
             Arg::new("prompt_template")
@@ -53,45 +113,13 @@ async fn main() -> Result<(), ServerError> {
                 .default_value("llama-2-chat"),
         )
         .arg(
-            Arg::new("socket_addr")
-                .short('s')
-                .long("socket-addr")
-                .value_name("IP:PORT")
-                .help("Sets the socket address")
-                .default_value(DEFAULT_SOCKET_ADDRESS),
-        )
-        .arg(
-            Arg::new("ctx_size")
-                .short('c')
-                .long("ctx-size")
-                .value_parser(clap::value_parser!(u32))
-                .value_name("CTX_SIZE")
-                .help("Sets the prompt context size")
-                .default_value(DEFAULT_CTX_SIZE),
+            Arg::new("stream_stdout")
+                .long("stream-stdout")
+                .value_name("STREAM_STDOUT")
+                .help("Print the output to stdout in the streaming way")
+                .action(ArgAction::SetTrue),
         )
         .get_matches();
-
-    // model alias
-    let model_name = matches
-        .get_one::<String>("model_alias")
-        .unwrap()
-        .to_string();
-    println!("[SERVER] Model alias: {alias}", alias = &model_name);
-    let ref_model_name = std::sync::Arc::new(model_name);
-
-    // type of prompt template
-    let prompt_template = matches
-        .get_one::<String>("prompt_template")
-        .unwrap()
-        .to_string();
-    let template_ty = match PromptTemplateType::from_str(&prompt_template) {
-        Ok(template) => template,
-        Err(e) => {
-            return Err(ServerError::InvalidPromptTemplateType(e.to_string()));
-        }
-    };
-    println!("[SERVER] Prompt template: {ty:?}", ty = &template_ty);
-    let ref_template_ty = std::sync::Arc::new(template_ty);
 
     // socket address
     let socket_addr = matches
@@ -105,8 +133,26 @@ async fn main() -> Result<(), ServerError> {
         }
     };
     println!(
-        "[SERVER] Socket address: {socket_addr}",
+        "[INFO] Socket address: {socket_addr}",
         socket_addr = socket_addr
+    );
+
+    // create an `Options` instance
+    let mut options = Options::default();
+
+    // model alias
+    let model_name = matches
+        .get_one::<String>("model_alias")
+        .unwrap()
+        .to_string();
+    println!("[INFO] Model alias: {alias}", alias = &model_name);
+    let ref_model_name = std::sync::Arc::new(model_name);
+
+    // ngl
+    let ngl = matches.get_one::<u32>("ngl").unwrap();
+    println!(
+        "[INFO] Number of layers to offload to the GPU: {n}",
+        n = ngl
     );
 
     // prompt context size
@@ -114,9 +160,66 @@ async fn main() -> Result<(), ServerError> {
     if CTX_SIZE.set(*ctx_size as usize).is_err() {
         return Err(ServerError::PromptContextSize);
     }
-    println!("[SERVER] Prompt context size: {size}", size = ctx_size);
+    println!("[INFO] Prompt context size: {size}", size = ctx_size);
 
-    println!("[SERVER] Starting server ...");
+    // number of tokens to predict
+    let n_predict = matches.get_one::<u32>("n_predict").unwrap();
+    println!("[INFO] Number of tokens to predict: {n}", n = n_predict);
+    options.n_predict = *n_predict as u64;
+
+    // n_gpu_layers
+    let n_gpu_layers = matches.get_one::<u32>("n_gpu_layers").unwrap();
+    println!(
+        "[INFO] Number of layers to run on the GPU: {n}",
+        n = n_gpu_layers
+    );
+    options.n_gpu_layers = *n_gpu_layers as u64;
+
+    // batch size
+    let batch_size = matches.get_one::<u32>("batch_size").unwrap();
+    println!(
+        "[INFO] Batch size for prompt processing: {size}",
+        size = batch_size
+    );
+    options.batch_size = *batch_size as u64;
+
+    // reverse_prompt
+    if let Some(reverse_prompt) = matches.get_one::<String>("reverse_prompt") {
+        println!("[INFO] Reverse prompt: {prompt}", prompt = &reverse_prompt);
+        options.reverse_prompt = Some(reverse_prompt.to_string());
+    }
+
+    // type of prompt template
+    let prompt_template = matches
+        .get_one::<String>("prompt_template")
+        .unwrap()
+        .to_string();
+    let template_ty = match PromptTemplateType::from_str(&prompt_template) {
+        Ok(template) => template,
+        Err(e) => {
+            return Err(ServerError::InvalidPromptTemplateType(e.to_string()));
+        }
+    };
+    println!("[INFO] Prompt template: {ty:?}", ty = &template_ty);
+    let ref_template_ty = std::sync::Arc::new(template_ty);
+
+    // stream stdout
+    let stream_stdout = matches.get_flag("stream_stdout");
+    println!("[INFO] Stream stdout: {enable}", enable = stream_stdout);
+    options.stream_stdout = stream_stdout;
+
+    // serialize options
+    let metadata = match serde_json::to_string(&options) {
+        Ok(metadata) => metadata,
+        Err(e) => {
+            return Err(ServerError::InternalServerError(format!(
+                "Fail to serialize options: {msg}",
+                msg = e.to_string()
+            )))
+        }
+    };
+
+    println!("[INFO] Starting server ...");
 
     // the timestamp when the server is created
     let created = std::time::SystemTime::now()
@@ -129,6 +232,7 @@ async fn main() -> Result<(), ServerError> {
         let model_name = ref_model_name.clone();
         let prompt_template_ty = ref_template_ty.clone();
         let created = ref_created.clone();
+        let metadata = metadata.clone();
         async {
             Ok::<_, Error>(service_fn(move |req| {
                 handle_request(
@@ -136,6 +240,7 @@ async fn main() -> Result<(), ServerError> {
                     model_name.to_string(),
                     *prompt_template_ty.clone(),
                     *created.clone(),
+                    metadata.clone(),
                 )
             }))
         }
@@ -143,7 +248,7 @@ async fn main() -> Result<(), ServerError> {
 
     let server = Server::bind(&addr).serve(new_service);
 
-    println!("[SERVER] Listening on http://{}", addr);
+    println!("[INFO] Listening on http://{}", addr);
     match server.await {
         Ok(_) => Ok(()),
         Err(e) => Err(ServerError::InternalServerError(e.to_string())),
@@ -155,11 +260,34 @@ async fn handle_request(
     model_name: impl AsRef<str>,
     template_ty: PromptTemplateType,
     created: u64,
+    metadata: String,
 ) -> Result<Response<Body>, hyper::Error> {
     match req.uri().path() {
         "/echo" => {
             return Ok(Response::new(Body::from("echo test")));
         }
-        _ => backend::handle_llama_request(req, model_name.as_ref(), template_ty, created).await,
+        _ => {
+            backend::handle_llama_request(req, model_name.as_ref(), template_ty, created, metadata)
+                .await
+        }
     }
+}
+
+#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+struct Options {
+    #[serde(rename = "enable-log")]
+    log_enable: bool,
+    #[serde(rename = "stream-stdout")]
+    stream_stdout: bool,
+    #[serde(rename = "ctx-size")]
+    ctx_size: u64,
+    #[serde(rename = "n-predict")]
+    n_predict: u64,
+    #[serde(rename = "n-gpu-layers")]
+    n_gpu_layers: u64,
+    #[serde(rename = "batch-size")]
+    batch_size: u64,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
+    reverse_prompt: Option<String>,
+    ngl: u64,
 }
