@@ -92,10 +92,24 @@ fn main() -> Result<(), String> {
                 .default_value("llama-2-chat"),
         )
         .arg(
-            Arg::new("log_enable")
-                .long("log-enable")
-                .value_name("LOG_ENABLE")
-                .help("Enable trace logs")
+            Arg::new("log_prompts")
+                .long("log-prompts")
+                .value_name("LOG_PROMPTS")
+                .help("Print prompt strings to stdout")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("log_stat")
+                .long("log-stat")
+                .value_name("LOG_STAT")
+                .help("Print statistics to stdout")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("log_all")
+                .long("log-all")
+                .value_name("LOG_all")
+                .help("Print all log information to stdout")
                 .action(ArgAction::SetTrue),
         )
         .arg(
@@ -192,10 +206,22 @@ fn main() -> Result<(), String> {
     println!("[INFO] Stream stdout: {enable}", enable = stream_stdout);
     options.stream_stdout = stream_stdout;
 
-    // log
-    let log_enable = matches.get_flag("log_enable");
-    println!("[INFO] Log enable: {enable}", enable = log_enable);
-    options.log_enable = log_enable;
+    // log prompts
+    let log_prompts = matches.get_flag("log_prompts");
+    println!("[INFO] Log prompts: {enable}", enable = log_prompts);
+
+    // log statistics
+    let log_stat = matches.get_flag("log_stat");
+    println!("[INFO] Log statistics: {enable}", enable = log_stat);
+
+    // log all
+    let log_all = matches.get_flag("log_all");
+    println!("[INFO] Log all information: {enable}", enable = log_all);
+
+    // set `log_enable`
+    if log_stat || log_all {
+        options.log_enable = true;
+    }
 
     let template = create_prompt_template(template_ty);
     let mut chat_request = ChatCompletionRequest::default();
@@ -261,7 +287,7 @@ fn main() -> Result<(), String> {
     print_separator();
 
     loop {
-        println!("[USER]:");
+        println!("\n[USER]: ");
         let user_message = read_input();
         chat_request
             .messages
@@ -281,9 +307,15 @@ fn main() -> Result<(), String> {
             }
         };
 
-        // println!("*** [prompt begin] ***");
-        // println!("{}", &prompt);
-        // println!("*** [prompt end] ***");
+        if log_prompts || log_all {
+            println!("\n---------------- [LOG: PROMPT] ---------------------\n");
+            println!("{}", &prompt);
+            println!("\n----------------------------------------------------\n");
+        }
+
+        if log_stat || log_all {
+            println!("\n---------------- [LOG: STATISTICS] -----------------\n");
+        }
 
         // read input tensor
         let tensor_data = prompt.trim().as_bytes().to_vec();
@@ -299,6 +331,10 @@ fn main() -> Result<(), String> {
             return Err(String::from("Fail to execute model inference"));
         }
 
+        if log_stat || log_all {
+            println!("\n----------------------------------------------------\n");
+        }
+
         // retrieve the output
         let mut output_buffer = vec![0u8; *CTX_SIZE.get().unwrap()];
         let mut output_size = match context.get_output(0, &mut output_buffer) {
@@ -312,7 +348,7 @@ fn main() -> Result<(), String> {
         };
         output_size = std::cmp::min(*CTX_SIZE.get().unwrap(), output_size);
         let output = String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
-        println!("[ASSISTANT]:\n{}", output.trim());
+        println!("\n[ASSISTANT]:\n{}", output.trim());
 
         // put the answer into the `messages` of chat_request
         chat_request
@@ -340,7 +376,7 @@ fn read_input() -> String {
 }
 
 fn print_separator() {
-    println!("---------------------------------------");
+    println!("----------------------------------------------------");
 }
 
 fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {

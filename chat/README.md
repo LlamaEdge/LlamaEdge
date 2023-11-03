@@ -59,6 +59,8 @@ The options for `llama-chat` wasm app are:
 ~/workspace/llama-utils/chat$ wasmedge llama-chat.wasm -h
 Usage: llama-chat.wasm [OPTIONS]
 
+Usage: llama-chat.wasm [OPTIONS]
+
 Options:
   -m, --model-alias <ALIAS>
           Model alias [default: default]
@@ -76,8 +78,12 @@ Options:
           System prompt message string [default: "[Default system message for the prompt template]"]
   -p, --prompt-template <TEMPLATE>
           Prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, openchat, belle-llama-2-chat, vicuna-chat, chatml]
-      --log-enable
-          Enable trace logs
+      --log-prompts
+          Print prompt strings to stdout
+      --log-stat
+          Print statistics to stdout
+      --log-all
+          Print all log information to stdout
       --stream-stdout
           Print the output to stdout in the streaming way
   -h, --help
