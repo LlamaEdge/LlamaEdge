@@ -42,7 +42,7 @@ Now let's build and run the API server.
 
   Options:
     -m, --model-alias <ALIAS>         Sets the model alias [default: default]
-    -p, --prompt-template <TEMPLATE>  Sets the prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-chat, belle-llama-2-chat, vicuna-chat, chatml]
+    -p, --prompt-template <TEMPLATE>  Sets the prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, openchat, belle-llama-2-chat, vicuna-chat, chatml]
     -s, --socket-addr <IP:PORT>       Sets the socket address [default: 0.0.0.0:8080]
     -c, --ctx-size <CTX_SIZE>         Sets the prompt context size [default: 2048]
     -h, --help                        Print help

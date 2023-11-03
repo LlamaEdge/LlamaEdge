@@ -43,6 +43,7 @@ async fn main() -> Result<(), ServerError> {
                     "codellama-instruct",
                     "mistral-instruct-v0.1",
                     "mistrallite",
+                    "openchat",
                     "belle-llama-2-chat",
                     "vicuna-chat",
                     "chatml",
