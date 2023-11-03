@@ -22,6 +22,7 @@ pub enum ChatPrompt {
     Llama2ChatPrompt,
     MistralInstructPrompt,
     MistralLitePrompt,
+    OpenChatPrompt,
     CodeLlamaInstructPrompt,
     BelleLlama2ChatPrompt,
     VicunaChatPrompt,
