@@ -59,8 +59,6 @@ The options for `llama-chat` wasm app are:
 ~/workspace/llama-utils/chat$ wasmedge llama-chat.wasm -h
 Usage: llama-chat.wasm [OPTIONS]
 
-Usage: llama-chat.wasm [OPTIONS]
-
 Options:
   -m, --model-alias <ALIAS>
           Model alias [default: default]
@@ -72,6 +70,8 @@ Options:
           Number of layers to run on the GPU [default: 0]
   -b, --batch-size <BATCH_SIZE>
           Batch size for prompt processing [default: 512]
+      --ngl <NGL>
+          Number of layers to offload to the GPU [default: 100]
   -r, --reverse-prompt <REVERSE_PROMPT>
           Halt generation at PROMPT, return control.
   -s, --system-prompt <SYSTEM_PROMPT>

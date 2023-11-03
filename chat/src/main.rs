@@ -59,6 +59,14 @@ fn main() -> Result<(), String> {
                 .default_value("512"),
         )
         .arg(
+            Arg::new("ngl")
+                .long("ngl")
+                .value_parser(clap::value_parser!(u32))
+                .value_name("NGL")
+                .help("Number of layers to offload to the GPU")
+                .default_value("100"),
+        )
+        .arg(
             Arg::new("reverse_prompt")
                 .short('r')
                 .long("reverse-prompt")
@@ -130,6 +138,13 @@ fn main() -> Result<(), String> {
         .unwrap()
         .to_string();
     println!("[INFO] Model alias: {alias}", alias = &model_name);
+
+    // ngl
+    let ngl = matches.get_one::<u32>("ngl").unwrap();
+    println!(
+        "[INFO] Number of layers to offload to the GPU: {n}",
+        n = ngl
+    );
 
     // prompt context size
     let ctx_size = matches.get_one::<u32>("ctx_size").unwrap();
@@ -424,4 +439,5 @@ struct Options {
     batch_size: u64,
     #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
     reverse_prompt: Option<String>,
+    ngl: u64,
 }
