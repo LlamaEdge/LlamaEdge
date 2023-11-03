@@ -75,7 +75,7 @@ Options:
   -s, --system-prompt <SYSTEM_PROMPT>
           System prompt message string [default: "[Default system message for the prompt template]"]
   -p, --prompt-template <TEMPLATE>
-          Prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, belle-llama-2-chat, vicuna-chat, chatml]
+          Prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, openchat, belle-llama-2-chat, vicuna-chat, chatml]
       --log-enable
           Enable trace logs
       --stream-stdout
@@ -124,6 +124,13 @@ Options:
   ```console
   # mistral-lite-7b
   curl -LO https://huggingface.co/second-state/MistralLite-7B-GGUF/resolve/main/mistrallite.Q5_K_M.gguf
+  ```
+
+- [x] OpenChat-3.5
+
+  ```console
+  # openchat-3.5
+  curl -LO https://huggingface.co/second-state/OpenChat-3.5-GGUF/resolve/main/openchat_3.5.Q5_K_M.gguf
   ```
 
 - [x] Wizard-Vicuna
