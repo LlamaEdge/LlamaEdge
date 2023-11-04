@@ -15,7 +15,7 @@ use std::{net::SocketAddr, str::FromStr};
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 const DEFAULT_SOCKET_ADDRESS: &str = "0.0.0.0:8080";
-const DEFAULT_CTX_SIZE: &str = "2048";
+const DEFAULT_CTX_SIZE: &str = "4096";
 
 static CTX_SIZE: OnceCell<usize> = OnceCell::new();
 
@@ -142,7 +142,7 @@ async fn main() -> Result<(), ServerError> {
 
     // prompt context size
     let ctx_size = matches.get_one::<u32>("ctx_size").unwrap();
-    if CTX_SIZE.set(*ctx_size as usize).is_err() {
+    if CTX_SIZE.set(*ctx_size as usize * 6).is_err() {
         return Err(ServerError::PromptContextSize);
     }
     println!("[INFO] Prompt context size: {size}", size = ctx_size);
