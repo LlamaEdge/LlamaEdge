@@ -2,7 +2,7 @@ use clap::{Arg, ArgAction, Command};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
-const DEFAULT_CTX_SIZE: &str = "2048";
+const DEFAULT_CTX_SIZE: &str = "4096";
 static CTX_SIZE: OnceCell<usize> = OnceCell::new();
 
 fn main() -> Result<(), String> {
@@ -90,7 +90,7 @@ fn main() -> Result<(), String> {
     // prompt context size
     let ctx_size = matches.get_one::<u32>("ctx_size").unwrap();
     CTX_SIZE
-        .set(*ctx_size as usize)
+        .set(*ctx_size as usize * 6)
         .expect("Fail to parse prompt context size");
     println!("[INFO] prompt context size: {size}", size = ctx_size);
 

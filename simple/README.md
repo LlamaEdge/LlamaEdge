@@ -47,7 +47,7 @@ LLAMA_LOG=1 LLAMA_N_CTX=4096 LLAMA_N_PREDICT=128 wasmedge --dir .:. \
     -m, --model-alias <ALIAS>
             Sets the model alias [default: default]
     -c, --ctx-size <CTX_SIZE>
-            Sets the prompt context size [default: 2048]
+            Sets the prompt context size [default: 4096]
     -n, --n-predict <N_PRDICT>
             Number of tokens to predict [default: 1024]
     -g, --n-gpu-layers <N_GPU_LAYERS>
