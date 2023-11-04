@@ -63,7 +63,7 @@ Options:
   -m, --model-alias <ALIAS>
           Model alias [default: default]
   -c, --ctx-size <CTX_SIZE>
-          Size of the prompt context [default: 512]
+          Size of the prompt context [default: 4096]
   -n, --n-predict <N_PRDICT>
           Number of tokens to predict [default: 1024]
   -g, --n-gpu-layers <N_GPU_LAYERS>

@@ -8,7 +8,7 @@ use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-const DEFAULT_CTX_SIZE: &str = "512";
+const DEFAULT_CTX_SIZE: &str = "4096";
 static CTX_SIZE: OnceCell<usize> = OnceCell::new();
 
 #[allow(unreachable_code)]
@@ -133,7 +133,7 @@ fn main() -> Result<(), String> {
 
     // prompt context size
     let ctx_size = matches.get_one::<u32>("ctx_size").unwrap();
-    if CTX_SIZE.set(*ctx_size as usize).is_err() {
+    if CTX_SIZE.set(*ctx_size as usize * 6).is_err() {
         return Err(String::from("Fail to parse prompt context size"));
     }
     println!("[INFO] Prompt context size: {size}", size = ctx_size);
