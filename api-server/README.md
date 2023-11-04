@@ -50,11 +50,9 @@ Now let's build and run the API server.
     -n, --n-predict <N_PRDICT>
             Number of tokens to predict [default: 1024]
     -g, --n-gpu-layers <N_GPU_LAYERS>
-            Number of layers to run on the GPU [default: 0]
+            Number of layers to run on the GPU [default: 100]
     -b, --batch-size <BATCH_SIZE>
             Batch size for prompt processing [default: 512]
-        --ngl <NGL>
-            Number of layers to offload to the GPU [default: 100]
     -r, --reverse-prompt <REVERSE_PROMPT>
             Halt generation at PROMPT, return control.
     -p, --prompt-template <TEMPLATE>
