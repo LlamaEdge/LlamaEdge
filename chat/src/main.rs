@@ -47,7 +47,7 @@ fn main() -> Result<(), String> {
                 .value_parser(clap::value_parser!(u32))
                 .value_name("N_GPU_LAYERS")
                 .help("Number of layers to run on the GPU")
-                .default_value("0"),
+                .default_value("100"),
         )
         .arg(
             Arg::new("batch_size")
@@ -57,14 +57,6 @@ fn main() -> Result<(), String> {
                 .value_name("BATCH_SIZE")
                 .help("Batch size for prompt processing")
                 .default_value("512"),
-        )
-        .arg(
-            Arg::new("ngl")
-                .long("ngl")
-                .value_parser(clap::value_parser!(u32))
-                .value_name("NGL")
-                .help("Number of layers to offload to the GPU")
-                .default_value("100"),
         )
         .arg(
             Arg::new("reverse_prompt")
@@ -138,13 +130,6 @@ fn main() -> Result<(), String> {
         .unwrap()
         .to_string();
     println!("[INFO] Model alias: {alias}", alias = &model_name);
-
-    // ngl
-    let ngl = matches.get_one::<u32>("ngl").unwrap();
-    println!(
-        "[INFO] Number of layers to offload to the GPU: {n}",
-        n = ngl
-    );
 
     // prompt context size
     let ctx_size = matches.get_one::<u32>("ctx_size").unwrap();
@@ -439,5 +424,4 @@ struct Options {
     batch_size: u64,
     #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
     reverse_prompt: Option<String>,
-    ngl: u64,
 }
