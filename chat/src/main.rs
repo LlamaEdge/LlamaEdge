@@ -348,7 +348,10 @@ fn main() -> Result<(), String> {
         };
         output_size = std::cmp::min(*CTX_SIZE.get().unwrap(), output_size);
         let output = String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
-        println!("\n[ASSISTANT]:\n{}", output.trim());
+
+        if !stream_stdout {
+            println!("\n[ASSISTANT]:\n{}", output.trim())
+        }
 
         // put the answer into the `messages` of chat_request
         chat_request
