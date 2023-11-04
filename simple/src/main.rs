@@ -48,7 +48,7 @@ fn main() -> Result<(), String> {
                 .value_parser(clap::value_parser!(u32))
                 .value_name("N_GPU_LAYERS")
                 .help("Number of layers to run on the GPU")
-                .default_value("0"),
+                .default_value("100"),
         )
         .arg(
             Arg::new("batch_size")

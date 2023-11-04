@@ -51,7 +51,7 @@ LLAMA_LOG=1 LLAMA_N_CTX=4096 LLAMA_N_PREDICT=128 wasmedge --dir .:. \
     -n, --n-predict <N_PRDICT>
             Number of tokens to predict [default: 1024]
     -g, --n-gpu-layers <N_GPU_LAYERS>
-            Number of layers to run on the GPU [default: 0]
+            Number of layers to run on the GPU [default: 100]
     -b, --batch-size <BATCH_SIZE>
             Batch size for prompt processing [default: 512]
     -r, --reverse-prompt <REVERSE_PROMPT>
