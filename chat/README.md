@@ -151,6 +151,13 @@ Options:
   curl -LO https://huggingface.co/second-state/CausalLM-14B-GGUF/resolve/main/causallm_14b.Q5_1.gguf
   ```
 
+- [x] TinyLlama-1.1B-Chat-v0.3
+
+  ```console
+  # TinyLlama-1.1B-Chat-v0.3
+  curl -LO https://huggingface.co/second-state/TinyLlama-1.1B-Chat-v0.3-GGUF/resolve/main/tinyllama-1.1b-chat-v0.3.Q5_K_M.gguf
+  ```
+
 - [ ] rpguild-chatml (Coming soon)
 
   ```console
