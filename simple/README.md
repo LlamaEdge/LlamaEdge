@@ -29,10 +29,8 @@ curl -LO https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolve/main/l
 Execute the WASM with the `wasmedge` using the named model feature to preload large model:
 
 ```bash
-LLAMA_LOG=1 LLAMA_N_CTX=4096 LLAMA_N_PREDICT=128 wasmedge --dir .:. \
-  --nn-preload default:GGML:CPU:llama-2-7b.Q5_K_M.gguf llama-simple.wasm default \
-  --prompt 'Robert Oppenheimer most important achievement is ' \
-  --ctx-size 4096
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf llama-simple.wasm \
+  --prompt 'Robert Oppenheimer most important achievement is ' --ctx-size 4096
 ```
 
 - The CLI options of `llama-simple` wasm app:
