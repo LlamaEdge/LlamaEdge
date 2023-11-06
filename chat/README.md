@@ -69,7 +69,7 @@ Options:
   -g, --n-gpu-layers <N_GPU_LAYERS>
           Number of layers to run on the GPU [default: 100]
   -b, --batch-size <BATCH_SIZE>
-          Batch size for prompt processing [default: 512]
+          Batch size for prompt processing [default: 4096]
   -r, --reverse-prompt <REVERSE_PROMPT>
           Halt generation at PROMPT, return control.
   -s, --system-prompt <SYSTEM_PROMPT>
