@@ -183,8 +183,8 @@ curl -LO https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolve/main/l
 
 # run the `llama-chat` wasm app with the model
 wasmedge --dir .:. \
-  --nn-preload default:GGML:CPU:llama-2-7b-chat.Q5_K_M.gguf \
-  llama-chat.wasm --model-alias default --prompt-template llama-2-chat
+  --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf \
+  llama-chat.wasm --prompt-template llama-2-chat
 ```
 
 After executing the command, you may need to wait a moment for the input prompt to appear.
@@ -223,7 +223,7 @@ These parameters can be set by adding the following environment variables before
 LLAMA_LOG=1 LLAMA_N_CTX=2048 LLAMA_N_PREDICT=512 \
 wasmedge --dir .:. \
   --nn-preload default:GGML:CPU:llama-2-7b-chat.Q5_K_M.gguf \
-  llama-chat.wasm --model-alias default --ctx-size 2048
+  llama-chat.wasm --ctx-size 2048
 ```
 
 ## Optional: Build the `llama-chat` wasm app yourself
