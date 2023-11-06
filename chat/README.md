@@ -182,8 +182,7 @@ Execute the WASM with the `wasmedge` using the named model feature to preload la
 curl -LO https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf
 
 # run the `llama-chat` wasm app with the model
-wasmedge --dir .:. \
-  --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf \
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf \
   llama-chat.wasm --prompt-template llama-2-chat
 ```
 
@@ -207,23 +206,6 @@ The total cost of the two apples is 10 dollars.
 What if I have 3 apples?
 [ASSISTANT]:
 If you have 3 apples, each costing 5 dollars, the total cost of the apples is 15 dollars.
-```
-
-## Parameters
-
-Currently, we support the following parameters:
-
-- `LLAMA_LOG`: Set it to a non-empty value to enable logging.
-- `LLAMA_N_CTX`: Set the context size, the same as the `--ctx-size` parameter in llama.cpp (default: 512).
-- `LLAMA_N_PREDICT`: Set the number of tokens to predict, the same as the `--n-predict` parameter in llama.cpp (default: 512).
-
-These parameters can be set by adding the following environment variables before the `wasmedge` command:
-
-```console
-LLAMA_LOG=1 LLAMA_N_CTX=2048 LLAMA_N_PREDICT=512 \
-wasmedge --dir .:. \
-  --nn-preload default:GGML:CPU:llama-2-7b-chat.Q5_K_M.gguf \
-  llama-chat.wasm --ctx-size 2048
 ```
 
 ## Optional: Build the `llama-chat` wasm app yourself
