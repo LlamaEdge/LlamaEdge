@@ -77,7 +77,7 @@ async fn main() -> Result<(), ServerError> {
                 .value_parser(clap::value_parser!(u32))
                 .value_name("BATCH_SIZE")
                 .help("Batch size for prompt processing")
-                .default_value("512"),
+                .default_value("4096"),
         )
         .arg(
             Arg::new("reverse_prompt")
