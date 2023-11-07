@@ -75,7 +75,7 @@ Options:
   -s, --system-prompt <SYSTEM_PROMPT>
           System prompt message string [default: "[Default system message for the prompt template]"]
   -p, --prompt-template <TEMPLATE>
-          Prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, openchat, belle-llama-2-chat, vicuna-chat, chatml]
+          Prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, openchat, belle-llama-2-chat, vicuna-chat, chatml, baichuan-2]
       --log-prompts
           Print prompt strings to stdout
       --log-stat
