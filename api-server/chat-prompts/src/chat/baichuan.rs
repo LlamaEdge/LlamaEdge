@@ -87,10 +87,6 @@ impl BuildChatPrompt for Baichuan2ChatPrompt {
 
         prompt.push_str("\n助手:");
 
-        println!("*** [prompt begin] ***");
-        println!("{}", &prompt);
-        println!("*** [prompt end] ***");
-
         Ok(prompt)
     }
 }
