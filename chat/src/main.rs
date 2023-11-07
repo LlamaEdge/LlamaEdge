@@ -224,7 +224,7 @@ fn main() -> Result<(), String> {
         options.log_enable = true;
     }
 
-    let template = create_prompt_template(template_ty);
+    let template = create_prompt_template(template_ty.clone());
     let mut chat_request = ChatCompletionRequest::default();
     // put system_prompt into the `messages` of chat_request
     if !system_prompt.is_empty() {
@@ -350,7 +350,12 @@ fn main() -> Result<(), String> {
         output_size = std::cmp::min(*CTX_SIZE.get().unwrap(), output_size);
         let output = String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
 
-        if !stream_stdout {
+        if template_ty == PromptTemplateType::Baichuan2 && !stream_stdout {
+            println!(
+                "\n[ASSISTANT]:\n{}",
+                output.split('\n').collect::<Vec<_>>()[0].trim()
+            );
+        } else if !stream_stdout {
             println!("\n[ASSISTANT]:\n{}", output.trim())
         }
 
