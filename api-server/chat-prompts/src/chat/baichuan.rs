@@ -65,7 +65,7 @@ impl BuildChatPrompt for Baichuan2ChatPrompt {
             let system_message = messages.remove(0);
             self.create_system_prompt(&system_message)
         } else {
-            String::from("以下内容为人类用户与与一位智能助手的对话。")
+            String::from("以下内容为人类用户与一位智能助手的对话。")
         };
 
         // append user/assistant messages
