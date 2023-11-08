@@ -158,16 +158,21 @@ Options:
   curl -LO https://huggingface.co/second-state/TinyLlama-1.1B-Chat-v0.3-GGUF/resolve/main/tinyllama-1.1b-chat-v0.3.Q5_K_M.gguf
   ```
 
-- [ ] rpguild-chatml (Coming soon)
+- [x] Baichuan2-13B-Chat
 
   ```console
-  # rpguild-chatml-13b
-  curl -LO https://huggingface.co/second-state/rpguild-chatml-13B-GGUF/resolve/main/rpguild-chatml-13b.Q5_K_M.gguf
+  # Baichuan2-13B-Chat
+  curl -LO https://huggingface.co/second-state/Baichuan2-13B-Chat-GGUF/resolve/main/Baichuan2-13B-Chat-ggml-model-q4_0.gguf
   ```
 
-- [ ] Baichuan2-Chat (Coming soon)
+- [x] Baichuan2-7B-Chat
 
-- [ ] Baichuan-Chat (Coming soon)
+  ```console
+  # Baichuan2-7B-Chat
+  curl -LO https://huggingface.co/second-state/Baichuan2-7B-Chat-GGUF/resolve/main/Baichuan2-7B-Chat-ggml-model-q4_0.gguf
+  ```
+
+- [ ] rpguild-chatml (Coming soon)
 
 - [ ] CodeShell-Chat (Coming soon)
 
