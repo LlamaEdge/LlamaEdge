@@ -159,12 +159,10 @@ Here is the response.
 
 - [x] [TinyLlama-1.1B-Chat-v0.3](https://huggingface.co/second-state/TinyLlama-1.1B-Chat-v0.3-GGUF)
 
+- [x] [Baichuan2-7B-Chat-GGUF](https://huggingface.co/second-state/Baichuan2-7B-Chat-GGUF)
+
+- [x] [Baichuan2-13B-Chat-GGUF](https://huggingface.co/second-state/Baichuan-13B-Chat-GGUF)
+
 - [ ] [rpguild-chatml-13B-GGUF](https://huggingface.co/second-state/rpguild-chatml-13B-GGUF)
 
-- [ ] [Baichuan2-7B-Chat-GGUF](https://huggingface.co/apepkuss79/Baichuan2-7B-Chat-GGUF)
-
-- [ ] [Baichuan2-7B-Chat-GGUF](https://huggingface.co/apepkuss79/Baichuan2-7B-Chat-GGUF)
-
-- [ ] [Baichuan-13B-Chat-GGUF](https://huggingface.co/apepkuss79/Baichuan-13B-Chat-GGUF)
-
-- [ ] [CodeShell-7B-Chat-GGUF](https://huggingface.co/apepkuss79/CodeShell-7B-Chat-GGUF)
+- [ ] [CodeShell-7B-Chat-GGUF](https://huggingface.co/second-state/CodeShell-7B-Chat-GGUF)
