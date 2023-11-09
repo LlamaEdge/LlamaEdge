@@ -8,9 +8,9 @@ use hyper::{
     service::{make_service_fn, service_fn},
     Body, Request, Response, Server,
 };
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
-use std::{net::SocketAddr, str::FromStr};
+use std::{net::SocketAddr, str::FromStr, sync::Mutex};
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -18,6 +18,8 @@ const DEFAULT_SOCKET_ADDRESS: &str = "0.0.0.0:8080";
 const DEFAULT_CTX_SIZE: &str = "4096";
 
 static CTX_SIZE: OnceCell<usize> = OnceCell::new();
+
+static GRAPH: OnceCell<Mutex<wasi_nn::Graph>> = OnceCell::new();
 
 #[derive(Clone, Debug)]
 pub struct AppState {
@@ -220,6 +222,28 @@ async fn main() -> Result<(), ServerError> {
     };
 
     println!("[INFO] Starting server ...");
+
+    // load the model into wasi-nn
+    let graph = match wasi_nn::GraphBuilder::new(
+        wasi_nn::GraphEncoding::Ggml,
+        wasi_nn::ExecutionTarget::AUTO,
+    )
+    .build_from_cache(&model_info.alias)
+    {
+        Ok(graph) => graph,
+        Err(e) => {
+            return Err(ServerError::InternalServerError(format!(
+                "Fail to load model into wasi-nn: {msg}",
+                msg = e.to_string()
+            )))
+        }
+    };
+
+    if GRAPH.set(Mutex::new(graph)).is_err() {
+        return Err(ServerError::InternalServerError(
+            "The GRAPH has already been initialized".to_owned(),
+        ));
+    }
 
     // the timestamp when the server is created
     let created = std::time::SystemTime::now()

@@ -18,7 +18,7 @@ use endpoints::{
     models::{ListModelsResponse, Model},
 };
 use hyper::{body::to_bytes, Body, Request, Response};
-use std::time::SystemTime;
+use std::{sync::Mutex, time::SystemTime};
 
 /// Lists models available
 pub(crate) async fn models_handler(
@@ -266,38 +266,42 @@ pub(crate) async fn chat_completions_handler(
 
 /// Runs inference on the model with the given name and returns the output.
 pub(crate) async fn infer(
-    model_name: impl AsRef<str>,
+    model_alias: impl AsRef<str>,
     prompt: impl AsRef<str>,
     metadata: String,
 ) -> std::result::Result<Vec<u8>, String> {
-    // load the model into wasi-nn
-    let graph = match wasi_nn::GraphBuilder::new(
-        wasi_nn::GraphEncoding::Ggml,
-        wasi_nn::ExecutionTarget::AUTO,
-    )
-    .build_from_cache(model_name.as_ref())
-    {
-        Ok(graph) => graph,
-        Err(e) => {
-            return Err(format!(
-                "Fail to load model into wasi-nn: {msg}",
-                msg = e.to_string()
-            ))
-        }
-    };
-    // println!("Loaded model into wasi-nn with ID: {:?}", graph);
+    // // load the model into wasi-nn
+    // let graph = match wasi_nn::GraphBuilder::new(
+    //     wasi_nn::GraphEncoding::Ggml,
+    //     wasi_nn::ExecutionTarget::AUTO,
+    // )
+    // .build_from_cache(model_alias.as_ref())
+    // {
+    //     Ok(graph) => graph,
+    //     Err(e) => {
+    //         return Err(format!(
+    //             "Fail to load model into wasi-nn: {msg}",
+    //             msg = e.to_string()
+    //         ))
+    //     }
+    // };
+    // // println!("Loaded model into wasi-nn with ID: {:?}", graph);
 
-    // initialize the execution context
-    let mut context = match graph.init_execution_context() {
-        Ok(context) => context,
-        Err(e) => {
-            return Err(format!(
-                "Fail to create wasi-nn execution context: {msg}",
-                msg = e.to_string()
-            ))
-        }
-    };
-    // println!("Created wasi-nn execution context with ID: {:?}", context);
+    // // initialize the execution context
+    // let mut context = match graph.init_execution_context() {
+    //     Ok(context) => context,
+    //     Err(e) => {
+    //         return Err(format!(
+    //             "Fail to create wasi-nn execution context: {msg}",
+    //             msg = e.to_string()
+    //         ))
+    //     }
+    // };
+    // // println!("Created wasi-nn execution context with ID: {:?}", context);
+
+    let graph = crate::GRAPH.get().unwrap().lock().unwrap();
+
+    let mut context = graph.init_execution_context().unwrap();
 
     // set metadata
     if context
