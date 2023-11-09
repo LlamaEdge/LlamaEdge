@@ -1,4 +1,4 @@
-use crate::{error, CTX_SIZE};
+use crate::{error, ModelInfo, CTX_SIZE};
 use chat_prompts::{
     chat::{
         belle::BelleLlama2ChatPrompt,
@@ -22,11 +22,16 @@ use std::time::SystemTime;
 
 /// Lists models available
 pub(crate) async fn models_handler(
+    model_info: ModelInfo,
     template_ty: PromptTemplateType,
     created: u64,
 ) -> Result<Response<Body>, hyper::Error> {
     let model = Model {
-        id: format!("{}", template_ty.to_string()),
+        id: format!(
+            "{name}:{template}",
+            name = model_info.name,
+            template = template_ty.to_string()
+        ),
         created: created.clone(),
         object: String::from("model"),
         owned_by: String::from("Not specified"),
@@ -58,7 +63,7 @@ pub(crate) async fn _embeddings_handler() -> Result<Response<Body>, hyper::Error
 
 pub(crate) async fn completions_handler(
     mut req: Request<Body>,
-    model_name: impl AsRef<str>,
+    model_info: ModelInfo,
     metadata: String,
 ) -> Result<Response<Body>, hyper::Error> {
     println!("[COMPLETION] New completion begins ...");
@@ -72,7 +77,7 @@ pub(crate) async fn completions_handler(
     // ! todo: a temp solution of computing the number of tokens in prompt
     let prompt_tokens = prompt.split_whitespace().count() as u32;
 
-    let buffer = match infer(model_name.as_ref(), prompt.trim(), metadata).await {
+    let buffer = match infer(&model_info.name, prompt.trim(), metadata).await {
         Ok(buffer) => buffer,
         Err(e) => {
             return error::internal_server_error(e.to_string());
@@ -128,7 +133,7 @@ pub(crate) async fn completions_handler(
 /// Processes a chat-completion request and returns a chat-completion response with the answer from the model.
 pub(crate) async fn chat_completions_handler(
     mut req: Request<Body>,
-    model_name: impl AsRef<str>,
+    model_info: ModelInfo,
     template_ty: PromptTemplateType,
     metadata: String,
 ) -> Result<Response<Body>, hyper::Error> {
@@ -202,7 +207,7 @@ pub(crate) async fn chat_completions_handler(
     let prompt_tokens = prompt.split_whitespace().count() as u32;
 
     // run inference
-    let buffer = match infer(model_name.as_ref(), prompt, metadata).await {
+    let buffer = match infer(&model_info.alias, prompt, metadata).await {
         Ok(buffer) => buffer,
         Err(e) => {
             return error::internal_server_error(e.to_string());

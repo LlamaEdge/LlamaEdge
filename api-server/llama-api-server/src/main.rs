@@ -36,11 +36,19 @@ async fn main() -> Result<(), ServerError> {
                 .default_value(DEFAULT_SOCKET_ADDRESS),
         )
         .arg(
-            Arg::new("model_alias")
+            Arg::new("model_name")
                 .short('m')
+                .long("model-name")
+                .value_name("MODEL-NAME")
+                .help("Sets the model name")
+                .default_value("default"),
+        )
+        .arg(
+            Arg::new("model_alias")
+                .short('a')
                 .long("model-alias")
-                .value_name("ALIAS")
-                .help("Sets the model alias")
+                .value_name("MODEL-ALIAS")
+                .help("Sets the alias name of the model in WasmEdge runtime")
                 .default_value("default"),
         )
         .arg(
@@ -130,16 +138,22 @@ async fn main() -> Result<(), ServerError> {
         socket_addr = socket_addr
     );
 
-    // create an `Options` instance
-    let mut options = Options::default();
+    // model name
+    let model_name = matches.get_one::<String>("model_name").unwrap().to_string();
+    println!("[INFO] Model name: {name}", name = &model_name);
 
     // model alias
-    let model_name = matches
+    let model_alias = matches
         .get_one::<String>("model_alias")
         .unwrap()
         .to_string();
-    println!("[INFO] Model alias: {alias}", alias = &model_name);
-    let ref_model_name = std::sync::Arc::new(model_name);
+    println!("[INFO] Model alias: {alias}", alias = &model_alias);
+
+    // create a `ModelInfo` instance
+    let model_info = ModelInfo::new(model_name, model_alias);
+
+    // create an `Options` instance
+    let mut options = Options::default();
 
     // prompt context size
     let ctx_size = matches.get_one::<u32>("ctx_size").unwrap();
@@ -215,7 +229,7 @@ async fn main() -> Result<(), ServerError> {
     let ref_created = std::sync::Arc::new(created);
 
     let new_service = make_service_fn(move |_| {
-        let model_name = ref_model_name.clone();
+        let model_info = model_info.clone();
         let prompt_template_ty = ref_template_ty.clone();
         let created = ref_created.clone();
         let metadata = metadata.clone();
@@ -223,7 +237,7 @@ async fn main() -> Result<(), ServerError> {
             Ok::<_, Error>(service_fn(move |req| {
                 handle_request(
                     req,
-                    model_name.to_string(),
+                    model_info.clone(),
                     *prompt_template_ty.clone(),
                     *created.clone(),
                     metadata.clone(),
@@ -243,7 +257,7 @@ async fn main() -> Result<(), ServerError> {
 
 async fn handle_request(
     req: Request<Body>,
-    model_name: impl AsRef<str>,
+    model_info: ModelInfo,
     template_ty: PromptTemplateType,
     created: u64,
     metadata: String,
@@ -252,10 +266,7 @@ async fn handle_request(
         "/echo" => {
             return Ok(Response::new(Body::from("echo test")));
         }
-        _ => {
-            backend::handle_llama_request(req, model_name.as_ref(), template_ty, created, metadata)
-                .await
-        }
+        _ => backend::handle_llama_request(req, model_info, template_ty, created, metadata).await,
     }
 }
 
@@ -275,4 +286,18 @@ struct Options {
     batch_size: u64,
     #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
     reverse_prompt: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct ModelInfo {
+    name: String,
+    alias: String,
+}
+impl ModelInfo {
+    fn new(name: impl AsRef<str>, alias: impl AsRef<str>) -> Self {
+        Self {
+            name: name.as_ref().to_string(),
+            alias: alias.as_ref().to_string(),
+        }
+    }
 }
