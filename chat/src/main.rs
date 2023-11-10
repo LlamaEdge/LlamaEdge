@@ -349,10 +349,10 @@ fn main() -> Result<(), String> {
         };
         output_size = std::cmp::min(*CTX_SIZE.get().unwrap(), output_size);
         let output = String::from_utf8_lossy(&output_buffer[..output_size]);
-        let output = post_process(&output, template_ty);
+        let message = post_process(&output, template_ty);
 
         if !stream_stdout {
-            print(&output);
+            print(&message);
         } else {
             println!("\n");
         }
@@ -362,7 +362,7 @@ fn main() -> Result<(), String> {
             .messages
             .push(ChatCompletionRequestMessage::new(
                 ChatCompletionRole::Assistant,
-                output,
+                message,
             ));
     }
 
