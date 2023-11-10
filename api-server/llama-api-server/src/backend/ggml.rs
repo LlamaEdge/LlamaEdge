@@ -137,8 +137,6 @@ pub(crate) async fn chat_completions_handler(
     metadata: String,
 ) -> Result<Response<Body>, hyper::Error> {
     if req.method().eq(&hyper::http::Method::OPTIONS) {
-        println!("[CHAT] Empty in, empty out!");
-
         let result = Response::builder()
             .header("Access-Control-Allow-Origin", "*")
             .header("Access-Control-Allow-Methods", "*")
@@ -184,15 +182,9 @@ pub(crate) async fn chat_completions_handler(
     }
     let template = create_prompt_template(template_ty);
 
-    println!("[CHAT] New chat begins ...");
-
     // parse request
     let body_bytes = to_bytes(req.body_mut()).await?;
     let mut chat_request: ChatCompletionRequest = serde_json::from_slice(&body_bytes).unwrap();
-
-    // // set `LLAMA_N_PREDICT` env var
-    // let max_tokens = chat_request.max_tokens.unwrap_or(128);
-    // std::env::set_var("LLAMA_N_PREDICT", format!("{}", max_tokens));
 
     // build prompt
     let prompt = match template.build(chat_request.messages.as_mut()) {
@@ -219,15 +211,14 @@ pub(crate) async fn chat_completions_handler(
     };
 
     // convert inference result to string
-    let model_answer = String::from_utf8(buffer.clone()).unwrap();
-    let assistant_message = model_answer.trim();
+    let output = String::from_utf8(buffer.clone()).unwrap();
+
+    let message = post_process(&output, template_ty);
 
     // ! todo: a temp solution of computing the number of tokens in assistant_message
-    let completion_tokens = assistant_message.split_whitespace().count() as u32;
+    let completion_tokens = message.split_whitespace().count() as u32;
 
-    println!("[CHAT] Bot answer: {}", assistant_message);
-
-    println!("[CHAT] New chat ends.");
+    print(&message);
 
     // create ChatCompletionResponse
     let chat_completion_obejct = ChatCompletionResponse {
@@ -242,7 +233,7 @@ pub(crate) async fn chat_completions_handler(
             index: 0,
             message: ChatCompletionResponseMessage {
                 role: ChatCompletionRole::Assistant,
-                content: String::from(assistant_message),
+                content: message,
                 function_call: None,
             },
             finish_reason: FinishReason::stop,
@@ -317,4 +308,24 @@ pub(crate) async fn infer(
     };
     output_size = std::cmp::min(*CTX_SIZE.get().unwrap(), output_size);
     Ok(output_buffer[..output_size].to_vec())
+}
+
+fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> String {
+    if template_ty == PromptTemplateType::Baichuan2 {
+        output.as_ref().split('\n').collect::<Vec<_>>()[0]
+            .trim()
+            .to_owned()
+    } else if template_ty == PromptTemplateType::OpenChat {
+        output
+            .as_ref()
+            .trim_end_matches("<|end_of_turn|>")
+            .trim()
+            .to_owned()
+    } else {
+        output.as_ref().trim().to_owned()
+    }
+}
+
+fn print(message: impl AsRef<str>) {
+    println!("\n[ASSISTANT]:\n{}", message.as_ref().trim())
 }
