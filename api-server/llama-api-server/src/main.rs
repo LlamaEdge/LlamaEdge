@@ -122,6 +122,27 @@ async fn main() -> Result<(), ServerError> {
                 .help("Print the output to stdout in the streaming way")
                 .action(ArgAction::SetTrue),
         )
+        .arg(
+            Arg::new("log_prompts")
+                .long("log-prompts")
+                .value_name("LOG_PROMPTS")
+                .help("Print prompt strings to stdout")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("log_stat")
+                .long("log-stat")
+                .value_name("LOG_STAT")
+                .help("Print statistics to stdout")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("log_all")
+                .long("log-all")
+                .value_name("LOG_all")
+                .help("Print all log information to stdout")
+                .action(ArgAction::SetTrue),
+        )
         .get_matches();
 
     // socket address
@@ -210,6 +231,24 @@ async fn main() -> Result<(), ServerError> {
     println!("[INFO] Stream stdout: {enable}", enable = stream_stdout);
     options.stream_stdout = stream_stdout;
 
+    // log prompts
+    let log_prompts = matches.get_flag("log_prompts");
+    println!("[INFO] Log prompts: {enable}", enable = log_prompts);
+    let ref_log_prompts = std::sync::Arc::new(log_prompts);
+
+    // log statistics
+    let log_stat = matches.get_flag("log_stat");
+    println!("[INFO] Log statistics: {enable}", enable = log_stat);
+
+    // log all
+    let log_all = matches.get_flag("log_all");
+    println!("[INFO] Log all information: {enable}", enable = log_all);
+
+    // set `log_enable`
+    if log_stat || log_all {
+        options.log_enable = true;
+    }
+
     // serialize options
     let metadata = match serde_json::to_string(&options) {
         Ok(metadata) => metadata,
@@ -256,6 +295,7 @@ async fn main() -> Result<(), ServerError> {
         let model_info = model_info.clone();
         let prompt_template_ty = ref_template_ty.clone();
         let created = ref_created.clone();
+        let log_prompts = ref_log_prompts.clone();
         let metadata = metadata.clone();
         async {
             Ok::<_, Error>(service_fn(move |req| {
@@ -265,6 +305,7 @@ async fn main() -> Result<(), ServerError> {
                     *prompt_template_ty.clone(),
                     *created.clone(),
                     metadata.clone(),
+                    *log_prompts.clone(),
                 )
             }))
         }
@@ -285,12 +326,23 @@ async fn handle_request(
     template_ty: PromptTemplateType,
     created: u64,
     metadata: String,
+    log_prompts: bool,
 ) -> Result<Response<Body>, hyper::Error> {
     match req.uri().path() {
         "/echo" => {
             return Ok(Response::new(Body::from("echo test")));
         }
-        _ => backend::handle_llama_request(req, model_info, template_ty, created, metadata).await,
+        _ => {
+            backend::handle_llama_request(
+                req,
+                model_info,
+                template_ty,
+                created,
+                metadata,
+                log_prompts,
+            )
+            .await
+        }
     }
 }
 

@@ -135,6 +135,7 @@ pub(crate) async fn chat_completions_handler(
     mut req: Request<Body>,
     template_ty: PromptTemplateType,
     metadata: String,
+    log_prompts: bool,
 ) -> Result<Response<Body>, hyper::Error> {
     if req.method().eq(&hyper::http::Method::OPTIONS) {
         let result = Response::builder()
@@ -194,10 +195,11 @@ pub(crate) async fn chat_completions_handler(
         }
     };
 
-    // // ! debug
-    // println!("*** [prompt begin] ***");
-    // println!("{}", prompt);
-    // println!("*** [prompt end] ***");
+    if log_prompts {
+        println!("\n---------------- [LOG: PROMPT] ---------------------\n");
+        println!("{}", &prompt);
+        println!("\n----------------------------------------------------\n");
+    }
 
     // ! todo: a temp solution of computing the number of tokens in prompt
     let prompt_tokens = prompt.split_whitespace().count() as u32;
