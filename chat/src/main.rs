@@ -16,7 +16,7 @@ fn main() -> Result<(), String> {
     let matches = Command::new("Llama API Server")
         .arg(
             Arg::new("model_alias")
-                .short('m')
+                .short('a')
                 .long("model-alias")
                 .value_name("ALIAS")
                 .help("Model alias")
@@ -348,15 +348,13 @@ fn main() -> Result<(), String> {
             }
         };
         output_size = std::cmp::min(*CTX_SIZE.get().unwrap(), output_size);
-        let output = String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
+        let output = String::from_utf8_lossy(&output_buffer[..output_size]);
+        let output = post_process(&output, template_ty);
 
-        if template_ty == PromptTemplateType::Baichuan2 && !stream_stdout {
-            println!(
-                "\n[ASSISTANT]:\n{}",
-                output.split('\n').collect::<Vec<_>>()[0].trim()
-            );
-        } else if !stream_stdout {
-            println!("\n[ASSISTANT]:\n{}", output.trim())
+        if !stream_stdout {
+            print(&output);
+        } else {
+            println!("\n");
         }
 
         // put the answer into the `messages` of chat_request
@@ -400,7 +398,7 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
             ChatPrompt::MistralLitePrompt(chat_prompts::chat::mistral::MistralLitePrompt::default())
         }
         PromptTemplateType::OpenChat => {
-            ChatPrompt::OpenChatPrompt(chat_prompts::chat::mistral::OpenChatPrompt::default())
+            ChatPrompt::OpenChatPrompt(chat_prompts::chat::openchat::OpenChatPrompt::default())
         }
         PromptTemplateType::CodeLlama => ChatPrompt::CodeLlamaInstructPrompt(
             chat_prompts::chat::llama::CodeLlamaInstructPrompt::default(),
@@ -418,6 +416,26 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
             chat_prompts::chat::baichuan::Baichuan2ChatPrompt::default(),
         ),
     }
+}
+
+fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> String {
+    if template_ty == PromptTemplateType::Baichuan2 {
+        output.as_ref().split('\n').collect::<Vec<_>>()[0]
+            .trim()
+            .to_owned()
+    } else if template_ty == PromptTemplateType::OpenChat {
+        output
+            .as_ref()
+            .trim_end_matches("<|end_of_turn|>")
+            .trim()
+            .to_owned()
+    } else {
+        output.as_ref().trim().to_owned()
+    }
+}
+
+fn print(message: impl AsRef<str>) {
+    println!("\n[ASSISTANT]:\n{}", message.as_ref().trim())
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
