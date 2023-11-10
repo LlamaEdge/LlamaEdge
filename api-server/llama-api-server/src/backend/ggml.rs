@@ -3,7 +3,8 @@ use chat_prompts::{
     chat::{
         belle::BelleLlama2ChatPrompt,
         llama::{CodeLlamaInstructPrompt, Llama2ChatPrompt},
-        mistral::{MistralInstructPrompt, MistralLitePrompt, OpenChatPrompt},
+        mistral::{MistralInstructPrompt, MistralLitePrompt},
+        openchat::OpenChatPrompt,
         BuildChatPrompt, ChatPrompt,
     },
     PromptTemplateType,
@@ -18,7 +19,7 @@ use endpoints::{
     models::{ListModelsResponse, Model},
 };
 use hyper::{body::to_bytes, Body, Request, Response};
-use std::{sync::Mutex, time::SystemTime};
+use std::time::SystemTime;
 
 /// Lists models available
 pub(crate) async fn models_handler(
@@ -63,7 +64,6 @@ pub(crate) async fn _embeddings_handler() -> Result<Response<Body>, hyper::Error
 
 pub(crate) async fn completions_handler(
     mut req: Request<Body>,
-    model_info: ModelInfo,
     metadata: String,
 ) -> Result<Response<Body>, hyper::Error> {
     println!("[COMPLETION] New completion begins ...");
@@ -77,7 +77,7 @@ pub(crate) async fn completions_handler(
     // ! todo: a temp solution of computing the number of tokens in prompt
     let prompt_tokens = prompt.split_whitespace().count() as u32;
 
-    let buffer = match infer(&model_info.name, prompt.trim(), metadata).await {
+    let buffer = match infer(prompt.trim(), metadata).await {
         Ok(buffer) => buffer,
         Err(e) => {
             return error::internal_server_error(e.to_string());
@@ -133,7 +133,6 @@ pub(crate) async fn completions_handler(
 /// Processes a chat-completion request and returns a chat-completion response with the answer from the model.
 pub(crate) async fn chat_completions_handler(
     mut req: Request<Body>,
-    model_info: ModelInfo,
     template_ty: PromptTemplateType,
     metadata: String,
 ) -> Result<Response<Body>, hyper::Error> {
@@ -203,11 +202,16 @@ pub(crate) async fn chat_completions_handler(
         }
     };
 
+    // // ! debug
+    // println!("*** [prompt begin] ***");
+    // println!("{}", prompt);
+    // println!("*** [prompt end] ***");
+
     // ! todo: a temp solution of computing the number of tokens in prompt
     let prompt_tokens = prompt.split_whitespace().count() as u32;
 
     // run inference
-    let buffer = match infer(&model_info.alias, prompt, metadata).await {
+    let buffer = match infer(prompt, metadata).await {
         Ok(buffer) => buffer,
         Err(e) => {
             return error::internal_server_error(e.to_string());
@@ -266,39 +270,9 @@ pub(crate) async fn chat_completions_handler(
 
 /// Runs inference on the model with the given name and returns the output.
 pub(crate) async fn infer(
-    model_alias: impl AsRef<str>,
     prompt: impl AsRef<str>,
     metadata: String,
 ) -> std::result::Result<Vec<u8>, String> {
-    // // load the model into wasi-nn
-    // let graph = match wasi_nn::GraphBuilder::new(
-    //     wasi_nn::GraphEncoding::Ggml,
-    //     wasi_nn::ExecutionTarget::AUTO,
-    // )
-    // .build_from_cache(model_alias.as_ref())
-    // {
-    //     Ok(graph) => graph,
-    //     Err(e) => {
-    //         return Err(format!(
-    //             "Fail to load model into wasi-nn: {msg}",
-    //             msg = e.to_string()
-    //         ))
-    //     }
-    // };
-    // // println!("Loaded model into wasi-nn with ID: {:?}", graph);
-
-    // // initialize the execution context
-    // let mut context = match graph.init_execution_context() {
-    //     Ok(context) => context,
-    //     Err(e) => {
-    //         return Err(format!(
-    //             "Fail to create wasi-nn execution context: {msg}",
-    //             msg = e.to_string()
-    //         ))
-    //     }
-    // };
-    // // println!("Created wasi-nn execution context with ID: {:?}", context);
-
     let graph = crate::GRAPH.get().unwrap().lock().unwrap();
 
     let mut context = graph.init_execution_context().unwrap();
@@ -316,10 +290,6 @@ pub(crate) async fn infer(
         return Err(String::from("Fail to set metadata"));
     };
 
-    println!("*** [prompt begin] ***");
-    println!("{}", prompt.as_ref());
-    println!("*** [prompt end] ***");
-
     let tensor_data = prompt.as_ref().as_bytes().to_vec();
     // println!("Read input tensor, size in bytes: {}", tensor_data.len());
     if context
@@ -333,7 +303,6 @@ pub(crate) async fn infer(
     if context.compute().is_err() {
         return Err(String::from("Fail to execute model inference"));
     }
-    // println!("Executed model inference");
 
     // Retrieve the output.
     let mut output_buffer = vec![0u8; *CTX_SIZE.get().unwrap()];
