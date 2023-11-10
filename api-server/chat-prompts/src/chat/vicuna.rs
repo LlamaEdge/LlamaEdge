@@ -8,7 +8,11 @@ pub struct VicunaChatPrompt;
 impl VicunaChatPrompt {
     /// Create a system prompt from a chat completion request message.
     fn create_system_prompt(&self, system_message: &ChatCompletionRequestMessage) -> String {
-        format!("{content}", content = system_message.content.as_str())
+        let content = system_message.content.as_str();
+        match content.is_empty() {
+            true => String::from("A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions."),
+            false => format!("{content}"),
+        }
     }
 
     /// Create a user prompt from a chat completion request message.

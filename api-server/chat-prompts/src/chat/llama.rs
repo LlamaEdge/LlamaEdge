@@ -8,10 +8,13 @@ pub struct Llama2ChatPrompt;
 impl Llama2ChatPrompt {
     /// Create a system prompt from a chat completion request message.
     fn create_system_prompt(&self, system_message: &ChatCompletionRequestMessage) -> String {
-        format!(
-            "<<SYS>>\n{content} <</SYS>>",
-            content = system_message.content.as_str()
-        )
+        let content = system_message.content.as_str();
+        match content.is_empty() {
+            true => String::from("<<SYS>>\nYou are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe. <</SYS>>"),
+            false =>format!(
+                "<<SYS>>\n{content} <</SYS>>"
+            )
+        }
     }
 
     /// Create a user prompt from a chat completion request message.
@@ -107,10 +110,13 @@ pub struct CodeLlamaInstructPrompt;
 impl CodeLlamaInstructPrompt {
     /// Create a system prompt from a chat completion request message.
     fn create_system_prompt(&self, system_message: &ChatCompletionRequestMessage) -> String {
-        format!(
-            "<<SYS>>\n{content} <</SYS>>",
-            content = system_message.content.as_str()
-        )
+        let content = system_message.content.as_str();
+        match content.is_empty() {
+            true => String::from("<<SYS>>\nYou are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe. <</SYS>>"),
+            false => format!(
+                "<<SYS>>\n{content} <</SYS>>"
+            )
+        }
     }
 
     /// Create a user prompt from a chat completion request message.

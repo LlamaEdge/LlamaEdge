@@ -2,10 +2,10 @@ use super::BuildChatPrompt;
 use crate::error::Result;
 use endpoints::chat::{ChatCompletionRequestMessage, ChatCompletionRole};
 
-/// Generate prompts for the `BELLE-Llama2-13B-chat` model.
+/// Generate prompts for the amazon `MistralLite-7B` model.
 #[derive(Debug, Default, Clone)]
-pub struct BelleLlama2ChatPrompt;
-impl BelleLlama2ChatPrompt {
+pub struct OpenChatPrompt;
+impl OpenChatPrompt {
     /// Create a user prompt from a chat completion request message.
     fn append_user_message(
         &self,
@@ -14,11 +14,11 @@ impl BelleLlama2ChatPrompt {
     ) -> String {
         match chat_history.as_ref().is_empty() {
             true => format!(
-                "Human: \n{user_message}",
+                "GPT4 User: {user_message}<|end_of_turn|>",
                 user_message = content.as_ref().trim(),
             ),
             false => format!(
-                "{chat_history}\nHuman: \n{user_message}",
+                "{chat_history}GPT4 User: {user_message}<|end_of_turn|>",
                 chat_history = chat_history.as_ref().trim(),
                 user_message = content.as_ref().trim(),
             ),
@@ -32,16 +32,17 @@ impl BelleLlama2ChatPrompt {
         content: impl AsRef<str>,
     ) -> String {
         format!(
-            "{prompt}\n\nAssistant:{assistant_message}",
-            prompt = chat_history.as_ref().trim(),
+            "{chat_history}GPT4 Assistant: {assistant_message}<|end_of_turn|>",
+            chat_history = chat_history.as_ref().trim(),
             assistant_message = content.as_ref().trim(),
         )
     }
 }
-impl BuildChatPrompt for BelleLlama2ChatPrompt {
+impl BuildChatPrompt for OpenChatPrompt {
     fn build(&self, messages: &mut Vec<ChatCompletionRequestMessage>) -> Result<String> {
+        // append user/assistant messages
         if messages.is_empty() {
-            return Ok(String::new());
+            return Err(crate::error::PromptError::NoMessages);
         }
 
         let mut prompt = String::new();
@@ -60,7 +61,7 @@ impl BuildChatPrompt for BelleLlama2ChatPrompt {
             }
         }
 
-        prompt.push_str("\n\nAssistant:\n");
+        prompt.push_str("GPT4 Assistant:");
 
         Ok(prompt)
     }

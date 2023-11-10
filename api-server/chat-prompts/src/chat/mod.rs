@@ -3,6 +3,7 @@ pub mod belle;
 pub mod chatml;
 pub mod llama;
 pub mod mistral;
+pub mod openchat;
 pub mod vicuna;
 
 use crate::error::Result;
@@ -12,6 +13,7 @@ use chatml::*;
 use endpoints::chat::ChatCompletionRequestMessage;
 use llama::*;
 use mistral::*;
+use openchat::*;
 use vicuna::*;
 
 #[enum_dispatch::enum_dispatch]
