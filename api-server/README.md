@@ -43,8 +43,10 @@ Now let's build and run the API server.
   Options:
     -s, --socket-addr <IP:PORT>
             Sets the socket address [default: 0.0.0.0:8080]
-    -m, --model-alias <ALIAS>
-            Sets the model alias [default: default]
+    -m, --model-name <MODEL-NAME>
+            Sets the model name [default: default]
+    -a, --model-alias <MODEL-ALIAS>
+            Sets the alias name of the model in WasmEdge runtime [default: default]
     -c, --ctx-size <CTX_SIZE>
             Sets the prompt context size [default: 4096]
     -n, --n-predict <N_PRDICT>
