@@ -60,7 +60,7 @@ The options for `llama-chat` wasm app are:
 Usage: llama-chat.wasm [OPTIONS]
 
 Options:
-  -m, --model-alias <ALIAS>
+  -a, --model-alias <ALIAS>
           Model alias [default: default]
   -c, --ctx-size <CTX_SIZE>
           Size of the prompt context [default: 4096]
@@ -90,7 +90,7 @@ Options:
 
 ## Get Model
 
-<details> <summary> Choose the model you want to download: </summary>
+<details> <summary> Choose the model you want to download and run: </summary>
 
 - [x] Llama2-Chat
 
@@ -135,6 +135,11 @@ Options:
   ```console
   # openchat-3.5
   curl -LO https://huggingface.co/second-state/OpenChat-3.5-GGUF/resolve/main/openchat_3.5.Q5_K_M.gguf
+  ```
+
+  ```console
+  # command to run the model
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:openchat_3.5.Q5_K_M.gguf llama-chat.wasm -p openchat --log-prompts -r '<|end_of_turn|>'
   ```
 
 - [x] Wizard-Vicuna
