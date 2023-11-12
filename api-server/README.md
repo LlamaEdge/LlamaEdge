@@ -171,6 +171,8 @@ Here is the response.
 
 - [x] [Baichuan2-13B-Chat-GGUF](https://huggingface.co/second-state/Baichuan-13B-Chat-GGUF)
 
+- [x] [OpenHermes-2.5-Mistral-7B-GGUF](https://huggingface.co/second-state/OpenHermes-2.5-Mistral-7B-GGUF)
+
 - [ ] [rpguild-chatml-13B-GGUF](https://huggingface.co/second-state/rpguild-chatml-13B-GGUF)
 
 - [ ] [CodeShell-7B-Chat-GGUF](https://huggingface.co/second-state/CodeShell-7B-Chat-GGUF)
