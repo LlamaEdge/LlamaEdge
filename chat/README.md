@@ -177,6 +177,18 @@ Options:
   curl -LO https://huggingface.co/second-state/Baichuan2-7B-Chat-GGUF/resolve/main/Baichuan2-7B-Chat-ggml-model-q4_0.gguf
   ```
 
+- [x] OpenHermes-2.5-Mistral-7B
+
+  ```console
+  # OpenHermes-2.5-Mistral-7B
+  curl -LO https://huggingface.co/second-state/OpenHermes-2.5-Mistral-7B-GGUF/resolve/main/openhermes-2.5-mistral-7b.Q5_K_M.gguf
+  ```
+
+  ```console
+  # command to run the model
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:openhermes-2.5-mistral-7b.Q5_K_M.gguf llama-chat.wasm -p chatml -r '<|im_end|>'
+  ```
+
 - [ ] rpguild-chatml (Coming soon)
 
 - [ ] CodeShell-Chat (Coming soon)
