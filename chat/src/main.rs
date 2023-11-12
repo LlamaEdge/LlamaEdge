@@ -429,6 +429,16 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
             .trim_end_matches("<|end_of_turn|>")
             .trim()
             .to_owned()
+    } else if template_ty == PromptTemplateType::ChatML {
+        if output.as_ref().contains("<|im_end|>") {
+            output
+                .as_ref()
+                .trim_end_matches("<|im_end|>")
+                .trim()
+                .to_owned()
+        } else {
+            output.as_ref().trim().to_owned()
+        }
     } else {
         output.as_ref().trim().to_owned()
     }
