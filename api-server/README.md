@@ -173,6 +173,8 @@ Here is the response.
 
 - [x] [OpenHermes-2.5-Mistral-7B-GGUF](https://huggingface.co/second-state/OpenHermes-2.5-Mistral-7B-GGUF)
 
+- [x] [Dolphin-2.2-Yi-34B-GGUF](https://huggingface.co/second-state/Dolphin-2.2-Yi-34B-GGUF)
+
 - [ ] [rpguild-chatml-13B-GGUF](https://huggingface.co/second-state/rpguild-chatml-13B-GGUF)
 
 - [ ] [CodeShell-7B-Chat-GGUF](https://huggingface.co/second-state/CodeShell-7B-Chat-GGUF)
