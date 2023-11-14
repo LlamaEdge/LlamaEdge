@@ -325,11 +325,7 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
             .to_owned()
     } else if template_ty == PromptTemplateType::ChatML {
         if output.as_ref().contains("<|im_end|>") {
-            output
-                .as_ref()
-                .trim_end_matches("<|im_end|>")
-                .trim()
-                .to_owned()
+            output.as_ref().replace("<|im_end|>", "").trim().to_owned()
         } else {
             output.as_ref().trim().to_owned()
         }
