@@ -116,13 +116,6 @@ async fn main() -> Result<(), ServerError> {
                 .default_value("llama-2-chat"),
         )
         .arg(
-            Arg::new("stream_stdout")
-                .long("stream-stdout")
-                .value_name("STREAM_STDOUT")
-                .help("Print the output to stdout in the streaming way")
-                .action(ArgAction::SetTrue),
-        )
-        .arg(
             Arg::new("log_prompts")
                 .long("log-prompts")
                 .value_name("LOG_PROMPTS")
@@ -225,11 +218,6 @@ async fn main() -> Result<(), ServerError> {
     };
     println!("[INFO] Prompt template: {ty:?}", ty = &template_ty);
     let ref_template_ty = std::sync::Arc::new(template_ty);
-
-    // stream stdout
-    let stream_stdout = matches.get_flag("stream_stdout");
-    println!("[INFO] Stream stdout: {enable}", enable = stream_stdout);
-    options.stream_stdout = stream_stdout;
 
     // log prompts
     let log_prompts = matches.get_flag("log_prompts");

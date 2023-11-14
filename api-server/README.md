@@ -59,8 +59,6 @@ Now let's build and run the API server.
             Halt generation at PROMPT, return control.
     -p, --prompt-template <TEMPLATE>
             Sets the prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, openchat, belle-llama-2-chat, vicuna-chat, chatml, baichuan-2]
-        --stream-stdout
-            Print the output to stdout in the streaming way
         --log-prompts
             Print prompt strings to stdout
         --log-stat
