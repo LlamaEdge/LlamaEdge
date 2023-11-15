@@ -20,7 +20,7 @@ The Rust+Wasm stack provides a strong alternative to Python in AI inference.
 
 For more information, please check out [Fast and Portable Llama2 Inference on the Heterogeneous Edge](https://www.secondstate.io/articles/fast-llm-inference/).
 
-## Supported Models 
+## Supported Models
 
 The llama-utils project, in theory, supports all Language Learning Models (LLMs) based on the llama2 framework in GGUF format. Below is a list of models that have been successfully verified to work on both Mac and Jetson Orin platforms. We are committed to continuously expanding this list by verifying additional models. If you have successfully operated other LLMs, don't hesitate to contribute by creating a Pull Request (PR) to help extend this list.
 
@@ -60,7 +60,7 @@ The llama-utils project, in theory, supports all Language Learning Models (LLMs)
 
 ### For macOS (apple silicon)
 
-Install WasmEdge 0.13.4+WASI-NN ggml plugin(Metal enabled on apple silicon) via installer
+Install WasmEdge 0.13.5+WASI-NN ggml plugin(Metal enabled on apple silicon) via installer
 
 ```bash
 curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml
@@ -71,21 +71,45 @@ source $HOME/.zshenv
 
 ### For Ubuntu (>= 20.04)
 
-Because we enabled OpenBLAS on Ubuntu, you must install `libopenblas-dev` by `apt update && apt install -y libopenblas-dev`.
+#### CUDA enabled
 
-Install WasmEdge 0.13.4+WASI-NN ggml plugin(OpenBLAS enabled) via installer
+The installer from WasmEdge 0.13.5 will detect cuda automatically.
+
+If CUDA is detected, the installer will always attempt to install a CUDA-enabled version of the plugin.
+
+Install WasmEdge 0.13.5+WASI-NN ggml plugin via installer
+
+```bash
+curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml
+# After installing the wasmedge, you have to activate the environment.
+# Assuming you use bash (the default shell on Ubuntu), you will need to run the following command
+source $HOME/.bashrc
+```
+
+This version is verified on the following platforms:
+1. Nvidia Jetson AGX Orin 64GB developer kit
+2. Intel i7-10700 + Nvidia GTX 1080 8G GPU
+2. AWS EC2 `g5.xlarge` + Nvidia A10G 24G GPU + Amazon deep learning base Ubuntu 20.04
+
+#### CPU only
+
+If the CPU is the only available hardware on your machine, the installer will install the OpenBLAS version of the plugin instead.
+
+You may need to install `libopenblas-dev` by `apt update && apt install -y libopenblas-dev`.
+
+Install WasmEdge 0.13.5+WASI-NN ggml plugin via installer
 
 ```bash
 apt update && apt install -y libopenblas-dev # You may need sudo if the user is not root.
 curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml
-# After install the wasmedge, you have to activate the environment.
+# After installing the wasmedge, you have to activate the environment.
 # Assuming you use bash (the default shell on Ubuntu), you will need to run the following command
 source $HOME/.bashrc
 ```
 
 ### For General Linux
 
-Install WasmEdge 0.13.4+WASI-NN ggml plugin via installer
+Install WasmEdge 0.13.5+WASI-NN ggml plugin via installer
 
 ```bash
 curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml
@@ -121,12 +145,6 @@ source $HOME/.bashrc
   ```
 
   This suggests that your plugin installation was not successful. To resolve this issue, please attempt to install your desired plugin again.
-
-## Command line options
-
-- `LLAMA_LOG`: Set it to a non-empty value to enable logging.
-- `LLAMA_N_CTX`: Set the context size, the same as the `--ctx-size` parameter in llama.cpp (default: 512).
-- `LLAMA_N_PREDICT`: Set the number of tokens to predict, the same as the `--n-predict` parameter in llama.cpp (default: 512).
 
 ## Credits
 
