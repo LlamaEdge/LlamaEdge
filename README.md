@@ -1,10 +1,24 @@
 # llama-utils
 
+This is a project that shows you how to run LLM inference and build OpenAI-compatible API services for the Llama2 series of LLMswith Rust and WasmEdge.
+
 ## How to use?
 
-* The folder `api-server` includes the source code and instructions yto build OpenAI-compatible APIs for your llama2 model or the LLama2 model itself.
+* The folder `api-server` includes the source code and instructions to create OpenAI-compatible API service for your llama2 model or the LLama2 model itself.
 * The folder `chat` includes the source code and instructions to run llama2 models that can have continuous conversations.
 * The folder `simple` includes the source code and instructions to run llama2 models that can answer one question.
+
+## Why use Rust + Wasm
+
+The Rust+Wasm stack provides a strong alternative to Python in AI inference.
+
+* Lightweight. The total runtime size is 30MB as opposed to 4GB for Python and 350MB for Ollama.
+* Fast. Full native speed on GPUs.
+* Portable. Single cross-platform binary on different CPUs, GPUs, and OSes.
+* Secure. Sandboxed and isolated execution on untrusted devices.
+* Container-ready. Supported in Docker, containerd, Podman, and Kubernetes.
+
+For more information, please check out [Fast and Portable Llama2 Inference on the Heterogeneous Edge](https://www.secondstate.io/articles/fast-llm-inference/).
 
 ## Requirements
 
@@ -44,7 +58,7 @@ curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/insta
 source $HOME/.bashrc
 ```
 
-## Trouble shooting
+## Troubleshooting
 
 - After running `apt update && apt install -y libopenblas-dev`, you may encountered the following error:
 
