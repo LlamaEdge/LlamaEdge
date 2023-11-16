@@ -361,6 +361,147 @@ Options:
   641b644fde162fd7f8e8991ca6873d8b0528b7a027f5d56b8ee005f7171ac002
   ```
 
+- [x] Dolphin-2.2-Mistral-7B
+
+  ```console
+  # Dolphin-2.2-Mistral-7B
+  curl -LO https://huggingface.co/second-state/Dolphin-2.2-Mistral-7B-GGUF/resolve/main/dolphin-2.2-mistral-7b-ggml-model-q4_0.gguf
+  ```
+
+  ```console
+  # command to run the model
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.2-mistral-7b-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -r '<|im_end|>'
+  ```
+
+  Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+  ```text
+  # dolphin-2.2-mistral-7b-ggml-model-q4_0.gguf
+  77cf0861b5bc064e222075d0c5b73205d262985fc195aed6d30a7d3bdfefbd6c
+  ```
+
+- [x] Dolphin-2.2.1-Mistral-7B
+
+  ```console
+  # Dolphin-2.2.1-Mistral-7B
+  curl -LO https://huggingface.co/second-state/Dolphin-2.2.1-Mistral-7B/resolve/main/dolphin-2.2.1-mistral-7b-ggml-model-q4_0.gguf
+  ```
+
+  ```console
+  # command to run the model
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.2.1-mistral-7b-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -r '<|im_end|>'
+  ```
+
+  Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+  ```text
+  # dolphin-2.2.1-mistral-7b-ggml-model-q4_0.gguf
+  c88edaa19afeb45075d566930571fc1f580329c6d6980f5222f442ee2894234e
+  ```
+
+- [x] Samantha-1.2-Mistral-7B
+
+  ```console
+  # Dolphin-2.2.1-Mistral-7B
+  curl -LO https://huggingface.co/second-state/Samantha-1.2-Mistral-7B/resolve/main/samantha-1.2-mistral-7b-ggml-model-q4_0.gguf
+  ```
+
+  ```console
+  # command to run the model
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:samantha-1.2-mistral-7b-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -r '<|im_end|>'
+  ```
+
+  Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+  ```text
+  # samantha-1.2-mistral-7b-ggml-model-q4_0.gguf
+  c29d3e84c626b6631864cf111ed2ce847d74a105f3bd66845863bbd8ea06628e
+  ```
+
+- [x] Dolphin-2.1-Mistral-7B
+
+  ```console
+  # Dolphin-2.1-Mistral-7B
+  curl -LO https://huggingface.co/second-state/Dolphin-2.1-Mistral-7B-GGUF/resolve/main/dolphin-2.1-mistral-7b-ggml-model-q4_0.gguf
+  ```
+
+  ```console
+  # command to run the model
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.1-mistral-7b-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -r '<|im_end|>'
+  ```
+
+  Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+  ```text
+  # dolphin-2.1-mistral-7b-ggml-model-q4_0.gguf
+  021b2d9eb466e2b2eb522bc6d66906bb94c0dac721d6278e6718a4b6c9ecd731
+  ```
+
+- [x] Dolphin-2.0-Mistral-7B
+
+  ```console
+  # Dolphin-2.0-Mistral-7B
+  curl -LO https://huggingface.co/second-state/Dolphin-2.0-Mistral-7B-GGUF/resolve/main/dolphin-2.0-mistral-7b-ggml-model-q4_0.gguf
+  ```
+
+  ```console
+  # command to run the model
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.0-mistral-7b-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -r '<|im_end|>'
+  ```
+
+  Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+  ```text
+  # dolphin-2.0-mistral-7b-ggml-model-q4_0.gguf
+  37adbc161e6e98354ab06f6a79eaf30c4eb8dc60fb1226ef2fe8e84a84c5fdd6
+  ```
+
+- [x] WizardLM-1.0-Uncensored-CodeLlama-34B
+
+  ```console
+  # WizardLM-1.0-Uncensored-CodeLlama-34b
+  curl -LO https://huggingface.co/second-state/WizardLM-1.0-Uncensored-CodeLlama-34b/resolve/main/WizardLM-1.0-Uncensored-CodeLlama-34b-ggml-model-q4_0.gguf
+  ```
+
+  ```console
+  # command to run the model
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:WizardLM-1.0-Uncensored-CodeLlama-34b-ggml-model-q4_0.gguf llama-chat.wasm -p vicuna-chat -s 'You are a helpful AI assistant.'
+  ```
+
+  Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+  ```text
+  # WizardLM-1.0-Uncensored-CodeLlama-34b-ggml-model-q4_0.gguf
+  4f000bba0cd527319fc2dfb4cabf447d8b48c2752dd8bd0c96f070b73cd53524
+  ```
+
+- [x] Samantha-1.11-CodeLlama-34B
+
+  ```console
+  # Samantha-1.11-CodeLlama-34B
+  curl -LO https://huggingface.co/second-state/Samantha-1.11-CodeLlama-34B-GGUF/resolve/main/Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf
+  ```
+
+  ```console
+  # command to run the model
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf llama-chat.wasm -p vicuna-chat -s 'You are a helpful AI assistant.' --stream-stdout
+  ```
+
+  Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+  ```text
+  # Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf
+  67032c6b1bf358361da1b8162c5feb96dd7e02e5a42526543968caba7b7da47e
+  ```
+
+- [ ] Samantha-Mistral-Instruct-7B
+
+- [ ] Samantha-Mistral-7B
+
+- [ ] Dolphin-2.1-70B
+
+- [ ] Dolphin-2.2-70B
+
 - [ ] rpguild-chatml (Coming soon)
 
 - [ ] CodeShell-Chat (Coming soon)
