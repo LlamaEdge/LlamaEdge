@@ -179,6 +179,9 @@ pub(crate) async fn chat_completions_handler(
             PromptTemplateType::Baichuan2 => ChatPrompt::Baichuan2ChatPrompt(
                 chat_prompts::chat::baichuan::Baichuan2ChatPrompt::default(),
             ),
+            PromptTemplateType::WizardCoder => ChatPrompt::WizardCoderPrompt(
+                chat_prompts::chat::wizard::WizardCoderPrompt::default(),
+            ),
         }
     }
     let template = create_prompt_template(template_ty);
