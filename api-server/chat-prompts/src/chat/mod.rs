@@ -5,6 +5,7 @@ pub mod llama;
 pub mod mistral;
 pub mod openchat;
 pub mod vicuna;
+pub mod wizard;
 
 use crate::error::Result;
 use baichuan::*;
@@ -15,6 +16,7 @@ use llama::*;
 use mistral::*;
 use openchat::*;
 use vicuna::*;
+use wizard::*;
 
 #[enum_dispatch::enum_dispatch]
 pub trait BuildChatPrompt: Send {
@@ -32,4 +34,5 @@ pub enum ChatPrompt {
     VicunaChatPrompt,
     ChatMLPrompt,
     Baichuan2ChatPrompt,
+    WizardCoderPrompt,
 }
