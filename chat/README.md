@@ -75,7 +75,7 @@ Options:
   -s, --system-prompt <SYSTEM_PROMPT>
           System prompt message string [default: "[Default system message for the prompt template]"]
   -p, --prompt-template <TEMPLATE>
-          Prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, openchat, belle-llama-2-chat, vicuna-chat, chatml, baichuan-2]
+          Prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, openchat, belle-llama-2-chat, vicuna-chat, chatml, baichuan-2, wizard-coder]
       --log-prompts
           Print prompt strings to stdout
       --log-stat
@@ -492,6 +492,44 @@ Options:
   ```text
   # Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf
   67032c6b1bf358361da1b8162c5feb96dd7e02e5a42526543968caba7b7da47e
+  ```
+
+- [x] Samantha-1.11-7B
+
+  ```console
+  # Samantha-1.11-7B
+  curl -LO https://huggingface.co/second-state/Samantha-1.11-7B-GGUF/resolve/main/Samantha-1.11-7b-ggml-model-q4_0.gguf
+  ```
+
+  ```console
+  # command to run the model
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-7b-ggml-model-q4_0.gguf llama-chat.wasm -p vicuna-chat -s 'You are Samantha, a sentient AI companion.' --stream-stdout
+  ```
+
+  Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+  ```text
+  # Samantha-1.11-7b-ggml-model-q4_0.gguf
+  343ea7fadb7f89ec88837604f7a7bc6ec4f5109516e555d8ec0e1e416b06b997
+  ```
+
+- [x] WizardCoder-Python-7B-V1.0
+
+  ```console
+  # WizardCoder-Python-7B-V1.0
+  curl -LO https://huggingface.co/second-state/WizardCoder-Python-7B-V1.0/resolve/main/WizardCoder-Python-7B-V1.0-ggml-model-q4_0.gguf
+  ```
+
+  ```console
+  # command to run the model
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:WizardCoder-Python-7B-V1.0-ggml-model-q4_0.gguf llama-chat.wasm -p wizard-coder -s 'Below is an instruction that describes a task. Write a response that appropriately completes the request.' --stream-stdout
+  ```
+
+  Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+  ```text
+  # WizardCoder-Python-7B-V1.0-ggml-model-q4_0.gguf
+  0398068cb367d45faa3b8ebea1cc75fc7dec1cd323033df68302964e66879fed
   ```
 
 - [ ] Samantha-Mistral-Instruct-7B

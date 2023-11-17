@@ -87,6 +87,7 @@ fn main() -> Result<(), String> {
                     "vicuna-chat",
                     "chatml",
                     "baichuan-2",
+                    "wizard-coder",
                 ])
                 .value_name("TEMPLATE")
                 .help("Prompt template.")
@@ -415,6 +416,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         PromptTemplateType::Baichuan2 => ChatPrompt::Baichuan2ChatPrompt(
             chat_prompts::chat::baichuan::Baichuan2ChatPrompt::default(),
         ),
+        PromptTemplateType::WizardCoder => {
+            ChatPrompt::WizardCoderPrompt(chat_prompts::chat::wizard::WizardCoderPrompt::default())
+        }
     }
 }
 
