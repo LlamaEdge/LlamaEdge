@@ -193,6 +193,10 @@ Here is the response.
 
 - [x] [Zephyr-7B-Alpha-GGUF](https://huggingface.co/second-state/Zephyr-7B-Alpha-GGUF)
 
+- [x] [WizardLM-7B-V1.0-Uncensored-GGUF](https://huggingface.co/second-state/WizardLM-7B-V1.0-Uncensored-GGUF)
+
+- [x] [WizardLM-13B-V1.0-Uncensored-GGUF](https://huggingface.co/second-state/WizardLM-13B-V1.0-Uncensored-GGUF)
+
 - [ ] [rpguild-chatml-13B-GGUF](https://huggingface.co/second-state/rpguild-chatml-13B-GGUF)
 
 - [ ] [CodeShell-7B-Chat-GGUF](https://huggingface.co/second-state/CodeShell-7B-Chat-GGUF)
