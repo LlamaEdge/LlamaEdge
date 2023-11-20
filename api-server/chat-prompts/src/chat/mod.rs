@@ -6,6 +6,7 @@ pub mod mistral;
 pub mod openchat;
 pub mod vicuna;
 pub mod wizard;
+pub mod zephyr;
 
 use crate::error::Result;
 use baichuan::*;
@@ -17,6 +18,7 @@ use mistral::*;
 use openchat::*;
 use vicuna::*;
 use wizard::*;
+use zephyr::*;
 
 #[enum_dispatch::enum_dispatch]
 pub trait BuildChatPrompt: Send {
@@ -35,4 +37,5 @@ pub enum ChatPrompt {
     ChatMLPrompt,
     Baichuan2ChatPrompt,
     WizardCoderPrompt,
+    ZephyrChatPrompt,
 }

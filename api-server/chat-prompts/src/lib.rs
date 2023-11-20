@@ -15,6 +15,7 @@ pub enum PromptTemplateType {
     ChatML,
     Baichuan2,
     WizardCoder,
+    Zephyr,
 }
 impl FromStr for PromptTemplateType {
     type Err = error::PromptError;
@@ -31,6 +32,7 @@ impl FromStr for PromptTemplateType {
             "openchat" => Ok(PromptTemplateType::OpenChat),
             "baichuan-2" => Ok(PromptTemplateType::Baichuan2),
             "wizard-coder" => Ok(PromptTemplateType::WizardCoder),
+            "zephyr" => Ok(PromptTemplateType::Zephyr),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
                 template.to_string(),
             )),
@@ -50,6 +52,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::ChatML => write!(f, "chatml"),
             PromptTemplateType::Baichuan2 => write!(f, "baichuan-2"),
             PromptTemplateType::WizardCoder => write!(f, "wizard-coder"),
+            PromptTemplateType::Zephyr => write!(f, "zephyr"),
         }
     }
 }
