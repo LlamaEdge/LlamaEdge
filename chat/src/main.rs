@@ -88,6 +88,7 @@ fn main() -> Result<(), String> {
                     "chatml",
                     "baichuan-2",
                     "wizard-coder",
+                    "zephyr",
                 ])
                 .value_name("TEMPLATE")
                 .help("Prompt template.")
@@ -419,6 +420,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         PromptTemplateType::WizardCoder => {
             ChatPrompt::WizardCoderPrompt(chat_prompts::chat::wizard::WizardCoderPrompt::default())
         }
+        PromptTemplateType::Zephyr => {
+            ChatPrompt::ZephyrChatPrompt(chat_prompts::chat::zephyr::ZephyrChatPrompt::default())
+        }
     }
 }
 
@@ -428,14 +432,24 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
             .trim()
             .to_owned()
     } else if template_ty == PromptTemplateType::OpenChat {
-        output
-            .as_ref()
-            .trim_end_matches("<|end_of_turn|>")
-            .trim()
-            .to_owned()
+        if output.as_ref().contains("<|end_of_turn|>") {
+            output
+                .as_ref()
+                .trim_end_matches("<|end_of_turn|>")
+                .trim()
+                .to_owned()
+        } else {
+            output.as_ref().trim().to_owned()
+        }
     } else if template_ty == PromptTemplateType::ChatML {
         if output.as_ref().contains("<|im_end|>") {
             output.as_ref().replace("<|im_end|>", "").trim().to_owned()
+        } else {
+            output.as_ref().trim().to_owned()
+        }
+    } else if template_ty == PromptTemplateType::Zephyr {
+        if output.as_ref().contains("</s>") {
+            output.as_ref().trim_end_matches("</s>").trim().to_owned()
         } else {
             output.as_ref().trim().to_owned()
         }

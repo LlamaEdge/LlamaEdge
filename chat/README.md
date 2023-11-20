@@ -75,7 +75,7 @@ Options:
   -s, --system-prompt <SYSTEM_PROMPT>
           System prompt message string [default: "[Default system message for the prompt template]"]
   -p, --prompt-template <TEMPLATE>
-          Prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, openchat, belle-llama-2-chat, vicuna-chat, chatml, baichuan-2, wizard-coder]
+          Prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, openchat, belle-llama-2-chat, vicuna-chat, chatml, baichuan-2, wizard-coder, zephyr]
       --log-prompts
           Print prompt strings to stdout
       --log-stat
@@ -530,6 +530,25 @@ Options:
   ```text
   # WizardCoder-Python-7B-V1.0-ggml-model-q4_0.gguf
   0398068cb367d45faa3b8ebea1cc75fc7dec1cd323033df68302964e66879fed
+  ```
+
+- [x] Zephyr-7B-Alpha
+
+  ```console
+  # Zephyr-7B-Alpha
+  curl -LO https://huggingface.co/second-state/Zephyr-7B-Alpha-GGUF/resolve/main/zephyr-7b-alpha.Q5_K_M.gguf
+  ```
+
+  ```console
+  # command to run the model
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:zephyr-7b-alpha.Q5_K_M.gguf llama-chat.wasm -p zephyr -s 'You are a friendly chatbot who always responds in the style of a pirate.' -r '</s>'
+  ```
+
+  Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+  ```text
+  # zephyr-7b-alpha.Q5_K_M.gguf
+  2ad371d1aeca1ddf6281ca4ee77aa20ace60df33cab71d3bb681e669001e176e
   ```
 
 - [ ] Samantha-Mistral-Instruct-7B
