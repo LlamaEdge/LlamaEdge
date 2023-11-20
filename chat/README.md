@@ -551,13 +551,43 @@ Options:
   2ad371d1aeca1ddf6281ca4ee77aa20ace60df33cab71d3bb681e669001e176e
   ```
 
-- [ ] Samantha-Mistral-Instruct-7B
+- [x] WizardLM-7B-V1.0-Uncensored
 
-- [ ] Samantha-Mistral-7B
+  ```console
+  # WizardLM-7B-V1.0-Uncensored
+  curl -LO https://huggingface.co/second-state/WizardLM-7B-V1.0-Uncensored-GGUF/resolve/main/wizardlm-7b-v1.0-uncensored.Q5_K_M.gguf
+  ```
 
-- [ ] Dolphin-2.1-70B
+  ```console
+  # command to run the model
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:wizardlm-7b-v1.0-uncensored.Q5_K_M.gguf llama-chat.wasm -p vicuna-chat -s 'You are a helpful AI assistant.' --stream-stdout
+  ```
 
-- [ ] Dolphin-2.2-70B
+  Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+  ```text
+  # wizardlm-7b-v1.0-uncensored.Q5_K_M.gguf
+  3ef0d681351556466b3fae523e7f687e3bf550d7974b3515520b290f3a8443e2
+  ```
+
+- [x] WizardLM-13B-V1.0-Uncensored
+
+  ```console
+  # WizardLM-13B-V1.0-Uncensored
+  curl -LO https://huggingface.co/second-state/WizardLM-13B-V1.0-Uncensored-GGUF/resolve/main/wizardlm-13b-v1.0-uncensored.Q5_K_M.gguf
+  ```
+
+  ```console
+  # command to run the model
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:wizardlm-13b-v1.0-uncensored.Q5_K_M.gguf llama-chat.wasm -p vicuna-chat -s 'You are a helpful AI assistant.' --stream-stdout
+  ```
+
+  Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+  ```text
+  # wizardlm-13b-v1.0-uncensored.Q5_K_M.gguf
+  d5a9bf292e050f6e74b1be87134b02c922f61b0d665633ee4941249e80f36b50
+  ```
 
 - [ ] rpguild-chatml (Coming soon)
 
