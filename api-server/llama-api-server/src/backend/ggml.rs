@@ -182,6 +182,9 @@ pub(crate) async fn chat_completions_handler(
             PromptTemplateType::WizardCoder => ChatPrompt::WizardCoderPrompt(
                 chat_prompts::chat::wizard::WizardCoderPrompt::default(),
             ),
+            PromptTemplateType::Zephyr => {
+                ChatPrompt::ZephyrChatPrompt(chat_prompts::chat::zephyr::ZephyrChatPrompt::default())
+            }
         }
     }
     let template = create_prompt_template(template_ty);
@@ -329,6 +332,12 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
     } else if template_ty == PromptTemplateType::ChatML {
         if output.as_ref().contains("<|im_end|>") {
             output.as_ref().replace("<|im_end|>", "").trim().to_owned()
+        } else {
+            output.as_ref().trim().to_owned()
+        }
+    } else if template_ty == PromptTemplateType::Zephyr {
+        if output.as_ref().contains("</s>") {
+            output.as_ref().trim_end_matches("</s>").trim().to_owned()
         } else {
             output.as_ref().trim().to_owned()
         }

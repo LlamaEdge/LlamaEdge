@@ -58,7 +58,7 @@ Now let's build and run the API server.
     -r, --reverse-prompt <REVERSE_PROMPT>
             Halt generation at PROMPT, return control.
     -p, --prompt-template <TEMPLATE>
-            Sets the prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, openchat, belle-llama-2-chat, vicuna-chat, chatml, baichuan-2, wizard-coder]
+            Sets the prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, openchat, belle-llama-2-chat, vicuna-chat, chatml, baichuan-2, wizard-coder, zephyr]
         --log-prompts
             Print prompt strings to stdout
         --log-stat
@@ -172,6 +172,26 @@ Here is the response.
 - [x] [OpenHermes-2.5-Mistral-7B-GGUF](https://huggingface.co/second-state/OpenHermes-2.5-Mistral-7B-GGUF)
 
 - [x] [Dolphin-2.2-Yi-34B-GGUF](https://huggingface.co/second-state/Dolphin-2.2-Yi-34B-GGUF)
+
+- [x] [Dolphin-2.2-Mistral-7B-GGUF](https://huggingface.co/second-state/Dolphin-2.2-Mistral-7B-GGUF)
+
+- [x] [Dolphin-2.2.1-Mistral-7B-GGUF](https://huggingface.co/second-state/Dolphin-2.2.1-Mistral-7B)
+
+- [x] [Samantha-1.2-Mistral-7B-GGUF](https://huggingface.co/second-state/Samantha-1.2-Mistral-7B)
+
+- [x] [Dolphin-2.1-Mistral-7B-GGUF](https://huggingface.co/second-state/Dolphin-2.1-Mistral-7B-GGUF)
+
+- [x] [Dolphin-2.0-Mistral-7B-GGUF](https://huggingface.co/second-state/Dolphin-2.0-Mistral-7B-GGUF)
+
+- [x] [WizardLM-1.0-Uncensored-CodeLlama-34B-GGUF](https://huggingface.co/second-state/WizardLM-1.0-Uncensored-CodeLlama-34b)
+
+- [x] [Samantha-1.11-CodeLlama-34B-GGUF](https://huggingface.co/second-state/Samantha-1.11-CodeLlama-34B-GGUF)
+
+- [x] [Samantha-1.11-7B-GGUF](https://huggingface.co/second-state/Samantha-1.11-7B-GGUF)
+
+- [x] [WizardCoder-Python-7B-V1.0-GGUF](https://huggingface.co/second-state/WizardCoder-Python-7B-V1.0)
+
+- [x] [Zephyr-7B-Alpha-GGUF](https://huggingface.co/second-state/Zephyr-7B-Alpha-GGUF)
 
 - [ ] [rpguild-chatml-13B-GGUF](https://huggingface.co/second-state/rpguild-chatml-13B-GGUF)
 

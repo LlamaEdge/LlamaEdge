@@ -111,6 +111,7 @@ async fn main() -> Result<(), ServerError> {
                     "chatml",
                     "baichuan-2",
                     "wizard-coder",
+                    "zephyr",
                 ])
                 .value_name("TEMPLATE")
                 .help("Sets the prompt template.")
