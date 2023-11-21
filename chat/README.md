@@ -589,6 +589,25 @@ Options:
   d5a9bf292e050f6e74b1be87134b02c922f61b0d665633ee4941249e80f36b50
   ```
 
+- [x] Orca-2-13B
+
+  ```console
+  # Orca-2-13B
+  curl -LO https://huggingface.co/second-state/Orca-2-13B-GGUF/resolve/main/Orca-2-13b-ggml-model-q4_0.gguf
+  ```
+
+  ```console
+  # command to run the model
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:Orca-2-13b-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -s 'You are Orca, an AI language model created by Microsoft. You are a cautious assistant. You carefully follow instructions. You are helpful and harmless and you follow ethical guidelines and promote positive behavior.' --stream-stdout
+  ```
+
+  Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+  ```text
+  # Orca-2-13b-ggml-model-q4_0.gguf
+  8c9ca393b2d882bd7bd0ba672d52eafa29bb22b2cd740418198c1fa1adb6478b
+  ```
+
 - [ ] rpguild-chatml (Coming soon)
 
 - [ ] CodeShell-Chat (Coming soon)
