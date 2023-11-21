@@ -197,6 +197,8 @@ Here is the response.
 
 - [x] [WizardLM-13B-V1.0-Uncensored-GGUF](https://huggingface.co/second-state/WizardLM-13B-V1.0-Uncensored-GGUF)
 
+- [x] [Orca-2-13B-GGUF](https://huggingface.co/second-state/Orca-2-13B-GGUF)
+
 - [ ] [rpguild-chatml-13B-GGUF](https://huggingface.co/second-state/rpguild-chatml-13B-GGUF)
 
 - [ ] [CodeShell-7B-Chat-GGUF](https://huggingface.co/second-state/CodeShell-7B-Chat-GGUF)
