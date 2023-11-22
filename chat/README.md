@@ -402,7 +402,7 @@ Options:
 - [x] Samantha-1.2-Mistral-7B
 
   ```console
-  # Dolphin-2.2.1-Mistral-7B
+  # Samantha-1.2-Mistral-7B
   curl -LO https://huggingface.co/second-state/Samantha-1.2-Mistral-7B/resolve/main/samantha-1.2-mistral-7b-ggml-model-q4_0.gguf
   ```
 
