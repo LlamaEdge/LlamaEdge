@@ -24,29 +24,33 @@ For more information, please check out [Fast and Portable Llama2 Inference on th
 
 The llama-utils project, in theory, supports all Language Learning Models (LLMs) based on the llama2 framework in GGUF format. Below is a list of models that have been successfully verified to work on both Mac and Jetson Orin platforms. We are committed to continuously expanding this list by verifying additional models. If you have successfully operated other LLMs, don't hesitate to contribute by creating a Pull Request (PR) to help extend this list.
 
-- [x] [Llama-2-7B-Chat-GGUF](https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF) 
+- [x] [Llama-2-7B-Chat-GGUF](https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF) | [Guide](https://www.secondstate.io/articles/llama-2-models/)
 
-- [x] [Llama-2-13B-chat-GGUF](https://huggingface.co/second-state/Llama-2-13B-Chat-GGUF)
+- [x] [Llama-2-13B-chat-GGUF](https://huggingface.co/second-state/Llama-2-13B-Chat-GGUF) | [Guide](https://www.secondstate.io/articles/llama-2-models/)
 
-- [x] [CodeLlama-13B-GGUF](https://huggingface.co/second-state/CodeLlama-13B-Instruct-GGUF)
+- [x] [CodeLlama-13B-GGUF](https://huggingface.co/second-state/CodeLlama-13B-Instruct-GGUF) | [Guide](https://www.secondstate.io/articles/code-llama/)
+- [ ] [Getting Started with Orca-2-13B](https://huggingface.co/second-state/Orca-2-13B-GGUF/tree/main) [Guide](https://www.secondstate.io/articles/orca-2-13b/)
 
 - [x] [Mistral-7B-Instruct-v0.1-GGUF](https://huggingface.co/second-state/Mistral-7B-Instruct-v0.1-GGUF) | [Guide](https://www.secondstate.io/articles/mistral-7b-instruct-v0.1/)
 
-- [x] [MistralLite-7B-GGUF](https://huggingface.co/second-state/MistralLite-7B-GGUF)
+- [x] [MistralLite-7B-GGUF](https://huggingface.co/second-state/MistralLite-7B-GGUF) | [Guide](https://www.secondstate.io/articles/mistrallite/)
+- [x] [WizardCoder-Python-7B](https://huggingface.co/second-state/WizardCoder-Python-7B-V1.0) | [Guide](https://www.secondstate.io/articles/wizardcoder-python-7b/)
 
-- [x] [OpenChat-3.5-GGUF](https://huggingface.co/second-state/OpenChat-3.5-GGUF)
+- [x] [OpenChat-3.5-GGUF](https://huggingface.co/second-state/OpenChat-3.5-GGUF) | [Guide](https://www.secondstate.io/articles/openchat-3.5/)
 
 - [x] [BELLE-Llama2-13B-Chat-0.4M-GGUF](https://huggingface.co/second-state/BELLE-Llama2-13B-Chat-0.4M-GGUF)
+- [x] [Yi-34B](https://huggingface.co/second-state/Yi-34B-GGUF/tree/main) | [Guide](https://www.secondstate.io/articles/wizard-vicuna-13b/)
 
-- [x] [wizard-vicuna-13B-GGUF](https://huggingface.co/second-state/wizard-vicuna-13B-GGUF)
+- [x] [wizard-vicuna-13B-GGUF](https://huggingface.co/second-state/wizard-vicuna-13B-GGUF) | [Guide](https://www.secondstate.io/articles/wizard-vicuna-13b/)
+- [x] [Zephyr-7B](https://huggingface.co/TheBloke/zephyr-7B-alpha-GGUF/tree/main) | [Guide](https://www.secondstate.io/articles/zephyr-7b/)
 
-- [x] [CausalLM-14B](https://huggingface.co/second-state/CausalLM-14B-GGUF)
+- [x] [CausalLM-14B](https://huggingface.co/second-state/CausalLM-14B-GGUF) | [Guide](https://www.secondstate.io/articles/causallm-14b/)
 
-- [x] [TinyLlama-1.1B-Chat-v0.3](https://huggingface.co/second-state/TinyLlama-1.1B-Chat-v0.3-GGUF)
+- [x] [TinyLlama-1.1B-Chat-v0.3](https://huggingface.co/second-state/TinyLlama-1.1B-Chat-v0.3-GGUF) | [Guide](https://www.secondstate.io/articles/tinyllama-1.1b-chat/)
 
 - [x] [Baichuan2-7B-Chat-GGUF](https://huggingface.co/second-state/Baichuan2-7B-Chat-GGUF)
 
-- [x] [Baichuan2-13B-Chat-GGUF](https://huggingface.co/second-state/Baichuan-13B-Chat-GGUF)
+- [x] [Baichuan2-13B-Chat-GGUF](https://huggingface.co/second-state/Baichuan-13B-Chat-GGUF) | [Guide](https://www.secondstate.io/articles/baichuan2-13b-chat/)
 
 - [x] [OpenHermes-2.5-Mistral-7B-GGUF](https://huggingface.co/second-state/OpenHermes-2.5-Mistral-7B-GGUF)
 
