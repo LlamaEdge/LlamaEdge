@@ -89,6 +89,7 @@ fn main() -> Result<(), String> {
                     "baichuan-2",
                     "wizard-coder",
                     "zephyr",
+                    "intel-neural",
                 ])
                 .value_name("TEMPLATE")
                 .help("Prompt template.")
@@ -422,6 +423,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         }
         PromptTemplateType::Zephyr => {
             ChatPrompt::ZephyrChatPrompt(chat_prompts::chat::zephyr::ZephyrChatPrompt::default())
+        }
+        PromptTemplateType::IntelNeural => {
+            ChatPrompt::NeuralChatPrompt(chat_prompts::chat::intel::NeuralChatPrompt::default())
         }
     }
 }
