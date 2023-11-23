@@ -58,7 +58,7 @@ Now let's build and run the API server.
     -r, --reverse-prompt <REVERSE_PROMPT>
             Halt generation at PROMPT, return control.
     -p, --prompt-template <TEMPLATE>
-            Sets the prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, openchat, belle-llama-2-chat, vicuna-chat, chatml, baichuan-2, wizard-coder, zephyr]
+            Sets the prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, openchat, belle-llama-2-chat, vicuna-chat, chatml, baichuan-2, wizard-coder, zephyr, intel-neural]
         --log-prompts
             Print prompt strings to stdout
         --log-stat
@@ -198,6 +198,8 @@ Here is the response.
 - [x] [WizardLM-13B-V1.0-Uncensored-GGUF](https://huggingface.co/second-state/WizardLM-13B-V1.0-Uncensored-GGUF)
 
 - [x] [Orca-2-13B-GGUF](https://huggingface.co/second-state/Orca-2-13B-GGUF)
+
+- [x] [Neural-Chat-7B-v3-1-GGUF](https://huggingface.co/second-state/Neural-Chat-7B-v3-1-GGUF)
 
 - [ ] [rpguild-chatml-13B-GGUF](https://huggingface.co/second-state/rpguild-chatml-13B-GGUF)
 

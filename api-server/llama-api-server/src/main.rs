@@ -112,6 +112,7 @@ async fn main() -> Result<(), ServerError> {
                     "baichuan-2",
                     "wizard-coder",
                     "zephyr",
+                    "intel-neural",
                 ])
                 .value_name("TEMPLATE")
                 .help("Sets the prompt template.")

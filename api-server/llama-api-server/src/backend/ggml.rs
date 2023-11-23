@@ -185,6 +185,9 @@ pub(crate) async fn chat_completions_handler(
             PromptTemplateType::Zephyr => {
                 ChatPrompt::ZephyrChatPrompt(chat_prompts::chat::zephyr::ZephyrChatPrompt::default())
             }
+            PromptTemplateType::IntelNeural => {
+                ChatPrompt::NeuralChatPrompt(chat_prompts::chat::intel::NeuralChatPrompt::default())
+            }
         }
     }
     let template = create_prompt_template(template_ty);
