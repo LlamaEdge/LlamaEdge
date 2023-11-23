@@ -1,6 +1,7 @@
 pub mod baichuan;
 pub mod belle;
 pub mod chatml;
+pub mod intel;
 pub mod llama;
 pub mod mistral;
 pub mod openchat;
@@ -13,6 +14,7 @@ use baichuan::*;
 use belle::*;
 use chatml::*;
 use endpoints::chat::ChatCompletionRequestMessage;
+use intel::*;
 use llama::*;
 use mistral::*;
 use openchat::*;
@@ -38,4 +40,5 @@ pub enum ChatPrompt {
     Baichuan2ChatPrompt,
     WizardCoderPrompt,
     ZephyrChatPrompt,
+    NeuralChatPrompt,
 }

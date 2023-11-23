@@ -16,6 +16,7 @@ pub enum PromptTemplateType {
     Baichuan2,
     WizardCoder,
     Zephyr,
+    IntelNeural,
 }
 impl FromStr for PromptTemplateType {
     type Err = error::PromptError;
@@ -33,6 +34,7 @@ impl FromStr for PromptTemplateType {
             "baichuan-2" => Ok(PromptTemplateType::Baichuan2),
             "wizard-coder" => Ok(PromptTemplateType::WizardCoder),
             "zephyr" => Ok(PromptTemplateType::Zephyr),
+            "intel-neural" => Ok(PromptTemplateType::IntelNeural),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
                 template.to_string(),
             )),
@@ -53,6 +55,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::Baichuan2 => write!(f, "baichuan-2"),
             PromptTemplateType::WizardCoder => write!(f, "wizard-coder"),
             PromptTemplateType::Zephyr => write!(f, "zephyr"),
+            PromptTemplateType::IntelNeural => write!(f, "intel-neural"),
         }
     }
 }
