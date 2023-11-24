@@ -627,6 +627,25 @@ Options:
   e57b76915fe5f0c0e48c43eb80fc326cb8366cbb13fcf617a477b1f32c0ac163
   ```
 
+- [x] Yi-34B-Chat
+
+  ```console
+  # Yi-34B-Chat
+  curl -LO https://huggingface.co/second-state/Yi-34B-Chat-GGUF/resolve/main/Yi-34B-Chat-ggml-model-q4_0.gguf
+  ```
+
+  ```console
+  # command to run the model
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:Yi-34B-Chat-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -r '<|im_end|>' --stream-stdout
+  ```
+
+  Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+  ```text
+  # Yi-34B-Chat-ggml-model-q4_0.gguf
+  d51be2f2543eba49b9a33fd38ef96fafd79302f6d30f4529031154b065e23d56
+  ```
+
 - [ ] rpguild-chatml (Coming soon)
 
 - [ ] CodeShell-Chat (Coming soon)
