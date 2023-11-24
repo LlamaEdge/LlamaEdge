@@ -201,6 +201,8 @@ Here is the response.
 
 - [x] [Neural-Chat-7B-v3-1-GGUF](https://huggingface.co/second-state/Neural-Chat-7B-v3-1-GGUF)
 
+- [x] [Yi-34B-Chat-GGUF](https://huggingface.co/second-state/Yi-34B-Chat-GGUF)
+
 - [ ] [rpguild-chatml-13B-GGUF](https://huggingface.co/second-state/rpguild-chatml-13B-GGUF)
 
 - [ ] [CodeShell-7B-Chat-GGUF](https://huggingface.co/second-state/CodeShell-7B-Chat-GGUF)
