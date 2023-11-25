@@ -4,7 +4,7 @@
 >
 > * Rust-stable (>= 1.69.0)
 > * Add `wasm32-wasi` target to Rust toolchain by running `rustup target add wasm32-wasi` in the terminal
-> * WasmEdge 0.13.4 ([Installation](https://wasmedge.org/docs/start/install#generic-linux-and-macos))
+> * WasmEdge 0.13.4 with GGML Plugin ([Installation](https://github.com/second-state/llama-utils/tree/main#requirements),  [Documentation](https://wasmedge.org/docs/start/install#generic-linux-and-macos))
 
 ## Build and run
 
