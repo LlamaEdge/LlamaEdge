@@ -5,12 +5,13 @@ use chat_prompts::PromptTemplateType;
 use clap::{Arg, ArgAction, Command};
 use error::ServerError;
 use hyper::{
+    header,
     service::{make_service_fn, service_fn},
-    Body, Request, Response, Server,
+    Body, Request, Response, Server, StatusCode,
 };
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
-use std::{net::SocketAddr, str::FromStr, sync::Mutex};
+use std::{net::SocketAddr, path::PathBuf, str::FromStr, sync::Mutex};
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -138,6 +139,13 @@ async fn main() -> Result<(), ServerError> {
                 .value_name("LOG_all")
                 .help("Print all log information to stdout")
                 .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("static_root")
+                .long("static-root")
+                .value_name("STATIC_ROOT")
+                .help("Root path for the static files")
+                .default_value("out"),
         )
         .get_matches();
 
@@ -288,6 +296,10 @@ async fn main() -> Result<(), ServerError> {
         let created = ref_created.clone();
         let log_prompts = ref_log_prompts.clone();
         let metadata = metadata.clone();
+        let static_root = matches
+            .get_one::<String>("static_root")
+            .unwrap_or(&"out".to_owned())
+            .to_string();
         async {
             Ok::<_, Error>(service_fn(move |req| {
                 handle_request(
@@ -297,6 +309,7 @@ async fn main() -> Result<(), ServerError> {
                     *created.clone(),
                     metadata.clone(),
                     *log_prompts.clone(),
+                    static_root.clone(),
                 )
             }))
         }
@@ -305,6 +318,11 @@ async fn main() -> Result<(), ServerError> {
     let server = Server::bind(&addr).serve(new_service);
 
     println!("[INFO] Listening on http://{}", addr);
+
+    println!(
+        "\nNavigate to http://127.0.0.1:{} to start chatting",
+        addr.port()
+    );
     match server.await {
         Ok(_) => Ok(()),
         Err(e) => Err(ServerError::InternalServerError(e.to_string())),
@@ -318,12 +336,20 @@ async fn handle_request(
     created: u64,
     metadata: String,
     log_prompts: bool,
+    static_root: String,
 ) -> Result<Response<Body>, hyper::Error> {
-    match req.uri().path() {
+    let path_str = req.uri().path();
+    let path_buf = PathBuf::from(path_str);
+    let mut path_iter = path_buf.iter();
+    path_iter.next(); // Must be Some(OsStr::new(&path::MAIN_SEPARATOR.to_string()))
+    let root_path = path_iter.next().unwrap_or_default();
+    let root_path = "/".to_owned() + root_path.to_str().unwrap_or_default();
+
+    match root_path.as_str() {
         "/echo" => {
             return Ok(Response::new(Body::from("echo test")));
         }
-        _ => {
+        "/v1" => {
             backend::handle_llama_request(
                 req,
                 model_info,
@@ -333,6 +359,32 @@ async fn handle_request(
                 log_prompts,
             )
             .await
+        }
+        _ => Ok(static_response(path_str, static_root)),
+    }
+}
+
+fn static_response(path_str: &str, root: String) -> Response<Body> {
+    let path = match path_str {
+        "/" => "/index.html",
+        _ => path_str,
+    };
+
+    let mime = mime_guess::from_path(path);
+
+    match std::fs::read(format!("{root}/{path}")) {
+        Ok(content) => Response::builder()
+            .status(StatusCode::OK)
+            .header(header::CONTENT_TYPE, mime.first_or_text_plain().to_string())
+            .body(Body::from(content))
+            .unwrap(),
+        Err(_) => {
+            let body = Body::from(std::fs::read(format!("{root}/404.html")).unwrap_or_default());
+            Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .header(header::CONTENT_TYPE, "text/html")
+                .body(body)
+                .unwrap()
         }
     }
 }
