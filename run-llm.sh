@@ -80,17 +80,32 @@ install_wasmedge() {
 download_model() {
     printf "Downloading the gguf model ...\n\n"
 
-    models="llama-2-7b-chat https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf llama-2-chat \
-    llama-2-13b-chat https://huggingface.co/second-state/Llama-2-13B-Chat-GGUF/resolve/main/llama-2-13b-chat.Q5_K_M.gguf llama-2-chat \
-    Mistral-7b https://huggingface.co/second-state/Mistral-7B-Instruct-v0.1-GGUF/resolve/main/mistral-7b-instruct-v0.1.Q5_K_M.gguf mistral-instruct-v0.1 \
-    mistrallite https://huggingface.co/second-state/MistralLite-7B-GGUF/resolve/main/mistrallite.Q5_K_M.gguf mistrallite \
-    TinyLlma https://huggingface.co/second-state/TinyLlama-1.1B-Chat-v0.3-GGUF/resolve/main/tinyllama-1.1b-chat-v0.3.Q5_K_M.gguf chatml \
-    Orca-2-13b https://huggingface.co/second-state/Orca-2-13B-GGUF/resolve/main/Orca-2-13b-ggml-model-q4_0.gguf chatml \
-    Codellama-13b https://huggingface.co/second-state/CodeLlama-13B-Instruct-GGUF/resolve/main/codellama-13b-instruct.Q4_0.gguf codellama-instruct \
-    Baichuan2-7B https://huggingface.co/second-state/Baichuan2-7B-Chat-GGUF/resolve/main/Baichuan2-7B-Chat-ggml-model-q4_0.gguf baichuan-2 \
-    OpenChat-3.5 https://huggingface.co/second-state/OpenChat-3.5-GGUF/resolve/main/openchat_3.5.Q5_K_M.gguf openchat"
+    models='
+llama-2-7b-chat::https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf
+llama-2-13b-chat::https://huggingface.co/second-state/Llama-2-13B-Chat-GGUF/resolve/main/llama-2-13b-chat.Q5_K_M.gguf
+mistrallite::https://huggingface.co/second-state/MistralLite-7B-GGUF/resolve/main/mistrallite.Q5_K_M.gguf
+TinyLlma::https://huggingface.co/second-state/TinyLlama-1.1B-Chat-v0.3-GGUF/resolve/main/tinyllama-1.1b-chat-v0.3.Q5_K_M.gguf
+Orca-2-13b::https://huggingface.co/second-state/Orca-2-13B-GGUF/resolve/main/Orca-2-13b-ggml-model-q4_0.gguf
+Baichuan2-7B::https://huggingface.co/second-state/Baichuan2-7B-Chat-GGUF/resolve/main/Baichuan2-7B-Chat-ggml-model-q4_0.gguf
+OpenChat-3.5::https://huggingface.co/second-state/OpenChat-3.5-GGUF/resolve/main/openchat_3.5.Q5_K_M.gguf'
 
-    model_names="llama-2-7b-chat llama-2-13b-chat Mistral-7b mistrallite TinyLlma Orca-2-13b Codellama-13b Baichuan2-7B OpenChat-3.5"
+    prompt_templates='
+llama-2-7b-chat::llama-2-chat
+llama-2-13b-chat::llama-2-chat
+mistrallite::mistrallite
+TinyLlma::chatml
+Orca-2-13b::chatml
+Baichuan2-7B::baichuan-2
+OpenChat-3.5::openchat'
+
+    system_prompts='
+Orca-2-13b::You are Orca, an AI language model created by Microsoft. You are a cautious assistant. You carefully follow instructions. You are helpful and harmless and you follow ethical guidelines and promote positive behavior.'
+
+    reverse_prompts='
+Baichuan2-7B::用户:
+OpenChat-3.5::<|end_of_turn|>'
+
+    model_names="llama-2-7b-chat llama-2-13b-chat mistrallite TinyLlma Orca-2-13b Baichuan2-7B OpenChat-3.5"
 
     # Convert model_names to an array
     model_names_array=($model_names)
@@ -112,11 +127,8 @@ download_model() {
     # Get the model name from the array
     model=${model_names_array[$((model_number-1))]}
 
-    # Change IFS to newline
-    IFS=$'\n'
-
     # Check if the provided model name exists in the models string
-    url=$(printf "%s\n" $models | awk -v model=$model '{for(i=1;i<=NF;i++)if($i==model)print $(i+1)}')
+    url=$(echo "$models" | awk -F '::' -v model=$model '{for(i=1;i<=NF;i++)if($i==model)print $(i+1)}')
 
     if [ -z "$url" ]; then
         printf "\n      The URL for downloading the target gguf model does not exist.\n"
@@ -135,12 +147,16 @@ download_model() {
     model_file=$(basename $url)
 
     # Check if the provided model name exists in the models string
-    prompt_template=$(printf "%s\n" $models | awk -v model=$model '{for(i=1;i<=NF;i++)if($i==model)print $(i+2)}')
+    prompt_template=$(echo "$prompt_templates" | awk -F '::' -v model=$model '{for(i=1;i<=NF;i++)if($i==model)print $(i+1)}')
 
     if [ -z "$prompt_template" ]; then
         printf "\n      The prompt template for the selected model does not exist.\n"
         exit 1
     fi
+
+    system_prompt=$(echo "$system_prompts" | awk -F '::' -v model=$model '{for(i=1;i<=NF;i++)if($i==model)print $(i+1)}')
+
+    reverse_prompt=$(echo "$reverse_prompts" | awk -F '::' -v model=$model '{for(i=1;i<=NF;i++)if($i==model)print $(i+1)}')
 }
 
 select_mode() {
@@ -191,7 +207,13 @@ download_webui_files() {
 start_server() {
     printf "Starting llama-api-server ...\n\n"
 
-    wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-api-server.wasm -p $prompt_template
+    set -x
+    if [ -n "$reverse_prompt" ]; then
+        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-api-server.wasm -p $prompt_template -r "${reverse_prompt[@]}"
+    else
+        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-api-server.wasm -p $prompt_template
+    fi
+    set +x
 }
 
 download_chat_wasm() {
@@ -209,7 +231,17 @@ start_chat() {
         log_stat="--log-stat"
     fi
 
-    wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-chat.wasm --stream-stdout --prompt-template $prompt_template $log_stat
+    set -x
+    if [ -n "$reverse_prompt" ] && [ -n "$system_prompt" ]; then
+        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-chat.wasm --stream-stdout --prompt-template $prompt_template -r "${reverse_prompt[@]}" -s "${system_prompt[@]}" $log_stat
+    elif [ -n "$reverse_prompt" ]; then
+        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-chat.wasm --stream-stdout --prompt-template $prompt_template -r "${reverse_prompt[@]}" $log_stat
+    elif [ -n "$system_prompt" ]; then
+        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-chat.wasm --stream-stdout --prompt-template $prompt_template -s "${system_prompt[@]}" $log_stat
+    else
+        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-chat.wasm --stream-stdout --prompt-template $prompt_template $log_stat
+    fi
+    set +x
 }
 
 main() {
