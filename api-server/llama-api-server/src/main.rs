@@ -141,11 +141,11 @@ async fn main() -> Result<(), ServerError> {
                 .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("static_root")
-                .long("static-root")
-                .value_name("STATIC_ROOT")
-                .help("Root path for the static files")
-                .default_value("out"),
+            Arg::new("web_ui")
+                .long("web-ui")
+                .value_name("WEB_UI")
+                .help("Root path for the Web UI files")
+                .default_value("chatbot-ui"),
         )
         .get_matches();
 
@@ -296,9 +296,9 @@ async fn main() -> Result<(), ServerError> {
         let created = ref_created.clone();
         let log_prompts = ref_log_prompts.clone();
         let metadata = metadata.clone();
-        let static_root = matches
-            .get_one::<String>("static_root")
-            .unwrap_or(&"out".to_owned())
+        let web_ui = matches
+            .get_one::<String>("web_ui")
+            .unwrap_or(&"chatbot-ui".to_owned())
             .to_string();
         async {
             Ok::<_, Error>(service_fn(move |req| {
@@ -309,7 +309,7 @@ async fn main() -> Result<(), ServerError> {
                     *created.clone(),
                     metadata.clone(),
                     *log_prompts.clone(),
-                    static_root.clone(),
+                    web_ui.clone(),
                 )
             }))
         }
@@ -336,7 +336,7 @@ async fn handle_request(
     created: u64,
     metadata: String,
     log_prompts: bool,
-    static_root: String,
+    web_ui: String,
 ) -> Result<Response<Body>, hyper::Error> {
     let path_str = req.uri().path();
     let path_buf = PathBuf::from(path_str);
@@ -360,7 +360,7 @@ async fn handle_request(
             )
             .await
         }
-        _ => Ok(static_response(path_str, static_root)),
+        _ => Ok(static_response(path_str, web_ui)),
     }
 }
 

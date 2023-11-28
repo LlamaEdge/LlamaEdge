@@ -179,19 +179,19 @@ download_server() {
     curl -LO $wasm_url -#
 }
 
-download_static_files() {
+download_webui_files() {
     printf "Downloading frontend resources of 'chatbot-ui' ...\n"
 
-    files_tarball="https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/out.tar.gz"
+    files_tarball="https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz"
     curl -LO $files_tarball -#
-    tar xzf out.tar.gz
-    rm out.tar.gz
+    tar xzf chatbot-ui.tar.gz
+    rm chatbot-ui.tar.gz
 }
 
 start_server() {
     printf "Starting llama-api-server ...\n\n"
 
-    wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-api-server.wasm -p $prompt_template --static-root=out
+    wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-api-server.wasm -p $prompt_template
 }
 
 download_chat_wasm() {
@@ -232,7 +232,7 @@ main() {
     elif [[ "$running_mode" == "2" ]]; then
         download_server
         printf "\n"
-        download_static_files
+        download_webui_files
         printf "\n"
         start_server
     fi

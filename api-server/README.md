@@ -31,6 +31,15 @@ Now let's build and run the API server.
   curl -LO https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf
   ```
 
+* Download the Web UI for chatting
+
+  We provide a front-end Web UI for you to easily interact with the API. You can download and extract it by running:
+
+  ```bash
+  curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+  tar xzf chatbot-ui.tar.gz
+  ```
+
 * Run the API server:
 
   The `-h` or `--help` option can list the available options of the `llama-api-server` wasm app:
@@ -65,6 +74,8 @@ Now let's build and run the API server.
             Print statistics to stdout
         --log-all
             Print all log information to stdout
+        --web-ui <WEB_UI>
+            Root path for the Web UI files [default: chatbot-ui]
     -h, --help
             Print help
   ```
@@ -84,8 +95,10 @@ Now let's build and run the API server.
   Please guarantee that the port is not occupied by other processes. If the port specified is available on your machine and the command is successful, you should see the following output in the terminal:
 
   ```console
-  Listening on http://0.0.0.0:8000
+  Listening on http://0.0.0.0:8080
   ```
+
+  If the Web UI is ready, you can navigate to `http://127.0.0.1:8080` to open the chatbot, it will interact with the API of your server. 
 
 ## Test the API server
 
@@ -114,7 +127,7 @@ If the command is successful, you should see the similar output as below in your
 Ask a question using OpenAI's JSON message format.
 
 ```bash
-curl -X POST http://localhost:8000/v1/chat/completions -H 'accept:application/json' -H 'Content-Type: application/json' -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"llama-2-chat"}'
+curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/json' -H 'Content-Type: application/json' -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"llama-2-chat"}'
 ```
 
 Here is the response.
