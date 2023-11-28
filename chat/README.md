@@ -646,9 +646,24 @@ Options:
   d51be2f2543eba49b9a33fd38ef96fafd79302f6d30f4529031154b065e23d56
   ```
 
-- [ ] rpguild-chatml (Coming soon)
+- [x] Starling-LM-7B-alpha
 
-- [ ] CodeShell-Chat (Coming soon)
+  ```console
+  # Starling-LM-7B-alpha
+  curl -LO https://huggingface.co/second-state/Starling-LM-7B-alpha-GGUF/resolve/main/starling-lm-7b-alpha.Q5_K_M.gguf
+  ```
+
+  ```console
+  # command to run the model
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:starling-lm-7b-alpha.Q5_K_M.gguf llama-chat.wasm -p openchat -r '<|end_of_turn|>' --stream-stdout
+  ```
+
+  Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+  ```text
+  # starling-lm-7b-alpha.Q5_K_M.gguf
+  b6144d3a48352f5a40245ab1e89bfc0b17e4d045bf0e78fb512480f34ae92eba
+  ```
 
 </details>
 
