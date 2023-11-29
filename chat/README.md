@@ -8,6 +8,7 @@
 * [Get the inference app](#get-llama-chat-wasm-app )
 * [Get model](#get-model)
 * [Execute the model](#execute)
+* [CLI options](#cli-options)
 * [Optional: Build your own inference app](#optional-build-the-llama-chat-wasm-app-yourself)
 
 ## Dependencies
@@ -61,40 +62,6 @@ Download the `llama-chat.wasm`:
 curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
 ```
 
-The options for `llama-chat` wasm app are:
-
-```console
-~/workspace/llama-utils/chat$ wasmedge llama-chat.wasm -h
-Usage: llama-chat.wasm [OPTIONS]
-
-Options:
-  -a, --model-alias <ALIAS>
-          Model alias [default: default]
-  -c, --ctx-size <CTX_SIZE>
-          Size of the prompt context [default: 4096]
-  -n, --n-predict <N_PRDICT>
-          Number of tokens to predict [default: 1024]
-  -g, --n-gpu-layers <N_GPU_LAYERS>
-          Number of layers to run on the GPU [default: 100]
-  -b, --batch-size <BATCH_SIZE>
-          Batch size for prompt processing [default: 4096]
-  -r, --reverse-prompt <REVERSE_PROMPT>
-          Halt generation at PROMPT, return control.
-  -s, --system-prompt <SYSTEM_PROMPT>
-          System prompt message string [default: "[Default system message for the prompt template]"]
-  -p, --prompt-template <TEMPLATE>
-          Prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, openchat, belle-llama-2-chat, vicuna-chat, chatml, baichuan-2, wizard-coder, zephyr, intel-neural]
-      --log-prompts
-          Print prompt strings to stdout
-      --log-stat
-          Print statistics to stdout
-      --log-all
-          Print all log information to stdout
-      --stream-stdout
-          Print the output to stdout in the streaming way
-  -h, --help
-          Print help
-```
 
 ## Get Model
 
@@ -168,6 +135,41 @@ The total cost of the two apples is 10 dollars.
 What if I have 3 apples?
 [ASSISTANT]:
 If you have 3 apples, each costing 5 dollars, the total cost of the apples is 15 dollars.
+```
+## CLI options
+The options for `llama-chat` wasm app are:
+
+```console
+~/workspace/llama-utils/chat$ wasmedge llama-chat.wasm -h
+Usage: llama-chat.wasm [OPTIONS]
+
+Options:
+  -a, --model-alias <ALIAS>
+          Model alias [default: default]
+  -c, --ctx-size <CTX_SIZE>
+          Size of the prompt context [default: 4096]
+  -n, --n-predict <N_PRDICT>
+          Number of tokens to predict [default: 1024]
+  -g, --n-gpu-layers <N_GPU_LAYERS>
+          Number of layers to run on the GPU [default: 100]
+  -b, --batch-size <BATCH_SIZE>
+          Batch size for prompt processing [default: 4096]
+  -r, --reverse-prompt <REVERSE_PROMPT>
+          Halt generation at PROMPT, return control.
+  -s, --system-prompt <SYSTEM_PROMPT>
+          System prompt message string [default: "[Default system message for the prompt template]"]
+  -p, --prompt-template <TEMPLATE>
+          Prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, openchat, belle-llama-2-chat, vicuna-chat, chatml, baichuan-2, wizard-coder, zephyr, intel-neural]
+      --log-prompts
+          Print prompt strings to stdout
+      --log-stat
+          Print statistics to stdout
+      --log-all
+          Print all log information to stdout
+      --stream-stdout
+          Print the output to stdout in the streaming way
+  -h, --help
+          Print help
 ```
 
 ## Optional: Build the `llama-chat` wasm app yourself
