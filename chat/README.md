@@ -1,6 +1,14 @@
-# Chat on the CLI
+# Run the LLM via CLI
 
 [See it in action!](https://x.com/juntao/status/1705588244602114303)
+
+**ToC**
+
+* [Dependencies](#dependencies)
+* [Get the inference app]()
+* [Get model](#get-model)
+* [Execute the model](#execute)
+* [Optional: Build your own inference app]()
 
 ## Dependencies
 
@@ -92,7 +100,7 @@ Options:
 
 <details> <summary> Choose the model you want to download and run: </summary>
 
-| Models                                                                                                                               | Prompt template       |
+| Models       | Prompt template       |
 |--------------------------------------------------------------------------------------------------------------------------------------|-----------------------|
 | Llama-2-7B-Chat ([download here](https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf)) | -p llama-2-chat       |
 | Llama-2-13B-Chat ([download here](https://huggingface.co/second-state/Llama-2-13B-Chat-GGUF/resolve/main/llama-2-13b-chat.Q5_K_M.gguf))                                                                                                                    | -p llama-2-chat       |
