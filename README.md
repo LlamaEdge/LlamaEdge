@@ -36,7 +36,7 @@ For more information, please check out [Fast and Portable Llama2 Inference on th
 
 The llama-utils project, in theory, supports all Language Learning Models (LLMs) based on the llama2 framework in GGUF format. Below is a list of models that have been successfully verified to work on both Mac and Jetson Orin platforms. We are committed to continuously expanding this list by verifying additional models. If you have successfully operated other LLMs, don't hesitate to contribute by creating a Pull Request (PR) to help extend this list.
 
-Click here to see the supported model list and its prompt template.
+Click here to [see](../chat#get-model) the supported model list and its prompt template.
 
 ## Supported platforms
 
