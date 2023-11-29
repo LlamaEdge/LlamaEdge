@@ -5,10 +5,10 @@
 **ToC**
 
 * [Dependencies](#dependencies)
-* [Get the inference app]()
+* [Get the inference app](#get-llama-chat-wasm-app )
 * [Get model](#get-model)
 * [Execute the model](#execute)
-* [Optional: Build your own inference app]()
+* [Optional: Build your own inference app](#optional-build-the-llama-chat-wasm-app-yourself)
 
 ## Dependencies
 
