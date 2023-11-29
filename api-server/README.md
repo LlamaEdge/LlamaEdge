@@ -7,7 +7,7 @@ An OpenAI-compatible web API allows the model to work with a large ecosystem of 
 
 * [Dependencies](#Dependencies)
 * [Get the llama-api-server.wasm app](#get-the-llama-api-serverwasm-app)
-* [Get the model](#get-the-model)
+* [Get model](#get-model)
 * [Run the API server via curl](#run-the-api-server-via-curl)
   * [Test the API server via terminal](#test-the-api-server-via-terminal)
 * [Add a Web UI](#add-a-web-ui)
@@ -66,9 +66,9 @@ Download the api server app
 curl -LO https://github.com/second-state/llama-utils/raw/main/api-server/llama-api-server.wasm
 ```
 
-## Get the model 
+## Get model 
 
-Cilck [here](../llama-utils/chat/README.md#get-the-model) to learn the mode we support.
+Cilck [here](../llama-utils/chat/README.mdd#get-model) to learn the mode we support.
 
 
 ## Run the API server via curl
