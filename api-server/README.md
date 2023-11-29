@@ -12,6 +12,7 @@ An OpenAI-compatible web API allows the model to work with a large ecosystem of 
   * [Test the API server via terminal](#test-the-api-server-via-terminal)
 * [Add a Web UI](#add-a-web-ui)
 * [CLI options](#cli-options-for-the-api-server)
+* [Optional: Build your own](#)
 
 
 ## Dependencies
@@ -209,7 +210,15 @@ The `-h` or `--help` option can list the available options of the `llama-api-ser
 
   If the Web UI is ready, you can navigate to `http://127.0.0.1:8080` to open the chatbot, it will interact with the API of your server. 
 
+## Optional: Build the `llama-chat` wasm app yourself
 
+Run the following command:
+
+```console
+cargo build --target wasm32-wasi --release
+```
+
+The `llama-api-server.wasm` will be generated in the `target/wasm32-wasi/release` folder.
 
 
 
