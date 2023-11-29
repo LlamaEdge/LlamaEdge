@@ -190,8 +190,7 @@ select_log_level() {
 download_server() {
     printf "Downloading 'llama-api-server' wasm app ...\n"
 
-    # wasm_url="https://github.com/second-state/llama-utils/raw/main/api-server/llama-api-server.wasm"
-    wasm_url="https://github.com/second-state/llama-utils/raw/all-in-one/llama-api-server.wasm"
+    wasm_url="https://github.com/second-state/llama-utils/raw/main/api-server/llama-api-server.wasm"
     curl -LO $wasm_url -#
 }
 
