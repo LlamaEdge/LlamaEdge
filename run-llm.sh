@@ -81,31 +81,90 @@ download_model() {
     printf "Downloading the gguf model ...\n\n"
 
     models='
-llama-2-7b-chat::https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf
-llama-2-13b-chat::https://huggingface.co/second-state/Llama-2-13B-Chat-GGUF/resolve/main/llama-2-13b-chat.Q5_K_M.gguf
-mistrallite::https://huggingface.co/second-state/MistralLite-7B-GGUF/resolve/main/mistrallite.Q5_K_M.gguf
-TinyLlma::https://huggingface.co/second-state/TinyLlama-1.1B-Chat-v0.3-GGUF/resolve/main/tinyllama-1.1b-chat-v0.3.Q5_K_M.gguf
-Orca-2-13b::https://huggingface.co/second-state/Orca-2-13B-GGUF/resolve/main/Orca-2-13b-ggml-model-q4_0.gguf
-Baichuan2-7B::https://huggingface.co/second-state/Baichuan2-7B-Chat-GGUF/resolve/main/Baichuan2-7B-Chat-ggml-model-q4_0.gguf
-OpenChat-3.5::https://huggingface.co/second-state/OpenChat-3.5-GGUF/resolve/main/openchat_3.5.Q5_K_M.gguf'
+Llama-2-7B-Chat::https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf
+Llama-2-13B-Chat::https://huggingface.co/second-state/Llama-2-13B-Chat-GGUF/resolve/main/llama-2-13b-chat.Q5_K_M.gguf
+BELLE-Llama2-13B-Chat::https://huggingface.co/second-state/BELLE-Llama2-13B-Chat-0.4M-GGUF/resolve/main/BELLE-Llama2-13B-Chat-0.4M-ggml-model-q4_0.gguf
+MistralLite-7B::https://huggingface.co/second-state/MistralLite-7B-GGUF/resolve/main/mistrallite.Q5_K_M.gguf
+OpenChat-3.5::https://huggingface.co/second-state/OpenChat-3.5-GGUF/resolve/main/openchat_3.5.Q5_K_M.gguf
+Wizard-Vicuna::https://huggingface.co/second-state/wizard-vicuna-13B-GGUF/resolve/main/wizard-vicuna-13b-ggml-model-q8_0.gguf
+CausalLM-14B::https://huggingface.co/second-state/CausalLM-14B-GGUF/resolve/main/causallm_14b.Q5_1.gguf
+TinyLlama-1.1B-Chat-v0.3::https://huggingface.co/second-state/TinyLlama-1.1B-Chat-v0.3-GGUF/resolve/main/tinyllama-1.1b-chat-v0.3.Q5_K_M.gguf
+Baichuan2-13B-Chat::https://huggingface.co/second-state/Baichuan2-13B-Chat-GGUF/resolve/main/Baichuan2-13B-Chat-ggml-model-q4_0.gguf
+OpenHermes-2.5-Mistral-7B::https://huggingface.co/second-state/OpenHermes-2.5-Mistral-7B-GGUF/resolve/main/openhermes-2.5-mistral-7b.Q5_K_M.gguf
+Dolphin-2.0-Mistral-7B::https://huggingface.co/second-state/Dolphin-2.0-Mistral-7B-GGUF/resolve/main/dolphin-2.0-mistral-7b-ggml-model-q4_0.gguf
+Dolphin-2.1-Mistral-7B::https://huggingface.co/second-state/Dolphin-2.1-Mistral-7B-GGUF/resolve/main/dolphin-2.1-mistral-7b-ggml-model-q4_0.gguf
+Dolphin-2.2-Yi-34B::https://huggingface.co/second-state/Dolphin-2.2-Yi-34B-GGUF/resolve/main/dolphin-2.2-yi-34b-ggml-model-q4_0.gguf
+Dolphin-2.2-Mistral-7B::https://huggingface.co/second-state/Dolphin-2.2-Mistral-7B-GGUF/resolve/main/dolphin-2.2-mistral-7b-ggml-model-q4_0.gguf
+Dolphin-2.2.1-Mistral-7B::https://huggingface.co/second-state/Dolphin-2.2.1-Mistral-7B/resolve/main/dolphin-2.2.1-mistral-7b-ggml-model-q4_0.gguf
+Samantha-1.2-Mistral-7B::https://huggingface.co/second-state/Samantha-1.2-Mistral-7B/resolve/main/samantha-1.2-mistral-7b-ggml-model-q4_0.gguf
+Samantha-1.11-CodeLlama-34B::https://huggingface.co/second-state/Samantha-1.11-CodeLlama-34B-GGUF/resolve/main/Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf
+Samantha-1.11-7B::https://huggingface.co/second-state/Samantha-1.11-7B-GGUF/resolve/main/Samantha-1.11-7b-ggml-model-q4_0.gguf
+WizardLM-1.0-Uncensored-CodeLlama-34B::https://huggingface.co/second-state/WizardLM-1.0-Uncensored-CodeLlama-34b/resolve/main/WizardLM-1.0-Uncensored-CodeLlama-34b-ggml-model-q4_0.gguf
+WizardLM-7B-V1.0-Uncensored::https://huggingface.co/second-state/WizardLM-7B-V1.0-Uncensored-GGUF/resolve/main/wizardlm-7b-v1.0-uncensored.Q5_K_M.gguf
+WizardLM-13B-V1.0-Uncensored::https://huggingface.co/second-state/WizardLM-13B-V1.0-Uncensored-GGUF/resolve/main/wizardlm-13b-v1.0-uncensored.Q5_K_M.gguf
+WizardCoder-Python-7B-V1.0::https://huggingface.co/second-state/WizardCoder-Python-7B-V1.0/resolve/main/WizardCoder-Python-7B-V1.0-ggml-model-q4_0.gguf
+Zephyr-7B-Alpha::https://huggingface.co/second-state/Zephyr-7B-Alpha-GGUF/resolve/main/zephyr-7b-alpha.Q5_K_M.gguf
+Orca-2-13B::https://huggingface.co/second-state/Orca-2-13B-GGUF/resolve/main/Orca-2-13b-ggml-model-q4_0.gguf
+Neural-Chat-7B-v3-1::https://huggingface.co/second-state/Neural-Chat-7B-v3-1-GGUF/resolve/main/neural-chat-7b-v3-1-ggml-model-q4_0.gguf
+Starling-LM-7B-alpha::https://huggingface.co/second-state/Starling-LM-7B-alpha-GGUF/resolve/main/starling-lm-7b-alpha.Q5_K_M.gguf
+'
 
     prompt_templates='
-llama-2-7b-chat::llama-2-chat
-llama-2-13b-chat::llama-2-chat
-mistrallite::mistrallite
-TinyLlma::chatml
-Orca-2-13b::chatml
-Baichuan2-7B::baichuan-2
-OpenChat-3.5::openchat'
+Llama-2-7B-Chat::llama-2-chat
+Llama-2-13B-Chat::llama-2-chat
+BELLE-Llama2-13B-Chat::belle-llama-2-chat
+MistralLite-7B::mistrallite
+OpenChat-3.5::openchat
+Wizard-Vicuna::vicuna-chat
+CausalLM-14B::chatml
+TinyLlama-1.1B-Chat-v0.3::chatml
+Baichuan2-13B-Chat::baichuan-2
+OpenHermes-2.5-Mistral-7B::chatml
+Dolphin-2.0-Mistral-7B::chatml
+Dolphin-2.1-Mistral-7B::chatml
+Dolphin-2.2-Yi-34B::chatml
+Dolphin-2.2-Mistral-7B::chatml
+Dolphin-2.2.1-Mistral-7B::chatml
+Samantha-1.2-Mistral-7B::chatml
+Samantha-1.11-CodeLlama-34B::vicuna-chat
+Samantha-1.11-7B::vicuna-chat
+WizardLM-1.0-Uncensored-CodeLlama-34B::vicuna-chat
+WizardLM-7B-V1.0-Uncensored::vicuna-chat
+WizardLM-13B-V1.0-Uncensored::vicuna-chat
+WizardCoder-Python-7B-V1.0::wizard-coder
+Zephyr-7B-Alpha::zephyr
+Orca-2-13B::chatml
+Neural-Chat-7B-v3-1::intel-neural
+Starling-LM-7B-alpha::openchat
+'
 
     system_prompts='
-Orca-2-13b::You are Orca, an AI language model created by Microsoft. You are a cautious assistant. You carefully follow instructions. You are helpful and harmless and you follow ethical guidelines and promote positive behavior.'
+Dolphin-2.2-Yi-34B::You are a helpful AI assistant
+Samantha-1.11-CodeLlama-34B::You are a helpful AI assistant.
+Samantha-1.11-7B::You are Samantha, a sentient AI companion.
+WizardLM-1.0-Uncensored-CodeLlama-34B::You are a helpful AI assistant.
+WizardLM-7B-V1.0-Uncensored::You are a helpful AI assistant.
+WizardLM-13B-V1.0-Uncensored::You are a helpful AI assistant.
+WizardCoder-Python-7B-V1.0::Below is an instruction that describes a task. Write a response that appropriately completes the request.
+Zephyr-7B-Alpha::You are a friendly chatbot who always responds in the style of a pirate.
+Orca-2-13B::You are Orca, an AI language model created by Microsoft. You are a cautious assistant. You carefully follow instructions. You are helpful and harmless and you follow ethical guidelines and promote positive behavior.
+'
 
     reverse_prompts='
-Baichuan2-7B::用户:
-OpenChat-3.5::<|end_of_turn|>'
+OpenChat-3.5::<|end_of_turn|>
+Baichuan2-13B-Chat::用户:
+OpenHermes-2.5-Mistral-7B::<|im_end|>
+Dolphin-2.0-Mistral-7B::<|im_end|>
+Dolphin-2.1-Mistral-7B::<|im_end|>
+Dolphin-2.2-Yi-34B::<|im_end|>
+Dolphin-2.2-Mistral-7B::<|im_end|>
+Dolphin-2.2.1-Mistral-7B::<|im_end|>
+Samantha-1.2-Mistral-7B::<|im_end|>
+Zephyr-7B-Alpha::</s>
+Starling-LM-7B-alpha::<|end_of_turn|>
+'
 
-    model_names="llama-2-7b-chat llama-2-13b-chat mistrallite TinyLlma Orca-2-13b Baichuan2-7B OpenChat-3.5"
+    model_names="Llama-2-7B-Chat Llama-2-13B-Chat BELLE-Llama2-13B-Chat MistralLite-7B OpenChat-3.5 Wizard-Vicuna CausalLM-14B TinyLlama-1.1B-Chat-v0.3 Baichuan2-13B-Chat OpenHermes-2.5-Mistral-7B Dolphin-2.0-Mistral-7B Dolphin-2.1-Mistral-7B Dolphin-2.2-Yi-34B Dolphin-2.2-Mistral-7B Dolphin-2.2.1-Mistral-7B Samantha-1.2-Mistral-7B Samantha-1.11-CodeLlama-34B Samantha-1.11-7B WizardLM-1.0-Uncensored-CodeLlama-34B WizardLM-7B-V1.0-Uncensored WizardLM-13B-V1.0-Uncensored WizardCoder-Python-7B-V1.0 Zephyr-7B-Alpha Orca-2-13B Neural-Chat-7B-v3-1 Starling-LM-7B-alpha"
 
     # Convert model_names to an array
     model_names_array=($model_names)
