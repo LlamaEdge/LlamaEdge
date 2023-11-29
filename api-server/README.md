@@ -6,13 +6,13 @@ An OpenAI-compatible web API allows the model to work with a large ecosystem of 
 **ToC**
 
 * [Dependencies](#Dependencies)
-* [Get the llama-api-server.wasm app](#get-the-llama-api-serverwasm-app)
+* [Get the API server app](#get-the-llama-api-serverwasm-app)
 * [Get model](#get-model)
 * [Run the API server via curl](#run-the-api-server-via-curl)
   * [Test the API server via terminal](#test-the-api-server-via-terminal)
 * [Add a Web UI](#add-a-web-ui)
 * [CLI options](#cli-options-for-the-api-server)
-* [Optional: Build your own](#)
+* [Optional: Build your own](#optional-build-the-llama-chat-wasm-app-yourself)
 
 
 ## Dependencies
