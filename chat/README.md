@@ -2,14 +2,23 @@
 
 [See it in action!](https://x.com/juntao/status/1705588244602114303)
 
-**ToC**
 
-* [Dependencies](#dependencies)
-* [Get the inference app](#get-llama-chat-wasm-app )
-* [Get model](#get-model)
-* [Execute the model](#execute)
-* [CLI options](#cli-options)
-* [Optional: Build your own inference app](#optional-build-the-llama-chat-wasm-app-yourself)
+<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
+
+<!-- code_chunk_output -->
+
+- [Run the LLM via CLI](#run-the-llm-via-cli)
+  - [Dependencies](#dependencies)
+  - [Get `llama-chat` wasm app](#get-llama-chat-wasm-app)
+  - [Get Model](#get-model)
+  - [Execute](#execute)
+  - [CLI options](#cli-options)
+  - [Optional: Build the `llama-chat` wasm app yourself](#optional-build-the-llama-chat-wasm-app-yourself)
+
+<!-- /code_chunk_output -->
+
+
+
 
 ## Dependencies
 

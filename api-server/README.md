@@ -3,16 +3,24 @@
 An OpenAI-compatible web API allows the model to work with a large ecosystem of LLM tools and agent frameworks such as flows.network, LangChain and LlamaIndex.
 
 
-**ToC**
 
-* [Dependencies](#Dependencies)
-* [Get the API server app](#get-the-llama-api-serverwasm-app)
-* [Get model](#get-model)
-* [Run the API server via curl](#run-the-api-server-via-curl)
-  * [Test the API server via terminal](#test-the-api-server-via-terminal)
-* [Add a Web UI](#add-a-web-ui)
-* [CLI options](#cli-options-for-the-api-server)
-* [Optional: Build your own](#optional-build-the-llama-chat-wasm-app-yourself)
+<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
+
+<!-- code_chunk_output -->
+
+- [Ceate an OpenAI compatible API server for your LLM](#ceate-an-openai-compatible-api-server-for-your-llm)
+  - [Dependencies](#dependencies)
+  - [Get the llama-api-server.wasm app](#get-the-llama-api-serverwasm-app)
+  - [Get model](#get-model)
+  - [Run the API server via curl](#run-the-api-server-via-curl)
+    - [Test the API server via terminal](#test-the-api-server-via-terminal)
+  - [Add a web UI](#add-a-web-ui)
+  - [CLI options for the API server](#cli-options-for-the-api-server)
+  - [Optional: Build the `llama-chat` wasm app yourself](#optional-build-the-llama-chat-wasm-app-yourself)
+
+<!-- /code_chunk_output -->
+
+
 
 
 ## Dependencies
