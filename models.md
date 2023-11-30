@@ -202,14 +202,14 @@ curl -LO https://huggingface.co/second-state/MistralLite-7B-GGUF/resolve/main/mi
 ### Command to run the model
 
 ```console
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistrallite.Q5_K_M.gguf llama-chat.wasm -p mistrallite
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistrallite.Q5_K_M.gguf llama-chat.wasm -p mistrallite -r '</s>'
 ```
 ### Command to create the API server for the model
 
 Run the follwing command to create the API server.
 
 ```
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistrallite.Q5_K_M.gguf llama-chat.wasm -p mistrallite -r '</s>'
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistrallite.Q5_K_M.gguf llama-api-server.wasm -p mistrallite 
 ```
 
 Test the API server from anothe terminal using the following command.
@@ -380,6 +380,7 @@ curl -LO https://huggingface.co/second-state/Baichuan2-13B-Chat-GGUF/resolve/mai
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Baichuan2-13B-Chat-ggml-model-q4_0.gguf llama-chat.wasm -p baichuan-2 -r '用户:'
 ```
+
 ### Command to create the API server for the model
 
 Run the follwing command to create the API server.
@@ -490,7 +491,7 @@ curl -LO https://huggingface.co/second-state/Dolphin-2.2-Yi-34B-GGUF/resolve/mai
 After Downloading the model, you can run it with the following command:
 
 ```console
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.2-yi-34b-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -r '' -s 'You are a helpful AI assistant'
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.2-yi-34b-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -r '<|im_end|>' -s 'You are a helpful AI assistant'
 ```
 
 ### Command to create the API server for the model
@@ -498,7 +499,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.2-yi-34b-ggml-model-
 Run the following command to create the API server.
 
 ```
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.2-yi-34b-ggml-model-q4_0.gguf llama-api-server.wasm -p chatml -r '' -s 'You are a helpful AI assistant'
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.2-yi-34b-ggml-model-q4_0.gguf llama-api-server.wasm -p chatml
 ```
 
 Test the API server from another terminal using the following command.
@@ -537,7 +538,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.2-mistral-7b-ggml-mo
 Run the following command to create the API server.
 
 ```
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.2-mistral-7b-ggml-model-q4_0.gguf llama-api-server.wasm -p chatml -r '<|im_end|>'
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.2-mistral-7b-ggml-model-q4_0.gguf llama-api-server.wasm -p chatml
 ```
 
 Test the API server from another terminal using the following command.
@@ -574,7 +575,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.2.1-mistral-7b-ggml-
 Run the following command to create the API server.
 
 ```
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.2.1-mistral-7b-ggml-model-q4_0.gguf llama-api-server.wasm -p chatml -r '<|im_end|>'
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.2.1-mistral-7b-ggml-model-q4_0.gguf llama-api-server.wasm -p chatml
 ```
 
 Test the API server from another terminal using the following command.
@@ -610,7 +611,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:samantha-1.2-mistral-7b-ggml-m
 Run the following command to create the API server.
 
 ```
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:samantha-1.2-mistral-7b-ggml-model-q4_0.ggu llama-api-server.wasm -p chatml -r '<|im_end|>'
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:samantha-1.2-mistral-7b-ggml-model-q4_0.ggu llama-api-server.wasm -p chatml
 ```
 
 Test the API server from another terminal using the following command.
@@ -647,7 +648,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.1-mistral-7b-ggml-mo
 Run the following command to create the API server.
 
 ```
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.1-mistral-7b-ggml-model-q4_0.gguf llama-api-server.wasm -p chatml -r '<|im_end|>'
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.1-mistral-7b-ggml-model-q4_0.gguf llama-api-server.wasm -p chatml
 ```
 
 Test the API server from another terminal using the following command.
@@ -684,7 +685,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.0-mistral-7b-ggml-mo
 Run the following command to create the API server.
 
 ```
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.0-mistral-7b-ggml-model-q4_0.gguf llama-api-server.wasm -p chatml -r '<|im_end|>'
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.0-mistral-7b-ggml-model-q4_0.gguf llama-api-server.wasm -p chatml
 ```
 
 Test the API server from another terminal using the following command.
@@ -718,7 +719,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:WizardLM-1.0-Uncensored-CodeLl
 Run the following command to create the API server.
 
 ```
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:WizardLM-1.0-Uncensored-CodeLlama-34b-ggml-model-q4_0.gguf llama-api-server.wasm -p vicuna-chat -s 'You are a helpful AI assistant.'
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:WizardLM-1.0-Uncensored-CodeLlama-34b-ggml-model-q4_0.gguf llama-api-server.wasm -p vicuna-chat 
 ```
 
 Test the API server from another terminal using the following command.
@@ -755,7 +756,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-CodeLlama-34b-gg
 Run the following command to create the API server.
 
 ```
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf llama-api-server.wasm -p vicuna-chat -s 'You are a helpful AI assistant.'
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf llama-api-server.wasm -p vicuna-chat
 ```
 
 Test the API server from another terminal using the following command.
@@ -795,7 +796,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-7b-ggml-model-q4
 Run the following command to create the API server.
 
 ```
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-7b-ggml-model-q4_0.gguf llama-api-server.wasm -p vicuna-chat -s 'You are a helpful AI assistant.'
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-7b-ggml-model-q4_0.gguf llama-api-server.wasm -p vicuna-chat
 ```
 
 Test the API server from another terminal using the following command.
@@ -1022,7 +1023,7 @@ curl -LO https://huggingface.co/second-state/Neural-Chat-7B-v3-1-GGUF/resolve/ma
 After Downloading the model, you can run it with the following command:
 
 ```console
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:neural-chat-7b-v3-1-ggml-model-q4_0.gguf llama-chat.wasm -p intel-neural --log-prompts --stream-stdout
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:neural-chat-7b-v3-1-ggml-model-q4_0.gguf llama-chat.wasm -p intel-neural
 ```
 
 ### Command to create the API server for the model
