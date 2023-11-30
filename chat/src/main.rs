@@ -451,7 +451,9 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
         } else {
             output.as_ref().trim().to_owned()
         }
-    } else if template_ty == PromptTemplateType::Zephyr {
+    } else if template_ty == PromptTemplateType::Zephyr
+        || template_ty == PromptTemplateType::MistralLite
+    {
         if output.as_ref().contains("</s>") {
             output.as_ref().trim_end_matches("</s>").trim().to_owned()
         } else {
