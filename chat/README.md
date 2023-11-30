@@ -199,7 +199,7 @@ Options:
 
   ```console
   # command to run the model
-  wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistrallite.Q5_K_M.gguf llama-chat.wasm -p mistrallite
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistrallite.Q5_K_M.gguf llama-chat.wasm -p mistrallite -r '</s>'
   ```
 
   Please check the sha256sum of the downloaded model file to make sure it is correct:
