@@ -2,9 +2,6 @@
 
 You can find the model download link, the command to run the model, the command to create an OpenAI compatible API server for the model, and the sha256sum of the model.
 
-* Llama 2 7B Chat
-
-
 ## Llama-2-7B-Chat
 
 ### download the Llama-2-7B-Chat model
