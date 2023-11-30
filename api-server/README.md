@@ -69,7 +69,7 @@ curl -LO https://github.com/second-state/llama-utils/raw/main/api-server/llama-a
 
 ## Get model 
 
-Cilck [here](../chat#get-model) to learn the mode we support.
+Cilck [here](../models.md) to see the model download link and commadns to run the API server and test the API server.
 
 
 ## Run the API server via curl
