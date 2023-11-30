@@ -65,7 +65,7 @@ curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wa
 
 ## Get Model
 
-Click [here](./models.md) to see the download link and commands to run the model.
+Click [here](../models.md) to see the download link and commands to run the model.
 
 ## Execute
 
