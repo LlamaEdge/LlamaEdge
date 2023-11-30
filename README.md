@@ -1,18 +1,18 @@
 # llama-utils
 
-The llama-utils shows you how to run LLM inference and build OpenAI-compatible API services for the Llama2 series of LLMs with Rust and WasmEdge.
+The llama-utils shows you how to run LLM inference and build OpenAI-compatible API services for the Llama2 series of LLMs .
 
 
 ## Quick start
 
-Run the one single command line on your terminal to quick start. (macOS and Linux on CPU and GPU are avavible.)
+Run the one single command on your terminal to quick start. (macOS and Linux on CPU and GPU are avavible.)
 
 ```
 bash <(curl -sSf https://raw.githubusercontent.com/second-state/llama-utils/main/run-llm.sh)
 ```
 After that, please follow the prompt to install the WasmEdge Runtime and download your favorite open-source LLM. Then, you will be asked to choose whether you want to chat with the model via the CLI or via a web interface. 
 
-See in action | Docs
+[See in action](https://youtu.be/Hqu-PBqkzDk) | Docs
 
 ## How to use?
 
@@ -20,11 +20,11 @@ See in action | Docs
 * The folder `chat` includes the source code and instructions to run llama2 models that can have continuous conversations.
 * The folder `simple` includes the source code and instructions to run llama2 models that can answer one question.
 
-## Why use Rust + Wasm
+## Why use llama-utils
 
 The Rust+Wasm stack provides a strong alternative to Python in AI inference.
 
-* Lightweight. The total runtime size is 30MB as opposed to 4GB for Python and 350MB for Ollama.
+* Lightweight. The total runtime size is 30MB.
 * Fast. Full native speed on GPUs.
 * Portable. Single cross-platform binary on different CPUs, GPUs, and OSes.
 * Secure. Sandboxed and isolated execution on untrusted devices.
@@ -32,13 +32,13 @@ The Rust+Wasm stack provides a strong alternative to Python in AI inference.
 
 For more information, please check out [Fast and Portable Llama2 Inference on the Heterogeneous Edge](https://www.secondstate.io/articles/fast-llm-inference/).
 
-## Supported Models
+## Models
 
 The llama-utils project, in theory, supports all Language Learning Models (LLMs) based on the llama2 framework in GGUF format. Below is a list of models that have been successfully verified to work on both Mac and Jetson Orin platforms. We are committed to continuously expanding this list by verifying additional models. If you have successfully operated other LLMs, don't hesitate to contribute by creating a Pull Request (PR) to help extend this list.
 
 Click [here](./models.md) to see the supported model list and its download link, commands, and prompt template.
 
-## Supported platforms
+## Platforms
 
 The compiled Wasm file is cross platfrom. You can use the same Wasm file to run the LLM both on CPU and GPU. 
 
