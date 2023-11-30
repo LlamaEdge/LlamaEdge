@@ -1,19 +1,52 @@
-# Supported models
+# GGUF Models
 
 You can find the model download link, the command to run the model, the command to create an OpenAI compatible API server for the model, and the sha256sum of the model.
 
+- [Llama-2-7B-Chat](#llama-2-7b-chat)
+- [Llama-2-13B-Chat](#llama-2-13b-chat)
+- [CodeLlama-13B-Instruct](#codellama-13b-instruct)
+- [BELLE-Llama2-13B-Chat](#belle-llama2-13b-chat)
+- [Mistral-7B-Instruct-v0.1](#mistral-7b-instruct-v01)
+- [MistralLite-7B](#mistrallite-7b)
+- [OpenChat-3.5](#openchat-35)
+- [Wizard-Vicuna](#wizard-vicuna)
+- [CausalLM-14B](#causallm-14b)
+- [TinyLlama-1.1B-Chat-v0.3](#tinyllama-11b-chat-v03)
+- [Baichuan2-13B-Chat](#baichuan2-13b-chat)
+- [Baichuan2-7B-Chat](#baichuan2-7b-chat)
+- [OpenHermes-2.5-Mistral-7B](#openhermes-25-mistral-7b)
+- [Dolphin-2.2-Yi-34B](#dolphin-22-yi-34b)
+- [Dolphin-2.2-Mistral-7B](#dolphin-22-mistral-7b)
+- [Dolphin-2.2.1-Mistral-7B](#dolphin-221-mistral-7b)
+- [Samantha-1.2-Mistral-7B](#samantha-12-mistral-7b)
+- [Dolphin-2.1-Mistral-7B](#dolphin-21-mistral-7b)
+- [Dolphin-2.0-Mistral-7B](#dolphin-20-mistral-7b)
+- [WizardLM-1.0-Uncensored-CodeLlama-34B](#wizardlm-10-uncensored-codellama-34b)
+- [Samantha-1.11-CodeLlama-34B](#samantha-111-codellama-34b)
+- [Samantha-1.11-7B](#samantha-111-7b)
+- [WizardCoder-Python-7B-V1.0](#wizardcoder-python-7b-v10)
+- [Zephyr-7B-Alpha](#zephyr-7b-alpha)
+- [WizardLM-7B-V1.0-Uncensored](#wizardlm-7b-v10-uncensored)
+- [WizardLM-13B-V1.0-Uncensored](#wizardlm-13b-v10-uncensored)
+- [Orca-2-13B](#orca-2-13b)
+- [Neural-Chat-7B-v3-1](#neural-chat-7b-v3-1)
+- [Yi-34B-Chat](#yi-34b-chat)
+- [Starling-LM-7B-alpha](#starling-lm-7b-alpha)
+
+
 ## Llama-2-7B-Chat
 
-### download the Llama-2-7B-Chat model
+### Download the Llama-2-7B-Chat model
 
 ```console
 curl -LO https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf
 ```
-### command to run the model
+### Command to run the model
+
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf llama-chat.wasm -p llama-2-chat
 ```
-### command to create the API server for the Llama-2-7B-Chat model
+### Command to create the API server for the Llama-2-7B-Chat model
 
 Run the follwing command to create the API server
 
@@ -29,7 +62,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 llama-2-7b-chat.Q5_K_M.gguf
@@ -38,17 +71,17 @@ output: e0b99920cf47b94c78d2fb06a1eceb9ed795176dfa3f7feac64629f1b52b997f llama-2
 
 ## Llama-2-13B-Chat
 
-### download the Llama-2-13B-Chat model
+### Download the Llama-2-13B-Chat model
 
 ```
 curl -LO https://huggingface.co/second-state/Llama-2-13B-Chat-GGUF/resolve/main/llama-2-13b-chat.Q5_K_M.gguf
 ```
 
-### command to run the model
+### Command to run the model
 ```
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-13b-chat.Q5_K_M.gguf llama-chat.wasm -p llama-2-chat
 ```
-### command to create the API server for the model
+### Command to create the API server for the model
 
 Run the follwing command to create the API server
 
@@ -64,7 +97,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 llama-2-13b-chat.Q5_K_M.gguf
@@ -73,24 +106,24 @@ output: ef36e090240040f97325758c1ad8e23f3801466a8eece3a9eac2d22d942f548a llama-2
 
 ## CodeLlama-13B-Instruct
 
-### download the odeLlama-13B-Instruct model
+### Download the odeLlama-13B-Instruct model
 
 ```console
 curl -LO curl -LO https://huggingface.co/second-state/CodeLlama-13B-Instruct-GGUF/resolve/main/codellama-13b-instruct.Q4_0.gguf
 ```
-### command to run the model
+### Command to run the model
   
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:codellama-13b-instruct.Q4_0.gguf llama-chat.wasm -p codellama-instruct
 ```
 
-### command to create the API server for the model
+### Command to create the API server for the model
 
 This model isn't suitable for creating a API server
 
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 codellama-13b-instruct.Q4_0.gguf
@@ -124,7 +157,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 ```
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 BELLE-Llama2-13B-Chat-0.4M-ggml-model-q4_0.gguf
@@ -149,7 +182,7 @@ This model isn't suitable for creating a API server.
 
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```text
 shasum -a 256 mistral-7b-instruct-v0.1.Q5_K_M.gguf
@@ -166,7 +199,7 @@ output: 14466f9d658bf4a79f96c3f3f22759707c291cac4e62fea625e80c7d32169991 mistral
 ```console
 curl -LO https://huggingface.co/second-state/MistralLite-7B-GGUF/resolve/main/mistrallite.Q5_K_M.gguf
 ```
-### command to run the model
+### Command to run the model
 
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistrallite.Q5_K_M.gguf llama-chat.wasm -p mistrallite
@@ -176,7 +209,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistrallite.Q5_K_M.gguf llama-
 Run the follwing command to create the API server.
 
 ```
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistrallite.Q5_K_M.gguf llama-api-server.wasm -p mistrallite
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistrallite.Q5_K_M.gguf llama-chat.wasm -p mistrallite -r '</s>'
 ```
 
 Test the API server from anothe terminal using the following command.
@@ -186,7 +219,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 ```
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 mistrallite.Q5_K_M.gguf
@@ -223,7 +256,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 openchat_3.5.Q5_K_M.gguf
@@ -258,7 +291,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 ```
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 wizard-vicuna-13b-ggml-model-q8_0.gguf
@@ -293,7 +326,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 causallm_14b.Q5_1.gguf
@@ -328,7 +361,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 tinyllama-1.1b-chat-v0.3.Q5_K_M.gguf
@@ -363,7 +396,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 Baichuan2-13B-Chat-ggml-model-q4_0.gguf
@@ -399,7 +432,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 Baichuan2-7B-Chat-ggml-model-q4_0.gguf
@@ -416,7 +449,7 @@ curl -LO https://huggingface.co/second-state/OpenHermes-2.5-Mistral-7B-GGUF/reso
 
 #### Command to run the Model
 
-After downloading the model, you can run it with the following command:
+After Downloading the model, you can run it with the following command:
 
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:openhermes-2.5-mistral-7b.Q5_K_M.gguf llama-chat.wasm -p chatml -r '<|im_end|>'
@@ -437,7 +470,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 
 #### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 openhermes-2.5-mistral-7b.Q5_K_M.gguf
@@ -454,7 +487,7 @@ curl -LO https://huggingface.co/second-state/Dolphin-2.2-Yi-34B-GGUF/resolve/mai
 
 ### Command to run the Model
 
-After downloading the model, you can run it with the following command:
+After Downloading the model, you can run it with the following command:
 
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.2-yi-34b-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -r '' -s 'You are a helpful AI assistant'
@@ -476,7 +509,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 dolphin-2.2-yi-34b-ggml-model-q4_0.gguf
@@ -493,7 +526,7 @@ curl -LO https://huggingface.co/second-state/Dolphin-2.2-Mistral-7B-GGUF/resolve
 ```
 ### Command to run the Model
 
-After downloading the model, you can run it with the following command:
+After Downloading the model, you can run it with the following command:
 
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.2-mistral-7b-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -r '<|im_end|>'
@@ -514,7 +547,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 ```
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 dolphin-2.2-mistral-7b-ggml-model-q4_0.gguf
@@ -530,7 +563,7 @@ curl -LO https://huggingface.co/second-state/Dolphin-2.2.1-Mistral-7B-GGUF/resol
 ```
 ### Command to run the Model
 
-After downloading the model, you can run it with the following command:
+After Downloading the model, you can run it with the following command:
 
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.2.1-mistral-7b-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -r '<|im_end|>'
@@ -551,7 +584,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 ```
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 dolphin-2.2.1-mistral-7b-ggml-model-q4_0.gguf
@@ -567,7 +600,7 @@ curl -LO https://huggingface.co/second-state/Samantha-1.2-Mistral-7B/resolve/mai
 ```
 ### Command to run the Model
 
-After downloading the model, you can run it with the following command:
+After Downloading the model, you can run it with the following command:
 
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:samantha-1.2-mistral-7b-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -r '<|im_end|>'
@@ -587,7 +620,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 ```
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 samantha-1.2-mistral-7b-ggml-model-q4_0.gguf
@@ -603,7 +636,7 @@ curl -LO https://huggingface.co/second-state/Dolphin-2.1-Mistral-7B-GGUF/resolve
 ```
 ### Command to run the Model
 
-After downloading the model, you can run it with the following command:
+After Downloading the model, you can run it with the following command:
 
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.1-mistral-7b-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -r '<|im_end|>'
@@ -624,7 +657,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 ```
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 dolphin-2.1-mistral-7b-ggml-model-q4_0.gguf
@@ -640,7 +673,7 @@ curl -LO https://huggingface.co/second-state/Dolphin-2.0-Mistral-7B-GGUF/resolve
 ```
 ### Command to run the Model
 
-After downloading the model, you can run it with the following command:
+After Downloading the model, you can run it with the following command:
 
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.0-mistral-7b-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -r '<|im_end|>'
@@ -661,7 +694,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 ```
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 dolphin-2.0-mistral-7b-ggml-model-q4_0.gguf
@@ -695,7 +728,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 ```
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 WizardLM-1.0-Uncensored-CodeLlama-34b-ggml-model-q4_0.gguf
@@ -733,7 +766,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf
@@ -751,7 +784,7 @@ curl -LO https://huggingface.co/second-state/Samantha-1.11-7B-GGUF/resolve/main/
 
 ### Command to run the Model
 
-After downloading the model, you can run it with the following command:
+After Downloading the model, you can run it with the following command:
 
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-7b-ggml-model-q4_0.gguf llama-chat.wasm -p vicuna-chat -s 'You are Samantha, a sentient AI companion.' 
@@ -773,7 +806,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 Samantha-1.11-7b-ggml-model-q4_0.gguf
@@ -791,7 +824,7 @@ curl -LO https://huggingface.co/second-state/WizardCoder-Python-7B-V1.0/resolve/
 
 ### Command to run the Model
 
-After downloading the model, you can run it with the following command:
+After Downloading the model, you can run it with the following command:
 
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:WizardCoder-Python-7B-V1.0-ggml-model-q4_0.gguf llama-chat.wasm -p wizard-coder -s 'Below is an instruction that describes a task. Write a response that appropriately completes the request.'
@@ -813,7 +846,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 
 #### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 WizardCoder-Python-7B-V1.0-ggml-model-q4_0.gguf
@@ -830,7 +863,7 @@ curl -LO https://huggingface.co/second-state/Zephyr-7B-Alpha-GGUF/resolve/main/z
 
 ### Command to run the Model
 
-After downloading the model, you can run it with the following command:
+After Downloading the model, you can run it with the following command:
 
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:zephyr-7b-alpha.Q5_K_M.gguf llama-chat.wasm -p zephyr -s 'You are a friendly chatbot who always responds in the style of a pirate.' -r '</s>'
@@ -852,7 +885,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 zephyr-7b-alpha.Q5_K_M.gguf
@@ -869,7 +902,7 @@ curl -LO https://huggingface.co/second-state/WizardLM-7B-V1.0-Uncensored-GGUF/re
 
 #### Command to run the Model
 
-After downloading the model, you can run it with the following command:
+After Downloading the model, you can run it with the following command:
 
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:wizardlm-7b-v1.0-uncensored.Q5_K_M.gguf llama-chat.wasm -p vicuna-chat -s 'You are a helpful AI assistant.' 
@@ -891,7 +924,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 
 #### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 wizardlm-7b-v1.0-uncensored.Q5_K_M.gguf
@@ -908,7 +941,7 @@ curl -LO https://huggingface.co/second-state/WizardLM-13B-V1.0-Uncensored-GGUF/r
 
 ### Command to run the Model
 
-After downloading the model, you can run it with the following command:
+After Downloading the model, you can run it with the following command:
 
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:wizardlm-13b-v1.0-uncensored.Q5_K_M.gguf llama-chat.wasm -p vicuna-chat -s 'You are a helpful AI assistant.' 
@@ -930,7 +963,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 wizardlm-13b-v1.0-uncensored.Q5_K_M.gguf
@@ -947,7 +980,7 @@ curl -LO https://huggingface.co/second-state/Orca-2-13B-GGUF/resolve/main/Orca-2
 
 ### Command to run the Model
 
-After downloading the model, you can run it with the following command:
+After Downloading the model, you can run it with the following command:
 
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Orca-2-13b-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -s 'You are Orca, an AI language model created by Microsoft. You are a cautious assistant. You carefully follow instructions. You are helpful and harmless and you follow ethical guidelines and promote positive behavior.' --stream-stdout
@@ -969,7 +1002,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 Orca-2-13b-ggml-model-q4_0.gguf
@@ -986,7 +1019,7 @@ curl -LO https://huggingface.co/second-state/Neural-Chat-7B-v3-1-GGUF/resolve/ma
 
 ### Command to run the Model
 
-After downloading the model, you can run it with the following command:
+After Downloading the model, you can run it with the following command:
 
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:neural-chat-7b-v3-1-ggml-model-q4_0.gguf llama-chat.wasm -p intel-neural --log-prompts --stream-stdout
@@ -1008,7 +1041,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 
 ### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 neural-chat-7b-v3-1-ggml-model-q4_0.gguf
@@ -1025,7 +1058,7 @@ curl -LO https://huggingface.co/second-state/Yi-34B-Chat-GGUF/resolve/main/Yi-34
 
 ### Command to run the Model
 
-After downloading the model, you can run it with the following command:
+After Downloading the model, you can run it with the following command:
 
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Yi-34B-Chat-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -r '<|im_end|>' --stream-stdout
@@ -1047,7 +1080,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 
 #### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 Yi-34B-Chat-ggml-model-q4_0.gguf
@@ -1066,7 +1099,7 @@ curl -LO https://huggingface.co/second-state/Starling-LM-7B-alpha-GGUF/resolve/m
 
 ### Command to run the Model
 
-After downloading the model, you can run it with the following command:
+After Downloading the model, you can run it with the following command:
 
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:starling-lm-7b-alpha.Q5_K_M.gguf llama-chat.wasm -p openchat -r '<|end_of_turn|>' --stream-stdout
@@ -1088,7 +1121,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 
 #### Get the sha256sum of the model
 
-Please check the sha256sum of the downloaded model file to make sure it is correct:
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
 
 ```
 shasum -a 256 starling-lm-7b-alpha.Q5_K_M.gguf
