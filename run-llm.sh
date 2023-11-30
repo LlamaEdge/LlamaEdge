@@ -109,6 +109,34 @@ Neural-Chat-7B-v3-1::https://huggingface.co/second-state/Neural-Chat-7B-v3-1-GGU
 Starling-LM-7B-alpha::https://huggingface.co/second-state/Starling-LM-7B-alpha-GGUF/resolve/main/starling-lm-7b-alpha.Q5_K_M.gguf
 '
 
+    sha256sums='
+Llama-2-7B-Chat::e0b99920cf47b94c78d2fb06a1eceb9ed795176dfa3f7feac64629f1b52b997f
+Llama-2-13B-Chat::ef36e090240040f97325758c1ad8e23f3801466a8eece3a9eac2d22d942f548a
+BELLE-Llama2-13B-Chat::56879e1fd6ee6a138286730e121f2dba1be51b8f7e261514a594dea89ef32fe7
+MistralLite-7B::d06d149c24eea0446ea7aad596aca396fe7f3302441e9375d5bbd3fd9ba8ebea
+OpenChat-3.5::3abf26b0f2ff11394351a23f8d538a1404a2afb69465a6bbaba8836fef51899d
+Wizard-Vicuna::681b6571e624fd211ae81308b573f24f0016f6352252ae98241b44983bb7e756
+CausalLM-14B::8ddb4c04e6f0c06971e9b6723688206bf9a5b8ffc85611cc7843c0e8c8a66c4e
+TinyLlama-1.1B-Chat-v0.3::7c255febbf29c97b5d6f57cdf62db2f2bc95c0e541dc72c0ca29786ca0fa5eed
+Baichuan2-13B-Chat::789685b86c86af68a1886949015661d3da0a9c959dffaae773afa4fe8cfdb840
+OpenHermes-2.5-Mistral-7B::61e9e801d9e60f61a4bf1cad3e29d975ab6866f027bcef51d1550f9cc7d2cca6
+Dolphin-2.0-Mistral-7B::37adbc161e6e98354ab06f6a79eaf30c4eb8dc60fb1226ef2fe8e84a84c5fdd6
+Dolphin-2.1-Mistral-7B::021b2d9eb466e2b2eb522bc6d66906bb94c0dac721d6278e6718a4b6c9ecd731
+Dolphin-2.2-Yi-34B::641b644fde162fd7f8e8991ca6873d8b0528b7a027f5d56b8ee005f7171ac002
+Dolphin-2.2-Mistral-7B::77cf0861b5bc064e222075d0c5b73205d262985fc195aed6d30a7d3bdfefbd6c
+Dolphin-2.2.1-Mistral-7B::c88edaa19afeb45075d566930571fc1f580329c6d6980f5222f442ee2894234e
+Samantha-1.2-Mistral-7B::c29d3e84c626b6631864cf111ed2ce847d74a105f3bd66845863bbd8ea06628e
+Samantha-1.11-CodeLlama-34B::67032c6b1bf358361da1b8162c5feb96dd7e02e5a42526543968caba7b7da47e
+Samantha-1.11-7B::343ea7fadb7f89ec88837604f7a7bc6ec4f5109516e555d8ec0e1e416b06b997
+WizardLM-1.0-Uncensored-CodeLlama-34B::4f000bba0cd527319fc2dfb4cabf447d8b48c2752dd8bd0c96f070b73cd53524
+WizardLM-7B-V1.0-Uncensored::3ef0d681351556466b3fae523e7f687e3bf550d7974b3515520b290f3a8443e2
+WizardLM-13B-V1.0-Uncensored::d5a9bf292e050f6e74b1be87134b02c922f61b0d665633ee4941249e80f36b50
+WizardCoder-Python-7B-V1.0::0398068cb367d45faa3b8ebea1cc75fc7dec1cd323033df68302964e66879fed
+Zephyr-7B-Alpha::2ad371d1aeca1ddf6281ca4ee77aa20ace60df33cab71d3bb681e669001e176e
+Orca-2-13B::8c9ca393b2d882bd7bd0ba672d52eafa29bb22b2cd740418198c1fa1adb6478b
+Neural-Chat-7B-v3-1::e57b76915fe5f0c0e48c43eb80fc326cb8366cbb13fcf617a477b1f32c0ac163
+Starling-LM-7B-alpha::b6144d3a48352f5a40245ab1e89bfc0b17e4d045bf0e78fb512480f34ae92eba
+'
     prompt_templates='
 Llama-2-7B-Chat::llama-2-chat
 Llama-2-13B-Chat::llama-2-chat
@@ -202,6 +230,23 @@ Starling-LM-7B-alpha::<|end_of_turn|>
         printf "\n      You picked %s, downloading from %s\n" "$model" "$url"
         curl -LO $url -#
     fi
+
+    {
+        if command -v sha256sum &> /dev/null
+        then
+            local cal_sum=$(sha256sum $filename | awk '{print $1}')
+            local ori_sum=$(echo "$sha256sums" | awk -F '::' -v model=$model '{for(i=1;i<=NF;i++)if($i==model)print $(i+1)}')
+            if [[ "$cal_sum" != "$ori_sum" ]]; then
+                printf "\n\n**************************\n"
+                printf "sha256sum of the model file $filename is not correct.\n"
+                printf "Please remove the file then\n"
+                printf "1) Manually download it from: $url\n"
+                printf "or\n"
+                printf "2) Ctrl+c to exit and restart this script\n"
+                printf "**************************\n\n"
+            fi
+        fi
+    }&
 
     model_file=$(basename $url)
 

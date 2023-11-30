@@ -290,9 +290,20 @@ fn main() -> Result<(), String> {
 
     print_separator();
 
+    let mut ready = false;
     loop {
-        println!("\n[USER]: ");
-        let user_message = read_input();
+        let user_message = match ready {
+            true => {
+                println!("\n[You]: ");
+                read_input()
+            }
+            false => {
+                ready = true;
+                println!("\n[You]: Hello!");
+                String::from("Hello!")
+            }
+        };
+
         chat_request
             .messages
             .push(ChatCompletionRequestMessage::new(
@@ -451,9 +462,20 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
         } else {
             output.as_ref().trim().to_owned()
         }
-    } else if template_ty == PromptTemplateType::Zephyr {
-        if output.as_ref().contains("</s>") {
-            output.as_ref().trim_end_matches("</s>").trim().to_owned()
+    } else if template_ty == PromptTemplateType::Zephyr
+        || template_ty == PromptTemplateType::MistralLite
+    {
+        if output.as_ref().contains("</s><") {
+            println!("* output: {:?}", output.as_ref());
+            output.as_ref().trim_end_matches("</s><").trim().to_owned()
+        } else if output.as_ref().contains("</s>") {
+            println!("*** output: {:?}", output.as_ref());
+            output
+                .as_ref()
+                .strip_suffix("</s>")
+                .unwrap()
+                .trim()
+                .to_owned()
         } else {
             output.as_ref().trim().to_owned()
         }
@@ -463,7 +485,7 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
 }
 
 fn print(message: impl AsRef<str>) {
-    println!("\n[ASSISTANT]:\n{}", message.as_ref().trim())
+    println!("\n[Bot]:\n{}", message.as_ref().trim())
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
