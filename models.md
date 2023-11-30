@@ -380,7 +380,7 @@ output: 789685b86c86af68a1886949015661d3da0a9c959dffaae773afa4fe8cfdb840 Baichua
 ```console
 curl -LO https://huggingface.co/second-state/Baichuan2-7B-Chat-GGUF/resolve/main/Baichuan2-7B-Chat-ggml-model-q4_0.gguf
 ```
-### command to run the model
+### Command to run the model
   
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Baichuan2-7B-Chat-ggml-model-q4_0.gguf llama-chat.wasm -p baichuan-2 -r '用户:'
@@ -707,192 +707,395 @@ output: 4f000bba0cd527319fc2dfb4cabf447d8b48c2752dd8bd0c96f070b73cd53524 WizardL
 
 ## Samantha-1.11-CodeLlama-34B
 
-  ```console
-  # Samantha-1.11-CodeLlama-34B
-  curl -LO https://huggingface.co/second-state/Samantha-1.11-CodeLlama-34B-GGUF/resolve/main/Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf
-  ```
 
-  ```console
- ## # command to run the model
-  wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf llama-chat.wasm -p vicuna-chat -s 'You are a helpful AI assistant.' --stream-stdout
-  ```
+### Download Samantha-1.11-CodeLlama-34B Model
 
-  Please check the sha256sum of the downloaded model file to make sure it is correct:
+```console
+curl -LO https://huggingface.co/second-state/Samantha-1.11-CodeLlama-34B-GGUF/resolve/main/Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf
+```
 
-  ```text
-  # Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf
-  67032c6b1bf358361da1b8162c5feb96dd7e02e5a42526543968caba7b7da47e
-  ```
+### Command to run the Model
+
+```console
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf llama-chat.wasm -p vicuna-chat -s 'You are a helpful AI assistant.' 
+```
+
+### Command to create the API server for the model
+
+Run the following command to create the API server.
+
+```
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf llama-api-server.wasm -p vicuna-chat -s 'You are a helpful AI assistant.'
+```
+
+Test the API server from another terminal using the following command.
+
+```
+curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/json' -H 'Content-Type: application/json' -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"Samantha-1.11-CodeLlama-34b"}'
+```
+
+### Get the sha256sum of the model
+
+Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+```
+shasum -a 256 Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf
+output: 67032c6b1bf358361da1b8162c5feb96dd7e02e5a42526543968caba7b7da47e Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf
+```
+
 
 ## Samantha-1.11-7B
 
-  ```console
-  # Samantha-1.11-7B
-  curl -LO https://huggingface.co/second-state/Samantha-1.11-7B-GGUF/resolve/main/Samantha-1.11-7b-ggml-model-q4_0.gguf
-  ```
+### Download Samantha-1.11-7B Model
 
-  ```console
- ## # command to run the model
-  wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-7b-ggml-model-q4_0.gguf llama-chat.wasm -p vicuna-chat -s 'You are Samantha, a sentient AI companion.' --stream-stdout
-  ```
+```console
+curl -LO https://huggingface.co/second-state/Samantha-1.11-7B-GGUF/resolve/main/Samantha-1.11-7b-ggml-model-q4_0.gguf
+```
 
-  Please check the sha256sum of the downloaded model file to make sure it is correct:
+### Command to run the Model
 
-  ```text
-  # Samantha-1.11-7b-ggml-model-q4_0.gguf
-  343ea7fadb7f89ec88837604f7a7bc6ec4f5109516e555d8ec0e1e416b06b997
-  ```
+After downloading the model, you can run it with the following command:
+
+```console
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-7b-ggml-model-q4_0.gguf llama-chat.wasm -p vicuna-chat -s 'You are Samantha, a sentient AI companion.' 
+```
+
+### Command to create the API server for the model
+
+Run the following command to create the API server.
+
+```
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-7b-ggml-model-q4_0.gguf llama-api-server.wasm -p vicuna-chat -s 'You are a helpful AI assistant.'
+```
+
+Test the API server from another terminal using the following command.
+
+```
+curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/json' -H 'Content-Type: application/json' -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"Samantha-1.11-7B"}'
+```
+
+### Get the sha256sum of the model
+
+Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+```
+shasum -a 256 Samantha-1.11-7b-ggml-model-q4_0.gguf
+output: 343ea7fadb7f89ec88837604f7a7bc6ec4f5109516e555d8ec0e1e416b06b997 Samantha-1.11-7b-ggml-model-q4_0.gguf
+```
+
 
 ## WizardCoder-Python-7B-V1.0
 
-  ```console
-  # WizardCoder-Python-7B-V1.0
-  curl -LO https://huggingface.co/second-state/WizardCoder-Python-7B-V1.0/resolve/main/WizardCoder-Python-7B-V1.0-ggml-model-q4_0.gguf
-  ```
+### Download WizardCoder-Python-7B-V1.0 Model
 
-  ```console
- ## # command to run the model
-  wasmedge --dir .:. --nn-preload default:GGML:AUTO:WizardCoder-Python-7B-V1.0-ggml-model-q4_0.gguf llama-chat.wasm -p wizard-coder -s 'Below is an instruction that describes a task. Write a response that appropriately completes the request.' --stream-stdout
-  ```
+```console
+curl -LO https://huggingface.co/second-state/WizardCoder-Python-7B-V1.0/resolve/main/WizardCoder-Python-7B-V1.0-ggml-model-q4_0.gguf
+```
 
-  Please check the sha256sum of the downloaded model file to make sure it is correct:
+### Command to run the Model
 
-  ```text
-  # WizardCoder-Python-7B-V1.0-ggml-model-q4_0.gguf
-  0398068cb367d45faa3b8ebea1cc75fc7dec1cd323033df68302964e66879fed
-  ```
+After downloading the model, you can run it with the following command:
+
+```console
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:WizardCoder-Python-7B-V1.0-ggml-model-q4_0.gguf llama-chat.wasm -p wizard-coder -s 'Below is an instruction that describes a task. Write a response that appropriately completes the request.'
+```
+
+### Command to create the API server for the model
+
+Run the following command to create the API server.
+
+```
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:WizardCoder-Python-7B-V1.0-ggml-model-q4_0.gguf llama-api-server.wasm -p wizard-coder
+```
+
+Test the API server from another terminal using the following command.
+
+```
+curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/json' -H 'Content-Type: application/json' -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"WizardCoder-Python-7B"}'
+```
+
+#### Get the sha256sum of the model
+
+Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+```
+shasum -a 256 WizardCoder-Python-7B-V1.0-ggml-model-q4_0.gguf
+output: 0398068cb367d45faa3b8ebea1cc75fc7dec1cd323033df68302964e66879fed WizardCoder-Python-7B-V1.0-ggml-model-q4_0.gguf
+```
 
 ## Zephyr-7B-Alpha
 
-  ```console
-  # Zephyr-7B-Alpha
-  curl -LO https://huggingface.co/second-state/Zephyr-7B-Alpha-GGUF/resolve/main/zephyr-7b-alpha.Q5_K_M.gguf
-  ```
+### Download Zephyr-7B-Alpha Model
 
-  ```console
- ## # command to run the model
-  wasmedge --dir .:. --nn-preload default:GGML:AUTO:zephyr-7b-alpha.Q5_K_M.gguf llama-chat.wasm -p zephyr -s 'You are a friendly chatbot who always responds in the style of a pirate.' -r '</s>'
-  ```
+```console
+curl -LO https://huggingface.co/second-state/Zephyr-7B-Alpha-GGUF/resolve/main/zephyr-7b-alpha.Q5_K_M.gguf
+```
 
-  Please check the sha256sum of the downloaded model file to make sure it is correct:
+### Command to run the Model
 
-  ```text
-  # zephyr-7b-alpha.Q5_K_M.gguf
-  2ad371d1aeca1ddf6281ca4ee77aa20ace60df33cab71d3bb681e669001e176e
-  ```
+After downloading the model, you can run it with the following command:
+
+```console
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:zephyr-7b-alpha.Q5_K_M.gguf llama-chat.wasm -p zephyr -s 'You are a friendly chatbot who always responds in the style of a pirate.' -r '</s>'
+```
+
+### Command to create the API server for the model
+
+Run the following command to create the API server.
+
+```
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:zephyr-7b-alpha.Q5_K_M.gguf llama-api-server.wasm -p zephyr
+```
+
+Test the API server from another terminal using the following command.
+
+```
+curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/json' -H 'Content-Type: application/json' -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"Zephyr-7B"}'
+```
+
+### Get the sha256sum of the model
+
+Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+```
+shasum -a 256 zephyr-7b-alpha.Q5_K_M.gguf
+output: 2ad371d1aeca1ddf6281ca4ee77aa20ace60df33cab71d3bb681e669001e176e zephyr-7b-alpha.Q5_K_M.gguf
+```
 
 ## WizardLM-7B-V1.0-Uncensored
 
-  ```console
-  # WizardLM-7B-V1.0-Uncensored
-  curl -LO https://huggingface.co/second-state/WizardLM-7B-V1.0-Uncensored-GGUF/resolve/main/wizardlm-7b-v1.0-uncensored.Q5_K_M.gguf
-  ```
+### Download WizardLM-7B-V1.0-Uncensored Model
 
-  ```console
- ## # command to run the model
-  wasmedge --dir .:. --nn-preload default:GGML:AUTO:wizardlm-7b-v1.0-uncensored.Q5_K_M.gguf llama-chat.wasm -p vicuna-chat -s 'You are a helpful AI assistant.' --stream-stdout
-  ```
+```console
+curl -LO https://huggingface.co/second-state/WizardLM-7B-V1.0-Uncensored-GGUF/resolve/main/wizardlm-7b-v1.0-uncensored.Q5_K_M.gguf
+```
 
-  Please check the sha256sum of the downloaded model file to make sure it is correct:
+#### Command to run the Model
 
-  ```text
-  # wizardlm-7b-v1.0-uncensored.Q5_K_M.gguf
-  3ef0d681351556466b3fae523e7f687e3bf550d7974b3515520b290f3a8443e2
-  ```
+After downloading the model, you can run it with the following command:
+
+```console
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:wizardlm-7b-v1.0-uncensored.Q5_K_M.gguf llama-chat.wasm -p vicuna-chat -s 'You are a helpful AI assistant.' 
+```
+
+### Command to create the API server for the model
+
+Run the following command to create the API server.
+
+```
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:wizardlm-7b-v1.0-uncensored.Q5_K_M.gguf llama-api-server.wasm -p vicuna-chat
+```
+
+Test the API server from another terminal using the following command.
+
+```
+curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/json' -H 'Content-Type: application/json' -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"WizardLM-7B"}'
+```
+
+#### Get the sha256sum of the model
+
+Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+```
+shasum -a 256 wizardlm-7b-v1.0-uncensored.Q5_K_M.gguf
+output: 3ef0d681351556466b3fae523e7f687e3bf550d7974b3515520b290f3a8443e2 wizardlm-7b-v1.0-uncensored.Q5_K_M.gguf
+```
 
 ## WizardLM-13B-V1.0-Uncensored
 
-  ```console
-  # WizardLM-13B-V1.0-Uncensored
-  curl -LO https://huggingface.co/second-state/WizardLM-13B-V1.0-Uncensored-GGUF/resolve/main/wizardlm-13b-v1.0-uncensored.Q5_K_M.gguf
-  ```
+### Download WizardLM-13B-V1.0-Uncensored Model
 
-  ```console
- ## # command to run the model
-  wasmedge --dir .:. --nn-preload default:GGML:AUTO:wizardlm-13b-v1.0-uncensored.Q5_K_M.gguf llama-chat.wasm -p vicuna-chat -s 'You are a helpful AI assistant.' --stream-stdout
-  ```
+```console
+curl -LO https://huggingface.co/second-state/WizardLM-13B-V1.0-Uncensored-GGUF/resolve/main/wizardlm-13b-v1.0-uncensored.Q5_K_M.gguf
+```
 
-  Please check the sha256sum of the downloaded model file to make sure it is correct:
+### Command to run the Model
 
-  ```text
-  # wizardlm-13b-v1.0-uncensored.Q5_K_M.gguf
-  d5a9bf292e050f6e74b1be87134b02c922f61b0d665633ee4941249e80f36b50
-  ```
+After downloading the model, you can run it with the following command:
+
+```console
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:wizardlm-13b-v1.0-uncensored.Q5_K_M.gguf llama-chat.wasm -p vicuna-chat -s 'You are a helpful AI assistant.' 
+```
+
+### Command to create the API server for the model
+
+Run the following command to create the API server.
+
+```
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:wizardlm-13b-v1.0-uncensored.Q5_K_M.gguf llama-api-server.wasm -p vicuna-chat
+```
+
+Test the API server from another terminal using the following command.
+
+```
+curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/json' -H 'Content-Type: application/json' -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"WizardLM-13B-V1.0-Uncensored"}'
+```
+
+### Get the sha256sum of the model
+
+Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+```
+shasum -a 256 wizardlm-13b-v1.0-uncensored.Q5_K_M.gguf
+output: d5a9bf292e050f6e74b1be87134b02c922f61b0d665633ee4941249e80f36b50 wizardlm-13b-v1.0-uncensored.Q5_K_M.gguf
+```
 
 ## Orca-2-13B
 
-  ```console
-  # Orca-2-13B
-  curl -LO https://huggingface.co/second-state/Orca-2-13B-GGUF/resolve/main/Orca-2-13b-ggml-model-q4_0.gguf
-  ```
+### Download Orca-2-13B Model
 
-  ```console
- ## # command to run the model
-  wasmedge --dir .:. --nn-preload default:GGML:AUTO:Orca-2-13b-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -s 'You are Orca, an AI language model created by Microsoft. You are a cautious assistant. You carefully follow instructions. You are helpful and harmless and you follow ethical guidelines and promote positive behavior.' --stream-stdout
-  ```
+```console
+curl -LO https://huggingface.co/second-state/Orca-2-13B-GGUF/resolve/main/Orca-2-13b-ggml-model-q4_0.gguf
+```
 
-  Please check the sha256sum of the downloaded model file to make sure it is correct:
+### Command to run the Model
 
-  ```text
-  # Orca-2-13b-ggml-model-q4_0.gguf
-  8c9ca393b2d882bd7bd0ba672d52eafa29bb22b2cd740418198c1fa1adb6478b
-  ```
+After downloading the model, you can run it with the following command:
+
+```console
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Orca-2-13b-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -s 'You are Orca, an AI language model created by Microsoft. You are a cautious assistant. You carefully follow instructions. You are helpful and harmless and you follow ethical guidelines and promote positive behavior.' --stream-stdout
+```
+
+### Command to create the API server for the model
+
+Run the following command to create the API server.
+
+```
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Orca-2-13b-ggml-model-q4_0.gguf llama-api-server.wasm -p chatml
+```
+
+Test the API server from another terminal using the following command.
+
+```
+curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/json' -H 'Content-Type: application/json' -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"Orca-2-13B"}'
+```
+
+### Get the sha256sum of the model
+
+Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+```
+shasum -a 256 Orca-2-13b-ggml-model-q4_0.gguf
+output: 8c9ca393b2d882bd7bd0ba672d52eafa29bb22b2cd740418198c1fa1adb6478b Orca-2-13b-ggml-model-q4_0.gguf
+```
 
 ## Neural-Chat-7B-v3-1
 
-  ```console
-  # Neural-Chat-7B-v3-1
-  curl -LO https://huggingface.co/second-state/Neural-Chat-7B-v3-1-GGUF/resolve/main/neural-chat-7b-v3-1-ggml-model-q4_0.gguf
-  ```
+### Download Neural-Chat-7B-v3-1 Model
 
-  ```console
- ## # command to run the model
-  wasmedge --dir .:. --nn-preload default:GGML:AUTO:neural-chat-7b-v3-1-ggml-model-q4_0.gguf llama-chat.wasm -p intel-neural --log-prompts --stream-stdout
-  ```
+```console
+curl -LO https://huggingface.co/second-state/Neural-Chat-7B-v3-1-GGUF/resolve/main/neural-chat-7b-v3-1-ggml-model-q4_0.gguf
+```
 
-  Please check the sha256sum of the downloaded model file to make sure it is correct:
+### Command to run the Model
 
-  ```text
-  # neural-chat-7b-v3-1-ggml-model-q4_0.gguf
-  e57b76915fe5f0c0e48c43eb80fc326cb8366cbb13fcf617a477b1f32c0ac163
-  ```
+After downloading the model, you can run it with the following command:
+
+```console
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:neural-chat-7b-v3-1-ggml-model-q4_0.gguf llama-chat.wasm -p intel-neural --log-prompts --stream-stdout
+```
+
+### Command to create the API server for the model
+
+Run the following command to create the API server.
+
+```
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:neural-chat-7b-v3-1-ggml-model-q4_0.gguf llama-api-server.wasm -p intel-neural
+```
+
+Test the API server from another terminal using the following command.
+
+```
+curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/json' -H 'Content-Type: application/json' -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"Neural-Chat-7B"}'
+```
+
+### Get the sha256sum of the model
+
+Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+```
+shasum -a 256 neural-chat-7b-v3-1-ggml-model-q4_0.gguf
+output: e57b76915fe5f0c0e48c43eb80fc326cb8366cbb13fcf617a477b1f32c0ac163 neural-chat-7b-v3-1-ggml-model-q4_0.gguf
+```
 
 ## Yi-34B-Chat
 
-  ```console
-  # Yi-34B-Chat
-  curl -LO https://huggingface.co/second-state/Yi-34B-Chat-GGUF/resolve/main/Yi-34B-Chat-ggml-model-q4_0.gguf
-  ```
+### Download Yi-34B-Chat Model
 
-  ```console
- ## # command to run the model
-  wasmedge --dir .:. --nn-preload default:GGML:AUTO:Yi-34B-Chat-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -r '<|im_end|>' --stream-stdout
-  ```
+```console
+curl -LO https://huggingface.co/second-state/Yi-34B-Chat-GGUF/resolve/main/Yi-34B-Chat-ggml-model-q4_0.gguf
+```
 
-  Please check the sha256sum of the downloaded model file to make sure it is correct:
+### Command to run the Model
 
-  ```text
-  # Yi-34B-Chat-ggml-model-q4_0.gguf
-  d51be2f2543eba49b9a33fd38ef96fafd79302f6d30f4529031154b065e23d56
-  ```
+After downloading the model, you can run it with the following command:
+
+```console
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Yi-34B-Chat-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -r '<|im_end|>' --stream-stdout
+```
+
+### Command to create the API server for the model
+
+Run the following command to create the API server.
+
+```
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:neural-chat-7b-v3-1-ggml-model-q4_0.gguf llama-api-server.wasm -p chatml
+```
+
+Test the API server from another terminal using the following command.
+
+```
+curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/json' -H 'Content-Type: application/json' -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"Neural-Chat-7B"}'
+```
+
+#### Get the sha256sum of the model
+
+Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+```
+shasum -a 256 Yi-34B-Chat-ggml-model-q4_0.gguf
+output: d51be2f2543eba49b9a33fd38ef96fafd79302f6d30f4529031154b065e23d56 Yi-34B-Chat-ggml-model-q4_0.gguf
+```
+
+
 
 ## Starling-LM-7B-alpha
 
-  ```console
-  # Starling-LM-7B-alpha
-  curl -LO https://huggingface.co/second-state/Starling-LM-7B-alpha-GGUF/resolve/main/starling-lm-7b-alpha.Q5_K_M.gguf
-  ```
+### Download Starling-LM-7B-alpha Model
 
-  ```console
- ## # command to run the model
-  wasmedge --dir .:. --nn-preload default:GGML:AUTO:starling-lm-7b-alpha.Q5_K_M.gguf llama-chat.wasm -p openchat -r '<|end_of_turn|>' --stream-stdout
-  ```
+```console
+curl -LO https://huggingface.co/second-state/Starling-LM-7B-alpha-GGUF/resolve/main/starling-lm-7b-alpha.Q5_K_M.gguf
+```
 
-  Please check the sha256sum of the downloaded model file to make sure it is correct:
+### Command to run the Model
 
-  ```text
-  # starling-lm-7b-alpha.Q5_K_M.gguf
-  b6144d3a48352f5a40245ab1e89bfc0b17e4d045bf0e78fb512480f34ae92eba
-  ```
+After downloading the model, you can run it with the following command:
+
+```console
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:starling-lm-7b-alpha.Q5_K_M.gguf llama-chat.wasm -p openchat -r '<|end_of_turn|>' --stream-stdout
+```
+
+### Command to create the API server for the model
+
+Run the following command to create the API server.
+
+```
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:starling-lm-7b-alpha.Q5_K_M.gguf llama-api-server.wasm -p openchat
+```
+
+Test the API server from another terminal using the following command.
+
+```
+curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/json' -H 'Content-Type: application/json' -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"Starling-LM-7B"}'
+```
+
+#### Get the sha256sum of the model
+
+Please check the sha256sum of the downloaded model file to make sure it is correct:
+
+```
+shasum -a 256 starling-lm-7b-alpha.Q5_K_M.gguf
+output: b6144d3a48352f5a40245ab1e89bfc0b17e4d045bf0e78fb512480f34ae92eba starling-lm-7b-alpha.Q5_K_M.gguf
+```
 
 
