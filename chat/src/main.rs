@@ -91,6 +91,7 @@ fn main() -> Result<(), String> {
                     "zephyr",
                     "intel-neural",
                     "deepseek-chat",
+                    "deepseek-coder",
                 ])
                 .value_name("TEMPLATE")
                 .help("Prompt template.")
@@ -441,6 +442,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         }
         PromptTemplateType::DeepseekChat => ChatPrompt::DeepseekChatPrompt(
             chat_prompts::chat::deepseek::DeepseekChatPrompt::default(),
+        ),
+        PromptTemplateType::DeepseekCoder => ChatPrompt::DeepseekCoderPrompt(
+            chat_prompts::chat::deepseek::DeepseekCoderPrompt::default(),
         ),
     }
 }
