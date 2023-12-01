@@ -1268,7 +1268,7 @@ output: b6144d3a48352f5a40245ab1e89bfc0b17e4d045bf0e78fb512480f34ae92eba starlin
   Note that check the sha256 of `deepseek-llm-7b-chat.Q5_K_M.gguf` after downloading.
 
   ```text
-  b6144d3a48352f5a40245ab1e89bfc0b17e4d045bf0e78fb512480f34ae92eba
+  e5bcd887cc97ff63dbd17b8b9feac261516e985b5e78f1f544eb49cf403caaf6
   ```
 
 - Run model locally
