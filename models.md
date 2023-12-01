@@ -158,6 +158,7 @@ You can find the model download link, the command to run the model, the command 
     - [Command to run the Model](#command-to-run-the-model-29)
     - [Command to create the API server for the model](#command-to-create-the-api-server-for-the-model-28)
       - [Get the sha256sum of the model](#get-the-sha256sum-of-the-model-29)
+  - [Deepseek-LLM-7B-Chat](#deepseek-llm-7b-chat)
 
 <!-- /code_chunk_output -->
 
@@ -241,7 +242,7 @@ output: ef36e090240040f97325758c1ad8e23f3801466a8eece3a9eac2d22d942f548a llama-2
 curl -LO curl -LO https://huggingface.co/second-state/CodeLlama-13B-Instruct-GGUF/resolve/main/codellama-13b-instruct.Q4_0.gguf
 ```
 ### Command to run the model
-  
+
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:codellama-13b-instruct.Q4_0.gguf llama-chat.wasm -p codellama-instruct
 ```
@@ -338,7 +339,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistrallite.Q5_K_M.gguf llama-
 Run the follwing command to create the API server.
 
 ```
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistrallite.Q5_K_M.gguf llama-api-server.wasm -p mistrallite 
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistrallite.Q5_K_M.gguf llama-api-server.wasm -p mistrallite -r '</s>'
 ```
 
 Test the API server from anothe terminal using the following command.
@@ -541,7 +542,7 @@ output: 789685b86c86af68a1886949015661d3da0a9c959dffaae773afa4fe8cfdb840 Baichua
 curl -LO https://huggingface.co/second-state/Baichuan2-7B-Chat-GGUF/resolve/main/Baichuan2-7B-Chat-ggml-model-q4_0.gguf
 ```
 ### Command to run the model
-  
+
 ```console
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Baichuan2-7B-Chat-ggml-model-q4_0.gguf llama-chat.wasm -p baichuan-2 -r '用户:'
 ```
@@ -848,7 +849,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:WizardLM-1.0-Uncensored-CodeLl
 Run the following command to create the API server.
 
 ```
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:WizardLM-1.0-Uncensored-CodeLlama-34b-ggml-model-q4_0.gguf llama-api-server.wasm -p vicuna-chat 
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:WizardLM-1.0-Uncensored-CodeLlama-34b-ggml-model-q4_0.gguf llama-api-server.wasm -p vicuna-chat
 ```
 
 Test the API server from another terminal using the following command.
@@ -877,7 +878,7 @@ curl -LO https://huggingface.co/second-state/Samantha-1.11-CodeLlama-34B-GGUF/re
 ### Command to run the Model
 
 ```console
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf llama-chat.wasm -p vicuna-chat -s 'You are a helpful AI assistant.' 
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf llama-chat.wasm -p vicuna-chat -s 'You are a helpful AI assistant.'
 ```
 
 ### Command to create the API server for the model
@@ -917,7 +918,7 @@ curl -LO https://huggingface.co/second-state/Samantha-1.11-7B-GGUF/resolve/main/
 After Downloading the model, you can run it with the following command:
 
 ```console
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-7b-ggml-model-q4_0.gguf llama-chat.wasm -p vicuna-chat -s 'You are Samantha, a sentient AI companion.' 
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-7b-ggml-model-q4_0.gguf llama-chat.wasm -p vicuna-chat -s 'You are Samantha, a sentient AI companion.'
 ```
 
 ### Command to create the API server for the model
@@ -1035,7 +1036,7 @@ curl -LO https://huggingface.co/second-state/WizardLM-7B-V1.0-Uncensored-GGUF/re
 After Downloading the model, you can run it with the following command:
 
 ```console
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:wizardlm-7b-v1.0-uncensored.Q5_K_M.gguf llama-chat.wasm -p vicuna-chat -s 'You are a helpful AI assistant.' 
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:wizardlm-7b-v1.0-uncensored.Q5_K_M.gguf llama-chat.wasm -p vicuna-chat -s 'You are a helpful AI assistant.'
 ```
 
 ### Command to create the API server for the model
@@ -1074,7 +1075,7 @@ curl -LO https://huggingface.co/second-state/WizardLM-13B-V1.0-Uncensored-GGUF/r
 After Downloading the model, you can run it with the following command:
 
 ```console
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:wizardlm-13b-v1.0-uncensored.Q5_K_M.gguf llama-chat.wasm -p vicuna-chat -s 'You are a helpful AI assistant.' 
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:wizardlm-13b-v1.0-uncensored.Q5_K_M.gguf llama-chat.wasm -p vicuna-chat -s 'You are a helpful AI assistant.'
 ```
 
 ### Command to create the API server for the model
@@ -1217,8 +1218,6 @@ shasum -a 256 Yi-34B-Chat-ggml-model-q4_0.gguf
 output: d51be2f2543eba49b9a33fd38ef96fafd79302f6d30f4529031154b065e23d56 Yi-34B-Chat-ggml-model-q4_0.gguf
 ```
 
-
-
 ## Starling-LM-7B-alpha
 
 ### Download Starling-LM-7B-alpha Model
@@ -1258,4 +1257,41 @@ shasum -a 256 starling-lm-7b-alpha.Q5_K_M.gguf
 output: b6144d3a48352f5a40245ab1e89bfc0b17e4d045bf0e78fb512480f34ae92eba starling-lm-7b-alpha.Q5_K_M.gguf
 ```
 
+## Deepseek-LLM-7B-Chat
 
+- Download Starling-LM-7B-alpha Model
+
+  ```console
+  curl -LO https://huggingface.co/second-state/Deepseek-LLM-7B-Chat-GGUF/resolve/main/deepseek-llm-7b-chat.Q5_K_M.gguf
+  ```
+
+  Note that check the sha256 of `deepseek-llm-7b-chat.Q5_K_M.gguf` after downloading.
+
+  ```text
+  b6144d3a48352f5a40245ab1e89bfc0b17e4d045bf0e78fb512480f34ae92eba
+  ```
+
+- Run model locally
+
+  After Downloading the model, you can run it with the following command:
+
+  ```console
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:deepseek-llm-7b-chat.Q5_K_M.gguf llama-chat.wasm -p deepseek-chat
+  ```
+
+- Serve model as a Service
+
+  Run the following command to create the API server.
+
+  ```console
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:deepseek-llm-7b-chat.Q5_K_M.gguf llama-api-server.wasm -p deepseek-chat
+  ```
+
+  To test the service, run the following command:
+
+  ```console
+  curl -X POST http://localhost:8080/v1/chat/completions \
+    -H 'accept:application/json' \
+    -H 'Content-Type: application/json' \
+    -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"Starling-LM-7B"}'
+  ```
