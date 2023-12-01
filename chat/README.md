@@ -2,7 +2,6 @@
 
 [See it in action!](https://x.com/juntao/status/1705588244602114303)
 
-
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 
 <!-- code_chunk_output -->
@@ -16,9 +15,6 @@
   - [Optional: Build the `llama-chat` wasm app yourself](#optional-build-the-llama-chat-wasm-app-yourself)
 
 <!-- /code_chunk_output -->
-
-
-
 
 ## Dependencies
 
@@ -71,7 +67,6 @@ Download the `llama-chat.wasm`:
 curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
 ```
 
-
 ## Get Model
 
 Click [here](../models.md) to see the download link and commands to run the model.
@@ -110,7 +105,9 @@ What if I have 3 apples?
 [ASSISTANT]:
 If you have 3 apples, each costing 5 dollars, the total cost of the apples is 15 dollars.
 ```
+
 ## CLI options
+
 The options for `llama-chat` wasm app are:
 
 ```console
@@ -133,7 +130,7 @@ Options:
   -s, --system-prompt <SYSTEM_PROMPT>
           System prompt message string [default: "[Default system message for the prompt template]"]
   -p, --prompt-template <TEMPLATE>
-          Prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, openchat, belle-llama-2-chat, vicuna-chat, chatml, baichuan-2, wizard-coder, zephyr, intel-neural]
+          Prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, openchat, belle-llama-2-chat, vicuna-chat, chatml, baichuan-2, wizard-coder, zephyr, intel-neural, deepseek-chat]
       --log-prompts
           Print prompt strings to stdout
       --log-stat

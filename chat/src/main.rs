@@ -90,6 +90,7 @@ fn main() -> Result<(), String> {
                     "wizard-coder",
                     "zephyr",
                     "intel-neural",
+                    "deepseek-chat",
                 ])
                 .value_name("TEMPLATE")
                 .help("Prompt template.")
@@ -438,6 +439,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         PromptTemplateType::IntelNeural => {
             ChatPrompt::NeuralChatPrompt(chat_prompts::chat::intel::NeuralChatPrompt::default())
         }
+        PromptTemplateType::DeepseekChat => ChatPrompt::DeepseekChatPrompt(
+            chat_prompts::chat::deepseek::DeepseekChatPrompt::default(),
+        ),
     }
 }
 
@@ -474,6 +478,16 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
                 .as_ref()
                 .strip_suffix("</s>")
                 .unwrap()
+                .trim()
+                .to_owned()
+        } else {
+            output.as_ref().trim().to_owned()
+        }
+    } else if template_ty == PromptTemplateType::DeepseekChat {
+        if output.as_ref().contains("<|end_of_sentence|>") {
+            output
+                .as_ref()
+                .trim_end_matches("<|end_of_sentence|>")
                 .trim()
                 .to_owned()
         } else {
