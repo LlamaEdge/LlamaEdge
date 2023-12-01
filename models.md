@@ -159,6 +159,7 @@ You can find the model download link, the command to run the model, the command 
     - [Command to create the API server for the model](#command-to-create-the-api-server-for-the-model-28)
       - [Get the sha256sum of the model](#get-the-sha256sum-of-the-model-29)
   - [Deepseek-LLM-7B-Chat](#deepseek-llm-7b-chat)
+  - [Deepseek-Coder-6.7B](#deepseek-coder-67b)
 
 <!-- /code_chunk_output -->
 
@@ -1259,7 +1260,7 @@ output: b6144d3a48352f5a40245ab1e89bfc0b17e4d045bf0e78fb512480f34ae92eba starlin
 
 ## Deepseek-LLM-7B-Chat
 
-- Download Starling-LM-7B-alpha Model
+- Download model
 
   ```console
   curl -LO https://huggingface.co/second-state/Deepseek-LLM-7B-Chat-GGUF/resolve/main/deepseek-llm-7b-chat.Q5_K_M.gguf
@@ -1293,5 +1294,44 @@ output: b6144d3a48352f5a40245ab1e89bfc0b17e4d045bf0e78fb512480f34ae92eba starlin
   curl -X POST http://localhost:8080/v1/chat/completions \
     -H 'accept:application/json' \
     -H 'Content-Type: application/json' \
-    -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"Starling-LM-7B"}'
+    -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"Deepseek-LLM-7B-Chat"}'
+  ```
+
+## Deepseek-Coder-6.7B
+
+- Download model
+
+  ```console
+  curl -LO https://huggingface.co/second-state/Deepseek-Coder-6.7B-Instruct-GGUF/resolve/main/deepseek-coder-6.7b-instruct.Q5_K_M.gguf
+  ```
+
+  Note that check the sha256 of `deepseek-coder-6.7b-instruct.Q5_K_M.gguf` after downloading.
+
+  ```text
+  0976ee1707fc97b142d7266a9a501893ea6f320e8a8227aa1f04bcab74a5f556
+  ```
+
+- Run model locally
+
+  After Downloading the model, you can run it with the following command:
+
+  ```console
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:deepseek-coder-6.7b-instruct.Q5_K_M.gguf llama-chat.wasm -p deepseek-coder --stream-stdout
+  ```
+
+- Serve model as a Service
+
+  Run the following command to create the API server.
+
+  ```console
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:deepseek-coder-6.7b-instruct.Q5_K_M.gguf llama-api-server.wasm -p deepseek-coder
+  ```
+
+  To test the service, run the following command:
+
+  ```console
+  curl -X POST http://localhost:8080/v1/chat/completions \
+    -H 'accept:application/json' \
+    -H 'Content-Type: application/json' \
+    -d '{"messages":[{"role":"system", "content": "You are an AI programming assistant."}, {"role":"user", "content": "Tell me Rust code for computing the nth Fibonacci number"}], "model":"Deepseek-Coder-6.7B"}'
   ```
