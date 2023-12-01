@@ -1,8 +1,6 @@
-#  Ceate an OpenAI compatible API server for your LLM
+# Ceate an OpenAI compatible API server for your LLM
 
 An OpenAI-compatible web API allows the model to work with a large ecosystem of LLM tools and agent frameworks such as flows.network, LangChain and LlamaIndex.
-
-
 
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 
@@ -19,9 +17,6 @@ An OpenAI-compatible web API allows the model to work with a large ecosystem of 
   - [Optional: Build the `llama-chat` wasm app yourself](#optional-build-the-llama-chat-wasm-app-yourself)
 
 <!-- /code_chunk_output -->
-
-
-
 
 ## Dependencies
 
@@ -66,19 +61,17 @@ source $HOME/.bashrc
 
 </details>
 
-
 ## Get the llama-api-server.wasm app
 
 Download the api server app
 
-```
+```console
 curl -LO https://github.com/second-state/llama-utils/raw/main/api-server/llama-api-server.wasm
 ```
 
-## Get model 
+## Get model
 
 Cilck [here](../models.md) to see the model download link and commadns to run the API server and test the API server.
-
 
 ## Run the API server via curl
 
@@ -90,10 +83,10 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf ll
 
 The command above starts the API server on the default socket address. Besides, there are also some other options specified in the command:
 
-* The `--dir .:.` option specifies the current directory as the root directory of the WASI file system.
+- The `--dir .:.` option specifies the current directory as the root directory of the WASI file system.
 
-* The `--nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf` option specifies the Llama model to be used by the API server. The pattern of the argument is `<name>:<encoding>:<target>:<model path>`. Here, the model used is `llama-2-7b-chat.Q5_K_M.gguf`; and we give it an alias `default` as its name in the runtime environment. You can change the model name here if you're not using llama2-7b-chat
-* The `-p llama-2-chat` is the prompt template for the model.
+- The `--nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf` option specifies the Llama model to be used by the API server. The pattern of the argument is `<name>:<encoding>:<target>:<model path>`. Here, the model used is `llama-2-7b-chat.Q5_K_M.gguf`; and we give it an alias `default` as its name in the runtime environment. You can change the model name here if you're not using llama2-7b-chat
+- The `-p llama-2-chat` is the prompt template for the model.
 
 ### Test the API server via terminal
 
@@ -124,6 +117,7 @@ Ask a question using OpenAI's JSON message format.
 ```bash
 curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/json' -H 'Content-Type: application/json' -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"llama-2-chat"}'
 ```
+
 Here is the response.
 
 ```bash
@@ -165,7 +159,7 @@ After that, you can use the same command line to create the API server
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf llama-api-server.wasm -p llama-2-chat
 ```
 
-Then, you will be asked to open http://127.0.0.1:8080 from your browser. 
+Then, you will be asked to open http://127.0.0.1:8080 from your browser.
 
 ## CLI options for the API server
 
@@ -194,7 +188,7 @@ The `-h` or `--help` option can list the available options of the `llama-api-ser
     -r, --reverse-prompt <REVERSE_PROMPT>
             Halt generation at PROMPT, return control.
     -p, --prompt-template <TEMPLATE>
-            Sets the prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, openchat, belle-llama-2-chat, vicuna-chat, chatml, baichuan-2, wizard-coder, zephyr, intel-neural]
+            Sets the prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, mistral-instruct-v0.1, mistrallite, openchat, belle-llama-2-chat, vicuna-chat, chatml, baichuan-2, wizard-coder, zephyr, intel-neural, deepseek-chat]
         --log-prompts
             Print prompt strings to stdout
         --log-stat
@@ -207,16 +201,13 @@ The `-h` or `--help` option can list the available options of the `llama-api-ser
             Print help
   ```
 
-
-
-
   Please guarantee that the port is not occupied by other processes. If the port specified is available on your machine and the command is successful, you should see the following output in the terminal:
 
   ```console
   Listening on http://0.0.0.0:8080
   ```
 
-  If the Web UI is ready, you can navigate to `http://127.0.0.1:8080` to open the chatbot, it will interact with the API of your server. 
+  If the Web UI is ready, you can navigate to `http://127.0.0.1:8080` to open the chatbot, it will interact with the API of your server.
 
 ## Optional: Build the `llama-chat` wasm app yourself
 
@@ -227,9 +218,3 @@ cargo build --target wasm32-wasi --release
 ```
 
 The `llama-api-server.wasm` will be generated in the `target/wasm32-wasi/release` folder.
-
-
-
-
-
-

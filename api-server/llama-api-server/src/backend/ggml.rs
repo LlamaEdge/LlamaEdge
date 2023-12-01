@@ -188,6 +188,9 @@ pub(crate) async fn chat_completions_handler(
             PromptTemplateType::IntelNeural => {
                 ChatPrompt::NeuralChatPrompt(chat_prompts::chat::intel::NeuralChatPrompt::default())
             }
+            PromptTemplateType::DeepseekChat => ChatPrompt::DeepseekChatPrompt(
+                chat_prompts::chat::deepseek::DeepseekChatPrompt::default(),
+            ),
         }
     }
     let template = create_prompt_template(template_ty);
