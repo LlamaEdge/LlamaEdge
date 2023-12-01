@@ -1,6 +1,7 @@
 pub mod baichuan;
 pub mod belle;
 pub mod chatml;
+pub mod deepseek;
 pub mod intel;
 pub mod llama;
 pub mod mistral;
@@ -13,6 +14,7 @@ use crate::error::Result;
 use baichuan::*;
 use belle::*;
 use chatml::*;
+use deepseek::*;
 use endpoints::chat::ChatCompletionRequestMessage;
 use intel::*;
 use llama::*;
@@ -41,4 +43,5 @@ pub enum ChatPrompt {
     WizardCoderPrompt,
     ZephyrChatPrompt,
     NeuralChatPrompt,
+    DeepseekChatPrompt,
 }
