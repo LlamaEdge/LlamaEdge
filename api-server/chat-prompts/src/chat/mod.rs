@@ -44,4 +44,5 @@ pub enum ChatPrompt {
     ZephyrChatPrompt,
     NeuralChatPrompt,
     DeepseekChatPrompt,
+    DeepseekCoderPrompt,
 }
