@@ -1,28 +1,30 @@
 # llama-utils
 
-The llama-utils shows you how to run LLM inference and build OpenAI-compatible API services for the Llama2 series of LLMs .
-
+The llama-utils makes it easy for you to run LLM inference apps and create OpenAI-compatible API services for the Llama2 series of LLMs.
 
 ## Quick start
 
-Run the one single command on your terminal to quick start. (macOS and Linux on CPU and GPU are avavible.)
+Run a single command in your command line terminal.
 
 ```
 bash <(curl -sSf https://raw.githubusercontent.com/second-state/llama-utils/main/run-llm.sh)
 ```
-After that, please follow the prompt to install the WasmEdge Runtime and download your favorite open-source LLM. Then, you will be asked to choose whether you want to chat with the model via the CLI or via a web interface. 
 
-[See in action](https://youtu.be/Hqu-PBqkzDk) | Docs
+Follow the on-screen instructions to install the WasmEdge Runtime and download your favorite open-source LLM. Then, choose whether you want to chat with the model via the CLI or via a web UI. 
 
-## How to use?
+[See it in action](https://youtu.be/Hqu-PBqkzDk) | Docs
 
-* The folder `api-server` includes the source code and instructions to create OpenAI-compatible API service for your llama2 model or the LLama2 model itself.
-* The folder `chat` includes the source code and instructions to run llama2 models that can have continuous conversations.
-* The folder `simple` includes the source code and instructions to run llama2 models that can answer one question.
+## How it works?
 
-## Why use llama-utils
+The Rust source code for the inference applications are all open source and you can modify and use them freely for your own purposes.
 
-The Rust+Wasm stack provides a strong alternative to Python in AI inference.
+* The folder `simple` contains the source code project to generate text from a prompt using run llama2 models.
+* The folder `chat` contains the source code project to "chat" with a llama2 model on the command line.
+* The folder `api-server` contains the source code project for a web server. It provides an OpenAI-compatible API service, as well as an optional web UI, for llama2 models.
+
+## The tech stack
+
+The [Rust+Wasm stack](https://medium.com/stackademic/why-did-elon-musk-say-that-rust-is-the-language-of-agi-eb36303ce341) provides a strong alternative to Python in AI inference.
 
 * Lightweight. The total runtime size is 30MB.
 * Fast. Full native speed on GPUs.
@@ -34,27 +36,21 @@ For more information, please check out [Fast and Portable Llama2 Inference on th
 
 ## Models
 
-The llama-utils project, in theory, supports all Language Learning Models (LLMs) based on the llama2 framework in GGUF format. Below is a list of models that have been successfully verified to work on both Mac and Jetson Orin platforms. We are committed to continuously expanding this list by verifying additional models. If you have successfully operated other LLMs, don't hesitate to contribute by creating a Pull Request (PR) to help extend this list.
+The llama-utils project, supports all Large Language Models (LLMs) based on the llama2 framework. The model files must be in the GGUF format. We are committed to continuously testing and validating new open-source models that emerge every day.
 
-Click [here](./models.md) to see the supported model list and its download link, commands, and prompt template.
+[Click here](./models.md) to see the supported model list with a download link and startup commands for each model. If you have success with other LLMs, don't hesitate to contribute by creating a Pull Request (PR) to help extend this list.
 
 ## Platforms
 
-The compiled Wasm file is cross platfrom. You can use the same Wasm file to run the LLM both on CPU and GPU. 
+The compiled Wasm file is cross platfrom. You can use the same Wasm file to run the LLM across OSes (e.g., MacOS, Linux, Windows SL), CPUs (e.g., x86, ARM, Apple, RISC-V), and GPUs (e.g., NVIDIA, Apple).
 
-The installer from WasmEdge 0.13.5 will detect cuda automatically. If CUDA is detected, the installer will always attempt to install a CUDA-enabled version of the plugin. The CUDA support is verified on the following platforms:
+The installer from WasmEdge 0.13.5 will detect NVIDIA CUDA drivers automatically. If CUDA is detected, the installer will always attempt to install a CUDA-enabled version of the plugin. The CUDA support is tested on the following platforms in our automated CI.
+
 * Nvidia Jetson AGX Orin 64GB developer kit
 * Intel i7-10700 + Nvidia GTX 1080 8G GPU
 * AWS EC2 `g5.xlarge` + Nvidia A10G 24G GPU + Amazon deep learning base Ubuntu 20.04
 
-If you're using CPU only machine, the installer will install the OpenBLAS version of the plugin instead. You may need to install `libopenblas-dev` by `apt update && apt install -y libopenblas-dev`.
-
-| Platforms | Status |
-|-----------|--------|
-| macOS (apple silicon)   |   ✅     |
-| Ubuntu (>= 20.04)    |     ✅   |
-| General Linux      |   ✅     |
-
+> If you're using CPU only machine, the installer will install the OpenBLAS version of the plugin instead. You may need to install `libopenblas-dev` by `apt update && apt install -y libopenblas-dev`.
 
 ## Troubleshooting
 
@@ -90,8 +86,6 @@ If you're using CPU only machine, the installer will install the OpenBLAS versio
   2. Ensure that the model has been downloaded successfully. You can use the command `shasum -a 256 <gguf-filename>` to verify the model's sha256sum. Compare your result with the correct sha256sum available on [the Hugging Face page](https://huggingface.co/second-state/Dolphin-2.2-Yi-34B-GGUF/blob/main/dolphin-2.2-yi-34b-ggml-model-q4_0.gguf) for the model.
       
 <img width="1286" alt="image" src="https://github.com/second-state/llama-utils/assets/45785633/24286d8e-b438-4d1a-a443-62c1466e9992">
-
- 
 
 ## Credits
 
