@@ -165,8 +165,7 @@ fn main() -> Result<(), String> {
     output_size = std::cmp::min(*CTX_SIZE.get().unwrap(), output_size);
     let output = String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
 
-    println!("\nprompt: {}", &prompt);
-    println!("\noutput: {}", output);
+    println!("\n[Answer]:\n\n{}", output);
 
     Ok(())
 }
