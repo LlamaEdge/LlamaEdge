@@ -121,49 +121,6 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:codellama-13b-instruct.Q4_0.gg
 
 
 
-
-<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
-
-<!-- code_chunk_output -->
-
-- [GGUF Models](#gguf-models)
-  - [Llama-2-7B-Chat](#llama-2-7b-chat)
-  - [Llama-2-13B-Chat](#llama-2-13b-chat)
-  - [CodeLlama-13B-Instruct](#codellama-13b-instruct)
-  - [BELLE-Llama2-13B-Chat](#belle-llama2-13b-chat)
-  - [Mistral-7B-Instruct-v0.1](#mistral-7b-instruct-v01)
-  - [MistralLite-7B](#mistrallite-7b)
-  - [OpenChat-3.5](#openchat-35)
-  - [Wizard-Vicuna](#wizard-vicuna)
-  - [CausalLM-14B](#causallm-14b)
-  - [TinyLlama-1.1B-Chat-v0.3](#tinyllama-11b-chat-v03)
-  - [Baichuan2-13B-Chat](#baichuan2-13b-chat)
-  - [Baichuan2-7B-Chat](#baichuan2-7b-chat)
-  - [OpenHermes-2.5-Mistral-7B](#openhermes-25-mistral-7b)
-  - [Dolphin-2.2-Yi-34B](#dolphin-22-yi-34b)
-  - [Dolphin-2.2-Mistral-7B](#dolphin-22-mistral-7b)
-  - [Dolphin-2.2.1-Mistral-7B](#dolphin-221-mistral-7b)
-  - [Samantha-1.2-Mistral-7B](#samantha-12-mistral-7b)
-  - [Dolphin-2.1-Mistral-7B](#dolphin-21-mistral-7b)
-  - [Dolphin-2.0-Mistral-7B](#dolphin-20-mistral-7b)
-  - [WizardLM-1.0-Uncensored-CodeLlama-34B](#wizardlm-10-uncensored-codellama-34b)
-  - [Samantha-1.11-CodeLlama-34B](#samantha-111-codellama-34b)
-  - [Samantha-1.11-7B](#samantha-111-7b)
-  - [WizardCoder-Python-7B-V1.0](#wizardcoder-python-7b-v10)
-  - [Zephyr-7B-Alpha](#zephyr-7b-alpha)
-  - [WizardLM-7B-V1.0-Uncensored](#wizardlm-7b-v10-uncensored)
-  - [WizardLM-13B-V1.0-Uncensored](#wizardlm-13b-v10-uncensored)
-  - [Orca-2-13B](#orca-2-13b)
-  - [Neural-Chat-7B-v3-1](#neural-chat-7b-v3-1)
-  - [Yi-34B-Chat](#yi-34b-chat)
-  - [Starling-LM-7B-alpha](#starling-lm-7b-alpha)
-  - [Deepseek-LLM-7B-Chat](#deepseek-llm-7b-chat)
-  - [Deepseek-Coder-6.7B](#deepseek-coder-67b)
-
-<!-- /code_chunk_output -->
-
-
-
 <details>
 <summary> <b>BELLE-Llama2-13B-Chat-0.4M</b> </summary>
 <hr/>
