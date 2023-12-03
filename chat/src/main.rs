@@ -474,10 +474,8 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
         || template_ty == PromptTemplateType::MistralLite
     {
         if output.as_ref().contains("</s><") {
-            println!("* output: {:?}", output.as_ref());
             output.as_ref().trim_end_matches("</s><").trim().to_owned()
         } else if output.as_ref().contains("</s>") {
-            println!("*** output: {:?}", output.as_ref());
             output
                 .as_ref()
                 .strip_suffix("</s>")
