@@ -48,7 +48,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 </details>
 
 <details>
-<summary> <b>Llama-2-7B-Chat</b> </summary>
+<summary> <b>Llama-2-13B-Chat</b> </summary>
 <hr/>
 <b>Download the model</b>
 
@@ -424,7 +424,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 </details>
 
 <details>
-<summary> <b>aichuan2-13B-Chat</b> </summary>
+<summary> <b>Baichuan2-13B-Chat</b> </summary>
 <hr/>
 <b>Download the model</b>
 
@@ -559,7 +559,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 </details>
 
 <details>
-<summary> <b>Dolphin-2.2-Yi-34B</summary>
+<summary> <b>Dolphin-2.2-Yi-34B</b> </summary>
 <hr/>
 <b>Download the model</b>
 
