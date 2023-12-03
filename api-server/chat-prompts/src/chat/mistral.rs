@@ -60,7 +60,7 @@ impl MistralLitePrompt {
         content: impl AsRef<str>,
     ) -> String {
         format!(
-            "{chat_history}<|assistant|>{assistant_message}",
+            "{chat_history}<|assistant|>{assistant_message}</s>",
             chat_history = chat_history.as_ref().trim(),
             assistant_message = content.as_ref().trim(),
         )
