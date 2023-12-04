@@ -321,10 +321,6 @@ async fn main() -> Result<(), ServerError> {
 
     println!("[INFO] Listening on http://{}", addr);
 
-    println!(
-        "\nNavigate to http://127.0.0.1:{} to start chatting",
-        addr.port()
-    );
     match server.await {
         Ok(_) => Ok(()),
         Err(e) => Err(ServerError::InternalServerError(e.to_string())),
