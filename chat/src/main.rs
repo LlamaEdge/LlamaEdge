@@ -292,19 +292,9 @@ fn main() -> Result<(), String> {
 
     print_separator();
 
-    let mut ready = false;
     loop {
-        let user_message = match ready {
-            true => {
-                println!("\n[You]: ");
-                read_input()
-            }
-            false => {
-                ready = true;
-                println!("\n[You]: Hello!");
-                String::from("Hello!")
-            }
-        };
+        println!("\n[You]: ");
+        let user_message = read_input();
 
         chat_request
             .messages
