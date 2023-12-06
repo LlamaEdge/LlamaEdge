@@ -312,9 +312,9 @@ start_server() {
 
     set -x
     if [ -n "$reverse_prompt" ]; then
-        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-api-server.wasm -p $prompt_template -r "${reverse_prompt[@]}"
+        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-api-server.wasm -p $prompt_template -m "${model}" -r "${reverse_prompt[@]}"
     else
-        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-api-server.wasm -p $prompt_template
+        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-api-server.wasm -p $prompt_template -m "${model}"
     fi
     set +x
 }
