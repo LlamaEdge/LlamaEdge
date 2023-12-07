@@ -64,7 +64,6 @@ pub(crate) async fn _embeddings_handler() -> Result<Response<Body>, hyper::Error
 
 pub(crate) async fn completions_handler(
     mut req: Request<Body>,
-    metadata: String,
 ) -> Result<Response<Body>, hyper::Error> {
     println!("[COMPLETION] New completion begins ...");
 
@@ -77,7 +76,7 @@ pub(crate) async fn completions_handler(
     // ! todo: a temp solution of computing the number of tokens in prompt
     let prompt_tokens = prompt.split_whitespace().count() as u32;
 
-    let buffer = match infer(prompt.trim(), metadata).await {
+    let buffer = match infer(prompt.trim()).await {
         Ok(buffer) => buffer,
         Err(e) => {
             return error::internal_server_error(e.to_string());
@@ -134,7 +133,6 @@ pub(crate) async fn completions_handler(
 pub(crate) async fn chat_completions_handler(
     mut req: Request<Body>,
     template_ty: PromptTemplateType,
-    metadata: String,
     log_prompts: bool,
 ) -> Result<Response<Body>, hyper::Error> {
     if req.method().eq(&hyper::http::Method::OPTIONS) {
@@ -220,7 +218,7 @@ pub(crate) async fn chat_completions_handler(
     let prompt_tokens = prompt.split_whitespace().count() as u32;
 
     // run inference
-    let buffer = match infer(prompt, metadata).await {
+    let buffer = match infer(prompt).await {
         Ok(buffer) => buffer,
         Err(e) => {
             return error::internal_server_error(e.to_string());
@@ -234,8 +232,6 @@ pub(crate) async fn chat_completions_handler(
 
     // ! todo: a temp solution of computing the number of tokens in assistant_message
     let completion_tokens = message.split_whitespace().count() as u32;
-
-    print(&message);
 
     // create ChatCompletionResponse
     let chat_completion_obejct = ChatCompletionResponse {
@@ -270,6 +266,7 @@ pub(crate) async fn chat_completions_handler(
         .body(Body::from(
             serde_json::to_string(&chat_completion_obejct).unwrap(),
         ));
+
     match result {
         Ok(response) => Ok(response),
         Err(e) => error::internal_server_error(e.to_string()),
@@ -277,30 +274,12 @@ pub(crate) async fn chat_completions_handler(
 }
 
 /// Runs inference on the model with the given name and returns the output.
-pub(crate) async fn infer(
-    prompt: impl AsRef<str>,
-    metadata: String,
-) -> std::result::Result<Vec<u8>, String> {
-    let graph = crate::GRAPH.get().unwrap().lock().unwrap();
+pub(crate) async fn infer(prompt: impl AsRef<str>) -> std::result::Result<Vec<u8>, String> {
+    let mut graph = crate::GRAPH.get().unwrap().lock().unwrap();
 
-    let mut context = graph.init_execution_context().unwrap();
-
-    // set metadata
-    if context
-        .set_input(
-            1,
-            wasi_nn::TensorType::U8,
-            &[1],
-            metadata.as_bytes().to_owned(),
-        )
-        .is_err()
-    {
-        return Err(String::from("Fail to set metadata"));
-    };
-
+    // set input
     let tensor_data = prompt.as_ref().as_bytes().to_vec();
-    // println!("Read input tensor, size in bytes: {}", tensor_data.len());
-    if context
+    if graph
         .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
         .is_err()
     {
@@ -308,13 +287,13 @@ pub(crate) async fn infer(
     };
 
     // execute the inference
-    if context.compute().is_err() {
+    if graph.compute().is_err() {
         return Err(String::from("Fail to execute model inference"));
     }
 
     // Retrieve the output.
     let mut output_buffer = vec![0u8; *CTX_SIZE.get().unwrap()];
-    let mut output_size = match context.get_output(0, &mut output_buffer) {
+    let mut output_size = match graph.get_output(0, &mut output_buffer) {
         Ok(size) => size,
         Err(e) => {
             return Err(format!(
@@ -324,6 +303,7 @@ pub(crate) async fn infer(
         }
     };
     output_size = std::cmp::min(*CTX_SIZE.get().unwrap(), output_size);
+
     Ok(output_buffer[..output_size].to_vec())
 }
 
@@ -355,8 +335,4 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
     } else {
         output.as_ref().trim().to_owned()
     }
-}
-
-fn print(message: impl AsRef<str>) {
-    println!("\n[ASSISTANT]:\n{}", message.as_ref().trim())
 }

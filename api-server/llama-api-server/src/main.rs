@@ -12,6 +12,9 @@ use hyper::{
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, path::PathBuf, str::FromStr, sync::Mutex};
+use wasi_nn::{Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext, TensorType};
+
+use std::time::Instant;
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -20,7 +23,7 @@ const DEFAULT_CTX_SIZE: &str = "4096";
 
 static CTX_SIZE: OnceCell<usize> = OnceCell::new();
 
-static GRAPH: OnceCell<Mutex<wasi_nn::Graph>> = OnceCell::new();
+static GRAPH: OnceCell<Mutex<Graph>> = OnceCell::new();
 
 #[derive(Clone, Debug)]
 pub struct AppState {
@@ -179,10 +182,10 @@ async fn main() -> Result<(), ServerError> {
     println!("[INFO] Model alias: {alias}", alias = &model_alias);
 
     // create a `ModelInfo` instance
-    let model_info = ModelInfo::new(model_name, model_alias);
+    let model_info = ModelInfo::new(model_name);
 
     // create an `Options` instance
-    let mut options = Options::default();
+    let mut options = Metadata::default();
 
     // prompt context size
     let ctx_size = matches.get_one::<u32>("ctx_size").unwrap();
@@ -250,35 +253,9 @@ async fn main() -> Result<(), ServerError> {
         options.log_enable = true;
     }
 
-    // serialize options
-    let metadata = match serde_json::to_string(&options) {
-        Ok(metadata) => metadata,
-        Err(e) => {
-            return Err(ServerError::InternalServerError(format!(
-                "Fail to serialize options: {msg}",
-                msg = e.to_string()
-            )))
-        }
-    };
-
     println!("[INFO] Starting server ...");
 
-    // load the model into wasi-nn
-    let graph = match wasi_nn::GraphBuilder::new(
-        wasi_nn::GraphEncoding::Ggml,
-        wasi_nn::ExecutionTarget::AUTO,
-    )
-    .build_from_cache(&model_info.alias)
-    {
-        Ok(graph) => graph,
-        Err(e) => {
-            return Err(ServerError::InternalServerError(format!(
-                "Fail to load model into wasi-nn: {msg}",
-                msg = e.to_string()
-            )))
-        }
-    };
-
+    let graph = Graph::new(model_alias, &options);
     if GRAPH.set(Mutex::new(graph)).is_err() {
         return Err(ServerError::InternalServerError(
             "The GRAPH has already been initialized".to_owned(),
@@ -297,7 +274,6 @@ async fn main() -> Result<(), ServerError> {
         let prompt_template_ty = ref_template_ty.clone();
         let created = ref_created.clone();
         let log_prompts = ref_log_prompts.clone();
-        let metadata = metadata.clone();
         let web_ui = matches
             .get_one::<String>("web_ui")
             .unwrap_or(&"chatbot-ui".to_owned())
@@ -309,7 +285,6 @@ async fn main() -> Result<(), ServerError> {
                     model_info.clone(),
                     *prompt_template_ty.clone(),
                     *created.clone(),
-                    metadata.clone(),
                     *log_prompts.clone(),
                     web_ui.clone(),
                 )
@@ -332,7 +307,6 @@ async fn handle_request(
     model_info: ModelInfo,
     template_ty: PromptTemplateType,
     created: u64,
-    metadata: String,
     log_prompts: bool,
     web_ui: String,
 ) -> Result<Response<Body>, hyper::Error> {
@@ -348,15 +322,7 @@ async fn handle_request(
             return Ok(Response::new(Body::from("echo test")));
         }
         "/v1" => {
-            backend::handle_llama_request(
-                req,
-                model_info,
-                template_ty,
-                created,
-                metadata,
-                log_prompts,
-            )
-            .await
+            backend::handle_llama_request(req, model_info, template_ty, created, log_prompts).await
         }
         _ => Ok(static_response(path_str, web_ui)),
     }
@@ -388,7 +354,7 @@ fn static_response(path_str: &str, root: String) -> Response<Body> {
 }
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
-struct Options {
+struct Metadata {
     #[serde(rename = "enable-log")]
     log_enable: bool,
     #[serde(rename = "stream-stdout")]
@@ -408,13 +374,64 @@ struct Options {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ModelInfo {
     name: String,
-    alias: String,
 }
 impl ModelInfo {
-    fn new(name: impl AsRef<str>, alias: impl AsRef<str>) -> Self {
+    fn new(name: impl AsRef<str>) -> Self {
         Self {
             name: name.as_ref().to_string(),
-            alias: alias.as_ref().to_string(),
         }
+    }
+}
+
+#[derive(Debug)]
+struct Graph {
+    _graph: WasiNnGraph,
+    context: GraphExecutionContext,
+}
+impl Graph {
+    pub fn new(model_alias: impl AsRef<str>, options: &Metadata) -> Self {
+        // load the model
+        let graph = wasi_nn::GraphBuilder::new(
+            wasi_nn::GraphEncoding::Ggml,
+            wasi_nn::ExecutionTarget::AUTO,
+        )
+        .build_from_cache(model_alias.as_ref())
+        .unwrap();
+
+        // initialize the execution context
+        let mut context = graph.init_execution_context().unwrap();
+
+        // set metadata
+        let buffer = serde_json::to_vec(options).unwrap();
+        context
+            .set_input(1, wasi_nn::TensorType::U8, &[1], buffer)
+            .unwrap();
+
+        Self {
+            _graph: graph,
+            context,
+        }
+    }
+
+    pub fn set_input<T: Sized>(
+        &mut self,
+        index: usize,
+        tensor_type: TensorType,
+        dimensions: &[usize],
+        data: impl AsRef<[T]>,
+    ) -> Result<(), WasiNnError> {
+        self.context.set_input(index, tensor_type, dimensions, data)
+    }
+
+    pub fn compute(&mut self) -> Result<(), WasiNnError> {
+        self.context.compute()
+    }
+
+    pub fn get_output<T: Sized>(
+        &self,
+        index: usize,
+        out_buffer: &mut [T],
+    ) -> Result<usize, WasiNnError> {
+        self.context.get_output(index, out_buffer)
     }
 }
