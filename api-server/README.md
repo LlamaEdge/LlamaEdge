@@ -90,59 +90,98 @@ The command above starts the API server on the default socket address. Besides, 
 
 ### Test the API server via terminal
 
-`llama-api-server` provides a POST API `/v1/models` to list currently available models. You can use `curl` to test it on a new terminal:
+- List models
 
-```bash
-curl -X POST http://localhost:8080/v1/models -H 'accept:application/json'
-```
+    `llama-api-server` provides a POST API `/v1/models` to list currently available models. You can use `curl` to test it on a new terminal:
 
-If the command is successful, you should see the similar output as below in your terminal:
+    ```bash
+    curl -X POST http://localhost:8080/v1/models -H 'accept:application/json'
+    ```
 
-```bash
-{
-    "object":"list",
-    "data":[
-        {
-            "id":"llama-2-chat",
-            "created":1697084821,
-            "object":"model",
-            "owned_by":"Not specified"
-        }
-    ]
-}
-```
+    If the command is successful, you should see the similar output as below in your terminal:
 
-Ask a question using OpenAI's JSON message format.
-
-```bash
-curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/json' -H 'Content-Type: application/json' -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"llama-2-chat"}'
-```
-
-Here is the response.
-
-```bash
-{
-    "id":"",
-    "object":"chat.completion",
-    "created":1697092593,
-    "model":"llama-2-chat",
-    "choices":[
-        {
-            "index":0,
-            "message":{
-                "role":"assistant",
-                "content":"Robert Oppenheimer was an American theoretical physicist and director of the Manhattan Project, which developed the atomic bomb during World War II. He is widely regarded as one of the most important physicists of the 20th century and is known for his contributions to the development of quantum mechanics and the theory of the atomic nucleus. Oppenheimer was also a prominent figure in the post-war nuclear weapons debate, advocating for international control and regulation of nuclear weapons."
-            },
-            "finish_reason":"stop"
-        }
-    ],
-    "usage":{
-        "prompt_tokens":9,
-        "completion_tokens":12,
-        "total_tokens":21
+    ```bash
+    {
+        "object":"list",
+        "data":[
+            {
+                "id":"llama-2-chat",
+                "created":1697084821,
+                "object":"model",
+                "owned_by":"Not specified"
+            }
+        ]
     }
-}
-```
+    ```
+
+- Chat completions
+
+    Ask a question using OpenAI's JSON message format.
+
+    ```bash
+    curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/json' -H 'Content-Type: application/json' -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"llama-2-chat"}'
+    ```
+
+    Here is the response.
+
+    ```bash
+    {
+        "id":"",
+        "object":"chat.completion",
+        "created":1697092593,
+        "model":"llama-2-chat",
+        "choices":[
+            {
+                "index":0,
+                "message":{
+                    "role":"assistant",
+                    "content":"Robert Oppenheimer was an American theoretical physicist and director of the Manhattan Project, which developed the atomic bomb during World War II. He is widely regarded as one of the most important physicists of the 20th century and is known for his contributions to the development of quantum mechanics and the theory of the atomic nucleus. Oppenheimer was also a prominent figure in the post-war nuclear weapons debate, advocating for international control and regulation of nuclear weapons."
+                },
+                "finish_reason":"stop"
+            }
+        ],
+        "usage":{
+            "prompt_tokens":9,
+            "completion_tokens":12,
+            "total_tokens":21
+        }
+    }
+    ```
+
+- Completions
+
+    To obtain the completion for a single prompt, use the `/v1/completions` API. The following command sends a prompt to the API server and gets the completion:
+
+    ```bash
+    curl -X POST http://50.112.58.64:8080/v1/completions \
+        -H 'accept:application/json' \
+        -H 'Content-Type: application/json' \
+        -d '{"prompt":["Long long ago, "], "model":"tinyllama"}'
+    ```
+
+    The response looks like below:
+
+    ```json
+    {
+        "id": "b68bfc92-8b23-4435-bbe1-492e11c973a3",
+        "choices": [
+            {
+                "finish_reason": "stop",
+                "index": 0,
+                "logprobs": null,
+                "text": "in a galaxy far, far away, a group of Jedi Knights lived and trained to defend the peace and security of the galaxy. They were the last hope for peace and justice in a world where the dark side of the force was rife with corruption and injustice. The Knights were a select few, and their training and abilities were the envy of the galaxy. They were the chosen ones. They were the ones who would bring peace and justice to the galaxy. ..."
+            }
+        ],
+        "created": 1702046592,
+        "model": "tinyllama",
+        "object": "text_completion",
+        "usage": {
+            "prompt_tokens": 3,
+            "completion_tokens": 804,
+            "total_tokens": 807
+        }
+    }
+    ```
 
 ## Add a web UI
 
