@@ -37,7 +37,10 @@ pub enum ChatPrompt {
     OpenChatPrompt,
     CodeLlamaInstructPrompt,
     BelleLlama2ChatPrompt,
+    /// Vicuna 1.0
     VicunaChatPrompt,
+    /// Vicuna 1.1
+    Vicuna11ChatPrompt,
     ChatMLPrompt,
     Baichuan2ChatPrompt,
     WizardCoderPrompt,
