@@ -85,6 +85,7 @@ fn main() -> Result<(), String> {
                     "openchat",
                     "belle-llama-2-chat",
                     "vicuna-chat",
+                    "vicuna-1.1-chat",
                     "chatml",
                     "baichuan-2",
                     "wizard-coder",
@@ -414,6 +415,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         ),
         PromptTemplateType::VicunaChat => {
             ChatPrompt::VicunaChatPrompt(chat_prompts::chat::vicuna::VicunaChatPrompt::default())
+        }
+        PromptTemplateType::Vicuna11Chat => {
+            ChatPrompt::Vicuna11ChatPrompt(chat_prompts::chat::vicuna::Vicuna11ChatPrompt::default())
         }
         PromptTemplateType::ChatML => {
             ChatPrompt::ChatMLPrompt(chat_prompts::chat::chatml::ChatMLPrompt::default())
