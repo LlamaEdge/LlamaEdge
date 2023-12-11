@@ -112,6 +112,7 @@ async fn main() -> Result<(), ServerError> {
                     "openchat",
                     "belle-llama-2-chat",
                     "vicuna-chat",
+                    "vicuna-1.1-chat",
                     "chatml",
                     "baichuan-2",
                     "wizard-coder",

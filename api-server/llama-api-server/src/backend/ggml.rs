@@ -171,6 +171,9 @@ pub(crate) async fn chat_completions_handler(
             PromptTemplateType::VicunaChat => {
                 ChatPrompt::VicunaChatPrompt(chat_prompts::chat::vicuna::VicunaChatPrompt::default())
             }
+            PromptTemplateType::Vicuna11Chat => ChatPrompt::Vicuna11ChatPrompt(
+                chat_prompts::chat::vicuna::Vicuna11ChatPrompt::default(),
+            ),
             PromptTemplateType::ChatML => {
                 ChatPrompt::ChatMLPrompt(chat_prompts::chat::chatml::ChatMLPrompt::default())
             }
