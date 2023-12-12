@@ -336,9 +336,9 @@ start_chat() {
 
     set -x
     if [ -n "$reverse_prompt" ] && [ -n "$system_prompt" ]; then
-        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-chat.wasm --stream-stdout --prompt-template $prompt_template -r "${reverse_prompt[@]}" -s "${system_prompt[@]}" $log_stat
+        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-chat.wasm --prompt-template $prompt_template -r "${reverse_prompt[@]}" -s "${system_prompt[@]}" $log_stat
     elif [ -n "$reverse_prompt" ]; then
-        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-chat.wasm --stream-stdout --prompt-template $prompt_template -r "${reverse_prompt[@]}" $log_stat
+        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-chat.wasm --prompt-template $prompt_template -r "${reverse_prompt[@]}" $log_stat
     elif [ -n "$system_prompt" ]; then
         wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-chat.wasm --stream-stdout --prompt-template $prompt_template -s "${system_prompt[@]}" $log_stat
     else
