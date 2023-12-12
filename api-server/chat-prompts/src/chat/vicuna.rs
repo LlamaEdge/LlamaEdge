@@ -107,7 +107,7 @@ impl Vicuna11ChatPrompt {
                 user_message = content.as_ref().trim(),
             ),
             false => format!(
-                "{chat_history} USER: {user_message}",
+                "{chat_history}\nUSER: {user_message}",
                 chat_history = chat_history.as_ref().trim(),
                 user_message = content.as_ref().trim(),
             ),
@@ -121,7 +121,7 @@ impl Vicuna11ChatPrompt {
         content: impl AsRef<str>,
     ) -> String {
         format!(
-            "{chat_history} ASSISTANT: {assistant_message}",
+            "{chat_history}\nASSISTANT: {assistant_message}",
             chat_history = chat_history.as_ref().trim(),
             assistant_message = content.as_ref().trim(),
         )
