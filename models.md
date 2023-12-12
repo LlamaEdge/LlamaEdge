@@ -1324,25 +1324,25 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 </details>
 
 <details>
-<summary> <b>Deepseek-LLM-7B-Chat</b> </summary>
+<summary> <b>Calm2-7B-Chat</b> </summary>
 <hr/>
 <b>Download the model</b>
 
 ```console
-curl -LO https://huggingface.co/second-state/Deepseek-LLM-7B-Chat-GGUF/resolve/main/deepseek-llm-7b-chat.Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Calm2-7B-Chat-GGUF/blob/main/calm2-7b-chat.Q4_K_M.gguf
 ```
 
-Note that check the sha256 of `deepseek-llm-7b-chat.Q5_K_M.gguf` after downloading.
+Note that check the sha256 of `calm2-7b-chat.Q4_K_M.gguf` after downloading.
 
   ```text
-  e5bcd887cc97ff63dbd17b8b9feac261516e985b5e78f1f544eb49cf403caaf6
+  42e829c19100c5d82c9432f0ee4c062e994fcf03966e8bfb2e92d1d91db12d56
   ```
 
 <b>Chat with the model on the CLI</b>
 
 ```console
 curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:deepseek-llm-7b-chat.Q5_K_M.gguf llama-chat.wasm -p deepseek-chat
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:calm2-7b-chat.Q4_K_M.gguf llama-chat.wasm -p vicuna-1.1-chat --stream-stdout
 ```
 
 <b>Chat with the model via a web UI</b>
@@ -1353,7 +1353,7 @@ curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/cha
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:deepseek-llm-7b-chat.Q5_K_M.gguf llama-api-server.wasm -p deepseek-chat
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:calm2-7b-chat.Q4_K_M.ggu llama-api-server.wasm -p vicuna-1.1-chat
 ```
 
 Open your browser to http://localhost:8080 to start the chat!
@@ -1366,7 +1366,7 @@ Test the API server from another terminal using the following command
 curl -X POST http://localhost:8080/v1/chat/completions \
     -H 'accept:application/json' \
     -H 'Content-Type: application/json' \
-    -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"Deepseek-LLM-7B-Chat"}'
+    -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"Calm2-7B-Chat"}'
 ```
 </details>
 
@@ -1384,8 +1384,6 @@ curl -LO https://huggingface.co/second-state/Deepseek-Coder-6.7B-Instruct-GGUF/r
   ```text
   0976ee1707fc97b142d7266a9a501893ea6f320e8a8227aa1f04bcab74a5f556
   ```
-
-
 
 <b>Chat with the model on the CLI</b>
 
@@ -1418,3 +1416,51 @@ Test the API server from another terminal using the following command
     -d '{"messages":[{"role":"system", "content": "You are an AI programming assistant."}, {"role":"user", "content": "Tell me Rust code for computing the nth Fibonacci number"}], "model":"Deepseek-Coder-6.7B"}'
 ```
 </details>
+
+<details>
+<summary> <b>Deepseek-Coder-6.7B</b> </summary>
+<hr/>
+<b>Download the model</b>
+
+```console
+curl -LO https://huggingface.co/second-state/Deepseek-Coder-6.7B-Instruct-GGUF/resolve/main/deepseek-coder-6.7b-instruct.Q5_K_M.gguf
+```
+
+  Note that check the sha256 of `deepseek-coder-6.7b-instruct.Q5_K_M.gguf` after downloading.
+
+  ```text
+  0976ee1707fc97b142d7266a9a501893ea6f320e8a8227aa1f04bcab74a5f556
+  ```
+
+<b>Chat with the model on the CLI</b>
+
+```console
+curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:deepseek-coder-6.7b-instruct.Q5_K_M.gguf llama-chat.wasm -p deepseek-coder --stream-stdout
+```
+
+<b>Chat with the model via a web UI</b>
+
+```console
+curl -LO https://github.com/second-state/llama-utils/raw/main/api-server/llama-api-server.wasm
+curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+tar xzf chatbot-ui.tar.gz
+rm chatbot-ui.tar.gz
+
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:deepseek-coder-6.7b-instruct.Q5_K_M.gguf llama-api-server.wasm -p deepseek-coder
+```
+
+Open your browser to http://localhost:8080 to start the chat!
+
+<b>Send an API request to the server</b>
+
+Test the API server from another terminal using the following command
+
+```
+  curl -X POST http://localhost:8080/v1/chat/completions \
+    -H 'accept:application/json' \
+    -H 'Content-Type: application/json' \
+    -d '{"messages":[{"role":"system", "content": "You are an AI programming assistant."}, {"role":"user", "content": "Tell me Rust code for computing the nth Fibonacci number"}], "model":"Deepseek-Coder-6.7B"}'
+```
+</details>
+
