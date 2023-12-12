@@ -1417,3 +1417,50 @@ Test the API server from another terminal using the following command
 ```
 </details>
 
+<details>
+<summary> <b>Deepseek-LLM-7B-Chat</b> </summary>
+<hr/>
+<b>Download the model</b>
+
+```console
+curl -LO  curl -LO https://huggingface.co/second-state/Deepseek-LLM-7B-Chat-GGUF/resolve/main/deepseek-llm-7b-chat.Q5_K_M.gguf
+```
+
+  Note that check the sha256 of `deepseek-llm-7b-chat.Q5_K_M.gguf` after downloading.
+
+  ```text
+  b6144d3a48352f5a40245ab1e89bfc0b17e4d045bf0e78fb512480f34ae92eba
+  ```
+
+<b>Chat with the model on the CLI</b>
+
+```console
+curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:deepseek-llm-7b-chat.Q5_K_M.gguf llama-chat.wasm -p deepseek-chat --stream-stdout
+```
+
+<b>Chat with the model via a web UI</b>
+
+```console
+curl -LO https://github.com/second-state/llama-utils/raw/main/api-server/llama-api-server.wasm
+curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+tar xzf chatbot-ui.tar.gz
+rm chatbot-ui.tar.gz
+
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:deepseek-llm-7b-chat.Q5_K_M.gguf llama-api-server.wasm -p deepseek-chat
+```
+
+Open your browser to http://localhost:8080 to start the chat!
+
+<b>Send an API request to the server</b>
+
+Test the API server from another terminal using the following command
+
+```
+  curl -X POST http://localhost:8080/v1/chat/completions \
+    -H 'accept:application/json' \
+    -H 'Content-Type: application/json' \
+    -d '{"messages":[{"role":"system", "content": "You are an AI programming assistant."}, {"role":"user", "content": "What's the capital of Paris"}], "model":"Deepseek-LLM-7B"}'
+```
+</details>
+
