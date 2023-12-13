@@ -7,12 +7,12 @@ The llama-utils makes it easy for you to run LLM inference apps and create OpenA
 Run a single command in your command line terminal.
 
 ```
-bash <(curl -sSf https://raw.githubusercontent.com/second-state/llama-utils/main/run-llm.sh)
+bash <(curl -sSfL 'https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/run-llm.sh')
 ```
 
 Follow the on-screen instructions to install the WasmEdge Runtime and download your favorite open-source LLM. Then, choose whether you want to chat with the model via the CLI or via a web UI. 
 
-[See it in action](https://youtu.be/Hqu-PBqkzDk) | Docs
+[See it in action](https://youtu.be/Hqu-PBqkzDk) | [Docs](https://www.secondstate.io/articles/run-llm-sh/)
 
 ## How it works?
 
