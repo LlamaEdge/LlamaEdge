@@ -198,6 +198,32 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistral-7b-instruct-v0.1.Q5_K_
 </details>
 
 <details>
+<summary> <b>Mistral-7B-Instruct-v0.2</b> </summary>
+<hr/>
+<b>Download the model</b>
+
+```console
+curl -LO https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/mistral-7b-instruct-v0.2.Q4_0.gguf
+```
+
+Please check the sha256sum of the Downloaded model file to make sure it is correct:
+
+```text
+shasum -a 256 mistral-7b-instruct-v0.2.Q4_0.gguf
+output: 25d80b918e4432661726ef408b248005bebefe3f8e1ac722d55d0c5dcf2893e0 mistral-7b-instruct-v0.2.Q4_0.gguf
+```
+
+<b>Chat with the model on the CLI</b>
+
+```console
+curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistral-7b-instruct-v0.2.Q4_0.gguf llama-chat.wasm -p mistral-instruct
+```
+
+<b>This model isn't suitable for creating a API server</b>
+</details>
+
+<details>
 <summary> <b>MistralLite-7B</b> </summary>
 <hr/>
 <b>Download the model</b>
