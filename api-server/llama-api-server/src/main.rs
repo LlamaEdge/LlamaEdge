@@ -106,6 +106,7 @@ async fn main() -> Result<(), ServerError> {
                     "llama-2-chat",
                     "codellama-instruct",
                     "mistral-instruct-v0.1",
+                    "mistral-instruct",
                     "mistrallite",
                     "openchat",
                     "belle-llama-2-chat",

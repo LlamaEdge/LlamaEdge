@@ -155,7 +155,7 @@ pub(crate) async fn chat_completions_handler(
             PromptTemplateType::Llama2Chat => {
                 ChatPrompt::Llama2ChatPrompt(Llama2ChatPrompt::default())
             }
-            PromptTemplateType::MistralInstructV01 => {
+            PromptTemplateType::MistralInstruct => {
                 ChatPrompt::MistralInstructPrompt(MistralInstructPrompt::default())
             }
             PromptTemplateType::MistralLite => {
