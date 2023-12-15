@@ -81,6 +81,7 @@ fn main() -> Result<(), String> {
                     "llama-2-chat",
                     "codellama-instruct",
                     "mistral-instruct-v0.1",
+                    "mistral-instruct",
                     "mistrallite",
                     "openchat",
                     "belle-llama-2-chat",
@@ -399,7 +400,7 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         PromptTemplateType::Llama2Chat => {
             ChatPrompt::Llama2ChatPrompt(chat_prompts::chat::llama::Llama2ChatPrompt::default())
         }
-        PromptTemplateType::MistralInstructV01 => ChatPrompt::MistralInstructPrompt(
+        PromptTemplateType::MistralInstruct => ChatPrompt::MistralInstructPrompt(
             chat_prompts::chat::mistral::MistralInstructPrompt::default(),
         ),
         PromptTemplateType::MistralLite => {
