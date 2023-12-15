@@ -7,10 +7,34 @@ use endpoints::chat::{ChatCompletionRequestMessage, ChatCompletionRole};
 pub struct MistralInstructPrompt;
 impl MistralInstructPrompt {
     /// Create a user prompt from a chat completion request message.
-    fn append_user_message(&self, content: impl AsRef<str>) -> String {
+    fn append_user_message(
+        &self,
+        chat_history: impl AsRef<str>,
+        content: impl AsRef<str>,
+    ) -> String {
+        match chat_history.as_ref().is_empty() {
+            true => format!(
+                "<s>[INST] {user_message} [/INST]",
+                user_message = content.as_ref().trim(),
+            ),
+            false => format!(
+                "{chat_history}[INST] {user_message} [/INST]",
+                chat_history = chat_history.as_ref().trim(),
+                user_message = content.as_ref().trim(),
+            ),
+        }
+    }
+
+    /// create an assistant prompt from a chat completion request message.
+    fn append_assistant_message(
+        &self,
+        chat_history: impl AsRef<str>,
+        content: impl AsRef<str>,
+    ) -> String {
         format!(
-            "<s>[INST] {user_message} [/INST]",
-            user_message = content.as_ref().trim(),
+            "{chat_history}{assistant_message}</s>",
+            chat_history = chat_history.as_ref().trim(),
+            assistant_message = content.as_ref().trim(),
         )
     }
 }
@@ -20,11 +44,21 @@ impl BuildChatPrompt for MistralInstructPrompt {
             return Err(crate::error::PromptError::NoMessages);
         }
 
-        let message = messages.last().unwrap();
-        if message.role != ChatCompletionRole::User {
-            return Err(crate::error::PromptError::NoMessages);
+        let mut prompt = String::new();
+        for message in messages {
+            match message.role {
+                ChatCompletionRole::System => continue,
+                ChatCompletionRole::User => {
+                    prompt = self.append_user_message(&prompt, message.content.as_str());
+                }
+                ChatCompletionRole::Assistant => {
+                    prompt = self.append_assistant_message(&prompt, message.content.as_str());
+                }
+                _ => {
+                    return Err(crate::error::PromptError::UnknownRole(message.role));
+                }
+            }
         }
-        let prompt = self.append_user_message(message.content.as_str());
 
         Ok(prompt)
     }

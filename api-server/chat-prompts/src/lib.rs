@@ -6,7 +6,7 @@ use std::str::FromStr;
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
 pub enum PromptTemplateType {
     Llama2Chat,
-    MistralInstructV01,
+    MistralInstruct,
     MistralLite,
     OpenChat,
     CodeLlama,
@@ -27,7 +27,8 @@ impl FromStr for PromptTemplateType {
     fn from_str(template: &str) -> std::result::Result<Self, Self::Err> {
         match template {
             "llama-2-chat" => Ok(PromptTemplateType::Llama2Chat),
-            "mistral-instruct-v0.1" => Ok(PromptTemplateType::MistralInstructV01),
+            "mistral-instruct-v0.1" => Ok(PromptTemplateType::MistralInstruct),
+            "mistral-instruct" => Ok(PromptTemplateType::MistralInstruct),
             "mistrallite" => Ok(PromptTemplateType::MistralLite),
             "codellama-instruct" => Ok(PromptTemplateType::CodeLlama),
             "belle-llama-2-chat" => Ok(PromptTemplateType::BelleLlama2Chat),
@@ -51,7 +52,7 @@ impl std::fmt::Display for PromptTemplateType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             PromptTemplateType::Llama2Chat => write!(f, "llama-2-chat"),
-            PromptTemplateType::MistralInstructV01 => write!(f, "mistral-instruct-v0.1"),
+            PromptTemplateType::MistralInstruct => write!(f, "mistral-instruct"),
             PromptTemplateType::MistralLite => write!(f, "mistrallite"),
             PromptTemplateType::OpenChat => write!(f, "openchat"),
             PromptTemplateType::CodeLlama => write!(f, "codellama-instruct"),
