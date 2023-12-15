@@ -126,6 +126,7 @@ fn main() -> Result<(), String> {
                 .help("Print the output to stdout in the streaming way")
                 .action(ArgAction::SetTrue),
         )
+        .after_help("Example: the command to run `llama-2-7B` model,\n  wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf llama-chat.wasm -p llama-2-chat\n")
         .get_matches();
 
     // create an `Options` instance
