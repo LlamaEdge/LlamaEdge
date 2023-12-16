@@ -1309,7 +1309,7 @@ curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/cha
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:starling-lm-7b-alpha.Q5_K_M.gguf llama-api-server.wasm -p openchat -r '<|end_of_turn|>' 
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:starling-lm-7b-alpha.Q5_K_M.gguf llama-api-server.wasm -p openchat -r '<|end_of_turn|>'
 ```
 
 Open your browser to http://localhost:8080 to start the chat!
@@ -1353,7 +1353,7 @@ curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/cha
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:calm2-7b-chat.Q4_K_M.ggu llama-api-server.wasm -p vicuna-1.1-chat
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:calm2-7b-chat.Q4_K_M.gguf llama-api-server.wasm -p vicuna-1.1-chat
 ```
 
 Open your browser to http://localhost:8080 to start the chat!
