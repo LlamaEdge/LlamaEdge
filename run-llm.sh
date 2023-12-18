@@ -85,6 +85,8 @@ Llama-2-7B-Chat::https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolv
 Llama-2-13B-Chat::https://huggingface.co/second-state/Llama-2-13B-Chat-GGUF/resolve/main/llama-2-13b-chat.Q5_K_M.gguf
 BELLE-Llama2-13B-Chat::https://huggingface.co/second-state/BELLE-Llama2-13B-Chat-0.4M-GGUF/resolve/main/BELLE-Llama2-13B-Chat-0.4M-ggml-model-q4_0.gguf
 MistralLite-7B::https://huggingface.co/second-state/MistralLite-7B-GGUF/resolve/main/mistrallite.Q5_K_M.gguf
+Mistral-7B-Instruct-v0.1::https://huggingface.co/second-state/Mistral-7B-Instruct-v0.1-GGUF/resolve/main/mistral-7b-instruct-v0.1.Q5_K_M.gguf
+Mistral-7B-Instruct-v0.2::https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/mistral-7b-instruct-v0.2.Q4_0.gguf
 OpenChat-3.5::https://huggingface.co/second-state/OpenChat-3.5-GGUF/resolve/main/openchat_3.5.Q5_K_M.gguf
 Wizard-Vicuna::https://huggingface.co/second-state/wizard-vicuna-13B-GGUF/resolve/main/wizard-vicuna-13b-ggml-model-q8_0.gguf
 CausalLM-14B::https://huggingface.co/second-state/CausalLM-14B-GGUF/resolve/main/causallm_14b.Q5_1.gguf
@@ -114,6 +116,8 @@ Llama-2-7B-Chat::e0b99920cf47b94c78d2fb06a1eceb9ed795176dfa3f7feac64629f1b52b997
 Llama-2-13B-Chat::ef36e090240040f97325758c1ad8e23f3801466a8eece3a9eac2d22d942f548a
 BELLE-Llama2-13B-Chat::56879e1fd6ee6a138286730e121f2dba1be51b8f7e261514a594dea89ef32fe7
 MistralLite-7B::d06d149c24eea0446ea7aad596aca396fe7f3302441e9375d5bbd3fd9ba8ebea
+Mistral-7B-Instruct-v0.1::c4b062ec7f0f160e848a0e34c4e291b9e39b3fc60df5b201c038e7064dbbdcdc
+Mistral-7B-Instruct-v0.2::25d80b918e4432661726ef408b248005bebefe3f8e1ac722d55d0c5dcf2893e0
 OpenChat-3.5::3abf26b0f2ff11394351a23f8d538a1404a2afb69465a6bbaba8836fef51899d
 Wizard-Vicuna::681b6571e624fd211ae81308b573f24f0016f6352252ae98241b44983bb7e756
 CausalLM-14B::8ddb4c04e6f0c06971e9b6723688206bf9a5b8ffc85611cc7843c0e8c8a66c4e
@@ -142,6 +146,8 @@ Llama-2-7B-Chat::llama-2-chat
 Llama-2-13B-Chat::llama-2-chat
 BELLE-Llama2-13B-Chat::belle-llama-2-chat
 MistralLite-7B::mistrallite
+Mistral-7B-Instruct-v0.1::mistral-instruct
+Mistral-7B-Instruct-v0.2::mistral-instruct
 OpenChat-3.5::openchat
 Wizard-Vicuna::vicuna-chat
 CausalLM-14B::chatml
@@ -192,7 +198,7 @@ Zephyr-7B-Alpha::</s>
 Starling-LM-7B-alpha::<|end_of_turn|>
 '
 
-    model_names="Llama-2-7B-Chat Llama-2-13B-Chat BELLE-Llama2-13B-Chat MistralLite-7B OpenChat-3.5 Wizard-Vicuna CausalLM-14B TinyLlama-1.1B-Chat-v0.3 Baichuan2-13B-Chat OpenHermes-2.5-Mistral-7B Dolphin-2.0-Mistral-7B Dolphin-2.1-Mistral-7B Dolphin-2.2-Yi-34B Dolphin-2.2-Mistral-7B Dolphin-2.2.1-Mistral-7B Samantha-1.2-Mistral-7B Samantha-1.11-CodeLlama-34B Samantha-1.11-7B WizardLM-1.0-Uncensored-CodeLlama-34B WizardLM-7B-V1.0-Uncensored WizardLM-13B-V1.0-Uncensored WizardCoder-Python-7B-V1.0 Zephyr-7B-Alpha Orca-2-13B Neural-Chat-7B-v3-1 Starling-LM-7B-alpha"
+    model_names="Llama-2-7B-Chat Llama-2-13B-Chat BELLE-Llama2-13B-Chat MistralLite-7B Mistral-7B-Instruct-v0.1 Mistral-7B-Instruct-v0.2 OpenChat-3.5 Wizard-Vicuna CausalLM-14B TinyLlama-1.1B-Chat-v0.3 Baichuan2-13B-Chat OpenHermes-2.5-Mistral-7B Dolphin-2.0-Mistral-7B Dolphin-2.1-Mistral-7B Dolphin-2.2-Yi-34B Dolphin-2.2-Mistral-7B Dolphin-2.2.1-Mistral-7B Samantha-1.2-Mistral-7B Samantha-1.11-CodeLlama-34B Samantha-1.11-7B WizardLM-1.0-Uncensored-CodeLlama-34B WizardLM-7B-V1.0-Uncensored WizardLM-13B-V1.0-Uncensored WizardCoder-Python-7B-V1.0 Zephyr-7B-Alpha Orca-2-13B Neural-Chat-7B-v3-1 Starling-LM-7B-alpha"
 
     # Convert model_names to an array
     model_names_array=($model_names)
