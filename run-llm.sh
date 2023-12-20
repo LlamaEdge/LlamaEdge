@@ -81,34 +81,37 @@ download_model() {
     printf "Downloading the gguf model ...\n\n"
 
     models='
-Llama-2-7B-Chat::https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf
-Llama-2-13B-Chat::https://huggingface.co/second-state/Llama-2-13B-Chat-GGUF/resolve/main/llama-2-13b-chat.Q5_K_M.gguf
-BELLE-Llama2-13B-Chat::https://huggingface.co/second-state/BELLE-Llama2-13B-Chat-0.4M-GGUF/resolve/main/BELLE-Llama2-13B-Chat-0.4M-ggml-model-q4_0.gguf
-MistralLite-7B::https://huggingface.co/second-state/MistralLite-7B-GGUF/resolve/main/mistrallite.Q5_K_M.gguf
-Mistral-7B-Instruct-v0.1::https://huggingface.co/second-state/Mistral-7B-Instruct-v0.1-GGUF/resolve/main/mistral-7b-instruct-v0.1.Q5_K_M.gguf
-Mistral-7B-Instruct-v0.2::https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/mistral-7b-instruct-v0.2.Q4_0.gguf
-OpenChat-3.5::https://huggingface.co/second-state/OpenChat-3.5-GGUF/resolve/main/openchat_3.5.Q5_K_M.gguf
-Wizard-Vicuna::https://huggingface.co/second-state/wizard-vicuna-13B-GGUF/resolve/main/wizard-vicuna-13b-ggml-model-q8_0.gguf
-CausalLM-14B::https://huggingface.co/second-state/CausalLM-14B-GGUF/resolve/main/causallm_14b.Q5_1.gguf
-TinyLlama-1.1B-Chat-v0.3::https://huggingface.co/second-state/TinyLlama-1.1B-Chat-v0.3-GGUF/resolve/main/tinyllama-1.1b-chat-v0.3.Q5_K_M.gguf
-Baichuan2-13B-Chat::https://huggingface.co/second-state/Baichuan2-13B-Chat-GGUF/resolve/main/Baichuan2-13B-Chat-ggml-model-q4_0.gguf
-OpenHermes-2.5-Mistral-7B::https://huggingface.co/second-state/OpenHermes-2.5-Mistral-7B-GGUF/resolve/main/openhermes-2.5-mistral-7b.Q5_K_M.gguf
-Dolphin-2.0-Mistral-7B::https://huggingface.co/second-state/Dolphin-2.0-Mistral-7B-GGUF/resolve/main/dolphin-2.0-mistral-7b-ggml-model-q4_0.gguf
-Dolphin-2.1-Mistral-7B::https://huggingface.co/second-state/Dolphin-2.1-Mistral-7B-GGUF/resolve/main/dolphin-2.1-mistral-7b-ggml-model-q4_0.gguf
-Dolphin-2.2-Yi-34B::https://huggingface.co/second-state/Dolphin-2.2-Yi-34B-GGUF/resolve/main/dolphin-2.2-yi-34b-ggml-model-q4_0.gguf
-Dolphin-2.2-Mistral-7B::https://huggingface.co/second-state/Dolphin-2.2-Mistral-7B-GGUF/resolve/main/dolphin-2.2-mistral-7b-ggml-model-q4_0.gguf
-Dolphin-2.2.1-Mistral-7B::https://huggingface.co/second-state/Dolphin-2.2.1-Mistral-7B/resolve/main/dolphin-2.2.1-mistral-7b-ggml-model-q4_0.gguf
-Samantha-1.2-Mistral-7B::https://huggingface.co/second-state/Samantha-1.2-Mistral-7B/resolve/main/samantha-1.2-mistral-7b-ggml-model-q4_0.gguf
-Samantha-1.11-CodeLlama-34B::https://huggingface.co/second-state/Samantha-1.11-CodeLlama-34B-GGUF/resolve/main/Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf
-Samantha-1.11-7B::https://huggingface.co/second-state/Samantha-1.11-7B-GGUF/resolve/main/Samantha-1.11-7b-ggml-model-q4_0.gguf
-WizardLM-1.0-Uncensored-CodeLlama-34B::https://huggingface.co/second-state/WizardLM-1.0-Uncensored-CodeLlama-34b/resolve/main/WizardLM-1.0-Uncensored-CodeLlama-34b-ggml-model-q4_0.gguf
-WizardLM-7B-V1.0-Uncensored::https://huggingface.co/second-state/WizardLM-7B-V1.0-Uncensored-GGUF/resolve/main/wizardlm-7b-v1.0-uncensored.Q5_K_M.gguf
-WizardLM-13B-V1.0-Uncensored::https://huggingface.co/second-state/WizardLM-13B-V1.0-Uncensored-GGUF/resolve/main/wizardlm-13b-v1.0-uncensored.Q5_K_M.gguf
-WizardCoder-Python-7B-V1.0::https://huggingface.co/second-state/WizardCoder-Python-7B-V1.0/resolve/main/WizardCoder-Python-7B-V1.0-ggml-model-q4_0.gguf
-Zephyr-7B-Alpha::https://huggingface.co/second-state/Zephyr-7B-Alpha-GGUF/resolve/main/zephyr-7b-alpha.Q5_K_M.gguf
-Orca-2-13B::https://huggingface.co/second-state/Orca-2-13B-GGUF/resolve/main/Orca-2-13b-ggml-model-q4_0.gguf
-Neural-Chat-7B-v3-1::https://huggingface.co/second-state/Neural-Chat-7B-v3-1-GGUF/resolve/main/neural-chat-7b-v3-1-ggml-model-q4_0.gguf
-Starling-LM-7B-alpha::https://huggingface.co/second-state/Starling-LM-7B-alpha-GGUF/resolve/main/starling-lm-7b-alpha.Q5_K_M.gguf
+Llama-2-7B-Chat::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/llama-2-7b-chat.Q5_K_M.gguf
+Llama-2-13B-Chat::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/llama-2-13b-chat.Q5_K_M.gguf
+BELLE-Llama2-13B-Chat::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/BELLE-Llama2-13B-Chat-0.4M-ggml-model-q4_0.gguf
+MistralLite-7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/mistrallite.Q5_K_M.gguf
+Mistral-7B-Instruct-v0.1::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/mistral-7b-instruct-v0.1.Q5_K_M.gguf
+Mistral-7B-Instruct-v0.2::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/mistral-7b-instruct-v0.2.Q4_0.gguf
+OpenChat-3.5::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/openchat_3.5.Q5_K_M.gguf
+Wizard-Vicuna::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/wizard-vicuna-13b-ggml-model-q8_0.gguf
+CausalLM-14B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/causallm_14b.Q5_1.gguf
+TinyLlama-1.1B-Chat-v0.3::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/tinyllama-1.1b-chat-v0.3.Q5_K_M.gguf
+Baichuan2-13B-Chat::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/Baichuan2-13B-Chat-ggml-model-q4_0.gguf
+OpenHermes-2.5-Mistral-7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/openhermes-2.5-mistral-7b.Q5_K_M.gguf
+Dolphin-2.0-Mistral-7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/dolphin-2.0-mistral-7b-ggml-model-q4_0.gguf
+Dolphin-2.1-Mistral-7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/dolphin-2.1-mistral-7b-ggml-model-q4_0.gguf
+Dolphin-2.2-Yi-34B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/dolphin-2.2-yi-34b-ggml-model-q4_0.gguf
+Dolphin-2.2-Mistral-7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/dolphin-2.2-mistral-7b-ggml-model-q4_0.gguf
+Dolphin-2.2.1-Mistral-7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/dolphin-2.2.1-mistral-7b-ggml-model-q4_0.gguf
+Samantha-1.2-Mistral-7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/samantha-1.2-mistral-7b-ggml-model-q4_0.gguf
+Samantha-1.11-CodeLlama-34B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf
+Samantha-1.11-7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/Samantha-1.11-7b-ggml-model-q4_0.gguf
+WizardLM-1.0-Uncensored-CodeLlama-34B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/WizardLM-1.0-Uncensored-CodeLlama-34b-ggml-model-q4_0.gguf
+WizardLM-7B-V1.0-Uncensored::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/wizardlm-7b-v1.0-uncensored.Q5_K_M.gguf
+WizardLM-13B-V1.0-Uncensored::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/wizardlm-13b-v1.0-uncensored.Q5_K_M.gguf
+WizardCoder-Python-7B-V1.0::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/WizardCoder-Python-7B-V1.0-ggml-model-q4_0.gguf
+Zephyr-7B-Alpha::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/zephyr-7b-alpha.Q5_K_M.gguf
+Orca-2-13B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/Orca-2-13b-ggml-model-q4_0.gguf
+Neural-Chat-7B-v3-1::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/neural-chat-7b-v3-1-ggml-model-q4_0.gguf
+Starling-LM-7B-alpha::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/starling-lm-7b-alpha.Q5_K_M.gguf
+Calm2-7B-Chat::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/calm2-7b-chat.Q4_K_M.gguf
+Deepseek-Coder-6.7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/deepseek-coder-6.7b-instruct.Q5_K_M.gguf
+Deepseek-LLM-7B-Chat::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/deepseek-llm-7b-chat.Q5_K_M.gguf
 '
 
     sha256sums='
@@ -140,6 +143,9 @@ Zephyr-7B-Alpha::2ad371d1aeca1ddf6281ca4ee77aa20ace60df33cab71d3bb681e669001e176
 Orca-2-13B::8c9ca393b2d882bd7bd0ba672d52eafa29bb22b2cd740418198c1fa1adb6478b
 Neural-Chat-7B-v3-1::e57b76915fe5f0c0e48c43eb80fc326cb8366cbb13fcf617a477b1f32c0ac163
 Starling-LM-7B-alpha::b6144d3a48352f5a40245ab1e89bfc0b17e4d045bf0e78fb512480f34ae92eba
+Calm2-7B-Chat::42e829c19100c5d82c9432f0ee4c062e994fcf03966e8bfb2e92d1d91db12d56
+Deepseek-Coder-6.7B::0976ee1707fc97b142d7266a9a501893ea6f320e8a8227aa1f04bcab74a5f556
+Deepseek-LLM-7B-Chat::e5bcd887cc97ff63dbd17b8b9feac261516e985b5e78f1f544eb49cf403caaf6
 '
     prompt_templates='
 Llama-2-7B-Chat::llama-2-chat
@@ -170,6 +176,9 @@ Zephyr-7B-Alpha::zephyr
 Orca-2-13B::chatml
 Neural-Chat-7B-v3-1::intel-neural
 Starling-LM-7B-alpha::openchat
+Calm2-7B-Chat::vicuna-1.1-chat
+Deepseek-Coder-6.7B::deepseek-coder
+Deepseek-LLM-7B-Chat::deepseek-chat
 '
 
     system_prompts='
@@ -198,7 +207,7 @@ Zephyr-7B-Alpha::</s>
 Starling-LM-7B-alpha::<|end_of_turn|>
 '
 
-    model_names="Llama-2-7B-Chat Llama-2-13B-Chat BELLE-Llama2-13B-Chat MistralLite-7B Mistral-7B-Instruct-v0.1 Mistral-7B-Instruct-v0.2 OpenChat-3.5 Wizard-Vicuna CausalLM-14B TinyLlama-1.1B-Chat-v0.3 Baichuan2-13B-Chat OpenHermes-2.5-Mistral-7B Dolphin-2.0-Mistral-7B Dolphin-2.1-Mistral-7B Dolphin-2.2-Yi-34B Dolphin-2.2-Mistral-7B Dolphin-2.2.1-Mistral-7B Samantha-1.2-Mistral-7B Samantha-1.11-CodeLlama-34B Samantha-1.11-7B WizardLM-1.0-Uncensored-CodeLlama-34B WizardLM-7B-V1.0-Uncensored WizardLM-13B-V1.0-Uncensored WizardCoder-Python-7B-V1.0 Zephyr-7B-Alpha Orca-2-13B Neural-Chat-7B-v3-1 Starling-LM-7B-alpha"
+    model_names="Llama-2-7B-Chat Llama-2-13B-Chat BELLE-Llama2-13B-Chat MistralLite-7B Mistral-7B-Instruct-v0.1 Mistral-7B-Instruct-v0.2 OpenChat-3.5 Wizard-Vicuna CausalLM-14B TinyLlama-1.1B-Chat-v0.3 Baichuan2-13B-Chat OpenHermes-2.5-Mistral-7B Dolphin-2.0-Mistral-7B Dolphin-2.1-Mistral-7B Dolphin-2.2-Yi-34B Dolphin-2.2-Mistral-7B Dolphin-2.2.1-Mistral-7B Samantha-1.2-Mistral-7B Samantha-1.11-CodeLlama-34B Samantha-1.11-7B WizardLM-1.0-Uncensored-CodeLlama-34B WizardLM-7B-V1.0-Uncensored WizardLM-13B-V1.0-Uncensored WizardCoder-Python-7B-V1.0 Zephyr-7B-Alpha Orca-2-13B Neural-Chat-7B-v3-1 Starling-LM-7B-alpha Calm2-7B-Chat Deepseek-Coder-6.7B Deepseek-LLM-7B-Chat"
 
     # Convert model_names to an array
     model_names_array=($model_names)

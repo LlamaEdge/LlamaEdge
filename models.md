@@ -1355,7 +1355,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 <b>Download the model</b>
 
 ```console
-curl -LO https://huggingface.co/second-state/Calm2-7B-Chat-GGUF/blob/main/calm2-7b-chat.Q4_K_M.gguf
+curl -LO https://huggingface.co/second-state/Calm2-7B-Chat-GGUF/resolve/main/calm2-7b-chat.Q4_K_M.gguf
 ```
 
 Note that check the sha256 of `calm2-7b-chat.Q4_K_M.gguf` after downloading.
@@ -1455,7 +1455,7 @@ curl -LO https://huggingface.co/second-state/Deepseek-LLM-7B-Chat-GGUF/resolve/m
   Note that check the sha256 of `deepseek-llm-7b-chat.Q5_K_M.gguf` after downloading.
 
   ```text
-  b6144d3a48352f5a40245ab1e89bfc0b17e4d045bf0e78fb512480f34ae92eba
+  e5bcd887cc97ff63dbd17b8b9feac261516e985b5e78f1f544eb49cf403caaf6
   ```
 
 <b>Chat with the model on the CLI</b>
