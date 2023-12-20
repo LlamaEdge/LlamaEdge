@@ -1449,7 +1449,7 @@ Test the API server from another terminal using the following command
 <b>Download the model</b>
 
 ```console
-curl -LO  curl -LO https://huggingface.co/second-state/Deepseek-LLM-7B-Chat-GGUF/resolve/main/deepseek-llm-7b-chat.Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Deepseek-LLM-7B-Chat-GGUF/resolve/main/deepseek-llm-7b-chat.Q5_K_M.gguf
 ```
 
   Note that check the sha256 of `deepseek-llm-7b-chat.Q5_K_M.gguf` after downloading.
