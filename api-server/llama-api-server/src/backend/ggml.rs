@@ -312,15 +312,21 @@ pub(crate) async fn infer(prompt: impl AsRef<str>) -> std::result::Result<Vec<u8
 
 fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> String {
     if template_ty == PromptTemplateType::Baichuan2 {
-        output.as_ref().split('\n').collect::<Vec<_>>()[0]
-            .trim()
-            .to_owned()
+        if output.as_ref().contains("用户:") {
+            output.as_ref().trim_end_matches("用户:").trim().to_owned()
+        } else {
+            output.as_ref().trim().to_owned()
+        }
     } else if template_ty == PromptTemplateType::OpenChat {
-        output
-            .as_ref()
-            .trim_end_matches("<|end_of_turn|>")
-            .trim()
-            .to_owned()
+        if output.as_ref().contains("<|end_of_turn|>") {
+            output
+                .as_ref()
+                .trim_end_matches("<|end_of_turn|>")
+                .trim()
+                .to_owned()
+        } else {
+            output.as_ref().trim().to_owned()
+        }
     } else if template_ty == PromptTemplateType::ChatML {
         if output.as_ref().contains("<|im_end|>") {
             output.as_ref().replace("<|im_end|>", "").trim().to_owned()
@@ -330,8 +336,25 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
     } else if template_ty == PromptTemplateType::Zephyr
         || template_ty == PromptTemplateType::MistralLite
     {
-        if output.as_ref().contains("</s>") {
-            output.as_ref().trim_end_matches("</s>").trim().to_owned()
+        if output.as_ref().contains("</s><") {
+            output.as_ref().trim_end_matches("</s><").trim().to_owned()
+        } else if output.as_ref().contains("</s>") {
+            output
+                .as_ref()
+                .strip_suffix("</s>")
+                .unwrap()
+                .trim()
+                .to_owned()
+        } else {
+            output.as_ref().trim().to_owned()
+        }
+    } else if template_ty == PromptTemplateType::DeepseekChat {
+        if output.as_ref().contains("<|end_of_sentence|>") {
+            output
+                .as_ref()
+                .trim_end_matches("<|end_of_sentence|>")
+                .trim()
+                .to_owned()
         } else {
             output.as_ref().trim().to_owned()
         }
