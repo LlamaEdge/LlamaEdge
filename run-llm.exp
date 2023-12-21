@@ -1,0 +1,22 @@
+#!/usr/bin/expect -f
+
+set MODEL [lindex $argv 0]
+set RUN_MODE [lindex $argv 1]
+
+set timeout -1
+spawn ./run-llm.sh
+match_max 100000
+
+# Install WasmEdge
+send -- "1\r"
+
+# Select model
+send -- "$MODEL\r"
+
+# Select running mode 1:CLI / 2:API-SERVER
+send -- "$RUN_MODE\r"
+
+# Do not show the log
+send -- "2\r"
+
+expect eof
