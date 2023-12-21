@@ -1,5 +1,23 @@
 #!/bin/bash
 
+retry_download() {
+    for i in {1..3}; do
+        if [ $i -gt 1 ]; then
+            echo "Retrying..."
+        fi
+
+        curl -LO $1 -#
+        local r=$?
+        if [ $r -eq 0 ]; then
+            break
+        fi
+    done
+
+    # Can only return the exit code
+    # https://stackoverflow.com/questions/17336915/return-value-in-a-bash-function
+    return $r
+}
+
 check_os() {
     printf "Checking the operating system (macOS and Linux supported) ...\n"
 
@@ -244,9 +262,9 @@ Starling-LM-7B-alpha::<|end_of_turn|>
         printf "\n      * You picked %s, whose model file already exist, skipping downloading\n" "$model"
     else
         printf "\n      You picked %s, downloading from %s\n" "$model" "$url"
-        curl -LO $url -#
+        retry_download $url
         if [ $? -ne 0 ]; then
-            printf "\nFailed to download model file. Please try again"
+            printf "\nFailed to download model file. Please try again\n"
             exit 1
         fi
     fi
@@ -315,9 +333,9 @@ download_server() {
     printf "Downloading 'llama-api-server' wasm app ...\n"
 
     wasm_url="https://github.com/second-state/llama-utils/raw/main/api-server/llama-api-server.wasm"
-    curl -LO $wasm_url -#
+    retry_download $wasm_url
     if [ $? -ne 0 ]; then
-        printf "\nFailed to download wasm file. Please try again"
+        printf "\nFailed to download wasm file. Please try again\n"
         exit 1
     fi
 }
@@ -326,9 +344,9 @@ download_webui_files() {
     printf "Downloading frontend resources of 'chatbot-ui' ...\n"
 
     files_tarball="https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz"
-    curl -LO $files_tarball -#
+    retry_download $files_tarball
     if [ $? -ne 0 ]; then
-        printf "\nFailed to download ui tarball. Please try again"
+        printf "\nFailed to download ui tarball. Please try again\n"
         exit 1
     fi
     tar xzf chatbot-ui.tar.gz
@@ -351,9 +369,9 @@ download_chat_wasm() {
     printf "Downloading 'llama-chat' wasm ...\n"
 
     wasm_url="https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm"
-    curl -LO $wasm_url -#
+    retry_download $wasm_url
     if [ $? -ne 0 ]; then
-        printf "\nFailed to download wasm file. Please try again"
+        printf "\nFailed to download wasm file. Please try again\n"
         exit 1
     fi
 }
