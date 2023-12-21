@@ -493,6 +493,12 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
         } else {
             output.as_ref().trim().to_owned()
         }
+    } else if template_ty == PromptTemplateType::BelleLlama2Chat {
+        if output.as_ref().contains("Human:") {
+            output.as_ref().trim_end_matches("Human:").trim().to_owned()
+        } else {
+            output.as_ref().trim().to_owned()
+        }
     } else {
         output.as_ref().trim().to_owned()
     }
