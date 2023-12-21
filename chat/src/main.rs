@@ -27,7 +27,7 @@ fn main() -> Result<(), String> {
             Arg::new("ctx_size")
                 .short('c')
                 .long("ctx-size")
-                .value_parser(clap::value_parser!(u32))
+                .value_parser(clap::value_parser!(u64))
                 .value_name("CTX_SIZE")
                 .help("Size of the prompt context")
                 .default_value(DEFAULT_CTX_SIZE),
@@ -36,7 +36,7 @@ fn main() -> Result<(), String> {
             Arg::new("n_predict")
                 .short('n')
                 .long("n-predict")
-                .value_parser(clap::value_parser!(u32))
+                .value_parser(clap::value_parser!(u64))
                 .value_name("N_PRDICT")
                 .help("Number of tokens to predict")
                 .default_value("1024"),
@@ -45,7 +45,7 @@ fn main() -> Result<(), String> {
             Arg::new("n_gpu_layers")
                 .short('g')
                 .long("n-gpu-layers")
-                .value_parser(clap::value_parser!(u32))
+                .value_parser(clap::value_parser!(u64))
                 .value_name("N_GPU_LAYERS")
                 .help("Number of layers to run on the GPU")
                 .default_value("100"),
@@ -54,10 +54,26 @@ fn main() -> Result<(), String> {
             Arg::new("batch_size")
                 .short('b')
                 .long("batch-size")
-                .value_parser(clap::value_parser!(u32))
+                .value_parser(clap::value_parser!(u64))
                 .value_name("BATCH_SIZE")
                 .help("Batch size for prompt processing")
                 .default_value("4096"),
+        )
+        .arg(
+            Arg::new("temp")
+                .long("temp")
+                .value_parser(clap::value_parser!(f32))
+                .value_name("TEMP")
+                .help("Temperature for sampling")
+                .default_value("0.8"),
+        )
+        .arg(
+            Arg::new("repeat_penalty")
+                .long("repeat-penalty")
+                .value_parser(clap::value_parser!(f32))
+                .value_name("REPEAT_PENALTY")
+                .help("Penalize repeat sequence of tokens")
+                .default_value("1.1"),
         )
         .arg(
             Arg::new("reverse_prompt")
@@ -142,33 +158,46 @@ fn main() -> Result<(), String> {
     println!("[INFO] Model alias: {alias}", alias = &model_name);
 
     // prompt context size
-    let ctx_size = matches.get_one::<u32>("ctx_size").unwrap();
+    let ctx_size = matches.get_one::<u64>("ctx_size").unwrap();
     if CTX_SIZE.set(*ctx_size as usize * 6).is_err() {
         return Err(String::from("Fail to parse prompt context size"));
     }
     println!("[INFO] Prompt context size: {size}", size = ctx_size);
-    options.ctx_size = *ctx_size as u64;
+    options.ctx_size = *ctx_size;
 
     // number of tokens to predict
-    let n_predict = matches.get_one::<u32>("n_predict").unwrap();
+    let n_predict = matches.get_one::<u64>("n_predict").unwrap();
     println!("[INFO] Number of tokens to predict: {n}", n = n_predict);
-    options.n_predict = *n_predict as u64;
+    options.n_predict = *n_predict;
 
     // n_gpu_layers
-    let n_gpu_layers = matches.get_one::<u32>("n_gpu_layers").unwrap();
+    let n_gpu_layers = matches.get_one::<u64>("n_gpu_layers").unwrap();
     println!(
         "[INFO] Number of layers to run on the GPU: {n}",
         n = n_gpu_layers
     );
-    options.n_gpu_layers = *n_gpu_layers as u64;
+    options.n_gpu_layers = *n_gpu_layers;
 
     // batch size
-    let batch_size = matches.get_one::<u32>("batch_size").unwrap();
+    let batch_size = matches.get_one::<u64>("batch_size").unwrap();
     println!(
         "[INFO] Batch size for prompt processing: {size}",
         size = batch_size
     );
-    options.batch_size = *batch_size as u64;
+    options.batch_size = *batch_size;
+
+    // temperature
+    let temp = matches.get_one::<f32>("temp").unwrap();
+    println!("[INFO] Temperature for sampling: {temp}", temp = temp);
+    options.temp = *temp;
+
+    // repeat penalty
+    let repeat_penalty = matches.get_one::<f32>("repeat_penalty").unwrap();
+    println!(
+        "[INFO] Penalize repeat sequence of tokens: {penalty}",
+        penalty = repeat_penalty
+    );
+    options.repeat_penalty = *repeat_penalty;
 
     // reverse_prompt
     if let Some(reverse_prompt) = matches.get_one::<String>("reverse_prompt") {
@@ -245,11 +274,25 @@ fn main() -> Result<(), String> {
             ));
     }
 
+    // serialize metadata
+    let metadata = match serde_json::to_string(&options) {
+        Ok(metadata) => metadata,
+        Err(e) => {
+            return Err(format!(
+                "Fail to serialize options: {msg}",
+                msg = e.to_string()
+            ))
+        }
+    };
+
+    println!("*** metadata: {:?}", &metadata);
+
     // load the model into wasi-nn
     let graph = match wasi_nn::GraphBuilder::new(
         wasi_nn::GraphEncoding::Ggml,
         wasi_nn::ExecutionTarget::AUTO,
     )
+    .config(metadata)
     .build_from_cache(model_name.as_ref())
     {
         Ok(graph) => graph,
@@ -272,27 +315,27 @@ fn main() -> Result<(), String> {
         }
     };
 
-    // set metadata
-    let metadata = match serde_json::to_string(&options) {
-        Ok(metadata) => metadata,
-        Err(e) => {
-            return Err(format!(
-                "Fail to serialize options: {msg}",
-                msg = e.to_string()
-            ))
-        }
-    };
-    if context
-        .set_input(
-            1,
-            wasi_nn::TensorType::U8,
-            &[1],
-            metadata.as_bytes().to_owned(),
-        )
-        .is_err()
-    {
-        return Err(String::from("Fail to set metadata"));
-    };
+    // // set metadata
+    // let metadata = match serde_json::to_string(&options) {
+    //     Ok(metadata) => metadata,
+    //     Err(e) => {
+    //         return Err(format!(
+    //             "Fail to serialize options: {msg}",
+    //             msg = e.to_string()
+    //         ))
+    //     }
+    // };
+    // if context
+    //     .set_input(
+    //         1,
+    //         wasi_nn::TensorType::U8,
+    //         &[1],
+    //         metadata.as_bytes().to_owned(),
+    //     )
+    //     .is_err()
+    // {
+    //     return Err(String::from("Fail to set metadata"));
+    // };
 
     print_separator();
 
@@ -543,6 +586,10 @@ struct Options {
     n_gpu_layers: u64,
     #[serde(rename = "batch-size")]
     batch_size: u64,
+    #[serde(rename = "temp")]
+    temp: f32,
+    #[serde(rename = "repeat-penalty")]
+    repeat_penalty: f32,
     #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
     reverse_prompt: Option<String>,
 }
