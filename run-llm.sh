@@ -194,6 +194,7 @@ Orca-2-13B::You are Orca, an AI language model created by Microsoft. You are a c
 '
 
     reverse_prompts='
+MistralLite-7B::</s>
 OpenChat-3.5::<|end_of_turn|>
 Baichuan2-13B-Chat::用户:
 OpenHermes-2.5-Mistral-7B::<|im_end|>
@@ -244,6 +245,10 @@ Starling-LM-7B-alpha::<|end_of_turn|>
     else
         printf "\n      You picked %s, downloading from %s\n" "$model" "$url"
         curl -LO $url -#
+        if [ $? -ne 0 ]; then
+            printf "\nFailed to download model file. Please try again"
+            exit 1
+        fi
     fi
 
     {
@@ -311,6 +316,10 @@ download_server() {
 
     wasm_url="https://github.com/second-state/llama-utils/raw/main/api-server/llama-api-server.wasm"
     curl -LO $wasm_url -#
+    if [ $? -ne 0 ]; then
+        printf "\nFailed to download wasm file. Please try again"
+        exit 1
+    fi
 }
 
 download_webui_files() {
@@ -318,6 +327,10 @@ download_webui_files() {
 
     files_tarball="https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz"
     curl -LO $files_tarball -#
+    if [ $? -ne 0 ]; then
+        printf "\nFailed to download ui tarball. Please try again"
+        exit 1
+    fi
     tar xzf chatbot-ui.tar.gz
     rm chatbot-ui.tar.gz
 }
@@ -339,6 +352,10 @@ download_chat_wasm() {
 
     wasm_url="https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm"
     curl -LO $wasm_url -#
+    if [ $? -ne 0 ]; then
+        printf "\nFailed to download wasm file. Please try again"
+        exit 1
+    fi
 }
 
 start_chat() {
