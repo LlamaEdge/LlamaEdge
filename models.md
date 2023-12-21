@@ -191,10 +191,28 @@ output: 14466f9d658bf4a79f96c3f3f22759707c291cac4e62fea625e80c7d32169991 mistral
 
 ```console
 curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistral-7b-instruct-v0.1.Q5_K_M.gguf llama-chat.wasm -p mistral-instruct-v0.1
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistral-7b-instruct-v0.1.Q5_K_M.gguf llama-chat.wasm -p mistral-instruct
+```
+<b>Chat with the model via a web UI</b>
+
+```console
+curl -LO https://github.com/second-state/llama-utils/raw/main/api-server/llama-api-server.wasm
+curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+tar xzf chatbot-ui.tar.gz
+rm chatbot-ui.tar.gz
+
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistral-7b-instruct-v0.1.Q5_K_M.gguf llama-api-server.wasm -p mistral-instruct
 ```
 
-<b>This model isn't suitable for creating a API server</b>
+Open your browser to http://localhost:8080 to start the chat!
+
+<b>Send an API request to the server</b>
+
+Test the API server from another terminal using the following command
+
+```
+curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/json' -H 'Content-Type: application/json' -d '{"messages":[{"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"Mistral-7B-Instruct-v0.1"}'
+```
 </details>
 
 <details>
@@ -220,7 +238,26 @@ curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wa
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistral-7b-instruct-v0.2.Q4_0.gguf llama-chat.wasm -p mistral-instruct
 ```
 
-<b>This model isn't suitable for creating a API server</b>
+<b>Chat with the model via a web UI</b>
+
+```console
+curl -LO https://github.com/second-state/llama-utils/raw/main/api-server/llama-api-server.wasm
+curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+tar xzf chatbot-ui.tar.gz
+rm chatbot-ui.tar.gz
+
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistral-7b-instruct-v0.2.Q4_0.gguf llama-api-server.wasm -p mistral-instruct
+```
+
+Open your browser to http://localhost:8080 to start the chat!
+
+<b>Send an API request to the server</b>
+
+Test the API server from another terminal using the following command
+
+```
+curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/json' -H 'Content-Type: application/json' -d '{"messages":[{"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"Mistral-7B-Instruct-v0.2"}'
+```
 </details>
 
 <details>
@@ -750,7 +787,7 @@ curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/cha
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:samantha-1.2-mistral-7b-ggml-model-q4_0.ggu llama-api-server.wasm -p chatml -r '<|im_end|>'
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:samantha-1.2-mistral-7b-ggml-model-q4_0.gguf llama-api-server.wasm -p chatml -r '<|im_end|>'
 ```
 
 Open your browser to http://localhost:8080 to start the chat!
