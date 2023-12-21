@@ -142,7 +142,7 @@ output: 56879e1fd6ee6a138286730e121f2dba1be51b8f7e261514a594dea89ef32fe7 BELLE-L
 
 ```console
 curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:BELLE-Llama2-13B-Chat-0.4M-ggml-model-q4_0.gguf llama-chat.wasm -p belle-llama-2-chat
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:BELLE-Llama2-13B-Chat-0.4M-ggml-model-q4_0.gguf llama-chat.wasm -p belle-llama-2-chat --reverse-prompt "Human:"
 ```
 
 <b>Chat with the model via a web UI</b>
@@ -153,7 +153,7 @@ curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/cha
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:BELLE-Llama2-13B-Chat-0.4M-ggml-model-q4_0.gguf llama-api-server.wasm -p belle-llama-2-chat
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:BELLE-Llama2-13B-Chat-0.4M-ggml-model-q4_0.gguf llama-api-server.wasm -p belle-llama-2-chat --reverse-prompt "Human:"
 ```
 
 Open your browser to http://localhost:8080 to start the chat!
