@@ -680,7 +680,7 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 <b>Download the model</b>
 
 ```console
-curl -LO https://huggingface.co/second-state/Dolphin-2.2.1-Mistral-7B-GGUF/resolve/main/dolphin-2.2.1-mistral-7b-ggml-model-q4_0.gguf
+curl -LO https://huggingface.co/second-state/Dolphin-2.2.1-Mistral-7B/resolve/main/dolphin-2.2.1-mistral-7b-ggml-model-q4_0.gguf
 ```
 
 Please check the sha256sum of the Downloaded model file to make sure it is correct.
