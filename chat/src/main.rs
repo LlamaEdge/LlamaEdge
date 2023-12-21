@@ -447,9 +447,11 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
 
 fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> String {
     if template_ty == PromptTemplateType::Baichuan2 {
-        output.as_ref().split('\n').collect::<Vec<_>>()[0]
-            .trim()
-            .to_owned()
+        if output.as_ref().contains("用户:") {
+            output.as_ref().trim_end_matches("用户:").trim().to_owned()
+        } else {
+            output.as_ref().trim().to_owned()
+        }
     } else if template_ty == PromptTemplateType::OpenChat {
         if output.as_ref().contains("<|end_of_turn|>") {
             output
