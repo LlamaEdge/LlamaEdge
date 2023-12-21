@@ -1245,7 +1245,7 @@ curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/cha
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:neural-chat-7b-v3-1-ggml-model-q4_0.gguf llama-api-server.wasm -p intel-neuralt
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:neural-chat-7b-v3-1-ggml-model-q4_0.gguf llama-api-server.wasm -p intel-neural
 ```
 
 Open your browser to http://localhost:8080 to start the chat!
@@ -1397,7 +1397,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 </details>
 
 <details>
-<summary> <b>Deepseek-Coder-6.7B</b> </summary>
+<summary> <b>DeepSeek-Coder-6.7B</b> </summary>
 <hr/>
 <b>Download the model</b>
 
@@ -1444,7 +1444,7 @@ Test the API server from another terminal using the following command
 </details>
 
 <details>
-<summary> <b>Deepseek-LLM-7B-Chat</b> </summary>
+<summary> <b>DeepSeek-LLM-7B-Chat</b> </summary>
 <hr/>
 <b>Download the model</b>
 
