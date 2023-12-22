@@ -328,8 +328,26 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
             output.as_ref().trim().to_owned()
         }
     } else if template_ty == PromptTemplateType::ChatML {
-        if output.as_ref().contains("<|im_end|>") {
-            output.as_ref().replace("<|im_end|>", "").trim().to_owned()
+        if output.as_ref().contains("<|im_start|>") && output.as_ref().contains("<|im_end|>") {
+            let idx_start = output.as_ref().find("<|im_start|>").unwrap();
+            let idx_end = output.as_ref().find("<|im_end|>").unwrap();
+
+            match idx_start <= idx_end {
+                true => output.as_ref().split("<|im_start|>").collect::<Vec<_>>()[0]
+                    .trim()
+                    .to_owned(),
+                false => output.as_ref().split("<|im_end|>").collect::<Vec<_>>()[0]
+                    .trim()
+                    .to_owned(),
+            }
+        } else if output.as_ref().contains("<|im_start|>") {
+            output.as_ref().split("<|im_start|>").collect::<Vec<_>>()[0]
+                .trim()
+                .to_owned()
+        } else if output.as_ref().contains("<|im_end|>") {
+            output.as_ref().split("<|im_end|>").collect::<Vec<_>>()[0]
+                .trim()
+                .to_owned()
         } else {
             output.as_ref().trim().to_owned()
         }
