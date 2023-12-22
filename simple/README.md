@@ -58,6 +58,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf ll
             Enable trace logs
     -h, --help
             Print help
+    -V, --version
+          Print version
   ```
 
 After executing the command, it takes some time to wait for the output.

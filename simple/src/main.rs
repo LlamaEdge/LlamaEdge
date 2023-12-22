@@ -1,4 +1,4 @@
-use clap::{Arg, ArgAction, Command};
+use clap::{crate_version, Arg, ArgAction, Command};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
@@ -6,7 +6,8 @@ const DEFAULT_CTX_SIZE: &str = "4096";
 static CTX_SIZE: OnceCell<usize> = OnceCell::new();
 
 fn main() -> Result<(), String> {
-    let matches = Command::new("Llama API Server")
+    let matches = Command::new("llama-simple")
+        .version(crate_version!())
         .arg(
             Arg::new("prompt")
                 .short('p')
