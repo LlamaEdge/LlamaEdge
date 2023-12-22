@@ -63,6 +63,14 @@ jobs:
           cargo build --target wasm32-wasi --release
           cp ./target/wasm32-wasi/release/llama-api-server.wasm ../llama-api-server.wasm
 
+      - name: Calculate checksum
+        id: checksum
+        run: |
+          sha256sum *.wasm > SHA256SUM
+
+          echo "Debug info(SHA256SUM):"
+          cat SHA256SUM
+
       - name: Count revision
         id: revision
         shell: bash
@@ -72,9 +80,14 @@ jobs:
           HASH="$(git rev-parse --short=8 HEAD)"
           if [[ "${{ env.BRANCH_NAME }}" == "main" ]]; then
             echo "name=b${REVISION}" >> $GITHUB_OUTPUT
+            echo "b${REVISION}" >> VERSION
           else
             echo "name=PR-b${REVISION}-${HASH}" >> $GITHUB_OUTPUT
+            echo "PR-b${REVISION}-${HASH}" >> VERSION
           fi
+
+          echo "Debug info(VERSION):"
+          cat VERSION
 
       - name: Upload artifacts
         if: ${{ ( github.event_name == 'push' && github.ref == 'refs/heads/main' ) || github.event.inputs.create_release == 'true' }}
@@ -84,6 +97,8 @@ jobs:
             llama-simple.wasm
             llama-chat.wasm
             llama-api-server.wasm
+            VERSION
+            SHA256SUM
 
   release:
     if: ${{ ( github.event_name == 'push' && github.ref == 'refs/heads/main' ) || github.event.inputs.create_release == 'true' }}
@@ -109,8 +124,10 @@ jobs:
           HASH="$(git rev-parse --short=8 HEAD)"
           if [[ "${{ env.BRANCH_NAME }}" == "main" ]]; then
             echo "name=b${REVISION}" >> $GITHUB_OUTPUT
+            echo "b${REVISION}" >> VERSION
           else
             echo "name=PR-b${REVISION}-${HASH}" >> $GITHUB_OUTPUT
+            echo "PR-b${REVISION}-${HASH}" >> VERSION
           fi
 
       - name: Download artifacts
@@ -135,7 +152,9 @@ jobs:
             const fs = require('fs');
             const release_id = '${{ steps.create_release.outputs.id }}';
             for (let file of await fs.readdirSync('./artifact')) {
-              if (path.extname(file) === '.wasm') {
+              if (path.extname(file) === '.wasm'
+              | path.basename(file) === 'VERSION'
+              | path.basename(file) === 'SHA256SUM') {
                 console.log('uploadReleaseAsset', file);
                 await github.repos.uploadReleaseAsset({
                   owner: context.repo.owner,
