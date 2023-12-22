@@ -531,51 +531,6 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 ```
 </details>
 
-<details>
-<summary> <b>Baichuan2-7B-Chat</b> </summary>
-<hr/>
-<b>Download the model</b>
-
-```console
-curl -LO https://huggingface.co/second-state/Baichuan2-7B-Chat-GGUF/resolve/main/Baichuan2-7B-Chat-ggml-model-q4_0.gguf
-```
-
-Please check the sha256sum of the Downloaded model file to make sure it is correct.
-
-```
-shasum -a 256 Baichuan2-7B-Chat-ggml-model-q4_0.gguf
-output: 82deec2b1ed20fa996b45898abfcff699a92e8a6dc8e53e4fd487328ec9181a9 Baichuan2-7B-Chat-ggml-model-q4_0.gguf
-```
-
-<b>Chat with the model on the CLI</b>
-
-```console
-curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:Baichuan2-7B-Chat-ggml-model-q4_0.gguf llama-chat.wasm -p baichuan-2 -r '用户:'
-```
-
-<b>Chat with the model via a web UI</b>
-
-```console
-curl -LO https://github.com/second-state/llama-utils/raw/main/api-server/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
-tar xzf chatbot-ui.tar.gz
-rm chatbot-ui.tar.gz
-
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:Baichuan2-7B-Chat-ggml-model-q4_0.gguf llama-api-server.wasm -p baichuan-2 -r '用户:'
-```
-
-Open your browser to http://localhost:8080 to start the chat!
-
-<b>Send an API request to the server</b>
-
-Test the API server from another terminal using the following command
-
-```
-shasum -a 256 Baichuan2-7B-Chat-ggml-model-q4_0.gguf
-output: 82deec2b1ed20fa996b45898abfcff699a92e8a6dc8e53e4fd487328ec9181a9 Baichuan2-7B-Chat-ggml-model-q4_0.gguf
-```
-</details>
 
 <details>
 <summary> <b>OpenHermes-2.5-Mistral-7B</b> </summary>
