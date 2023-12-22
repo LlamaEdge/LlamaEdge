@@ -238,6 +238,8 @@ The `-h` or `--help` option can list the available options of the `llama-api-ser
             Root path for the Web UI files [default: chatbot-ui]
     -h, --help
             Print help
+    -V, --version
+          Print version
   ```
 
   Please guarantee that the port is not occupied by other processes. If the port specified is available on your machine and the command is successful, you should see the following output in the terminal:

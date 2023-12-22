@@ -2,7 +2,7 @@ mod backend;
 mod error;
 
 use chat_prompts::PromptTemplateType;
-use clap::{Arg, ArgAction, Command};
+use clap::{crate_version, Arg, ArgAction, Command};
 use error::ServerError;
 use hyper::{
     header,
@@ -30,7 +30,8 @@ pub struct AppState {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), ServerError> {
-    let matches = Command::new("Llama API Server")
+    let matches = Command::new("llama-api-server")
+        .version(crate_version!())
         .arg(
             Arg::new("socket_addr")
                 .short('s')
