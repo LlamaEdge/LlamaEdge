@@ -68,6 +68,7 @@ jobs:
         shell: bash
         run: |
           REVISION="$(git rev-list --count HEAD)"
+          ((REVISION=REVISION-313+1001))
           HASH="$(git rev-parse --short=8 HEAD)"
           if [[ "${{ env.BRANCH_NAME }}" == "main" ]]; then
             echo "name=b${REVISION}" >> $GITHUB_OUTPUT
@@ -104,6 +105,7 @@ jobs:
         shell: bash
         run: |
           REVISION="$(git rev-list --count HEAD)"
+          ((REVISION=REVISION-313+1001))
           HASH="$(git rev-parse --short=8 HEAD)"
           if [[ "${{ env.BRANCH_NAME }}" == "main" ]]; then
             echo "name=b${REVISION}" >> $GITHUB_OUTPUT
