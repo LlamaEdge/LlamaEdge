@@ -141,6 +141,8 @@ Options:
           Print the output to stdout in the streaming way
   -h, --help
           Print help
+  -V, --version
+          Print version
 ```
 
 ## Optional: Build the `llama-chat` wasm app yourself

@@ -2,7 +2,7 @@ use chat_prompts::{
     chat::{BuildChatPrompt, ChatPrompt},
     PromptTemplateType,
 };
-use clap::{Arg, ArgAction, Command};
+use clap::{crate_version, Arg, ArgAction, Command};
 use endpoints::chat::{ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRole};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
@@ -13,7 +13,8 @@ static CTX_SIZE: OnceCell<usize> = OnceCell::new();
 
 #[allow(unreachable_code)]
 fn main() -> Result<(), String> {
-    let matches = Command::new("Llama API Server")
+    let matches = Command::new("llama-chat")
+        .version(crate_version!())
         .arg(
             Arg::new("model_alias")
                 .short('a')
