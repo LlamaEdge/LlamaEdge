@@ -80,14 +80,11 @@ jobs:
           HASH="$(git rev-parse --short=8 HEAD)"
           if [[ "${{ env.BRANCH_NAME }}" == "main" ]]; then
             echo "name=b${REVISION}" >> $GITHUB_OUTPUT
-            echo "b${REVISION}" >> VERSION
           else
             echo "name=PR-b${REVISION}-${HASH}" >> $GITHUB_OUTPUT
-            echo "PR-b${REVISION}-${HASH}" >> VERSION
           fi
 
-          echo "Debug info(VERSION):"
-          cat VERSION
+          echo "Debug info(REVISION): " ${REVISION}
 
       - name: Upload artifacts
         if: ${{ ( github.event_name == 'push' && github.ref == 'refs/heads/main' ) || github.event.inputs.create_release == 'true' }}
@@ -97,7 +94,6 @@ jobs:
             llama-simple.wasm
             llama-chat.wasm
             llama-api-server.wasm
-            VERSION
             SHA256SUM
 
   release:
@@ -115,6 +111,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Download artifacts
+        id: download-artifact
+        uses: actions/download-artifact@v3
+
       - name: Count revision
         id: revision
         shell: bash
@@ -124,15 +124,11 @@ jobs:
           HASH="$(git rev-parse --short=8 HEAD)"
           if [[ "${{ env.BRANCH_NAME }}" == "main" ]]; then
             echo "name=b${REVISION}" >> $GITHUB_OUTPUT
-            echo "b${REVISION}" >> VERSION
           else
             echo "name=PR-b${REVISION}-${HASH}" >> $GITHUB_OUTPUT
-            echo "PR-b${REVISION}-${HASH}" >> VERSION
           fi
-
-      - name: Download artifacts
-        id: download-artifact
-        uses: actions/download-artifact@v3
+          echo "Debug info(REVISION): " ${REVISION}
+          echo "b${REVISION}" > ./artifact/VERSION
 
       - name: Create release
         id: create_release
