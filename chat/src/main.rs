@@ -6,6 +6,7 @@ use clap::{crate_version, Arg, ArgAction, Command};
 use endpoints::chat::{ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRole};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::io::Write;
 use std::str::FromStr;
 
@@ -387,6 +388,21 @@ fn main() -> Result<(), String> {
             None => stream_compute(&mut context, None),
         };
 
+        // get number of input and output tokens
+        let mut token_info_buffer = vec![0u8; *CTX_SIZE.get().unwrap()];
+        let mut size_token_info = context.get_output(1, &mut token_info_buffer).unwrap();
+        size_token_info = std::cmp::min(*CTX_SIZE.get().unwrap(), size_token_info);
+        // let metadata_str =
+        //     String::from_utf8_lossy(&token_info_buffer[..size_token_info]).to_string();
+        // let value: Value = serde_json::from_str(&metadata_str).unwrap();
+        let token_info: Value =
+            serde_json::from_slice(&token_info_buffer[..size_token_info]).unwrap();
+        println!(
+            "\n[DEBUG] input tokens: {in_tokens}, output tokens: {out_tokens}",
+            in_tokens = token_info["input_tokens"],
+            out_tokens = token_info["output_tokens"]
+        );
+
         {
             // // execute the inference
             // if context.compute().is_err() {
@@ -498,7 +514,7 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
     }
 }
 
-fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> String {
+fn _post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> String {
     println!("[DEBUG] Post-processing ...");
 
     if template_ty == PromptTemplateType::Baichuan2 {
@@ -577,7 +593,7 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
     }
 }
 
-fn print(message: impl AsRef<str>) {
+fn _print(message: impl AsRef<str>) {
     println!("\n[Bot]:\n{}", message.as_ref().trim())
 }
 
