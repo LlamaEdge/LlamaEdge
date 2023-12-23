@@ -6,6 +6,7 @@ use clap::{crate_version, Arg, ArgAction, Command};
 use endpoints::chat::{ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRole};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
+use std::io::Write;
 use std::str::FromStr;
 
 const DEFAULT_CTX_SIZE: &str = "4096";
@@ -380,34 +381,42 @@ fn main() -> Result<(), String> {
             return Err(String::from("Fail to set input tensor"));
         };
 
-        // execute the inference
-        if context.compute().is_err() {
-            return Err(String::from("Fail to execute model inference"));
-        }
-
-        if log_stat || log_all {
-            println!("\n----------------------------------------------------\n");
-        }
-
-        // retrieve the output
-        let mut output_buffer = vec![0u8; *CTX_SIZE.get().unwrap()];
-        let mut output_size = match context.get_output(0, &mut output_buffer) {
-            Ok(size) => size,
-            Err(e) => {
-                return Err(format!(
-                    "Fail to get output tensor: {msg}",
-                    msg = e.to_string()
-                ))
-            }
+        // let message = stream_compute(&mut context, &options.reverse_prompt);
+        let message = match options.reverse_prompt {
+            Some(ref prompt) => stream_compute(&mut context, Some(prompt.as_str())),
+            None => stream_compute(&mut context, None),
         };
-        output_size = std::cmp::min(*CTX_SIZE.get().unwrap(), output_size);
-        let output = String::from_utf8_lossy(&output_buffer[..output_size]);
-        let message = post_process(&output, template_ty);
 
-        if !stream_stdout {
-            print(&message);
-        } else {
-            println!("\n");
+        {
+            // // execute the inference
+            // if context.compute().is_err() {
+            //     return Err(String::from("Fail to execute model inference"));
+            // }
+
+            // if log_stat || log_all {
+            //     println!("\n----------------------------------------------------\n");
+            // }
+
+            // // retrieve the output
+            // let mut output_buffer = vec![0u8; *CTX_SIZE.get().unwrap()];
+            // let mut output_size = match context.get_output(0, &mut output_buffer) {
+            //     Ok(size) => size,
+            //     Err(e) => {
+            //         return Err(format!(
+            //             "Fail to get output tensor: {msg}",
+            //             msg = e.to_string()
+            //         ))
+            //     }
+            // };
+            // output_size = std::cmp::min(*CTX_SIZE.get().unwrap(), output_size);
+            // let output = String::from_utf8_lossy(&output_buffer[..output_size]);
+            // let message = post_process(&output, template_ty);
+
+            // if !stream_stdout {
+            //     print(&message);
+            // } else {
+            //     println!("\n");
+            // }
         }
 
         // put the answer into the `messages` of chat_request
@@ -570,6 +579,56 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
 
 fn print(message: impl AsRef<str>) {
     println!("\n[Bot]:\n{}", message.as_ref().trim())
+}
+
+fn stream_compute(context: &mut wasi_nn::GraphExecutionContext, stop: Option<&str>) -> String {
+    println!("\n[Bot]");
+
+    let mut output = String::new();
+    // Compute one token at a time, and get the token using the get_output_single().
+    loop {
+        let result = context.compute_single();
+        match result {
+            Ok(_) => (),
+            Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::EndOfSequence)) => {
+                break;
+            }
+            Err(err) => {
+                println!("Error: {}", err);
+                break;
+            }
+        }
+        // Retrieve the output.
+        let max_output_size = 4096 * 6;
+        let mut output_buffer = vec![0u8; max_output_size];
+        let mut output_size = context.get_output_single(0, &mut output_buffer).unwrap();
+        output_size = std::cmp::min(max_output_size, output_size);
+        let token = String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
+
+        // ! debug
+        // std::thread::sleep(std::time::Duration::from_millis(300));
+
+        if output.is_empty() && token == " " {
+            continue;
+        }
+
+        // trigger the stop condition
+        if stop.is_some() && stop == Some(token.trim()) {
+            break;
+        }
+
+        if output.is_empty() && token.starts_with(" ") {
+            print!("{}", token.trim_start());
+        } else {
+            print!("{}", token);
+        }
+        std::io::stdout().flush().unwrap();
+
+        output += &token;
+    }
+    println!("");
+
+    output
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
