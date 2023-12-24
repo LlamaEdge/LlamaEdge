@@ -11,14 +11,15 @@ use chat_prompts::{
 };
 use endpoints::{
     chat::{
-        ChatCompletionRequest, ChatCompletionResponse, ChatCompletionResponseChoice,
-        ChatCompletionResponseMessage, ChatCompletionRole,
+        ChatCompletionObject, ChatCompletionObjectChoice, ChatCompletionObjectMessage,
+        ChatCompletionRequest, ChatCompletionRole,
     },
     common::{FinishReason, Usage},
     completions::{CompletionChoice, CompletionObject, CompletionRequest},
     models::{ListModelsResponse, Model},
 };
 use hyper::{body::to_bytes, Body, Request, Response};
+use serde_json::Value;
 use std::time::SystemTime;
 
 /// Lists models available
@@ -230,14 +231,22 @@ pub(crate) async fn chat_completions_handler(
 
     // convert inference result to string
     let output = String::from_utf8(buffer.clone()).unwrap();
-
+    // post-process
     let message = post_process(&output, template_ty);
+
+    // get token info
+    let token_info = get_token_info();
+    println!(
+        "[DEBUG] completion_tokens: {}, prompt_tokens: {}",
+        token_info.completion_tokens(),
+        token_info.prompt_tokens()
+    );
 
     // ! todo: a temp solution of computing the number of tokens in assistant_message
     let completion_tokens = message.split_whitespace().count() as u32;
 
     // create ChatCompletionResponse
-    let chat_completion_obejct = ChatCompletionResponse {
+    let chat_completion_obejct = ChatCompletionObject {
         id: uuid::Uuid::new_v4().to_string(),
         object: String::from("chat.completion"),
         created: SystemTime::now()
@@ -245,9 +254,9 @@ pub(crate) async fn chat_completions_handler(
             .unwrap()
             .as_secs(),
         model: chat_request.model.clone().unwrap_or_default(),
-        choices: vec![ChatCompletionResponseChoice {
+        choices: vec![ChatCompletionObjectChoice {
             index: 0,
-            message: ChatCompletionResponseMessage {
+            message: ChatCompletionObjectMessage {
                 role: ChatCompletionRole::Assistant,
                 content: message,
                 function_call: None,
@@ -384,5 +393,40 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
         }
     } else {
         output.as_ref().trim().to_owned()
+    }
+}
+
+fn get_token_info() -> TokenInfo {
+    let graph = crate::GRAPH.get().unwrap().lock().unwrap();
+
+    // get number of input and output tokens
+    let mut token_info_buffer = vec![0u8; *CTX_SIZE.get().unwrap()];
+    let mut size_token_info = graph.get_output(1, &mut token_info_buffer).unwrap();
+    size_token_info = std::cmp::min(*CTX_SIZE.get().unwrap(), size_token_info);
+
+    let token_info: Value = serde_json::from_slice(&token_info_buffer[..size_token_info]).unwrap();
+    // println!(
+    //     "\n[DEBUG] input tokens: {in_tokens}, output tokens: {out_tokens}",
+    //     in_tokens = token_info["input_tokens"],
+    //     out_tokens = token_info["output_tokens"]
+    // );
+
+    TokenInfo::new(token_info)
+}
+
+struct TokenInfo {
+    token_info: Value,
+}
+impl TokenInfo {
+    pub fn new(token_info: Value) -> Self {
+        Self { token_info }
+    }
+
+    pub fn completion_tokens(&self) -> u32 {
+        self.token_info["output_tokens"].as_i64().unwrap() as u32
+    }
+
+    pub fn prompt_tokens(&self) -> u32 {
+        self.token_info["input_tokens"].as_i64().unwrap() as u32
     }
 }

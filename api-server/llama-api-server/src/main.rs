@@ -392,22 +392,19 @@ struct Graph {
 }
 impl Graph {
     pub fn new(model_alias: impl AsRef<str>, options: &Metadata) -> Self {
+        let config = serde_json::to_string(&options).unwrap();
+
         // load the model
         let graph = wasi_nn::GraphBuilder::new(
             wasi_nn::GraphEncoding::Ggml,
             wasi_nn::ExecutionTarget::AUTO,
         )
+        .config(config)
         .build_from_cache(model_alias.as_ref())
         .unwrap();
 
         // initialize the execution context
-        let mut context = graph.init_execution_context().unwrap();
-
-        // set metadata
-        let buffer = serde_json::to_vec(options).unwrap();
-        context
-            .set_input(1, wasi_nn::TensorType::U8, &[1], buffer)
-            .unwrap();
+        let context = graph.init_execution_context().unwrap();
 
         Self {
             _graph: graph,
