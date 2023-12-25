@@ -538,7 +538,8 @@ fn stream_compute(context: &mut wasi_nn::GraphExecutionContext, stop: Option<&st
         output_size = std::cmp::min(max_output_size, output_size);
         let token = String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
 
-        if output.is_empty() && token == " " {
+        // remove the redundant characters at the beginning of each answer
+        if output.is_empty() && (token == " " || token == "\n") {
             continue;
         }
 
