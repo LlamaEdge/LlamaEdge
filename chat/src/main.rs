@@ -6,7 +6,7 @@ use clap::{crate_version, Arg, ArgAction, Command};
 use endpoints::chat::{ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRole};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+// use serde_json::Value;
 use std::io::Write;
 use std::str::FromStr;
 
@@ -139,13 +139,6 @@ fn main() -> Result<(), String> {
                 .help("Print all log information to stdout")
                 .action(ArgAction::SetTrue),
         )
-        .arg(
-            Arg::new("stream_stdout")
-                .long("stream-stdout")
-                .value_name("STREAM_STDOUT")
-                .help("Print the output to stdout in the streaming way")
-                .action(ArgAction::SetTrue),
-        )
         .after_help("Example: the command to run `llama-2-7B` model,\n  wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf llama-chat.wasm -p llama-2-chat\n")
         .get_matches();
 
@@ -242,11 +235,6 @@ fn main() -> Result<(), String> {
     };
     println!("[INFO] Prompt template: {ty:?}", ty = &template_ty);
 
-    // stream stdout
-    let stream_stdout = matches.get_flag("stream_stdout");
-    println!("[INFO] Stream stdout: {enable}", enable = stream_stdout);
-    options.stream_stdout = stream_stdout;
-
     // log prompts
     let log_prompts = matches.get_flag("log_prompts");
     println!("[INFO] Log prompts: {enable}", enable = log_prompts);
@@ -287,8 +275,6 @@ fn main() -> Result<(), String> {
         }
     };
 
-    println!("*** metadata: {:?}", &metadata);
-
     // load the model into wasi-nn
     let graph = match wasi_nn::GraphBuilder::new(
         wasi_nn::GraphEncoding::Ggml,
@@ -316,28 +302,6 @@ fn main() -> Result<(), String> {
             ))
         }
     };
-
-    // // set metadata
-    // let metadata = match serde_json::to_string(&options) {
-    //     Ok(metadata) => metadata,
-    //     Err(e) => {
-    //         return Err(format!(
-    //             "Fail to serialize options: {msg}",
-    //             msg = e.to_string()
-    //         ))
-    //     }
-    // };
-    // if context
-    //     .set_input(
-    //         1,
-    //         wasi_nn::TensorType::U8,
-    //         &[1],
-    //         metadata.as_bytes().to_owned(),
-    //     )
-    //     .is_err()
-    // {
-    //     return Err(String::from("Fail to set metadata"));
-    // };
 
     print_separator();
 
@@ -387,53 +351,6 @@ fn main() -> Result<(), String> {
             Some(ref prompt) => stream_compute(&mut context, Some(prompt.as_str())),
             None => stream_compute(&mut context, None),
         };
-
-        // get number of input and output tokens
-        let mut token_info_buffer = vec![0u8; *CTX_SIZE.get().unwrap()];
-        let mut size_token_info = context.get_output(1, &mut token_info_buffer).unwrap();
-        size_token_info = std::cmp::min(*CTX_SIZE.get().unwrap(), size_token_info);
-        // let metadata_str =
-        //     String::from_utf8_lossy(&token_info_buffer[..size_token_info]).to_string();
-        // let value: Value = serde_json::from_str(&metadata_str).unwrap();
-        let token_info: Value =
-            serde_json::from_slice(&token_info_buffer[..size_token_info]).unwrap();
-        println!(
-            "\n[DEBUG] input tokens: {in_tokens}, output tokens: {out_tokens}",
-            in_tokens = token_info["input_tokens"],
-            out_tokens = token_info["output_tokens"]
-        );
-
-        {
-            // // execute the inference
-            // if context.compute().is_err() {
-            //     return Err(String::from("Fail to execute model inference"));
-            // }
-
-            // if log_stat || log_all {
-            //     println!("\n----------------------------------------------------\n");
-            // }
-
-            // // retrieve the output
-            // let mut output_buffer = vec![0u8; *CTX_SIZE.get().unwrap()];
-            // let mut output_size = match context.get_output(0, &mut output_buffer) {
-            //     Ok(size) => size,
-            //     Err(e) => {
-            //         return Err(format!(
-            //             "Fail to get output tensor: {msg}",
-            //             msg = e.to_string()
-            //         ))
-            //     }
-            // };
-            // output_size = std::cmp::min(*CTX_SIZE.get().unwrap(), output_size);
-            // let output = String::from_utf8_lossy(&output_buffer[..output_size]);
-            // let message = post_process(&output, template_ty);
-
-            // if !stream_stdout {
-            //     print(&message);
-            // } else {
-            //     println!("\n");
-            // }
-        }
 
         // put the answer into the `messages` of chat_request
         chat_request
@@ -621,9 +538,6 @@ fn stream_compute(context: &mut wasi_nn::GraphExecutionContext, stop: Option<&st
         output_size = std::cmp::min(max_output_size, output_size);
         let token = String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
 
-        // ! debug
-        // std::thread::sleep(std::time::Duration::from_millis(300));
-
         if output.is_empty() && token == " " {
             continue;
         }
@@ -651,8 +565,6 @@ fn stream_compute(context: &mut wasi_nn::GraphExecutionContext, stop: Option<&st
 struct Options {
     #[serde(rename = "enable-log")]
     log_enable: bool,
-    #[serde(rename = "stream-stdout")]
-    stream_stdout: bool,
     #[serde(rename = "ctx-size")]
     ctx_size: u64,
     #[serde(rename = "n-predict")]
