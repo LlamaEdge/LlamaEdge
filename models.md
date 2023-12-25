@@ -1181,7 +1181,7 @@ output: 8c9ca393b2d882bd7bd0ba672d52eafa29bb22b2cd740418198c1fa1adb6478b Orca-2-
 
 ```console
 curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:Orca-2-13b-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -s 'You are Orca, an AI language model created by Microsoft. You are a cautious assistant. You carefully follow instructions. You are helpful and harmless and you follow ethical guidelines and promote positive behavior.' --stream-stdout
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Orca-2-13b-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -s 'You are Orca, an AI language model created by Microsoft. You are a cautious assistant. You carefully follow instructions. You are helpful and harmless and you follow ethical guidelines and promote positive behavior.'
 ```
 
 <b>Chat with the model via a web UI</b>
@@ -1271,7 +1271,7 @@ output: d51be2f2543eba49b9a33fd38ef96fafd79302f6d30f4529031154b065e23d56 Yi-34B-
 
 ```console
 curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:Yi-34B-Chat-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -r '<|im_end|>' --stream-stdout
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Yi-34B-Chat-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -r '<|im_end|>'
 ```
 
 <b>Chat with the model via a web UI</b>
@@ -1316,7 +1316,7 @@ output: b6144d3a48352f5a40245ab1e89bfc0b17e4d045bf0e78fb512480f34ae92eba starlin
 
 ```console
 curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:starling-lm-7b-alpha.Q5_K_M.gguf llama-chat.wasm -p openchat -r '<|end_of_turn|>' --stream-stdout
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:starling-lm-7b-alpha.Q5_K_M.gguf llama-chat.wasm -p openchat -r '<|end_of_turn|>'
 ```
 
 <b>Chat with the model via a web UI</b>
@@ -1360,7 +1360,7 @@ Note that check the sha256 of `calm2-7b-chat.Q4_K_M.gguf` after downloading.
 
 ```console
 curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:calm2-7b-chat.Q4_K_M.gguf llama-chat.wasm -p vicuna-1.1-chat --stream-stdout
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:calm2-7b-chat.Q4_K_M.gguf llama-chat.wasm -p vicuna-1.1-chat
 ```
 
 <b>Chat with the model via a web UI</b>
@@ -1407,7 +1407,7 @@ curl -LO https://huggingface.co/second-state/Deepseek-Coder-6.7B-Instruct-GGUF/r
 
 ```console
 curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:deepseek-coder-6.7b-instruct.Q5_K_M.gguf llama-chat.wasm -p deepseek-coder --stream-stdout
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:deepseek-coder-6.7b-instruct.Q5_K_M.gguf llama-chat.wasm -p deepseek-coder
 ```
 
 <b>Chat with the model via a web UI</b>
@@ -1454,7 +1454,7 @@ curl -LO https://huggingface.co/second-state/Deepseek-LLM-7B-Chat-GGUF/resolve/m
 
 ```console
 curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:deepseek-llm-7b-chat.Q5_K_M.gguf llama-chat.wasm -p deepseek-chat --stream-stdout
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:deepseek-llm-7b-chat.Q5_K_M.gguf llama-chat.wasm -p deepseek-chat
 ```
 
 <b>Chat with the model via a web UI</b>
