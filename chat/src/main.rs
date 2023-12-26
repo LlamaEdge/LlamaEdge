@@ -346,7 +346,7 @@ fn main() -> Result<(), String> {
             return Err(String::from("Fail to set input tensor"));
         };
 
-        // let message = stream_compute(&mut context, &options.reverse_prompt);
+        // compute
         let message = match options.reverse_prompt {
             Some(ref prompt) => stream_compute(&mut context, Some(prompt.as_str())),
             None => stream_compute(&mut context, None),
@@ -520,8 +520,7 @@ fn stream_compute(context: &mut wasi_nn::GraphExecutionContext, stop: Option<&st
     let mut output = String::new();
     // Compute one token at a time, and get the token using the get_output_single().
     loop {
-        let result = context.compute_single();
-        match result {
+        match context.compute_single() {
             Ok(_) => (),
             Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::EndOfSequence)) => {
                 break;
