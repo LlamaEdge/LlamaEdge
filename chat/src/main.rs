@@ -8,7 +8,7 @@ use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-const DEFAULT_CTX_SIZE: &str = "4096";
+const DEFAULT_CTX_SIZE: &str = "512";
 static CTX_SIZE: OnceCell<usize> = OnceCell::new();
 
 #[allow(unreachable_code)]
@@ -57,7 +57,7 @@ fn main() -> Result<(), String> {
                 .value_parser(clap::value_parser!(u32))
                 .value_name("BATCH_SIZE")
                 .help("Batch size for prompt processing")
-                .default_value("4096"),
+                .default_value("512"),
         )
         .arg(
             Arg::new("reverse_prompt")

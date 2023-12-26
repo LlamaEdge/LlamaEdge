@@ -17,7 +17,7 @@ use wasi_nn::{Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext,
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 const DEFAULT_SOCKET_ADDRESS: &str = "0.0.0.0:8080";
-const DEFAULT_CTX_SIZE: &str = "4096";
+const DEFAULT_CTX_SIZE: &str = "512";
 
 static CTX_SIZE: OnceCell<usize> = OnceCell::new();
 
@@ -90,7 +90,7 @@ async fn main() -> Result<(), ServerError> {
                 .value_parser(clap::value_parser!(u32))
                 .value_name("BATCH_SIZE")
                 .help("Batch size for prompt processing")
-                .default_value("4096"),
+                .default_value("512"),
         )
         .arg(
             Arg::new("reverse_prompt")
