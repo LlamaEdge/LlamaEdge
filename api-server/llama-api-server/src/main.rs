@@ -126,6 +126,13 @@ async fn main() -> Result<(), ServerError> {
                 .default_value("llama-2-chat"),
         )
         .arg(
+            Arg::new("stream")
+                .long("stream")
+                .value_name("STREAM")
+                .help("Enable streaming mode")
+                .action(ArgAction::SetFalse),
+        )
+        .arg(
             Arg::new("log_prompts")
                 .long("log-prompts")
                 .value_name("LOG_PROMPTS")
@@ -237,6 +244,9 @@ async fn main() -> Result<(), ServerError> {
     println!("[INFO] Prompt template: {ty:?}", ty = &template_ty);
     let ref_template_ty = std::sync::Arc::new(template_ty);
 
+    let stream = matches.get_flag("stream");
+    println!("[INFO] Enable streaming mode: {enable}", enable = stream);
+
     // log prompts
     let log_prompts = matches.get_flag("log_prompts");
     println!("[INFO] Log prompts: {enable}", enable = log_prompts);
@@ -280,7 +290,7 @@ async fn main() -> Result<(), ServerError> {
             .get_one::<String>("web_ui")
             .unwrap_or(&"chatbot-ui".to_owned())
             .to_string();
-        async {
+        async move {
             Ok::<_, Error>(service_fn(move |req| {
                 handle_request(
                     req,
@@ -289,6 +299,7 @@ async fn main() -> Result<(), ServerError> {
                     *created.clone(),
                     *log_prompts.clone(),
                     web_ui.clone(),
+                    stream,
                 )
             }))
         }
@@ -311,6 +322,7 @@ async fn handle_request(
     created: u64,
     log_prompts: bool,
     web_ui: String,
+    stream: bool,
 ) -> Result<Response<Body>, hyper::Error> {
     let path_str = req.uri().path();
     let path_buf = PathBuf::from(path_str);
@@ -324,7 +336,15 @@ async fn handle_request(
             return Ok(Response::new(Body::from("echo test")));
         }
         "/v1" => {
-            backend::handle_llama_request(req, model_info, template_ty, created, log_prompts).await
+            backend::handle_llama_request(
+                req,
+                model_info,
+                template_ty,
+                created,
+                log_prompts,
+                stream,
+            )
+            .await
         }
         _ => Ok(static_response(path_str, web_ui)),
     }
@@ -426,11 +446,23 @@ impl Graph {
         self.context.compute()
     }
 
+    pub fn compute_single(&mut self) -> Result<(), WasiNnError> {
+        self.context.compute_single()
+    }
+
     pub fn get_output<T: Sized>(
         &self,
         index: usize,
         out_buffer: &mut [T],
     ) -> Result<usize, WasiNnError> {
         self.context.get_output(index, out_buffer)
+    }
+
+    pub fn get_output_single<T: Sized>(
+        &self,
+        index: usize,
+        out_buffer: &mut [T],
+    ) -> Result<usize, WasiNnError> {
+        self.context.get_output_single(index, out_buffer)
     }
 }
