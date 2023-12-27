@@ -17,7 +17,7 @@ use wasi_nn::{Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext,
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 const DEFAULT_SOCKET_ADDRESS: &str = "0.0.0.0:8080";
-const DEFAULT_CTX_SIZE: &str = "4096";
+const DEFAULT_CTX_SIZE: &str = "512";
 
 static CTX_SIZE: OnceCell<usize> = OnceCell::new();
 
@@ -194,6 +194,7 @@ async fn main() -> Result<(), ServerError> {
         return Err(ServerError::PromptContextSize);
     }
     println!("[INFO] Prompt context size: {size}", size = ctx_size);
+    options.ctx_size = *ctx_size as u64;
 
     // number of tokens to predict
     let n_predict = matches.get_one::<u32>("n_predict").unwrap();
