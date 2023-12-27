@@ -223,7 +223,7 @@ The `-h` or `--help` option can list the available options of the `llama-api-ser
     -g, --n-gpu-layers <N_GPU_LAYERS>
             Number of layers to run on the GPU [default: 100]
     -b, --batch-size <BATCH_SIZE>
-            Batch size for prompt processing [default: 4096]
+            Batch size for prompt processing [default: 512]
     -r, --reverse-prompt <REVERSE_PROMPT>
             Halt generation at PROMPT, return control.
     -p, --prompt-template <TEMPLATE>
