@@ -1256,33 +1256,32 @@ curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/js
 <hr/>
 <b>Download the model</b>
 
-```console
+```bash
 curl -LO https://huggingface.co/second-state/Yi-34B-Chat-GGUF/resolve/main/Yi-34B-Chat-ggml-model-q4_0.gguf
 ```
 
 Please check the sha256sum of the Downloaded model file to make sure it is correct.
 
-```
+```bash
 shasum -a 256 Yi-34B-Chat-ggml-model-q4_0.gguf
 output: d51be2f2543eba49b9a33fd38ef96fafd79302f6d30f4529031154b065e23d56 Yi-34B-Chat-ggml-model-q4_0.gguf
 ```
 
 <b>Chat with the model on the CLI</b>
 
-```console
+```bash
 curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Yi-34B-Chat-ggml-model-q4_0.gguf llama-chat.wasm -p chatml -r '<|im_end|>'
 ```
 
 <b>Chat with the model via a web UI</b>
 
-```console
+```bash
 curl -LO https://github.com/second-state/llama-utils/raw/main/api-server/llama-api-server.wasm
 curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
-
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:neural-chat-7b-v3-1-ggml-model-q4_0.gguf llama-api-server.wasm -p chatml -r '<|im_end|>'
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Yi-34B-Chat-ggml-model-q4_0.gguf llama-api-server.wasm -p chatml -r '<|im_end|>'
 ```
 
 Open your browser to http://localhost:8080 to start the chat!
@@ -1291,9 +1290,10 @@ Open your browser to http://localhost:8080 to start the chat!
 
 Test the API server from another terminal using the following command
 
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/json' -H 'Content-Type: application/json' -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"Yi-34B-Chat"}'
 ```
-curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/json' -H 'Content-Type: application/json' -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"Neural-Chat-7B"}'
-```
+
 </details>
 
 <details>
