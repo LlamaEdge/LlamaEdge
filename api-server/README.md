@@ -217,7 +217,7 @@ The `-h` or `--help` option can list the available options of the `llama-api-ser
     -a, --model-alias <MODEL-ALIAS>
             Sets the alias name of the model in WasmEdge runtime [default: default]
     -c, --ctx-size <CTX_SIZE>
-            Sets the prompt context size [default: 4096]
+            Sets the prompt context size [default: 512]
     -n, --n-predict <N_PRDICT>
             Number of tokens to predict [default: 1024]
     -g, --n-gpu-layers <N_GPU_LAYERS>
