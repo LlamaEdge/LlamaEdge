@@ -138,6 +138,7 @@ pub(crate) async fn chat_completions_handler(
     template_ty: PromptTemplateType,
     log_prompts: bool,
     stream: bool,
+    stop: Option<String>,
 ) -> Result<Response<Body>, hyper::Error> {
     if req.method().eq(&hyper::http::Method::OPTIONS) {
         let result = Response::builder()
@@ -224,6 +225,8 @@ pub(crate) async fn chat_completions_handler(
     // ! todo: a temp solution of computing the number of tokens in prompt
     let prompt_tokens = prompt.split_whitespace().count() as u32;
 
+    println!("[DEBUG] stream: {}", stream);
+
     let result = match stream {
         true => {
             let mut graph = crate::GRAPH.get().unwrap().lock().unwrap();
@@ -237,56 +240,8 @@ pub(crate) async fn chat_completions_handler(
                 return error::internal_server_error(String::from("Fail to set input tensor"));
             };
 
-            {
-                // // compute
-                // let mut finish_reason: Option<FinishReason> = None;
-                // match graph.compute_single() {
-                //     Ok(_) => (),
-                //     Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::EndOfSequence)) => {
-                //         finish_reason = Some(FinishReason::stop);
-                //         ()
-                //     }
-                //     Err(e) => {
-                //         println!("Error: {:?}", &e);
-                //         return error::internal_server_error(e.to_string());
-                //     }
-                // }
-
-                // // Retrieve the output.
-                // let max_output_size = 4096 * 6;
-                // let mut output_buffer = vec![0u8; max_output_size];
-                // let mut output_size = graph.get_output_single(0, &mut output_buffer).unwrap();
-                // output_size = std::cmp::min(max_output_size, output_size);
-                // let tokens = String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
-
-                // println!("[DEBUG] tokens: {}", &tokens);
-
-                // let chat_completion_chunk = ChatCompletionChunk {
-                //     id: "chatcmpl-123".to_string(),
-                //     object: "chat.completion.chunk".to_string(),
-                //     created: SystemTime::now()
-                //         .duration_since(std::time::UNIX_EPOCH)
-                //         .unwrap()
-                //         .as_secs(),
-                //     model: chat_request.model.clone().unwrap_or_default(),
-                //     system_fingerprint: "fp_44709d6fcb".to_string(),
-                //     choices: vec![ChatCompletionChunkChoice {
-                //         index: 0,
-                //         delta: ChatCompletionChunkChoiceDelta {
-                //             role: Some(ChatCompletionRole::Assistant),
-                //             content: Some(tokens),
-                //             function_call: None,
-                //             tool_calls: None,
-                //         },
-                //         logprobs: None,
-                //         finish_reason,
-                //     }],
-                // };
-
-                // Body::wra
-            }
-
-            let stream = stream::repeat_with(|| {
+            let model = chat_request.model.clone().unwrap_or_default();
+            let stream = stream::repeat_with(move || {
                 let mut graph = crate::GRAPH.get().unwrap().lock().unwrap();
                 // compute
                 match graph.compute_single() {
@@ -307,7 +262,16 @@ pub(crate) async fn chat_completions_handler(
                         let output =
                             String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
 
+                        // ! debug
                         println!("[DEBUG] output: {}", &output);
+
+                        if let Some(stop) = &stop {
+                            if output.contains(stop) {
+                                // ! debug
+                                println!("[DEBUG] stop generating by stop token");
+                                return Ok("[GGML] End of sequence".to_string());
+                            }
+                        }
 
                         let chat_completion_chunk = ChatCompletionChunk {
                             id: "chatcmpl-123".to_string(),
@@ -316,7 +280,7 @@ pub(crate) async fn chat_completions_handler(
                                 .duration_since(std::time::UNIX_EPOCH)
                                 .unwrap()
                                 .as_secs(),
-                            model: "temp_model_name".to_string(), // chat_request.model.clone().unwrap_or_default(),
+                            model: model.clone(),
                             system_fingerprint: "fp_44709d6fcb".to_string(),
                             choices: vec![ChatCompletionChunkChoice {
                                 index: 0,
@@ -365,14 +329,6 @@ pub(crate) async fn chat_completions_handler(
             let output = String::from_utf8(buffer.clone()).unwrap();
             // post-process
             let message = post_process(&output, template_ty);
-
-            // // get token info
-            // let token_info = get_token_info();
-            // println!(
-            //     "[DEBUG] completion_tokens: {}, prompt_tokens: {}",
-            //     token_info.completion_tokens(),
-            //     token_info.prompt_tokens()
-            // );
 
             // ! todo: a temp solution of computing the number of tokens in assistant_message
             let completion_tokens = message.split_whitespace().count() as u32;

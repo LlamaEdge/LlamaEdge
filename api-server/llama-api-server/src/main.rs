@@ -126,11 +126,11 @@ async fn main() -> Result<(), ServerError> {
                 .default_value("llama-2-chat"),
         )
         .arg(
-            Arg::new("stream")
-                .long("stream")
-                .value_name("STREAM")
-                .help("Enable streaming mode")
-                .action(ArgAction::SetFalse),
+            Arg::new("disable_stream")
+                .long("disable-stream")
+                .value_name("DISABLE-STREAM")
+                .help("Disable streaming mode")
+                .action(ArgAction::SetTrue),
         )
         .arg(
             Arg::new("log_prompts")
@@ -244,7 +244,9 @@ async fn main() -> Result<(), ServerError> {
     println!("[INFO] Prompt template: {ty:?}", ty = &template_ty);
     let ref_template_ty = std::sync::Arc::new(template_ty);
 
-    let stream = matches.get_flag("stream");
+    // streaming mode
+    // let disable_stream = matches.get_flag("disable_stream");
+    let stream = !matches.get_flag("disable_stream");
     println!("[INFO] Enable streaming mode: {enable}", enable = stream);
 
     // log prompts
@@ -281,6 +283,9 @@ async fn main() -> Result<(), ServerError> {
         .as_secs();
     let ref_created = std::sync::Arc::new(created);
 
+    // stop the generation at the prompt
+    let ref_stop = std::sync::Arc::new(options.reverse_prompt);
+
     let new_service = make_service_fn(move |_| {
         let model_info = model_info.clone();
         let prompt_template_ty = ref_template_ty.clone();
@@ -290,8 +295,14 @@ async fn main() -> Result<(), ServerError> {
             .get_one::<String>("web_ui")
             .unwrap_or(&"chatbot-ui".to_owned())
             .to_string();
+        let stop = std::sync::Arc::clone(&ref_stop);
         async move {
             Ok::<_, Error>(service_fn(move |req| {
+                let stop = match stop.as_ref() {
+                    Some(prompt) => Some(prompt.to_string()),
+                    None => None,
+                };
+
                 handle_request(
                     req,
                     model_info.clone(),
@@ -300,6 +311,7 @@ async fn main() -> Result<(), ServerError> {
                     *log_prompts.clone(),
                     web_ui.clone(),
                     stream,
+                    stop,
                 )
             }))
         }
@@ -323,6 +335,7 @@ async fn handle_request(
     log_prompts: bool,
     web_ui: String,
     stream: bool,
+    stop: Option<String>,
 ) -> Result<Response<Body>, hyper::Error> {
     let path_str = req.uri().path();
     let path_buf = PathBuf::from(path_str);
@@ -343,6 +356,7 @@ async fn handle_request(
                 created,
                 log_prompts,
                 stream,
+                stop,
             )
             .await
         }
