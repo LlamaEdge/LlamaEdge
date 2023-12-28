@@ -118,13 +118,13 @@ Options:
   -a, --model-alias <ALIAS>
           Model alias [default: default]
   -c, --ctx-size <CTX_SIZE>
-          Size of the prompt context [default: 4096]
+          Size of the prompt context [default: 512]
   -n, --n-predict <N_PRDICT>
           Number of tokens to predict [default: 1024]
   -g, --n-gpu-layers <N_GPU_LAYERS>
           Number of layers to run on the GPU [default: 100]
   -b, --batch-size <BATCH_SIZE>
-          Batch size for prompt processing [default: 4096]
+          Batch size for prompt processing [default: 512]
       --temp <TEMP>
           Temperature for sampling [default: 0.8]
       --repeat-penalty <REPEAT_PENALTY>
