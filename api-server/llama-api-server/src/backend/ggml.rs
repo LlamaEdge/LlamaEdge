@@ -225,8 +225,6 @@ pub(crate) async fn chat_completions_handler(
     // ! todo: a temp solution of computing the number of tokens in prompt
     let prompt_tokens = prompt.split_whitespace().count() as u32;
 
-    println!("[DEBUG] stream: {}", stream);
-
     let result = match stream {
         true => {
             let mut graph = crate::GRAPH.get().unwrap().lock().unwrap();
@@ -262,13 +260,8 @@ pub(crate) async fn chat_completions_handler(
                         let output =
                             String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
 
-                        // ! debug
-                        println!("[DEBUG] output: {}", &output);
-
                         if let Some(stop) = &stop {
                             if output.contains(stop) {
-                                // ! debug
-                                println!("[DEBUG] stop generating by stop token");
                                 return Ok("[GGML] End of sequence".to_string());
                             }
                         }
