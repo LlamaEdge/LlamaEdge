@@ -93,6 +93,22 @@ async fn main() -> Result<(), ServerError> {
                 .default_value("512"),
         )
         .arg(
+            Arg::new("temp")
+                .long("temp")
+                .value_parser(clap::value_parser!(f32))
+                .value_name("TEMP")
+                .help("Temperature for sampling")
+                .default_value("0.8"),
+        )
+        .arg(
+            Arg::new("repeat_penalty")
+                .long("repeat-penalty")
+                .value_parser(clap::value_parser!(f32))
+                .value_name("REPEAT_PENALTY")
+                .help("Penalize repeat sequence of tokens")
+                .default_value("1.1"),
+        )
+        .arg(
             Arg::new("reverse_prompt")
                 .short('r')
                 .long("reverse-prompt")
@@ -224,6 +240,19 @@ async fn main() -> Result<(), ServerError> {
     );
     options.batch_size = *batch_size as u64;
 
+    // temperature
+    let temp = matches.get_one::<f32>("temp").unwrap();
+    println!("[INFO] Temperature for sampling: {temp}", temp = temp);
+    options.temp = *temp;
+
+    // repeat penalty
+    let repeat_penalty = matches.get_one::<f32>("repeat_penalty").unwrap();
+    println!(
+        "[INFO] Penalize repeat sequence of tokens: {penalty}",
+        penalty = repeat_penalty
+    );
+    options.repeat_penalty = *repeat_penalty;
+
     // reverse_prompt
     if let Some(reverse_prompt) = matches.get_one::<String>("reverse_prompt") {
         println!("[INFO] Reverse prompt: {prompt}", prompt = &reverse_prompt);
@@ -266,6 +295,9 @@ async fn main() -> Result<(), ServerError> {
     if log_stat || log_all {
         options.log_enable = true;
     }
+
+    // ! debug
+    println!("[DEBUG] options: {:#?}", options);
 
     println!("[INFO] Starting server ...");
 
@@ -403,6 +435,10 @@ struct Metadata {
     n_gpu_layers: u64,
     #[serde(rename = "batch-size")]
     batch_size: u64,
+    #[serde(rename = "temp")]
+    temp: f32,
+    #[serde(rename = "repeat-penalty")]
+    repeat_penalty: f32,
     #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
     reverse_prompt: Option<String>,
 }
