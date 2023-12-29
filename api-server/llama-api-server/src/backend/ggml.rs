@@ -205,6 +205,12 @@ pub(crate) async fn chat_completions_handler(
             PromptTemplateType::SolarInstruct => ChatPrompt::SolarInstructPrompt(
                 chat_prompts::chat::solar::SolarInstructPrompt::default(),
             ),
+            PromptTemplateType::Phi2Chat => {
+                ChatPrompt::Phi2ChatPrompt(chat_prompts::chat::phi::Phi2ChatPrompt::default())
+            }
+            PromptTemplateType::Phi2Instruct => ChatPrompt::Phi2InstructPrompt(
+                chat_prompts::chat::phi::Phi2InstructPrompt::default(),
+            ),
         }
     }
     let template = create_prompt_template(template_ty);
