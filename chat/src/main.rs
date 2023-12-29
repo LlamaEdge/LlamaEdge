@@ -6,12 +6,10 @@ use clap::{crate_version, Arg, ArgAction, Command};
 use endpoints::chat::{ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRole};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
-// use serde_json::Value;
 use std::io::Write;
 use std::str::FromStr;
 
-const DEFAULT_CTX_SIZE: &str = "512";
-static CTX_SIZE: OnceCell<usize> = OnceCell::new();
+static MAX_BUFFER_SIZE: OnceCell<usize> = OnceCell::new();
 
 #[allow(unreachable_code)]
 fn main() -> Result<(), String> {
@@ -32,7 +30,7 @@ fn main() -> Result<(), String> {
                 .value_parser(clap::value_parser!(u64))
                 .value_name("CTX_SIZE")
                 .help("Size of the prompt context")
-                .default_value(DEFAULT_CTX_SIZE),
+                .default_value("512"),
         )
         .arg(
             Arg::new("n_predict")
@@ -154,11 +152,15 @@ fn main() -> Result<(), String> {
 
     // prompt context size
     let ctx_size = matches.get_one::<u64>("ctx_size").unwrap();
-    if CTX_SIZE.set(*ctx_size as usize * 6).is_err() {
-        return Err(String::from("Fail to parse prompt context size"));
-    }
     println!("[INFO] Prompt context size: {size}", size = ctx_size);
     options.ctx_size = *ctx_size;
+
+    // max buffer size
+    if MAX_BUFFER_SIZE.set(*ctx_size as usize * 6).is_err() {
+        return Err(String::from(
+            "Fail to set `MAX_BUFFER_SIZE`. It is already set.",
+        ));
+    }
 
     // number of tokens to predict
     let n_predict = matches.get_one::<u64>("n_predict").unwrap();
@@ -531,7 +533,7 @@ fn stream_compute(context: &mut wasi_nn::GraphExecutionContext, stop: Option<&st
             }
         }
         // Retrieve the output.
-        let max_output_size = 4096 * 6;
+        let max_output_size = *MAX_BUFFER_SIZE.get().unwrap();
         let mut output_buffer = vec![0u8; max_output_size];
         let mut output_size = context.get_output_single(0, &mut output_buffer).unwrap();
         output_size = std::cmp::min(max_output_size, output_size);
