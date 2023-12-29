@@ -39,6 +39,6 @@ pub enum ServerError {
     InternalServerError(String),
     #[error("Invalid prompt template type: {0}")]
     InvalidPromptTemplateType(String),
-    #[error("Failed to set prompt context size. The `CTX_SIZE` is already set.")]
-    PromptContextSize,
+    #[error("Failed to set `MAX_BUFFER_SIZE`. The `MAX_BUFFER_SIZE` is already set.")]
+    MaxBufferSize,
 }

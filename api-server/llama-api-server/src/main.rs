@@ -17,10 +17,8 @@ use wasi_nn::{Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext,
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 const DEFAULT_SOCKET_ADDRESS: &str = "0.0.0.0:8080";
-const DEFAULT_CTX_SIZE: &str = "512";
 
-static CTX_SIZE: OnceCell<usize> = OnceCell::new();
-
+static MAX_BUFFER_SIZE: OnceCell<usize> = OnceCell::new();
 static GRAPH: OnceCell<Mutex<Graph>> = OnceCell::new();
 
 #[derive(Clone, Debug)]
@@ -63,7 +61,7 @@ async fn main() -> Result<(), ServerError> {
                 .value_parser(clap::value_parser!(u32))
                 .value_name("CTX_SIZE")
                 .help("Sets the prompt context size")
-                .default_value(DEFAULT_CTX_SIZE),
+                .default_value("512"),
         )
         .arg(
             Arg::new("n_predict")
@@ -213,11 +211,13 @@ async fn main() -> Result<(), ServerError> {
 
     // prompt context size
     let ctx_size = matches.get_one::<u32>("ctx_size").unwrap();
-    if CTX_SIZE.set(*ctx_size as usize * 6).is_err() {
-        return Err(ServerError::PromptContextSize);
-    }
     println!("[INFO] Prompt context size: {size}", size = ctx_size);
     options.ctx_size = *ctx_size as u64;
+
+    // max buffer size
+    if MAX_BUFFER_SIZE.set(*ctx_size as usize * 6).is_err() {
+        return Err(ServerError::MaxBufferSize);
+    }
 
     // number of tokens to predict
     let n_predict = matches.get_one::<u32>("n_predict").unwrap();
@@ -295,9 +295,6 @@ async fn main() -> Result<(), ServerError> {
     if log_stat || log_all {
         options.log_enable = true;
     }
-
-    // ! debug
-    println!("[DEBUG] options: {:#?}", options);
 
     println!("[INFO] Starting server ...");
 
