@@ -17,10 +17,8 @@ use wasi_nn::{Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext,
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 const DEFAULT_SOCKET_ADDRESS: &str = "0.0.0.0:8080";
-const DEFAULT_CTX_SIZE: &str = "512";
 
-static CTX_SIZE: OnceCell<usize> = OnceCell::new();
-
+static MAX_BUFFER_SIZE: OnceCell<usize> = OnceCell::new();
 static GRAPH: OnceCell<Mutex<Graph>> = OnceCell::new();
 
 #[derive(Clone, Debug)]
@@ -63,7 +61,7 @@ async fn main() -> Result<(), ServerError> {
                 .value_parser(clap::value_parser!(u32))
                 .value_name("CTX_SIZE")
                 .help("Sets the prompt context size")
-                .default_value(DEFAULT_CTX_SIZE),
+                .default_value("512"),
         )
         .arg(
             Arg::new("n_predict")
@@ -91,6 +89,22 @@ async fn main() -> Result<(), ServerError> {
                 .value_name("BATCH_SIZE")
                 .help("Batch size for prompt processing")
                 .default_value("512"),
+        )
+        .arg(
+            Arg::new("temp")
+                .long("temp")
+                .value_parser(clap::value_parser!(f32))
+                .value_name("TEMP")
+                .help("Temperature for sampling")
+                .default_value("0.8"),
+        )
+        .arg(
+            Arg::new("repeat_penalty")
+                .long("repeat-penalty")
+                .value_parser(clap::value_parser!(f32))
+                .value_name("REPEAT_PENALTY")
+                .help("Penalize repeat sequence of tokens")
+                .default_value("1.1"),
         )
         .arg(
             Arg::new("reverse_prompt")
@@ -124,6 +138,13 @@ async fn main() -> Result<(), ServerError> {
                 .value_name("TEMPLATE")
                 .help("Sets the prompt template.")
                 .default_value("llama-2-chat"),
+        )
+        .arg(
+            Arg::new("disable_stream")
+                .long("disable-stream")
+                .value_name("DISABLE-STREAM")
+                .help("Disable streaming mode")
+                .action(ArgAction::SetTrue),
         )
         .arg(
             Arg::new("log_prompts")
@@ -190,11 +211,13 @@ async fn main() -> Result<(), ServerError> {
 
     // prompt context size
     let ctx_size = matches.get_one::<u32>("ctx_size").unwrap();
-    if CTX_SIZE.set(*ctx_size as usize * 6).is_err() {
-        return Err(ServerError::PromptContextSize);
-    }
     println!("[INFO] Prompt context size: {size}", size = ctx_size);
     options.ctx_size = *ctx_size as u64;
+
+    // max buffer size
+    if MAX_BUFFER_SIZE.set(*ctx_size as usize * 6).is_err() {
+        return Err(ServerError::MaxBufferSize);
+    }
 
     // number of tokens to predict
     let n_predict = matches.get_one::<u32>("n_predict").unwrap();
@@ -217,6 +240,19 @@ async fn main() -> Result<(), ServerError> {
     );
     options.batch_size = *batch_size as u64;
 
+    // temperature
+    let temp = matches.get_one::<f32>("temp").unwrap();
+    println!("[INFO] Temperature for sampling: {temp}", temp = temp);
+    options.temp = *temp;
+
+    // repeat penalty
+    let repeat_penalty = matches.get_one::<f32>("repeat_penalty").unwrap();
+    println!(
+        "[INFO] Penalize repeat sequence of tokens: {penalty}",
+        penalty = repeat_penalty
+    );
+    options.repeat_penalty = *repeat_penalty;
+
     // reverse_prompt
     if let Some(reverse_prompt) = matches.get_one::<String>("reverse_prompt") {
         println!("[INFO] Reverse prompt: {prompt}", prompt = &reverse_prompt);
@@ -236,6 +272,11 @@ async fn main() -> Result<(), ServerError> {
     };
     println!("[INFO] Prompt template: {ty:?}", ty = &template_ty);
     let ref_template_ty = std::sync::Arc::new(template_ty);
+
+    // streaming mode
+    // let disable_stream = matches.get_flag("disable_stream");
+    let stream = !matches.get_flag("disable_stream");
+    println!("[INFO] Enable streaming mode: {enable}", enable = stream);
 
     // log prompts
     let log_prompts = matches.get_flag("log_prompts");
@@ -271,6 +312,9 @@ async fn main() -> Result<(), ServerError> {
         .as_secs();
     let ref_created = std::sync::Arc::new(created);
 
+    // stop the generation at the prompt
+    let ref_stop = std::sync::Arc::new(options.reverse_prompt);
+
     let new_service = make_service_fn(move |_| {
         let model_info = model_info.clone();
         let prompt_template_ty = ref_template_ty.clone();
@@ -280,8 +324,14 @@ async fn main() -> Result<(), ServerError> {
             .get_one::<String>("web_ui")
             .unwrap_or(&"chatbot-ui".to_owned())
             .to_string();
-        async {
+        let stop = std::sync::Arc::clone(&ref_stop);
+        async move {
             Ok::<_, Error>(service_fn(move |req| {
+                let stop = match stop.as_ref() {
+                    Some(prompt) => Some(prompt.to_string()),
+                    None => None,
+                };
+
                 handle_request(
                     req,
                     model_info.clone(),
@@ -289,6 +339,8 @@ async fn main() -> Result<(), ServerError> {
                     *created.clone(),
                     *log_prompts.clone(),
                     web_ui.clone(),
+                    stream,
+                    stop,
                 )
             }))
         }
@@ -311,6 +363,8 @@ async fn handle_request(
     created: u64,
     log_prompts: bool,
     web_ui: String,
+    stream: bool,
+    stop: Option<String>,
 ) -> Result<Response<Body>, hyper::Error> {
     let path_str = req.uri().path();
     let path_buf = PathBuf::from(path_str);
@@ -324,7 +378,16 @@ async fn handle_request(
             return Ok(Response::new(Body::from("echo test")));
         }
         "/v1" => {
-            backend::handle_llama_request(req, model_info, template_ty, created, log_prompts).await
+            backend::handle_llama_request(
+                req,
+                model_info,
+                template_ty,
+                created,
+                log_prompts,
+                stream,
+                stop,
+            )
+            .await
         }
         _ => Ok(static_response(path_str, web_ui)),
     }
@@ -369,6 +432,10 @@ struct Metadata {
     n_gpu_layers: u64,
     #[serde(rename = "batch-size")]
     batch_size: u64,
+    #[serde(rename = "temp")]
+    temp: f32,
+    #[serde(rename = "repeat-penalty")]
+    repeat_penalty: f32,
     #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
     reverse_prompt: Option<String>,
 }
@@ -392,22 +459,19 @@ struct Graph {
 }
 impl Graph {
     pub fn new(model_alias: impl AsRef<str>, options: &Metadata) -> Self {
+        let config = serde_json::to_string(&options).unwrap();
+
         // load the model
         let graph = wasi_nn::GraphBuilder::new(
             wasi_nn::GraphEncoding::Ggml,
             wasi_nn::ExecutionTarget::AUTO,
         )
+        .config(config)
         .build_from_cache(model_alias.as_ref())
         .unwrap();
 
         // initialize the execution context
-        let mut context = graph.init_execution_context().unwrap();
-
-        // set metadata
-        let buffer = serde_json::to_vec(options).unwrap();
-        context
-            .set_input(1, wasi_nn::TensorType::U8, &[1], buffer)
-            .unwrap();
+        let context = graph.init_execution_context().unwrap();
 
         Self {
             _graph: graph,
@@ -429,11 +493,23 @@ impl Graph {
         self.context.compute()
     }
 
+    pub fn compute_single(&mut self) -> Result<(), WasiNnError> {
+        self.context.compute_single()
+    }
+
     pub fn get_output<T: Sized>(
         &self,
         index: usize,
         out_buffer: &mut [T],
     ) -> Result<usize, WasiNnError> {
         self.context.get_output(index, out_buffer)
+    }
+
+    pub fn get_output_single<T: Sized>(
+        &self,
+        index: usize,
+        out_buffer: &mut [T],
+    ) -> Result<usize, WasiNnError> {
+        self.context.get_output_single(index, out_buffer)
     }
 }

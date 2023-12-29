@@ -118,13 +118,17 @@ Options:
   -a, --model-alias <ALIAS>
           Model alias [default: default]
   -c, --ctx-size <CTX_SIZE>
-          Size of the prompt context [default: 4096]
+          Size of the prompt context [default: 512]
   -n, --n-predict <N_PRDICT>
           Number of tokens to predict [default: 1024]
   -g, --n-gpu-layers <N_GPU_LAYERS>
           Number of layers to run on the GPU [default: 100]
   -b, --batch-size <BATCH_SIZE>
-          Batch size for prompt processing [default: 4096]
+          Batch size for prompt processing [default: 512]
+      --temp <TEMP>
+          Temperature for sampling [default: 0.8]
+      --repeat-penalty <REPEAT_PENALTY>
+          Penalize repeat sequence of tokens [default: 1.1]
   -r, --reverse-prompt <REVERSE_PROMPT>
           Halt generation at PROMPT, return control.
   -s, --system-prompt <SYSTEM_PROMPT>
@@ -137,12 +141,13 @@ Options:
           Print statistics to stdout
       --log-all
           Print all log information to stdout
-      --stream-stdout
-          Print the output to stdout in the streaming way
   -h, --help
           Print help
   -V, --version
           Print version
+
+Example: the command to run `llama-2-7B` model,
+  wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf llama-chat.wasm -p llama-2-chat
 ```
 
 ## Optional: Build the `llama-chat` wasm app yourself

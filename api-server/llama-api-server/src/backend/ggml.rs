@@ -1,4 +1,4 @@
-use crate::{error, ModelInfo, CTX_SIZE};
+use crate::{error, ModelInfo, MAX_BUFFER_SIZE};
 use chat_prompts::{
     chat::{
         belle::BelleLlama2ChatPrompt,
@@ -11,14 +11,18 @@ use chat_prompts::{
 };
 use endpoints::{
     chat::{
-        ChatCompletionRequest, ChatCompletionResponse, ChatCompletionResponseChoice,
-        ChatCompletionResponseMessage, ChatCompletionRole,
+        ChatCompletionChunk, ChatCompletionChunkChoice, ChatCompletionChunkChoiceDelta,
+        ChatCompletionObject, ChatCompletionObjectChoice, ChatCompletionObjectMessage,
+        ChatCompletionRequest, ChatCompletionRole,
     },
     common::{FinishReason, Usage},
     completions::{CompletionChoice, CompletionObject, CompletionRequest},
     models::{ListModelsResponse, Model},
 };
+use futures::{future, stream};
+use futures_util::TryStreamExt;
 use hyper::{body::to_bytes, Body, Request, Response};
+use serde_json::Value;
 use std::time::SystemTime;
 
 /// Lists models available
@@ -134,6 +138,8 @@ pub(crate) async fn chat_completions_handler(
     mut req: Request<Body>,
     template_ty: PromptTemplateType,
     log_prompts: bool,
+    stream: bool,
+    stop: Option<String>,
 ) -> Result<Response<Body>, hyper::Error> {
     if req.method().eq(&hyper::http::Method::OPTIONS) {
         let result = Response::builder()
@@ -216,59 +222,178 @@ pub(crate) async fn chat_completions_handler(
         println!("{}", &prompt);
         println!("\n----------------------------------------------------\n");
     }
+    let mut graph = crate::GRAPH.get().unwrap().lock().unwrap();
 
-    // ! todo: a temp solution of computing the number of tokens in prompt
-    let prompt_tokens = prompt.split_whitespace().count() as u32;
+    // set input
+    let tensor_data = prompt.as_bytes().to_vec();
+    if graph
+        .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
+        .is_err()
+    {
+        return error::internal_server_error(String::from("Fail to set input tensor"));
+    };
 
-    // run inference
-    let buffer = match infer(prompt).await {
-        Ok(buffer) => buffer,
-        Err(e) => {
-            return error::internal_server_error(e.to_string());
+    let result = match stream {
+        true => {
+            let model = chat_request.model.clone().unwrap_or_default();
+            let stream = stream::repeat_with(move || {
+                let mut graph = crate::GRAPH.get().unwrap().lock().unwrap();
+                // compute
+                match graph.compute_single() {
+                    Ok(_) => {
+                        // Retrieve the output.
+                        let mut output_buffer = vec![0u8; *MAX_BUFFER_SIZE.get().unwrap()];
+                        let mut output_size = match graph.get_output_single(0, &mut output_buffer) {
+                            Ok(size) => size,
+                            Err(e) => {
+                                return Err(format!(
+                                    "Fail to get output tensor: {msg}",
+                                    msg = e.to_string()
+                                ));
+                            }
+                        };
+                        output_size = std::cmp::min(*MAX_BUFFER_SIZE.get().unwrap(), output_size);
+
+                        let output =
+                            String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
+
+                        if let Some(stop) = &stop {
+                            if output.contains(stop) {
+                                return Ok("[GGML] End of sequence".to_string());
+                            }
+                        }
+
+                        let chat_completion_chunk = ChatCompletionChunk {
+                            id: "chatcmpl-123".to_string(),
+                            object: "chat.completion.chunk".to_string(),
+                            created: SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap()
+                                .as_secs(),
+                            model: model.clone(),
+                            system_fingerprint: "fp_44709d6fcb".to_string(),
+                            choices: vec![ChatCompletionChunkChoice {
+                                index: 0,
+                                delta: ChatCompletionChunkChoiceDelta {
+                                    role: Some(ChatCompletionRole::Assistant),
+                                    content: Some(output),
+                                    function_call: None,
+                                    tool_calls: None,
+                                },
+                                logprobs: None,
+                                finish_reason: None,
+                            }],
+                        };
+
+                        Ok(serde_json::to_string(&chat_completion_chunk).unwrap())
+                    }
+                    Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::EndOfSequence)) => {
+                        Ok("[GGML] End of sequence".to_string())
+                    }
+                    Err(e) => {
+                        println!("Error: {:?}", &e);
+                        return Err(e.to_string());
+                    }
+                }
+            });
+
+            let stream =
+                stream.try_take_while(|x| future::ready(Ok(x != "[GGML] End of sequence")));
+
+            Response::builder()
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "*")
+                .header("Access-Control-Allow-Headers", "*")
+                .body(Body::wrap_stream(stream))
+        }
+        false => {
+            // get the number of input tokens
+            let mut token_info_buffer = vec![0u8; *MAX_BUFFER_SIZE.get().unwrap()];
+            let mut size_token_info = graph.get_output(1, &mut token_info_buffer).unwrap();
+            size_token_info = std::cmp::min(*MAX_BUFFER_SIZE.get().unwrap(), size_token_info);
+            let token_info: Value =
+                serde_json::from_slice(&token_info_buffer[..size_token_info]).unwrap();
+            let prompt_tokens = token_info["input_tokens"].as_i64().unwrap() as u32;
+
+            // execute the inference
+            if graph.compute().is_err() {
+                return error::internal_server_error(String::from(
+                    "Fail to execute model inference",
+                ));
+            }
+
+            // Retrieve the output.
+            let mut output_buffer = vec![0u8; *MAX_BUFFER_SIZE.get().unwrap()];
+            let mut output_size = match graph.get_output(0, &mut output_buffer) {
+                Ok(size) => size,
+                Err(e) => {
+                    return error::internal_server_error(format!(
+                        "Fail to get output tensor: {msg}",
+                        msg = e.to_string()
+                    ));
+                }
+            };
+            output_size = std::cmp::min(*MAX_BUFFER_SIZE.get().unwrap(), output_size);
+
+            // convert inference result to string
+            let output = std::str::from_utf8(&output_buffer[..output_size]).unwrap();
+            // post-process
+            let message = post_process(&output, template_ty);
+
+            // set input for computing the number of output tokens
+            let tensor_data = message.as_bytes().to_vec();
+            if graph
+                .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
+                .is_err()
+            {
+                return error::internal_server_error(String::from(
+                    "Fail to set input tensor while computing the number of tokens.",
+                ));
+            };
+
+            // get the number of output tokens
+            let mut token_info_buffer = vec![0u8; *MAX_BUFFER_SIZE.get().unwrap()];
+            let mut size_token_info = graph.get_output(1, &mut token_info_buffer).unwrap();
+            size_token_info = std::cmp::min(*MAX_BUFFER_SIZE.get().unwrap(), size_token_info);
+            let token_info: Value =
+                serde_json::from_slice(&token_info_buffer[..size_token_info]).unwrap();
+            let completion_tokens = token_info["output_tokens"].as_i64().unwrap() as u32;
+
+            // create ChatCompletionResponse
+            let chat_completion_obejct = ChatCompletionObject {
+                id: uuid::Uuid::new_v4().to_string(),
+                object: String::from("chat.completion"),
+                created: SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs(),
+                model: chat_request.model.clone().unwrap_or_default(),
+                choices: vec![ChatCompletionObjectChoice {
+                    index: 0,
+                    message: ChatCompletionObjectMessage {
+                        role: ChatCompletionRole::Assistant,
+                        content: message,
+                        function_call: None,
+                    },
+                    finish_reason: FinishReason::stop,
+                }],
+                usage: Usage {
+                    prompt_tokens,
+                    completion_tokens,
+                    total_tokens: prompt_tokens + completion_tokens,
+                },
+            };
+
+            // return response
+            Response::builder()
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "*")
+                .header("Access-Control-Allow-Headers", "*")
+                .body(Body::from(
+                    serde_json::to_string(&chat_completion_obejct).unwrap(),
+                ))
         }
     };
-
-    // convert inference result to string
-    let output = String::from_utf8(buffer.clone()).unwrap();
-
-    let message = post_process(&output, template_ty);
-
-    // ! todo: a temp solution of computing the number of tokens in assistant_message
-    let completion_tokens = message.split_whitespace().count() as u32;
-
-    // create ChatCompletionResponse
-    let chat_completion_obejct = ChatCompletionResponse {
-        id: uuid::Uuid::new_v4().to_string(),
-        object: String::from("chat.completion"),
-        created: SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
-        model: chat_request.model.clone().unwrap_or_default(),
-        choices: vec![ChatCompletionResponseChoice {
-            index: 0,
-            message: ChatCompletionResponseMessage {
-                role: ChatCompletionRole::Assistant,
-                content: message,
-                function_call: None,
-            },
-            finish_reason: FinishReason::stop,
-        }],
-        usage: Usage {
-            prompt_tokens,
-            completion_tokens,
-            total_tokens: prompt_tokens + completion_tokens,
-        },
-    };
-
-    // return response
-    let result = Response::builder()
-        .header("Access-Control-Allow-Origin", "*")
-        .header("Access-Control-Allow-Methods", "*")
-        .header("Access-Control-Allow-Headers", "*")
-        .body(Body::from(
-            serde_json::to_string(&chat_completion_obejct).unwrap(),
-        ));
 
     match result {
         Ok(response) => Ok(response),
@@ -295,7 +420,7 @@ pub(crate) async fn infer(prompt: impl AsRef<str>) -> std::result::Result<Vec<u8
     }
 
     // Retrieve the output.
-    let mut output_buffer = vec![0u8; *CTX_SIZE.get().unwrap()];
+    let mut output_buffer = vec![0u8; *MAX_BUFFER_SIZE.get().unwrap()];
     let mut output_size = match graph.get_output(0, &mut output_buffer) {
         Ok(size) => size,
         Err(e) => {
@@ -305,7 +430,7 @@ pub(crate) async fn infer(prompt: impl AsRef<str>) -> std::result::Result<Vec<u8
             ))
         }
     };
-    output_size = std::cmp::min(*CTX_SIZE.get().unwrap(), output_size);
+    output_size = std::cmp::min(*MAX_BUFFER_SIZE.get().unwrap(), output_size);
 
     Ok(output_buffer[..output_size].to_vec())
 }

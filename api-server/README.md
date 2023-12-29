@@ -224,6 +224,10 @@ The `-h` or `--help` option can list the available options of the `llama-api-ser
             Number of layers to run on the GPU [default: 100]
     -b, --batch-size <BATCH_SIZE>
             Batch size for prompt processing [default: 512]
+        --temp <TEMP>
+            Temperature for sampling [default: 0.8]
+        --repeat-penalty <REPEAT_PENALTY>
+            Penalize repeat sequence of tokens [default: 1.1]
     -r, --reverse-prompt <REVERSE_PROMPT>
             Halt generation at PROMPT, return control.
     -p, --prompt-template <TEMPLATE>
