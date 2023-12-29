@@ -332,7 +332,7 @@ select_log_level() {
 download_server() {
     printf "Downloading 'llama-api-server' wasm app ...\n"
 
-    wasm_url="https://github.com/second-state/llama-utils/releases/latest/download/llama-api-server.wasm"
+    wasm_url="https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/llama-api-server.wasm"
     retry_download $wasm_url
     if [ $? -ne 0 ]; then
         printf "\nFailed to download wasm file. Please try again\n"
@@ -368,7 +368,7 @@ start_server() {
 download_chat_wasm() {
     printf "Downloading 'llama-chat' wasm ...\n"
 
-    wasm_url="https://github.com/second-state/llama-utils/releases/latest/download/llama-chat.wasm"
+    wasm_url="https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/llama-chat.wasm"
     retry_download $wasm_url
     if [ $? -ne 0 ]; then
         printf "\nFailed to download wasm file. Please try again\n"
