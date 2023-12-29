@@ -116,6 +116,8 @@ fn main() -> Result<(), String> {
                     "deepseek-chat",
                     "deepseek-coder",
                     "solar-instruct",
+                    "phi-2-chat",
+                    "phi-2-instruct",
                 ])
                 .value_name("TEMPLATE")
                 .help("Prompt template.")
@@ -587,6 +589,12 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         PromptTemplateType::SolarInstruct => ChatPrompt::SolarInstructPrompt(
             chat_prompts::chat::solar::SolarInstructPrompt::default(),
         ),
+        PromptTemplateType::Phi2Chat => {
+            ChatPrompt::Phi2ChatPrompt(chat_prompts::chat::phi::Phi2ChatPrompt::default())
+        }
+        PromptTemplateType::Phi2Instruct => {
+            ChatPrompt::Phi2InstructPrompt(chat_prompts::chat::phi::Phi2InstructPrompt::default())
+        }
     }
 }
 
