@@ -140,10 +140,10 @@ async fn main() -> Result<(), ServerError> {
                 .default_value("llama-2-chat"),
         )
         .arg(
-            Arg::new("disable_stream")
-                .long("disable-stream")
-                .value_name("DISABLE-STREAM")
-                .help("Disable streaming mode")
+            Arg::new("stream")
+                .long("stream")
+                .value_name("STREAM")
+                .help("Enable streaming mode")
                 .action(ArgAction::SetTrue),
         )
         .arg(
@@ -275,7 +275,7 @@ async fn main() -> Result<(), ServerError> {
 
     // streaming mode
     // let disable_stream = matches.get_flag("disable_stream");
-    let stream = !matches.get_flag("disable_stream");
+    let stream = matches.get_flag("stream");
     println!("[INFO] Enable streaming mode: {enable}", enable = stream);
 
     // log prompts
