@@ -201,6 +201,9 @@ pub(crate) async fn chat_completions_handler(
             PromptTemplateType::DeepseekCoder => ChatPrompt::DeepseekCoderPrompt(
                 chat_prompts::chat::deepseek::DeepseekCoderPrompt::default(),
             ),
+            PromptTemplateType::SolarInstruct => ChatPrompt::SolarInstructPrompt(
+                chat_prompts::chat::solar::SolarInstructPrompt::default(),
+            ),
         }
     }
     let template = create_prompt_template(template_ty);
