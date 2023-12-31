@@ -134,6 +134,7 @@ async fn main() -> Result<(), ServerError> {
                     "intel-neural",
                     "deepseek-chat",
                     "deepseek-coder",
+                    "solar-instruct",
                 ])
                 .value_name("TEMPLATE")
                 .help("Sets the prompt template.")
