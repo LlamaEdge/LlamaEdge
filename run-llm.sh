@@ -130,6 +130,7 @@ Starling-LM-7B-alpha::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/st
 Calm2-7B-Chat::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/calm2-7b-chat.Q4_K_M.gguf
 Deepseek-Coder-6.7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/deepseek-coder-6.7b-instruct.Q5_K_M.gguf
 Deepseek-LLM-7B-Chat::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/deepseek-llm-7b-chat.Q5_K_M.gguf
+SOLAR-10.7B-Instruct-v1.0::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/solar-10.7b-instruct-v1.0.Q5_K_M.gguf
 '
 
     sha256sums='
@@ -164,6 +165,7 @@ Starling-LM-7B-alpha::b6144d3a48352f5a40245ab1e89bfc0b17e4d045bf0e78fb512480f34a
 Calm2-7B-Chat::42e829c19100c5d82c9432f0ee4c062e994fcf03966e8bfb2e92d1d91db12d56
 Deepseek-Coder-6.7B::0976ee1707fc97b142d7266a9a501893ea6f320e8a8227aa1f04bcab74a5f556
 Deepseek-LLM-7B-Chat::e5bcd887cc97ff63dbd17b8b9feac261516e985b5e78f1f544eb49cf403caaf6
+SOLAR-10.7B-Instruct-v1.0::4ade240f5dcc253272158f3659a56f5b1da8405510707476d23a7df943aa35f7
 '
     prompt_templates='
 Llama-2-7B-Chat::llama-2-chat
@@ -197,6 +199,7 @@ Starling-LM-7B-alpha::openchat
 Calm2-7B-Chat::vicuna-1.1-chat
 Deepseek-Coder-6.7B::deepseek-coder
 Deepseek-LLM-7B-Chat::deepseek-chat
+SOLAR-10.7B-Instruct-v1.0
 '
 
     system_prompts='
