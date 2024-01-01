@@ -510,6 +510,19 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
         } else {
             output.as_ref().trim().to_owned()
         }
+    } else if template_ty == PromptTemplateType::SolarInstruct {
+        let s = output.as_ref().trim();
+        if s.starts_with("### Answer") {
+            let s = s.trim_start_matches("###").trim();
+
+            if s.starts_with("Answer:\n") {
+                s.replace("Answer:\n", "Answer: ")
+            } else {
+                s.to_owned()
+            }
+        } else {
+            s.to_owned()
+        }
     } else {
         output.as_ref().trim().to_owned()
     }
