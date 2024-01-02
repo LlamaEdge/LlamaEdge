@@ -201,6 +201,9 @@ pub(crate) async fn chat_completions_handler(
             PromptTemplateType::DeepseekCoder => ChatPrompt::DeepseekCoderPrompt(
                 chat_prompts::chat::deepseek::DeepseekCoderPrompt::default(),
             ),
+            PromptTemplateType::SolarInstruct => ChatPrompt::SolarInstructPrompt(
+                chat_prompts::chat::solar::SolarInstructPrompt::default(),
+            ),
         }
     }
     let template = create_prompt_template(template_ty);
@@ -506,6 +509,19 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
             output.as_ref().trim_end_matches("Human:").trim().to_owned()
         } else {
             output.as_ref().trim().to_owned()
+        }
+    } else if template_ty == PromptTemplateType::SolarInstruct {
+        let s = output.as_ref().trim();
+        if s.starts_with("### Answer") {
+            let s = s.trim_start_matches("###").trim();
+
+            if s.starts_with("Answer:\n") {
+                s.replace("Answer:\n", "Answer: ")
+            } else {
+                s.to_owned()
+            }
+        } else {
+            s.to_owned()
         }
     } else {
         output.as_ref().trim().to_owned()

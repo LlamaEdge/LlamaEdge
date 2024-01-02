@@ -1641,3 +1641,99 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 ```
 
 </details>
+
+<details>
+<summary> <b>SOLAR-10.7B-Instruct-v1.0</b> </summary>
+<hr/>
+<b>Download the model</b>
+
+```bash
+curl -LO https://huggingface.co/second-state/SOLAR-10.7B-Instruct-v1.0-GGUF/resolve/main/solar-10.7b-instruct-v1.0.Q5_K_M.gguf
+```
+
+  Note that check the sha256 of `solar-10.7b-instruct-v1.0.Q5_K_M.gguf` after downloading.
+
+  ```text
+  4ade240f5dcc253272158f3659a56f5b1da8405510707476d23a7df943aa35f7
+  ```
+
+<b>Chat with the model on the CLI</b>
+
+```bash
+curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:solar-10.7b-instruct-v1.0.Q5_K_M.gguf llama-chat.wasm -p solar-instruct
+```
+
+<b>Chat with the model via a web UI</b>
+
+```bash
+curl -LO https://github.com/second-state/llama-utils/raw/main/api-server/llama-api-server.wasm
+curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+tar xzf chatbot-ui.tar.gz
+rm chatbot-ui.tar.gz
+
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:solar-10.7b-instruct-v1.0.Q5_K_M.gguf llama-api-server.wasm -p solar-instruct
+```
+
+Open your browser to http://localhost:8080 to start the chat!
+
+<b>Send an API request to the server</b>
+
+Test the API server from another terminal using the following command
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H 'accept:application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{"messages":[{"role":"system", "content": "You are an AI programming assistant."}, {"role":"user", "content": "What is the capital of France?"}], "model":"SOLAR-10.7B-Instruct-v1.0"}'
+```
+
+</details>
+
+<details>
+<summary> <b>Mixtral-8x7B-Instruct-v0.1</b> </summary>
+<hr/>
+<b>Download the model</b>
+
+```bash
+curl -LO https://huggingface.co/second-state/Mixtral-8x7B-Instruct-v0.1-GGUF/resolve/main/mixtral-8x7b-instruct-v0.1.Q4_0.gguf
+```
+
+  Note that check the sha256 of `mixtral-8x7b-instruct-v0.1.Q4_0.gguf` after downloading.
+
+  ```text
+  0c57465507f21bed4364fca37efd310bee92e25a4ce4f5678ef9b44e95830e4e
+  ```
+
+<b>Chat with the model on the CLI</b>
+
+```bash
+curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:mixtral-8x7b-instruct-v0.1.Q4_0.gguf llama-chat.wasm -p mistral-instruct
+```
+
+<b>Chat with the model via a web UI</b>
+
+```bash
+curl -LO https://github.com/second-state/llama-utils/raw/main/api-server/llama-api-server.wasm
+curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+tar xzf chatbot-ui.tar.gz
+rm chatbot-ui.tar.gz
+
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:mixtral-8x7b-instruct-v0.1.Q4_0.gguf llama-api-server.wasm -p mistral-instruct
+```
+
+Open your browser to http://localhost:8080 to start the chat!
+
+<b>Send an API request to the server</b>
+
+Test the API server from another terminal using the following command
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H 'accept:application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{"messages":[{"role":"system", "content": "You are an AI programming assistant."}, {"role":"user", "content": "What is the capital of Paris"}], "model":"mixtral-8x7b-instruct-v0.1"}'
+```
+
+</details>

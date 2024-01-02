@@ -111,6 +111,7 @@ fn main() -> Result<(), String> {
                     "intel-neural",
                     "deepseek-chat",
                     "deepseek-coder",
+                    "solar-instruct",
                 ])
                 .value_name("TEMPLATE")
                 .help("Prompt template.")
@@ -429,6 +430,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         ),
         PromptTemplateType::DeepseekCoder => ChatPrompt::DeepseekCoderPrompt(
             chat_prompts::chat::deepseek::DeepseekCoderPrompt::default(),
+        ),
+        PromptTemplateType::SolarInstruct => ChatPrompt::SolarInstructPrompt(
+            chat_prompts::chat::solar::SolarInstructPrompt::default(),
         ),
     }
 }

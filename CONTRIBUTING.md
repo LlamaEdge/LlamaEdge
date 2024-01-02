@@ -2,10 +2,6 @@
 
 ## How to become a contributor and submit your own code
 
-### Developer Certificate of Origin (DCO)
-
-We'd love to accept your patches! Before we can take them, you are often asked to sign a DCO (Developer Certificate of Origin) to ensure that the project has the proper rights to use your code. [A Complete Guide to DCO for Open Source Developers](https://www.secondstate.io/articles/dco/) tells you how to do it. Please read it carefully before you start your work.
-
 ### Git
 
 Please check out a recent version of `dev` branch before starting work, and rebase onto `dev` before creating a pull request.
