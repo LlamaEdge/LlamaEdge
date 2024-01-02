@@ -1,0 +1,23 @@
+name: "Feature Request"
+description: You want to request a feature to enhance the second-state/llama-utils repo, like supporting a new model.
+title: "Feature Request:"
+labels: [
+  "enhancement"
+]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: "Summary"
+      description: Please shortly describe what kind of feature do you need.
+      placeholder: Describe in a few lines your request
+    validations:
+      required: true
+  - type: textarea
+    id: appendix
+    attributes:
+      label: "Appendix"
+      description: Provide anything you want to supplement.
+      placeholder: Some reference links or any information related to this question.
+    validations:
+      required: false
