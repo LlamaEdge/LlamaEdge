@@ -1685,7 +1685,7 @@ Test the API server from another terminal using the following command
 curl -X POST http://localhost:8080/v1/chat/completions \
   -H 'accept:application/json' \
   -H 'Content-Type: application/json' \
-  -d '{"messages":[{"role":"system", "content": "You are an AI programming assistant."}, {"role":"user", "content": "What is the capital of Paris"}], "model":"SOLAR-10.7B-Instruct-v1.0"}'
+  -d '{"messages":[{"role":"system", "content": "You are an AI programming assistant."}, {"role":"user", "content": "What is the capital of France?"}], "model":"SOLAR-10.7B-Instruct-v1.0"}'
 ```
 
 </details>
