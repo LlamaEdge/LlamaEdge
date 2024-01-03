@@ -1737,3 +1737,51 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 ```
 
 </details>
+
+<details>
+<summary> <b>Dolphin-2.6-Phi-2</b> </summary>
+<hr/>
+<b>Download the model</b>
+
+```bash
+curl -LO https://huggingface.co/second-state/Dolphin-2.6-Phi-2-GGUF/resolve/main/dolphin-2_6-phi-2.Q5_K_M.gguf
+```
+
+  Note that check the sha256 of `dolphin-2_6-phi-2.Q5_K_M.gguf` after downloading.
+
+  ```text
+  acc43043793230038f39491de557e70c9d99efddc41f1254e7064cc48f9b5c1e
+  ```
+
+<b>Chat with the model on the CLI</b>
+
+```bash
+curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2_6-phi-2.Q5_K_M.gguf llama-chat.wasm -p chatml
+```
+
+<b>Chat with the model via a web UI</b>
+
+```bash
+curl -LO https://github.com/second-state/llama-utils/raw/main/api-server/llama-api-server.wasm
+curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+tar xzf chatbot-ui.tar.gz
+rm chatbot-ui.tar.gz
+
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2_6-phi-2.Q5_K_M.gguf llama-api-server.wasm -p chatml
+```
+
+Open your browser to http://localhost:8080 to start the chat!
+
+<b>Send an API request to the server</b>
+
+Test the API server from another terminal using the following command
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H 'accept:application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{"messages":[{"role":"system", "content": "You are an AI programming assistant."}, {"role":"user", "content": "What is the capital of Paris"}], "model":"dolphin-2.6-phi-2"}'
+```
+
+</details>
