@@ -139,7 +139,7 @@ pub(crate) async fn chat_completions_handler(
     template_ty: PromptTemplateType,
     log_prompts: bool,
     stream: bool,
-    stop: Option<String>,
+    _stop: Option<String>,
 ) -> Result<Response<Body>, hyper::Error> {
     if req.method().eq(&hyper::http::Method::OPTIONS) {
         let result = Response::builder()
@@ -261,12 +261,6 @@ pub(crate) async fn chat_completions_handler(
 
                         let output =
                             String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
-
-                        if let Some(stop) = &stop {
-                            if output.contains(stop) {
-                                return Ok("[GGML] End of sequence".to_string());
-                            }
-                        }
 
                         let chat_completion_chunk = ChatCompletionChunk {
                             id: "chatcmpl-123".to_string(),
