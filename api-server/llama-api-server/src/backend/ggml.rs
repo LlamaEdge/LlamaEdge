@@ -239,8 +239,10 @@ pub(crate) async fn chat_completions_handler(
     let result = match stream {
         true => {
             let model = chat_request.model.clone().unwrap_or_default();
+            let mut one_more_run = true;
             let stream = stream::repeat_with(move || {
                 let mut graph = crate::GRAPH.get().unwrap().lock().unwrap();
+
                 // compute
                 match graph.compute_single() {
                     Ok(_) => {
@@ -291,7 +293,34 @@ pub(crate) async fn chat_completions_handler(
                         Ok(serde_json::to_string(&chat_completion_chunk).unwrap())
                     }
                     Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::EndOfSequence)) => {
-                        Ok("[GGML] End of sequence".to_string())
+                        match one_more_run {
+                            true => {
+                                let chat_completion_chunk = ChatCompletionChunk {
+                                    id: "chatcmpl-123".to_string(),
+                                    object: "chat.completion.chunk".to_string(),
+                                    created: SystemTime::now()
+                                        .duration_since(std::time::UNIX_EPOCH)
+                                        .unwrap()
+                                        .as_secs(),
+                                    model: model.clone(),
+                                    system_fingerprint: "fp_44709d6fcb".to_string(),
+                                    choices: vec![ChatCompletionChunkChoice {
+                                        index: 0,
+                                        delta: ChatCompletionChunkChoiceDelta {
+                                            role: Some(ChatCompletionRole::Assistant),
+                                            content: Some("<|WASMEDGE-GGML-EOS|>".to_string()),
+                                            function_call: None,
+                                            tool_calls: None,
+                                        },
+                                        logprobs: None,
+                                        finish_reason: Some(FinishReason::stop),
+                                    }],
+                                };
+                                one_more_run = false;
+                                Ok(serde_json::to_string(&chat_completion_chunk).unwrap())
+                            }
+                            false => Ok("[GGML] End of sequence".to_string()),
+                        }
                     }
                     Err(e) => {
                         println!("Error: {:?}", &e);
