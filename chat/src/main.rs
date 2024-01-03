@@ -6,6 +6,7 @@ use clap::{crate_version, Arg, ArgAction, Command};
 use endpoints::chat::{ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRole};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::io::Write;
 use std::str::FromStr;
 
@@ -278,6 +279,14 @@ fn main() -> Result<(), String> {
         }
     };
 
+    if log_stat || log_all {
+        print_log_begin_separator(
+            "MODEL INFO (Load Model & Init Execution Context)",
+            Some("*"),
+            None,
+        );
+    }
+
     // load the model into wasi-nn
     let graph = match wasi_nn::GraphBuilder::new(
         wasi_nn::GraphEncoding::Ggml,
@@ -306,7 +315,11 @@ fn main() -> Result<(), String> {
         }
     };
 
-    print_separator();
+    if log_stat || log_all {
+        print_log_end_separator(Some("*"), None);
+    }
+
+    print_log_end_separator(Some("-"), None);
 
     loop {
         println!("\n[You]: ");
@@ -331,13 +344,13 @@ fn main() -> Result<(), String> {
         };
 
         if log_prompts || log_all {
-            println!("\n---------------- [LOG: PROMPT] ---------------------\n");
+            print_log_begin_separator("PROMPT", Some("*"), None);
             println!("{}", &prompt);
-            println!("\n----------------------------------------------------\n");
+            print_log_end_separator(Some("*"), None);
         }
 
         if log_stat || log_all {
-            println!("\n---------------- [LOG: STATISTICS] -----------------\n");
+            print_log_begin_separator("STATISTICS (Set Input Tensor)", Some("*"), None);
         }
 
         // read input tensor
@@ -349,11 +362,48 @@ fn main() -> Result<(), String> {
             return Err(String::from("Fail to set input tensor"));
         };
 
+        if log_stat || log_all {
+            print_log_end_separator(Some("*"), None);
+        }
+
+        println!("\n[Bot]:");
+
+        if log_stat || log_all {
+            print_log_begin_separator("STATISTICS (Compute)", Some("*"), None);
+        }
+
+        let start_time = std::time::Instant::now();
+
         // compute
         let message = match options.reverse_prompt {
             Some(ref prompt) => stream_compute(&mut context, Some(prompt.as_str())),
             None => stream_compute(&mut context, None),
         };
+
+        let elapsed = start_time.elapsed();
+
+        // Retrieve the number of completion tokens.
+        let max_output_size = *MAX_BUFFER_SIZE.get().unwrap();
+        let mut output_buffer = vec![0u8; max_output_size];
+        let mut output_size = context.get_output(1, &mut output_buffer).unwrap();
+        output_size = std::cmp::min(max_output_size, output_size);
+        let token_info: Value = serde_json::from_slice(&output_buffer[..output_size]).unwrap();
+        let completion_tokens = token_info["output_tokens"].as_u64().unwrap();
+
+        if log_stat || log_all {
+            print_log_end_separator(Some("*"), None);
+        }
+
+        if log_stat || log_all {
+            print_log_begin_separator("STATISTICS", Some("*"), None);
+            println!("\nCompletion tokens: {}", completion_tokens);
+            println!("\nElapsed time: {:?}", elapsed);
+            println!(
+                "\nTokens per second (tps): {}. Note that the tps data is only as a reference. The real time elapsed is shorter.",
+                completion_tokens as f64 / elapsed.as_secs_f64()
+            );
+            print_log_end_separator(Some("*"), None);
+        }
 
         // put the answer into the `messages` of chat_request
         chat_request
@@ -380,8 +430,32 @@ fn read_input() -> String {
     }
 }
 
-fn print_separator() {
-    println!("----------------------------------------------------");
+fn print_log_begin_separator(
+    title: impl AsRef<str>,
+    ch: Option<&str>,
+    len: Option<usize>,
+) -> usize {
+    let title = format!(" [LOG: {}] ", title.as_ref());
+
+    let total_len: usize = len.unwrap_or(100);
+    let separator_len: usize = (total_len - title.len()) / 2;
+
+    let ch = ch.unwrap_or("-");
+    let mut separator = "\n\n".to_string();
+    separator.push_str(ch.repeat(separator_len).as_str());
+    separator.push_str(&title);
+    separator.push_str(ch.repeat(separator_len).as_str());
+    separator.push_str("\n");
+    println!("{}", separator);
+    total_len
+}
+
+fn print_log_end_separator(ch: Option<&str>, len: Option<usize>) {
+    let ch = ch.unwrap_or("-");
+    let mut separator = "\n\n".to_string();
+    separator.push_str(ch.repeat(len.unwrap_or(100)).as_str());
+    separator.push_str("\n");
+    println!("{}", separator);
 }
 
 fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
@@ -521,9 +595,8 @@ fn _print(message: impl AsRef<str>) {
 }
 
 fn stream_compute(context: &mut wasi_nn::GraphExecutionContext, stop: Option<&str>) -> String {
-    println!("\n[Bot]");
-
     let mut output = String::new();
+
     // Compute one token at a time, and get the token using the get_output_single().
     loop {
         match context.compute_single() {
