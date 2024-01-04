@@ -80,8 +80,7 @@ Execute the WASM with the `wasmedge` using the named model feature to preload la
 curl -LO https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf
 
 # run the `llama-chat` wasm app with the model
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf \
-  llama-chat.wasm --prompt-template llama-2-chat
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf llama-chat.wasm --prompt-template llama-2-chat
 ```
 
 After executing the command, you may need to wait a moment for the input prompt to appear.
