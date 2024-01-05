@@ -19,6 +19,7 @@ type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 const DEFAULT_SOCKET_ADDRESS: &str = "0.0.0.0:8080";
 
 static MAX_BUFFER_SIZE: OnceCell<usize> = OnceCell::new();
+static CTX_SIZE: OnceCell<usize> = OnceCell::new();
 static GRAPH: OnceCell<Mutex<Graph>> = OnceCell::new();
 
 #[derive(Clone, Debug)]
@@ -215,7 +216,11 @@ async fn main() -> Result<(), ServerError> {
     println!("[INFO] Prompt context size: {size}", size = ctx_size);
     options.ctx_size = *ctx_size as u64;
 
-    // max buffer size
+    // set `CTX_SIZE`
+    if CTX_SIZE.set(*ctx_size as usize).is_err() {
+        return Err(ServerError::ContextSize);
+    }
+    // set `MAX_BUFFER_SIZE`
     if MAX_BUFFER_SIZE.set(*ctx_size as usize * 6).is_err() {
         return Err(ServerError::MaxBufferSize);
     }
@@ -466,7 +471,7 @@ impl ModelInfo {
 }
 
 #[derive(Debug)]
-struct Graph {
+pub(crate) struct Graph {
     _graph: WasiNnGraph,
     context: GraphExecutionContext,
 }
