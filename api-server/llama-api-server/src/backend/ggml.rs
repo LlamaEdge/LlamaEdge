@@ -1,5 +1,6 @@
 use crate::{
-    error, print_log_begin_separator, print_log_end_separator, ModelInfo, MAX_BUFFER_SIZE,
+    error, print_log_begin_separator, print_log_end_separator, Graph, ModelInfo, CTX_SIZE, GRAPH,
+    MAX_BUFFER_SIZE,
 };
 use chat_prompts::{
     chat::{
@@ -215,7 +216,7 @@ pub(crate) async fn chat_completions_handler(
     let mut chat_request: ChatCompletionRequest = serde_json::from_slice(&body_bytes).unwrap();
 
     // build prompt
-    let prompt = match template.build(chat_request.messages.as_mut()) {
+    let prompt = match build_prompt(&template, &mut chat_request) {
         Ok(prompt) => prompt,
         Err(e) => {
             return error::internal_server_error(e.to_string());
@@ -423,21 +424,13 @@ pub(crate) async fn chat_completions_handler(
                     // post-process
                     let message = post_process(&output, template_ty);
 
-                    // retrieve the number of input and output tokens
-                    let mut token_info_buffer = vec![0u8; *MAX_BUFFER_SIZE.get().unwrap()];
-                    let mut size_token_info = graph.get_output(1, &mut token_info_buffer).unwrap();
-                    size_token_info =
-                        std::cmp::min(*MAX_BUFFER_SIZE.get().unwrap(), size_token_info);
-                    let token_info: Value =
-                        serde_json::from_slice(&token_info_buffer[..size_token_info]).unwrap();
-                    let completion_tokens = token_info["output_tokens"].as_i64().unwrap() as u32;
-                    let prompt_tokens = token_info["input_tokens"].as_i64().unwrap() as u32;
-
+                    // retrieve the number of prompt and completion tokens
+                    let token_info = get_token_info(&graph);
                     if log_prompts {
                         print_log_begin_separator("PROMPT (Tokens)", Some("*"), None);
                         println!(
                             "\nprompt tokens: {}, completion_tokens: {}",
-                            prompt_tokens, completion_tokens
+                            token_info.prompt_tokens, token_info.completion_tokens
                         );
                         print_log_end_separator(Some("*"), None);
                     }
@@ -461,9 +454,10 @@ pub(crate) async fn chat_completions_handler(
                             finish_reason: FinishReason::stop,
                         }],
                         usage: Usage {
-                            prompt_tokens,
-                            completion_tokens,
-                            total_tokens: prompt_tokens + completion_tokens,
+                            prompt_tokens: token_info.prompt_tokens as u32,
+                            completion_tokens: token_info.completion_tokens as u32,
+                            total_tokens: token_info.prompt_tokens as u32
+                                + token_info.completion_tokens as u32,
                         },
                     };
 
@@ -482,7 +476,8 @@ pub(crate) async fn chat_completions_handler(
                     );
 
                     // Retrieve the output.
-                    let mut output_buffer = vec![0u8; *MAX_BUFFER_SIZE.get().unwrap()];
+                    let max_buffer_size = *MAX_BUFFER_SIZE.get().unwrap();
+                    let mut output_buffer = vec![0u8; max_buffer_size];
                     let mut output_size = match graph.get_output(0, &mut output_buffer) {
                         Ok(size) => size,
                         Err(e) => {
@@ -492,28 +487,20 @@ pub(crate) async fn chat_completions_handler(
                             ));
                         }
                     };
-                    output_size = std::cmp::min(*MAX_BUFFER_SIZE.get().unwrap(), output_size);
+                    output_size = std::cmp::min(max_buffer_size, output_size);
                     // convert inference result to string
                     let output = std::str::from_utf8(&output_buffer[..output_size]).unwrap();
 
                     // post-process
                     let message = post_process(&output, template_ty);
 
-                    // retrieve the number of input and output tokens
-                    let mut token_info_buffer = vec![0u8; *MAX_BUFFER_SIZE.get().unwrap()];
-                    let mut size_token_info = graph.get_output(1, &mut token_info_buffer).unwrap();
-                    size_token_info =
-                        std::cmp::min(*MAX_BUFFER_SIZE.get().unwrap(), size_token_info);
-                    let token_info: Value =
-                        serde_json::from_slice(&token_info_buffer[..size_token_info]).unwrap();
-                    let completion_tokens = token_info["output_tokens"].as_i64().unwrap() as u32;
-                    let prompt_tokens = token_info["input_tokens"].as_i64().unwrap() as u32;
-
+                    // retrieve the number of prompt and completion tokens
+                    let token_info = get_token_info(&graph);
                     if log_prompts {
                         print_log_begin_separator("PROMPT (Tokens)", Some("*"), None);
                         println!(
                             "\nprompt tokens: {}, completion_tokens: {}",
-                            prompt_tokens, completion_tokens
+                            token_info.prompt_tokens, token_info.completion_tokens
                         );
                         print_log_end_separator(Some("*"), None);
                     }
@@ -537,9 +524,10 @@ pub(crate) async fn chat_completions_handler(
                             finish_reason: FinishReason::length,
                         }],
                         usage: Usage {
-                            prompt_tokens,
-                            completion_tokens,
-                            total_tokens: prompt_tokens + completion_tokens,
+                            prompt_tokens: token_info.prompt_tokens as u32,
+                            completion_tokens: token_info.completion_tokens as u32,
+                            total_tokens: token_info.prompt_tokens as u32
+                                + token_info.completion_tokens as u32,
                         },
                     };
 
@@ -553,9 +541,7 @@ pub(crate) async fn chat_completions_handler(
                         ))
                 }
                 Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::PromptTooLong)) => {
-                    println!(
-                        "\n\n[WARNING] The message is cut off as the max context size is reached. You can try to ask the same question again, or increase the context size via the `--ctx-size` command option.\n"
-                    );
+                    println!("\n\n[WARNING] The prompt is too long.\n");
 
                     // Retrieve the output.
                     let mut output_buffer = vec![0u8; *MAX_BUFFER_SIZE.get().unwrap()];
@@ -575,21 +561,13 @@ pub(crate) async fn chat_completions_handler(
                     // post-process
                     let message = post_process(&output, template_ty);
 
-                    // retrieve the number of input and output tokens
-                    let mut token_info_buffer = vec![0u8; *MAX_BUFFER_SIZE.get().unwrap()];
-                    let mut size_token_info = graph.get_output(1, &mut token_info_buffer).unwrap();
-                    size_token_info =
-                        std::cmp::min(*MAX_BUFFER_SIZE.get().unwrap(), size_token_info);
-                    let token_info: Value =
-                        serde_json::from_slice(&token_info_buffer[..size_token_info]).unwrap();
-                    let completion_tokens = token_info["output_tokens"].as_i64().unwrap() as u32;
-                    let prompt_tokens = token_info["input_tokens"].as_i64().unwrap() as u32;
-
+                    // retrieve the number of prompt and completion tokens
+                    let token_info = get_token_info(&graph);
                     if log_prompts {
                         print_log_begin_separator("PROMPT (Tokens)", Some("*"), None);
                         println!(
                             "\nprompt tokens: {}, completion_tokens: {}",
-                            prompt_tokens, completion_tokens
+                            token_info.prompt_tokens, token_info.completion_tokens
                         );
                         print_log_end_separator(Some("*"), None);
                     }
@@ -613,9 +591,10 @@ pub(crate) async fn chat_completions_handler(
                             finish_reason: FinishReason::length,
                         }],
                         usage: Usage {
-                            prompt_tokens,
-                            completion_tokens,
-                            total_tokens: prompt_tokens + completion_tokens,
+                            prompt_tokens: token_info.prompt_tokens as u32,
+                            completion_tokens: token_info.completion_tokens as u32,
+                            total_tokens: token_info.completion_tokens as u32
+                                + token_info.completion_tokens as u32,
                         },
                     };
 
@@ -764,4 +743,104 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
     } else {
         output.as_ref().trim().to_owned()
     }
+}
+
+fn build_prompt(
+    template: &ChatPrompt,
+    chat_request: &mut ChatCompletionRequest,
+    // graph: &mut Graph,
+    // max_prompt_tokens: u64,
+) -> Result<String, String> {
+    let mut graph = GRAPH.get().unwrap().lock().unwrap();
+    let max_prompt_tokens = *CTX_SIZE.get().unwrap() as u64 * 4 / 5;
+    loop {
+        // build prompt
+        let prompt = match template.build(&mut chat_request.messages) {
+            Ok(prompt) => prompt,
+            Err(e) => {
+                return Err(format!(
+                    "Fail to build chat prompts: {msg}",
+                    msg = e.to_string()
+                ))
+            }
+        };
+
+        // read input tensor
+        let tensor_data = prompt.trim().as_bytes().to_vec();
+        if graph
+            .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
+            .is_err()
+        {
+            return Err(String::from("Fail to set input tensor"));
+        };
+
+        // Retrieve the number of prompt tokens.
+        let max_input_size = *MAX_BUFFER_SIZE.get().unwrap();
+        let mut input_buffer = vec![0u8; max_input_size];
+        let mut input_size = graph.get_output(1, &mut input_buffer).unwrap();
+        input_size = std::cmp::min(max_input_size, input_size);
+        let token_info: Value = serde_json::from_slice(&input_buffer[..input_size]).unwrap();
+        let prompt_tokens = token_info["input_tokens"].as_u64().unwrap();
+
+        match prompt_tokens > max_prompt_tokens {
+            true => {
+                match chat_request.messages[0].role {
+                    ChatCompletionRole::System => {
+                        if chat_request.messages.len() >= 4 {
+                            if chat_request.messages[1].role == ChatCompletionRole::User {
+                                chat_request.messages.remove(1);
+                            }
+                            if chat_request.messages[1].role == ChatCompletionRole::Assistant {
+                                chat_request.messages.remove(1);
+                            }
+                        } else if chat_request.messages.len() == 3
+                            && chat_request.messages[1].role == ChatCompletionRole::User
+                        {
+                            chat_request.messages.remove(1);
+                        } else {
+                            return Ok(prompt);
+                        }
+                    }
+                    ChatCompletionRole::User => {
+                        if chat_request.messages.len() >= 3 {
+                            if chat_request.messages[0].role == ChatCompletionRole::User {
+                                chat_request.messages.remove(0);
+                            }
+                            if chat_request.messages[0].role == ChatCompletionRole::Assistant {
+                                chat_request.messages.remove(0);
+                            }
+                        } else if chat_request.messages.len() == 2
+                            && chat_request.messages[0].role == ChatCompletionRole::User
+                        {
+                            chat_request.messages.remove(0);
+                        } else {
+                            return Ok(prompt);
+                        }
+                    }
+                    _ => panic!("Found a unsupported chat message role!"),
+                }
+                continue;
+            }
+            false => return Ok(prompt),
+        }
+    }
+}
+
+fn get_token_info(graph: &Graph) -> TokenInfo {
+    let max_output_size = *MAX_BUFFER_SIZE.get().unwrap();
+    let mut output_buffer = vec![0u8; max_output_size];
+    let mut output_size = graph.get_output(1, &mut output_buffer).unwrap();
+    output_size = std::cmp::min(max_output_size, output_size);
+    let token_info: Value = serde_json::from_slice(&output_buffer[..output_size]).unwrap();
+    TokenInfo {
+        prompt_tokens: token_info["input_tokens"].as_u64().unwrap(),
+        completion_tokens: token_info["output_tokens"].as_u64().unwrap(),
+    }
+}
+
+#[derive(Debug)]
+
+struct TokenInfo {
+    prompt_tokens: u64,
+    completion_tokens: u64,
 }

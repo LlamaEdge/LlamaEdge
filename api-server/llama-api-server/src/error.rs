@@ -41,4 +41,6 @@ pub enum ServerError {
     InvalidPromptTemplateType(String),
     #[error("Failed to set `MAX_BUFFER_SIZE`. The `MAX_BUFFER_SIZE` is already set.")]
     MaxBufferSize,
+    #[error("Failed to set `CTX_SIZE`. The `CTX_SIZE` is already set.")]
+    ContextSize,
 }
