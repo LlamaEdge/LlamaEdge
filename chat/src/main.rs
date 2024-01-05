@@ -1,11 +1,15 @@
+mod error;
+
 use chat_prompts::{
     chat::{BuildChatPrompt, ChatPrompt},
     PromptTemplateType,
 };
 use clap::{crate_version, Arg, ArgAction, Command};
 use endpoints::chat::{ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRole};
+use error::ChatError;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::io::Write;
 use std::str::FromStr;
 
@@ -157,7 +161,7 @@ fn main() -> Result<(), String> {
     options.ctx_size = *ctx_size;
 
     // max buffer size
-    if MAX_BUFFER_SIZE.set(*ctx_size as usize * 6).is_err() {
+    if MAX_BUFFER_SIZE.set(*ctx_size as usize).is_err() {
         return Err(String::from(
             "Fail to set `MAX_BUFFER_SIZE`. It is already set.",
         ));
@@ -278,6 +282,14 @@ fn main() -> Result<(), String> {
         }
     };
 
+    if log_stat || log_all {
+        print_log_begin_separator(
+            "MODEL INFO (Load Model & Init Execution Context)",
+            Some("*"),
+            None,
+        );
+    }
+
     // load the model into wasi-nn
     let graph = match wasi_nn::GraphBuilder::new(
         wasi_nn::GraphEncoding::Ggml,
@@ -306,12 +318,17 @@ fn main() -> Result<(), String> {
         }
     };
 
-    print_separator();
+    if log_stat || log_all {
+        print_log_end_separator(Some("*"), None);
+    }
+
+    print_log_end_separator(Some("-"), None);
 
     loop {
         println!("\n[You]: ");
         let user_message = read_input();
 
+        // put the user message into the messages sequence of chat_request
         chat_request
             .messages
             .push(ChatCompletionRequestMessage::new(
@@ -319,49 +336,133 @@ fn main() -> Result<(), String> {
                 user_message,
             ));
 
+        if log_stat || log_all {
+            print_log_begin_separator("STATISTICS (Set Input)", Some("*"), None);
+        }
+
         // build prompt
-        let prompt = match template.build(&mut chat_request.messages) {
+        let max_prompt_tokens = *ctx_size * 4 / 5;
+        let prompt = match build_prompt(
+            &template,
+            &mut chat_request,
+            &mut context,
+            max_prompt_tokens,
+        ) {
             Ok(prompt) => prompt,
             Err(e) => {
                 return Err(format!(
-                    "Fail to build chat prompts: {msg}",
+                    "Fail to generate prompt. Reason: {msg}",
                     msg = e.to_string()
                 ))
             }
         };
 
-        if log_prompts || log_all {
-            println!("\n---------------- [LOG: PROMPT] ---------------------\n");
-            println!("{}", &prompt);
-            println!("\n----------------------------------------------------\n");
+        if log_stat || log_all {
+            print_log_end_separator(Some("*"), None);
         }
+
+        if log_prompts || log_all {
+            print_log_begin_separator("PROMPT", Some("*"), None);
+            println!("{}", &prompt);
+            print_log_end_separator(Some("*"), None);
+        }
+
+        println!("\n[Bot]:");
 
         if log_stat || log_all {
-            println!("\n---------------- [LOG: STATISTICS] -----------------\n");
+            print_log_begin_separator("STATISTICS (Compute)", Some("*"), None);
         }
 
-        // read input tensor
-        let tensor_data = prompt.trim().as_bytes().to_vec();
-        if context
-            .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
-            .is_err()
-        {
-            return Err(String::from("Fail to set input tensor"));
-        };
+        let start_time = std::time::Instant::now();
 
         // compute
-        let message = match options.reverse_prompt {
-            Some(ref prompt) => stream_compute(&mut context, Some(prompt.as_str())),
+        let result = match options.reverse_prompt {
+            Some(ref reverse_prompt) => stream_compute(&mut context, Some(reverse_prompt.as_str())),
             None => stream_compute(&mut context, None),
         };
 
-        // put the answer into the `messages` of chat_request
-        chat_request
-            .messages
-            .push(ChatCompletionRequestMessage::new(
-                ChatCompletionRole::Assistant,
-                message,
-            ));
+        let elapsed = start_time.elapsed();
+
+        if log_stat || log_all {
+            print_log_end_separator(Some("*"), None);
+        }
+
+        match result {
+            Ok(completion_message) => {
+                let token_info = get_token_info(&context);
+
+                if log_prompts || log_stat || log_all {
+                    print_log_begin_separator("STATISTICS", Some("*"), None);
+
+                    println!("\nPrompt tokens: {}", token_info.input_tokens);
+                    println!("\n*** Completion tokens: {}", token_info.output_tokens);
+                    println!(
+                        "\nTotal tokens: {}",
+                        token_info.input_tokens + token_info.output_tokens
+                    );
+                    println!("\nElapsed time: {:?}", elapsed);
+                    println!(
+                        "\nTokens per second (tps): {}. Note that the tps data is computed in the streaming mode. For more accurate tps data, please compute it in the non-streaming mode.",
+                        token_info.output_tokens as f64 / elapsed.as_secs_f64()
+                    );
+
+                    print_log_end_separator(Some("*"), None);
+                }
+
+                // put the assistant message into the message sequence of chat_request
+                chat_request
+                    .messages
+                    .push(ChatCompletionRequestMessage::new(
+                        ChatCompletionRole::Assistant,
+                        completion_message,
+                    ));
+
+                // this is the required step. Otherwise, will get a cumulative number when retrieve the number of output tokens of each round
+                context.fini_single().unwrap();
+            }
+            Err(ChatError::ContextFull(completion_message)) => {
+                println!(
+                    "\n\n[WARNING] The message is cut off as the max context size is reached. You can try to ask the same question again, or increase the context size via the `--ctx-size` command option."
+                );
+
+                let token_info = get_token_info(&context);
+
+                if log_prompts || log_stat || log_all {
+                    print_log_begin_separator("STATISTICS", Some("*"), None);
+
+                    println!("\nPrompt tokens: {}", token_info.input_tokens);
+                    println!("\n*** Completion tokens: {}", token_info.output_tokens);
+                    println!(
+                        "\nTotal tokens: {}",
+                        token_info.input_tokens + token_info.output_tokens
+                    );
+                    println!("\nElapsed time: {:?}", elapsed);
+                    println!(
+                        "\nTokens per second (tps): {}. Note that the tps data is computed in the streaming mode. For more accurate tps data, please compute it in the non-streaming mode.",
+                        token_info.output_tokens as f64 / elapsed.as_secs_f64()
+                    );
+
+                    print_log_end_separator(Some("*"), None);
+                }
+
+                // put the assistant message into the message sequence of chat_request
+                chat_request
+                    .messages
+                    .push(ChatCompletionRequestMessage::new(
+                        ChatCompletionRole::Assistant,
+                        completion_message,
+                    ));
+
+                // this is the required step. Otherwise, will get a cumulative number when retrieve the number of output tokens of each round
+                context.fini_single().unwrap();
+            }
+            Err(e) => {
+                return Err(format!(
+                    "Fail to compute. Reason: {msg}",
+                    msg = e.to_string()
+                ))
+            }
+        }
     }
 
     Ok(())
@@ -380,8 +481,32 @@ fn read_input() -> String {
     }
 }
 
-fn print_separator() {
-    println!("----------------------------------------------------");
+fn print_log_begin_separator(
+    title: impl AsRef<str>,
+    ch: Option<&str>,
+    len: Option<usize>,
+) -> usize {
+    let title = format!(" [LOG: {}] ", title.as_ref());
+
+    let total_len: usize = len.unwrap_or(100);
+    let separator_len: usize = (total_len - title.len()) / 2;
+
+    let ch = ch.unwrap_or("-");
+    let mut separator = "\n\n".to_string();
+    separator.push_str(ch.repeat(separator_len).as_str());
+    separator.push_str(&title);
+    separator.push_str(ch.repeat(separator_len).as_str());
+    separator.push_str("\n");
+    println!("{}", separator);
+    total_len
+}
+
+fn print_log_end_separator(ch: Option<&str>, len: Option<usize>) {
+    let ch = ch.unwrap_or("-");
+    let mut separator = "\n\n".to_string();
+    separator.push_str(ch.repeat(len.unwrap_or(100)).as_str());
+    separator.push_str("\n");
+    println!("{}", separator);
 }
 
 fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
@@ -516,55 +641,84 @@ fn _post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> St
     }
 }
 
-fn _print(message: impl AsRef<str>) {
-    println!("\n[Bot]:\n{}", message.as_ref().trim())
-}
-
-fn stream_compute(context: &mut wasi_nn::GraphExecutionContext, stop: Option<&str>) -> String {
-    println!("\n[Bot]");
-
+fn stream_compute(
+    context: &mut wasi_nn::GraphExecutionContext,
+    stop: Option<&str>,
+) -> Result<String, ChatError> {
     let mut output = String::new();
+
     // Compute one token at a time, and get the token using the get_output_single().
     loop {
         match context.compute_single() {
-            Ok(_) => (),
+            Ok(_) => {
+                // Retrieve the output.
+                let max_output_size = *MAX_BUFFER_SIZE.get().unwrap();
+                let mut output_buffer = vec![0u8; max_output_size];
+                let mut output_size = context.get_output_single(0, &mut output_buffer).unwrap();
+                output_size = std::cmp::min(max_output_size, output_size);
+                let token = String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
+
+                // remove the redundant characters at the beginning of each answer
+                if output.is_empty() && (token == " " || token == "\n") {
+                    continue;
+                }
+
+                // trigger the stop condition
+                if stop.is_some() && stop == Some(token.trim()) {
+                    break;
+                }
+
+                if output.is_empty() && token.starts_with(" ") {
+                    print!("{}", token.trim_start());
+                } else {
+                    print!("{}", token);
+                }
+                std::io::stdout().flush().unwrap();
+
+                output += &token;
+            }
             Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::EndOfSequence)) => {
+                // Retrieve the output.
+                let max_output_size = *MAX_BUFFER_SIZE.get().unwrap();
+                let mut output_buffer = vec![0u8; max_output_size];
+                let mut output_size = context.get_output_single(0, &mut output_buffer).unwrap();
+                output_size = std::cmp::min(max_output_size, output_size);
+                let token = String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
+
+                // remove the redundant characters at the beginning of each answer
+                if output.is_empty() && (token == " " || token == "\n") {
+                    continue;
+                }
+
+                // trigger the stop condition
+                if stop.is_some() && stop == Some(token.trim()) {
+                    break;
+                }
+
+                if output.is_empty() && token.starts_with(" ") {
+                    print!("{}", token.trim_start());
+                } else {
+                    print!("{}", token);
+                }
+                std::io::stdout().flush().unwrap();
+
+                output += &token;
                 break;
+            }
+            Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::PromptTooLong)) => {
+                panic!("[ERROR] BackendError: PromptTooLong. This error should not be triggered.")
+            }
+            Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::ContextFull)) => {
+                return Err(ChatError::ContextFull(output));
             }
             Err(err) => {
-                println!("Error: {}", err);
-                break;
+                return Err(ChatError::Operation(err.to_string()));
             }
         }
-        // Retrieve the output.
-        let max_output_size = *MAX_BUFFER_SIZE.get().unwrap();
-        let mut output_buffer = vec![0u8; max_output_size];
-        let mut output_size = context.get_output_single(0, &mut output_buffer).unwrap();
-        output_size = std::cmp::min(max_output_size, output_size);
-        let token = String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
-
-        // remove the redundant characters at the beginning of each answer
-        if output.is_empty() && (token == " " || token == "\n") {
-            continue;
-        }
-
-        // trigger the stop condition
-        if stop.is_some() && stop == Some(token.trim()) {
-            break;
-        }
-
-        if output.is_empty() && token.starts_with(" ") {
-            print!("{}", token.trim_start());
-        } else {
-            print!("{}", token);
-        }
-        std::io::stdout().flush().unwrap();
-
-        output += &token;
     }
     println!("");
 
-    output
+    Ok(output)
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -585,4 +739,100 @@ struct Options {
     repeat_penalty: f32,
     #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
     reverse_prompt: Option<String>,
+}
+
+fn build_prompt(
+    template: &ChatPrompt,
+    chat_request: &mut ChatCompletionRequest,
+    context: &mut wasi_nn::GraphExecutionContext,
+    max_prompt_tokens: u64,
+) -> Result<String, String> {
+    loop {
+        // build prompt
+        let prompt = match template.build(&mut chat_request.messages) {
+            Ok(prompt) => prompt,
+            Err(e) => {
+                return Err(format!(
+                    "Fail to build chat prompts: {msg}",
+                    msg = e.to_string()
+                ))
+            }
+        };
+
+        // read input tensor
+        let tensor_data = prompt.trim().as_bytes().to_vec();
+        if context
+            .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
+            .is_err()
+        {
+            return Err(String::from("Fail to set input tensor"));
+        };
+
+        // Retrieve the number of prompt tokens.
+        let max_input_size = *MAX_BUFFER_SIZE.get().unwrap();
+        let mut input_buffer = vec![0u8; max_input_size];
+        let mut input_size = context.get_output(1, &mut input_buffer).unwrap();
+        input_size = std::cmp::min(max_input_size, input_size);
+        let token_info: Value = serde_json::from_slice(&input_buffer[..input_size]).unwrap();
+        let prompt_tokens = token_info["input_tokens"].as_u64().unwrap();
+
+        match prompt_tokens > max_prompt_tokens {
+            true => {
+                match chat_request.messages[0].role {
+                    ChatCompletionRole::System => {
+                        if chat_request.messages.len() >= 4 {
+                            if chat_request.messages[1].role == ChatCompletionRole::User {
+                                chat_request.messages.remove(1);
+                            }
+                            if chat_request.messages[1].role == ChatCompletionRole::Assistant {
+                                chat_request.messages.remove(1);
+                            }
+                        } else if chat_request.messages.len() == 3
+                            && chat_request.messages[1].role == ChatCompletionRole::User
+                        {
+                            chat_request.messages.remove(1);
+                        } else {
+                            return Ok(prompt);
+                        }
+                    }
+                    ChatCompletionRole::User => {
+                        if chat_request.messages.len() >= 3 {
+                            if chat_request.messages[0].role == ChatCompletionRole::User {
+                                chat_request.messages.remove(0);
+                            }
+                            if chat_request.messages[0].role == ChatCompletionRole::Assistant {
+                                chat_request.messages.remove(0);
+                            }
+                        } else if chat_request.messages.len() == 2
+                            && chat_request.messages[0].role == ChatCompletionRole::User
+                        {
+                            chat_request.messages.remove(0);
+                        } else {
+                            return Ok(prompt);
+                        }
+                    }
+                    _ => panic!("Found a unsupported chat message role!"),
+                }
+                continue;
+            }
+            false => return Ok(prompt),
+        }
+    }
+}
+
+fn get_token_info(context: &wasi_nn::GraphExecutionContext) -> TokenInfo {
+    let max_output_size = *MAX_BUFFER_SIZE.get().unwrap();
+    let mut output_buffer = vec![0u8; max_output_size];
+    let mut output_size = context.get_output(1, &mut output_buffer).unwrap();
+    output_size = std::cmp::min(max_output_size, output_size);
+    let token_info: Value = serde_json::from_slice(&output_buffer[..output_size]).unwrap();
+    TokenInfo {
+        input_tokens: token_info["input_tokens"].as_u64().unwrap(),
+        output_tokens: token_info["output_tokens"].as_u64().unwrap(),
+    }
+}
+
+struct TokenInfo {
+    input_tokens: u64,
+    output_tokens: u64,
 }

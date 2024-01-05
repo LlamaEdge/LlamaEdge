@@ -54,7 +54,16 @@ The installer from WasmEdge 0.13.5 will detect NVIDIA CUDA drivers automatically
 
 ## Troubleshooting
 
-- After running `apt update && apt install -y libopenblas-dev`, you may encounter the following error:
+Q: Even though my machine has a large RAM, after asking several questions, I received an error message returns 'Error: Backend Error: WASI-NN'. What should I do?
+
+A: To enable machines with smaller RAM, like 8 GB, to run a 7b model, we've set the context size limit to 512. If your machine has more capacity, you can increase both the context size and batch size up to 4096 using the CLI options available [here](https://github.com/second-state/llama-utils/tree/main/chat#cli-options). Use these commands to adjust the settings:
+
+```
+-c, --ctx-size <CTX_SIZE>
+-b, --batch-size <BATCH_SIZE>
+```
+
+Q: After running `apt update && apt install -y libopenblas-dev`, you may encounter the following error:
 
   ```bash
   ...
@@ -62,13 +71,13 @@ The installer from WasmEdge 0.13.5 will detect NVIDIA CUDA drivers automatically
   E: Unable to acquire the dpkg frontend lock (/var/lib/dpkg/lock-frontend), are you root?
   ```
 
-   This indicates that you are not logged in as `root`. Please try installing again using the `sudo` command:
+A: This indicates that you are not logged in as `root`. Please try installing again using the `sudo` command:
 
   ```bash
   sudo apt update && sudo apt install -y libopenblas-dev
   ```
 
-- After running the `wasmedge` command, you may receive the following error:
+Q: After running the `wasmedge` command, you may receive the following error:
 
   ```bash
   [2023-10-02 14:30:31.227] [error] loading failed: invalid path, Code: 0x20
@@ -78,9 +87,11 @@ The installer from WasmEdge 0.13.5 will detect NVIDIA CUDA drivers automatically
   unknown option: nn-preload
   ```
 
-  This suggests that your plugin installation was not successful. To resolve this issue, please attempt to install your desired plugin again.
+A: This suggests that your plugin installation was not successful. To resolve this issue, please attempt to install your desired plugin again.
 
-- After executing the `wasmedge` command, you might encounter the error message: `[WASI-NN] GGML backend: Error: unable to init model.` This error signifies that the model setup was not successful. To resolve this issue, please verify the following:
+Q: After executing the `wasmedge` command, you might encounter the error message: `[WASI-NN] GGML backend: Error: unable to init model.` 
+
+A: This error signifies that the model setup was not successful. To resolve this issue, please verify the following:
 
   1. Check if your model file and the WASM application are located in the same directory. The WasmEdge runtime requires them to be in the same location to locate the model file correctly.
   2. Ensure that the model has been downloaded successfully. You can use the command `shasum -a 256 <gguf-filename>` to verify the model's sha256sum. Compare your result with the correct sha256sum available on [the Hugging Face page](https://huggingface.co/second-state/Dolphin-2.2-Yi-34B-GGUF/blob/main/dolphin-2.2-yi-34b-ggml-model-q4_0.gguf) for the model.
