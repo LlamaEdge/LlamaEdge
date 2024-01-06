@@ -1,4 +1,4 @@
-name: CI
+name: Release
 
 on:
   workflow_dispatch: # manual trigger release
@@ -7,29 +7,13 @@ on:
         description: 'Create new release'
         required: true
         type: boolean
-  push:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/**'
-      - '**/Cargo.toml'
-      - '**/*.rs'
-      - '**/*.sh'
-      - '**/*.wasm'
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      - '.github/workflows/**'
-      - '**/Cargo.toml'
-      - '**/*.rs'
-      - '**/*.sh'
-      - '**/*.wasm'
-
-env:
-  BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      release_version:
+        description: "Version (e.g. 1.0.0)"
+        required: true
+        type: string
 
 jobs:
-  build-wasm:
+  build-and-release:
     runs-on: ubuntu-latest
     steps:
       - name: Clone project
@@ -71,93 +55,28 @@ jobs:
           echo "Debug info(SHA256SUM):"
           cat SHA256SUM
 
-      - name: Count revision
-        id: revision
-        shell: bash
+      - name: Tag and release names
+        id: tag_and_release_names
         run: |
-          REVISION="$(git rev-list --count HEAD)"
-          ((REVISION=REVISION-313+1001))
-          HASH="$(git rev-parse --short=8 HEAD)"
-          if [[ "${{ env.BRANCH_NAME }}" == "main" ]]; then
-            echo "name=b${REVISION}" >> $GITHUB_OUTPUT
-          else
-            echo "name=PR-b${REVISION}-${HASH}" >> $GITHUB_OUTPUT
-          fi
+          echo "tag_name=release/${{ github.event.inputs.create_release }}" >> $GITHUB_OUTPUT
+          echo "release_name=Release ${{ github.event.inputs.create_release }}" >> $GITHUB_OUTPUT
 
-          echo "Debug info(REVISION): " ${REVISION}
+      - name: Debug Info
+        run: |
+          echo "Debug info:"
+          cat $GITHUB_OUTPUT
 
-      - name: Upload artifacts
-        if: ${{ ( github.event_name == 'push' && github.ref == 'refs/heads/main' ) || github.event.inputs.create_release == 'true' }}
-        uses: actions/upload-artifact@v3
+      - name: Create Release and Upload Release Asset
+        if: ${{ github.event.inputs.create_release == 'true' && github.ref == 'refs/heads/main'}}
+        uses: softprops/action-gh-release@v1
         with:
-          path: |
-            llama-simple.wasm
-            llama-chat.wasm
+          name: ${{ steps.tag_and_release_names.outputs.release_name }}
+          tag_name: ${{ steps.tag_and_release_names.outputs.tag_name }}
+          body: TODO New Release.
+          draft: false
+          prerelease: false
+          files: |
             llama-api-server.wasm
+            llama-chat.wasm
+            llama-simple.wasm
             SHA256SUM
-
-  release:
-    if: ${{ ( github.event_name == 'push' && github.ref == 'refs/heads/main' ) || github.event.inputs.create_release == 'true' }}
-
-    runs-on: ubuntu-latest
-
-    needs:
-      - build-wasm
-
-    steps:
-      - name: Clone project
-        id: checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Download artifacts
-        id: download-artifact
-        uses: actions/download-artifact@v3
-
-      - name: Count revision
-        id: revision
-        shell: bash
-        run: |
-          REVISION="$(git rev-list --count HEAD)"
-          ((REVISION=REVISION-313+1001))
-          HASH="$(git rev-parse --short=8 HEAD)"
-          if [[ "${{ env.BRANCH_NAME }}" == "main" ]]; then
-            echo "name=b${REVISION}" >> $GITHUB_OUTPUT
-          else
-            echo "name=PR-b${REVISION}-${HASH}" >> $GITHUB_OUTPUT
-          fi
-          echo "Debug info(REVISION): " ${REVISION}
-          echo "b${REVISION}" > ./artifact/VERSION
-
-      - name: Create release
-        id: create_release
-        uses: anzz1/action-create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.revision.outputs.name }}
-
-      - name: Upload release
-        id: upload_release
-        uses: actions/github-script@v3
-        with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
-          script: |
-            const path = require('path');
-            const fs = require('fs');
-            const release_id = '${{ steps.create_release.outputs.id }}';
-            for (let file of await fs.readdirSync('./artifact')) {
-              if (path.extname(file) === '.wasm'
-              | path.basename(file) === 'VERSION'
-              | path.basename(file) === 'SHA256SUM') {
-                console.log('uploadReleaseAsset', file);
-                await github.repos.uploadReleaseAsset({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  release_id: release_id,
-                  name: file,
-                  data: await fs.readFileSync(`./artifact/${file}`)
-                });
-              }
-            }
