@@ -1,6 +1,6 @@
-# llama-utils
+# LlamaEdge
 
-The llama-utils makes it easy for you to run LLM inference apps and create OpenAI-compatible API services for the Llama2 series of LLMs.
+The LlamaEdge project makes it easy for you to run LLM inference apps and create OpenAI-compatible API services for the Llama2 series of LLMs locally.
 
 ## Quick start
 
@@ -36,7 +36,7 @@ For more information, please check out [Fast and Portable Llama2 Inference on th
 
 ## Models
 
-The llama-utils project, supports all Large Language Models (LLMs) based on the llama2 framework. The model files must be in the GGUF format. We are committed to continuously testing and validating new open-source models that emerge every day.
+The LlamaEdge project supports all Large Language Models (LLMs) based on the llama2 framework. The model files must be in the GGUF format. We are committed to continuously testing and validating new open-source models that emerge every day.
 
 [Click here](./models.md) to see the supported model list with a download link and startup commands for each model. If you have success with other LLMs, don't hesitate to contribute by creating a Pull Request (PR) to help extend this list.
 
