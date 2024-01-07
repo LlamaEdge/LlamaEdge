@@ -66,7 +66,7 @@ source $HOME/.bashrc
 Download the api server app
 
 ```console
-curl -LO https://github.com/second-state/llama-utils/raw/main/api-server/llama-api-server.wasm
+curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
 ```
 
 ## Get model
