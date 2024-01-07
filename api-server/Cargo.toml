@@ -4,6 +4,6 @@ resolver = "2"
 
 [workspace.dependencies]
 serde = { version = "1.0", features = ["derive"] }
-endpoints = { path = "endpoints", version = "0.1" }
+endpoints = { path = "endpoints", version = "^0.2" }
 chat-prompts = { path = "chat-prompts", version = "^0.3" }
 thiserror = "1"
