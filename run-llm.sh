@@ -108,6 +108,7 @@ Mistral-7B-Instruct-v0.2::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5G
 OpenChat-3.5::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/openchat_3.5.Q5_K_M.gguf
 Wizard-Vicuna::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/wizard-vicuna-13b-ggml-model-q8_0.gguf
 CausalLM-14B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/causallm_14b.Q5_1.gguf
+TinyLlama-1.1B-Chat-v1.0::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/tinyllama-1.1b-chat-v1.0.Q5_K_M.gguf
 TinyLlama-1.1B-Chat-v0.3::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/tinyllama-1.1b-chat-v0.3.Q5_K_M.gguf
 Baichuan2-13B-Chat::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/Baichuan2-13B-Chat-ggml-model-q4_0.gguf
 OpenHermes-2.5-Mistral-7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/openhermes-2.5-mistral-7b.Q5_K_M.gguf
@@ -147,6 +148,7 @@ Mistral-7B-Instruct-v0.2::25d80b918e4432661726ef408b248005bebefe3f8e1ac722d55d0c
 OpenChat-3.5::3abf26b0f2ff11394351a23f8d538a1404a2afb69465a6bbaba8836fef51899d
 Wizard-Vicuna::681b6571e624fd211ae81308b573f24f0016f6352252ae98241b44983bb7e756
 CausalLM-14B::8ddb4c04e6f0c06971e9b6723688206bf9a5b8ffc85611cc7843c0e8c8a66c4e
+TinyLlama-1.1B-Chat-v1.0::aa54a5fb99ace5b964859cf072346631b2da6109715a805d07161d157c66ce7f
 TinyLlama-1.1B-Chat-v0.3::7c255febbf29c97b5d6f57cdf62db2f2bc95c0e541dc72c0ca29786ca0fa5eed
 Baichuan2-13B-Chat::789685b86c86af68a1886949015661d3da0a9c959dffaae773afa4fe8cfdb840
 OpenHermes-2.5-Mistral-7B::61e9e801d9e60f61a4bf1cad3e29d975ab6866f027bcef51d1550f9cc7d2cca6
@@ -185,6 +187,7 @@ Mistral-7B-Instruct-v0.2::mistral-instruct
 OpenChat-3.5::openchat
 Wizard-Vicuna::vicuna-chat
 CausalLM-14B::chatml
+TinyLlama-1.1B-Chat-v1.0::chatml
 TinyLlama-1.1B-Chat-v0.3::chatml
 Baichuan2-13B-Chat::baichuan-2
 OpenHermes-2.5-Mistral-7B::chatml
@@ -241,7 +244,7 @@ Zephyr-7B-Alpha::</s>
 Starling-LM-7B-alpha::<|end_of_turn|>
 '
 
-    model_names="Llama-2-7B-Chat Llama-2-13B-Chat BELLE-Llama2-13B-Chat MistralLite-7B Mistral-7B-Instruct-v0.1 Mistral-7B-Instruct-v0.2 OpenChat-3.5 Wizard-Vicuna CausalLM-14B TinyLlama-1.1B-Chat-v0.3 Baichuan2-13B-Chat OpenHermes-2.5-Mistral-7B Dolphin-2.0-Mistral-7B Dolphin-2.1-Mistral-7B Dolphin-2.2-Yi-34B Dolphin-2.2-Mistral-7B Dolphin-2.2.1-Mistral-7B Samantha-1.2-Mistral-7B Samantha-1.11-CodeLlama-34B Samantha-1.11-7B WizardLM-1.0-Uncensored-CodeLlama-34B WizardLM-7B-V1.0-Uncensored WizardLM-13B-V1.0-Uncensored WizardCoder-Python-7B-V1.0 Zephyr-7B-Alpha Orca-2-13B Neural-Chat-7B-v3-1 Starling-LM-7B-alpha Calm2-7B-Chat Deepseek-Coder-6.7B Deepseek-LLM-7B-Chat SOLAR-10.7B-Instruct-v1.0 Mixtral-8x7B-Instruct-v0.1, ELYZA-japanese-Llama-2-7b-fast-instruct, ELYZA-japanese-Llama-2-7b-instruct, dolphin-2_6-phi-2"
+    model_names="Llama-2-7B-Chat Llama-2-13B-Chat BELLE-Llama2-13B-Chat MistralLite-7B Mistral-7B-Instruct-v0.1 Mistral-7B-Instruct-v0.2 OpenChat-3.5 Wizard-Vicuna CausalLM-14B TinyLlama-1.1B-Chat-v1.0 TinyLlama-1.1B-Chat-v0.3 Baichuan2-13B-Chat OpenHermes-2.5-Mistral-7B Dolphin-2.0-Mistral-7B Dolphin-2.1-Mistral-7B Dolphin-2.2-Yi-34B Dolphin-2.2-Mistral-7B Dolphin-2.2.1-Mistral-7B Samantha-1.2-Mistral-7B Samantha-1.11-CodeLlama-34B Samantha-1.11-7B WizardLM-1.0-Uncensored-CodeLlama-34B WizardLM-7B-V1.0-Uncensored WizardLM-13B-V1.0-Uncensored WizardCoder-Python-7B-V1.0 Zephyr-7B-Alpha Orca-2-13B Neural-Chat-7B-v3-1 Starling-LM-7B-alpha Calm2-7B-Chat Deepseek-Coder-6.7B Deepseek-LLM-7B-Chat SOLAR-10.7B-Instruct-v1.0 Mixtral-8x7B-Instruct-v0.1, ELYZA-japanese-Llama-2-7b-fast-instruct, ELYZA-japanese-Llama-2-7b-instruct, dolphin-2_6-phi-2"
 
     # Convert model_names to an array
     model_names_array=($model_names)
