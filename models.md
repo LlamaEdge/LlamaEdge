@@ -325,6 +325,55 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 </details>
 
 <details>
+<summary> <b>OpenChat-3.5-1210</b> </summary>
+<hr/>
+<b>Download the model</b>
+
+```bash
+curl -LO https://huggingface.co/second-state/openchat-3.5-1210-GGUF/resolve/main/openchat-3.5-1210.Q5_K_M.gguf
+```
+
+Please check the sha256sum of the Downloaded model file to make sure it is correct.
+
+```bash
+shasum -a 256 openchat-3.5-1210.Q5_K_M.gguf
+output: fbbb15ed13c630110b1790e0a0a621419fbf2f5564ead433c6ded9f8f196b95c
+```
+
+<b>Chat with the model on the CLI</b>
+
+```bash
+curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:openchat-3.5-1210.Q5_K_M.gguf llama-chat.wasm -p openchat -r '<|end_of_turn|>'
+```
+
+<b>Chat with the model via a web UI</b>
+
+```bash
+curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+tar xzf chatbot-ui.tar.gz
+rm chatbot-ui.tar.gz
+
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:openchat-3.5-1210.Q5_K_M.gguf llama-api-server.wasm -p openchat -r '<|end_of_turn|>'
+```
+
+Open your browser to http://localhost:8080 to start the chat!
+
+<b>Send an API request to the server</b>
+
+Test the API server from another terminal using the following command
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H 'accept:application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "What is the capital of France?"}], "model":"OpenChat-3.5-1210"}'
+```
+
+</details>
+
+<details>
 <summary> <b>OpenChat-3.5</b> </summary>
 <hr/>
 <b>Download the model</b>
