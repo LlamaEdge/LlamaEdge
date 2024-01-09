@@ -10,12 +10,10 @@ pub(crate) async fn handle_llama_request(
     template_ty: PromptTemplateType,
     created: u64,
     log_prompts: bool,
-    stream: bool,
-    stop: Option<String>,
 ) -> Result<Response<Body>, hyper::Error> {
     match req.uri().path() {
         "/v1/chat/completions" => {
-            ggml::chat_completions_handler(req, template_ty, log_prompts, stream, stop).await
+            ggml::chat_completions_handler(req, template_ty, log_prompts).await
         }
         "/v1/completions" => ggml::completions_handler(req).await,
         // "/v1/embeddings" => ggml::_embeddings_handler().await,
