@@ -68,8 +68,8 @@ jobs:
           name: ${{ steps.tag_and_release_names.outputs.release_name }}
           tag_name: ${{ steps.tag_and_release_names.outputs.tag_name }}
           body: TODO New Release.
-          draft: false
-          prerelease: false
+          draft: true
+          prerelease: true
           files: |
             llama-api-server.wasm
             llama-chat.wasm
