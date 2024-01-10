@@ -406,8 +406,6 @@ fn static_response(path_str: &str, root: String) -> Response<Body> {
 struct Metadata {
     #[serde(rename = "enable-log")]
     log_enable: bool,
-    #[serde(rename = "stream-stdout")]
-    stream_stdout: bool,
     #[serde(rename = "ctx-size")]
     ctx_size: u64,
     #[serde(rename = "n-predict")]
