@@ -64,7 +64,7 @@ source $HOME/.bashrc
 Download the `llama-chat.wasm`:
 
 ```bash
-curl -LO https://github.com/second-state/llama-utils/raw/main/chat/llama-chat.wasm
+curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
 ```
 
 ## Get Model

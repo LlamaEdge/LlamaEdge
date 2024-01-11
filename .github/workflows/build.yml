@@ -1,0 +1,56 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+    paths:
+      - '.github/workflows/**'
+      - '**/Cargo.toml'
+      - '**/*.rs'
+      - '**/*.sh'
+      - '**/*.wasm'
+  pull_request:
+    branches:
+      - dev
+      - main
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/**'
+      - '**/Cargo.toml'
+      - '**/*.rs'
+      - '**/*.sh'
+      - '**/*.wasm'
+
+jobs:
+  build-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone project
+        id: checkout
+        uses: actions/checkout@v3
+
+      - name: Setup rustup
+        id: rustup
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: wasm32-wasi
+
+      - name: Build simple
+        id: build_simple
+        run: |
+          cd simple
+          cargo build --target wasm32-wasi --release
+
+      - name: Build chat
+        id: build_chat
+        run: |
+          cd chat
+          cargo build --target wasm32-wasi --release
+
+      - name: Build api-server
+        id: build_api_server
+        run: |
+          cd api-server
+          cargo build --target wasm32-wasi --release

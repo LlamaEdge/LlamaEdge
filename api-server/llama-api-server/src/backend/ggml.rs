@@ -141,8 +141,6 @@ pub(crate) async fn chat_completions_handler(
     mut req: Request<Body>,
     template_ty: PromptTemplateType,
     log_prompts: bool,
-    stream: bool,
-    _stop: Option<String>,
 ) -> Result<Response<Body>, hyper::Error> {
     if req.method().eq(&hyper::http::Method::OPTIONS) {
         let result = Response::builder()
@@ -240,8 +238,8 @@ pub(crate) async fn chat_completions_handler(
         return error::internal_server_error(String::from("Fail to set input tensor"));
     };
 
-    let result = match stream {
-        true => {
+    let result = match chat_request.stream {
+        Some(_) => {
             let model = chat_request.model.clone().unwrap_or_default();
             let mut one_more_run_then_stop = true;
             let stream = stream::repeat_with(move || {
@@ -403,7 +401,7 @@ pub(crate) async fn chat_completions_handler(
                 .header("Access-Control-Allow-Headers", "*")
                 .body(Body::wrap_stream(stream))
         }
-        false => {
+        None => {
             match graph.compute() {
                 Ok(_) => {
                     // Retrieve the output.
