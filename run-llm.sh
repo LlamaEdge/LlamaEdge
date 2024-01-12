@@ -45,18 +45,6 @@ prereq() {
             # fi
         fi
     done
-
-    # Check if libopenblas is installed
-    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        if ! ldconfig -p | grep libopenblas &> /dev/null
-        then
-            printf "'libopenblas' is required for wasi-nn plugin to run.\n"
-            exit 1
-        fi
-    elif [[ "$OSTYPE" == "darwin"* ]]; then
-        # Todo check libopenblas in MacOS
-        printf "" # Placeholder
-    fi
 }
 
 install_wasmedge() {
