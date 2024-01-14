@@ -211,7 +211,7 @@ Calm2-7B-Chat::vicuna-1.1-chat
 Deepseek-Coder-6.7B::deepseek-coder
 Deepseek-LLM-7B-Chat::deepseek-chat
 SOLAR-10.7B-Instruct-v1.0::solar-instruct
-Mixtral-8x7B-Instruct-v0.1::mixtral-instruct
+Mixtral-8x7B-Instruct-v0.1::mistral-instruct
 dolphin-2.6-phi-2::chatml
 ELYZA-japanese-Llama-2-7b-instruct::llama-2-chat
 ELYZA-japanese-Llama-2-7b-fast-instruct::llama-2-chat
