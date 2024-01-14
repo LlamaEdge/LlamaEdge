@@ -45,18 +45,6 @@ prereq() {
             # fi
         fi
     done
-
-    # Check if libopenblas is installed
-    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        if ! ldconfig -p | grep libopenblas &> /dev/null
-        then
-            printf "'libopenblas' is required for wasi-nn plugin to run.\n"
-            exit 1
-        fi
-    elif [[ "$OSTYPE" == "darwin"* ]]; then
-        # Todo check libopenblas in MacOS
-        printf "" # Placeholder
-    fi
 }
 
 install_wasmedge() {
@@ -105,8 +93,7 @@ BELLE-Llama2-13B-Chat::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/B
 MistralLite-7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/mistrallite.Q5_K_M.gguf
 Mistral-7B-Instruct-v0.1::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/mistral-7b-instruct-v0.1.Q5_K_M.gguf
 Mistral-7B-Instruct-v0.2::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/mistral-7b-instruct-v0.2.Q4_0.gguf
-OpenChat-3.5-1210::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/openchat-3.5-1210.Q5_K_M.gguf
-OpenChat-3.5::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/openchat_3.5.Q5_K_M.gguf
+OpenChat-3.5-0106::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/openchat-3.5-0106-Q5_K_M.gguf
 Wizard-Vicuna::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/wizard-vicuna-13b-ggml-model-q8_0.gguf
 CausalLM-14B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/causallm_14b.Q5_1.gguf
 TinyLlama-1.1B-Chat-v1.0::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/tinyllama-1.1b-chat-v1.0.Q5_K_M.gguf
@@ -146,8 +133,7 @@ BELLE-Llama2-13B-Chat::56879e1fd6ee6a138286730e121f2dba1be51b8f7e261514a594dea89
 MistralLite-7B::d06d149c24eea0446ea7aad596aca396fe7f3302441e9375d5bbd3fd9ba8ebea
 Mistral-7B-Instruct-v0.1::c4b062ec7f0f160e848a0e34c4e291b9e39b3fc60df5b201c038e7064dbbdcdc
 Mistral-7B-Instruct-v0.2::25d80b918e4432661726ef408b248005bebefe3f8e1ac722d55d0c5dcf2893e0
-OpenChat-3.5-1210::fbbb15ed13c630110b1790e0a0a621419fbf2f5564ead433c6ded9f8f196b95c
-OpenChat-3.5::3abf26b0f2ff11394351a23f8d538a1404a2afb69465a6bbaba8836fef51899d
+OpenChat-3.5-0106::c28f69693336ab63369451da7f1365e5003d79f3ac69566de72100a8299a967a
 Wizard-Vicuna::681b6571e624fd211ae81308b573f24f0016f6352252ae98241b44983bb7e756
 CausalLM-14B::8ddb4c04e6f0c06971e9b6723688206bf9a5b8ffc85611cc7843c0e8c8a66c4e
 TinyLlama-1.1B-Chat-v1.0::aa54a5fb99ace5b964859cf072346631b2da6109715a805d07161d157c66ce7f
@@ -186,8 +172,7 @@ BELLE-Llama2-13B-Chat::belle-llama-2-chat
 MistralLite-7B::mistrallite
 Mistral-7B-Instruct-v0.1::mistral-instruct
 Mistral-7B-Instruct-v0.2::mistral-instruct
-OpenChat-3.5-1210::openchat
-OpenChat-3.5::openchat
+OpenChat-3.5-0106::openchat
 Wizard-Vicuna::vicuna-chat
 CausalLM-14B::chatml
 TinyLlama-1.1B-Chat-v1.0::chatml
@@ -214,7 +199,7 @@ Calm2-7B-Chat::vicuna-1.1-chat
 Deepseek-Coder-6.7B::deepseek-coder
 Deepseek-LLM-7B-Chat::deepseek-chat
 SOLAR-10.7B-Instruct-v1.0::solar-instruct
-Mixtral-8x7B-Instruct-v0.1::mixtral-instruct
+Mixtral-8x7B-Instruct-v0.1::mistral-instruct
 dolphin-2.6-phi-2::chatml
 ELYZA-japanese-Llama-2-7b-instruct::llama-2-chat
 ELYZA-japanese-Llama-2-7b-fast-instruct::llama-2-chat
@@ -234,8 +219,7 @@ Orca-2-13B::You are Orca, an AI language model created by Microsoft. You are a c
 
     reverse_prompts='
 MistralLite-7B::</s>
-OpenChat-3.5-1210::<|end_of_turn|>
-OpenChat-3.5::<|end_of_turn|>
+OpenChat-3.5-0106::<|end_of_turn|>
 Baichuan2-13B-Chat::用户:
 OpenHermes-2.5-Mistral-7B::<|im_end|>
 Dolphin-2.0-Mistral-7B::<|im_end|>
@@ -248,7 +232,7 @@ Zephyr-7B-Alpha::</s>
 Starling-LM-7B-alpha::<|end_of_turn|>
 '
 
-    model_names="Llama-2-7B-Chat Llama-2-13B-Chat BELLE-Llama2-13B-Chat MistralLite-7B Mistral-7B-Instruct-v0.1 Mistral-7B-Instruct-v0.2 OpenChat-3.5-1210 OpenChat-3.5 Wizard-Vicuna CausalLM-14B TinyLlama-1.1B-Chat-v1.0 TinyLlama-1.1B-Chat-v0.3 Baichuan2-13B-Chat OpenHermes-2.5-Mistral-7B Dolphin-2.0-Mistral-7B Dolphin-2.1-Mistral-7B Dolphin-2.2-Yi-34B Dolphin-2.2-Mistral-7B Dolphin-2.2.1-Mistral-7B Samantha-1.2-Mistral-7B Samantha-1.11-CodeLlama-34B Samantha-1.11-7B WizardLM-1.0-Uncensored-CodeLlama-34B WizardLM-7B-V1.0-Uncensored WizardLM-13B-V1.0-Uncensored WizardCoder-Python-7B-V1.0 Zephyr-7B-Alpha Orca-2-13B Neural-Chat-7B-v3-1 Starling-LM-7B-alpha Calm2-7B-Chat Deepseek-Coder-6.7B Deepseek-LLM-7B-Chat SOLAR-10.7B-Instruct-v1.0 Mixtral-8x7B-Instruct-v0.1 ELYZA-japanese-Llama-2-7b-fast-instruct ELYZA-japanese-Llama-2-7b-instruct dolphin-2.6-phi-2"
+    model_names="Llama-2-7B-Chat Llama-2-13B-Chat BELLE-Llama2-13B-Chat MistralLite-7B Mistral-7B-Instruct-v0.1 Mistral-7B-Instruct-v0.2 OpenChat-3.5-0106 Wizard-Vicuna CausalLM-14B TinyLlama-1.1B-Chat-v1.0 TinyLlama-1.1B-Chat-v0.3 Baichuan2-13B-Chat OpenHermes-2.5-Mistral-7B Dolphin-2.0-Mistral-7B Dolphin-2.1-Mistral-7B Dolphin-2.2-Yi-34B Dolphin-2.2-Mistral-7B Dolphin-2.2.1-Mistral-7B Samantha-1.2-Mistral-7B Samantha-1.11-CodeLlama-34B Samantha-1.11-7B WizardLM-1.0-Uncensored-CodeLlama-34B WizardLM-7B-V1.0-Uncensored WizardLM-13B-V1.0-Uncensored WizardCoder-Python-7B-V1.0 Zephyr-7B-Alpha Orca-2-13B Neural-Chat-7B-v3-1 Starling-LM-7B-alpha Calm2-7B-Chat Deepseek-Coder-6.7B Deepseek-LLM-7B-Chat SOLAR-10.7B-Instruct-v1.0 Mixtral-8x7B-Instruct-v0.1 ELYZA-japanese-Llama-2-7b-fast-instruct ELYZA-japanese-Llama-2-7b-instruct dolphin-2.6-phi-2"
 
     # Convert model_names to an array
     model_names_array=($model_names)
