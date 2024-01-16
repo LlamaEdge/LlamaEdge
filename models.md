@@ -29,7 +29,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf ll
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -78,7 +78,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-13b-chat.Q5_K_M.gguf l
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -153,7 +153,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:BELLE-Llama2-13B-Chat-0.4M-ggm
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -204,7 +204,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistral-7b-instruct-v0.1.Q5_K_
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -253,7 +253,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistral-7b-instruct-v0.2.Q4_0.
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -302,7 +302,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:mistrallite.Q5_K_M.gguf llama-
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -351,7 +351,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:openchat-3.5-0106-Q5_K_M.gguf 
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -400,7 +400,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:openchat-3.5-1210.Q5_K_M.gguf 
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -449,7 +449,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:openchat_3.5.Q5_K_M.gguf llama
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -498,7 +498,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:wizard-vicuna-13b-ggml-model-q
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -547,7 +547,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:causallm_14b.Q5_1.gguf llama-c
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -596,7 +596,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:tinyllama-1.1b-chat-v1.0.Q5_K_
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -645,7 +645,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:tinyllama-1.1b-chat-v0.3.Q5_K_
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -694,7 +694,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:Baichuan2-13B-Chat-ggml-model-
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -742,7 +742,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:openhermes-2.5-mistral-7b.Q5_K
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -791,7 +791,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.2-yi-34b-ggml-model-
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -840,7 +840,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.6-mistral-7b.Q5_K_M.
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -889,7 +889,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.2-mistral-7b-ggml-mo
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -938,7 +938,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.2.1-mistral-7b-ggml-
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -987,7 +987,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:samantha-1.2-mistral-7b-ggml-m
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1036,7 +1036,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.1-mistral-7b-ggml-mo
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1085,7 +1085,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.0-mistral-7b-ggml-mo
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1134,7 +1134,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:WizardLM-1.0-Uncensored-CodeLl
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1183,7 +1183,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-CodeLlama-34b-gg
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1232,7 +1232,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-7b-ggml-model-q4
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1281,7 +1281,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:WizardCoder-Python-7B-V1.0-ggm
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1330,7 +1330,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:zephyr-7b-alpha.Q5_K_M.gguf ll
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1379,7 +1379,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:wizardlm-7b-v1.0-uncensored.Q5
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1428,7 +1428,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:wizardlm-13b-v1.0-uncensored.Q
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1477,7 +1477,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:Orca-2-13b-ggml-model-q4_0.ggu
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1526,7 +1526,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:neural-chat-7b-v3-1-ggml-model
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1575,7 +1575,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:Yi-34B-Chat-ggml-model-q4_0.gg
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Yi-34B-Chat-ggml-model-q4_0.gguf llama-api-server.wasm -p chatml -r '<|im_end|>'
@@ -1623,7 +1623,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:starling-lm-7b-alpha.Q5_K_M.gg
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1671,7 +1671,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:calm2-7b-chat.Q4_K_M.gguf llam
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1719,7 +1719,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:deepseek-coder-6.7b-instruct.Q
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1767,7 +1767,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:deepseek-llm-7b-chat.Q5_K_M.gg
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1815,7 +1815,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:solar-10.7b-instruct-v1.0.Q5_K
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1863,7 +1863,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:mixtral-8x7b-instruct-v0.1.Q4_
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1911,7 +1911,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2_6-phi-2.Q5_K_M.gguf 
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1959,7 +1959,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:ELYZA-japanese-Llama-2-7b-inst
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -2007,7 +2007,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:ELYZA-japanese-Llama-2-7b-fast
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
