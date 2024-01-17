@@ -188,7 +188,7 @@ The command above starts the API server on the default socket address. Besides, 
 We provide a front-end Web UI for you to easily interact with the API. You can download and extract it by running:
 
 ```bash
-curl -LO https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 ```
 

@@ -349,7 +349,7 @@ download_server() {
 download_webui_files() {
     printf "Downloading frontend resources of 'chatbot-ui' ...\n"
 
-    files_tarball="https://github.com/second-state/chatbot-ui/releases/download/v0.1.0/chatbot-ui.tar.gz"
+    files_tarball="https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz"
     retry_download $files_tarball
     if [ $? -ne 0 ]; then
         printf "\nFailed to download ui tarball. Please try again\n"
