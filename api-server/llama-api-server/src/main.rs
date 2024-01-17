@@ -21,6 +21,7 @@ const DEFAULT_SOCKET_ADDRESS: &str = "0.0.0.0:8080";
 static MAX_BUFFER_SIZE: OnceCell<usize> = OnceCell::new();
 static CTX_SIZE: OnceCell<usize> = OnceCell::new();
 static GRAPH: OnceCell<Mutex<Graph>> = OnceCell::new();
+static METADATA: OnceCell<Metadata> = OnceCell::new();
 
 #[derive(Clone, Debug)]
 pub struct AppState {
@@ -300,7 +301,11 @@ async fn main() -> Result<(), ServerError> {
         );
     }
 
-    let graph = Graph::new(model_alias, &options);
+    if METADATA.set(options).is_err() {
+        return Err(ServerError::Metadata);
+    }
+
+    let graph = Graph::new(model_alias, METADATA.get().unwrap());
     if GRAPH.set(Mutex::new(graph)).is_err() {
         return Err(ServerError::InternalServerError(
             "The GRAPH has already been initialized".to_owned(),
