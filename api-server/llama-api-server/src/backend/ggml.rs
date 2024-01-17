@@ -1,6 +1,6 @@
 use crate::{
     error, print_log_begin_separator, print_log_end_separator, Graph, ModelInfo, CTX_SIZE, GRAPH,
-    MAX_BUFFER_SIZE,
+    MAX_BUFFER_SIZE, METADATA,
 };
 use chat_prompts::{
     chat::{
@@ -228,6 +228,28 @@ pub(crate) async fn chat_completions_handler(
     }
 
     let mut graph = crate::GRAPH.get().unwrap().lock().unwrap();
+
+    // check if necessary to update n_predict with max_tokens
+    if let Some(max_tokens) = chat_request.max_tokens {
+        let max_tokens = max_tokens as u64;
+        if METADATA.get().unwrap().n_predict > max_tokens {
+            let mut metadata = METADATA.get().unwrap().clone();
+
+            // update n_predict
+            metadata.n_predict = max_tokens;
+
+            // update metadata
+            let config = serde_json::to_string(&metadata).unwrap();
+            if graph
+                .set_input(1, wasi_nn::TensorType::U8, &[1], config.as_bytes())
+                .is_err()
+            {
+                return error::internal_server_error(String::from(
+                    "Fail to update `n_predict` with `max_tokens`",
+                ));
+            }
+        }
+    }
 
     // set input
     let tensor_data = prompt.as_bytes().to_vec();

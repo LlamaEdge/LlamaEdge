@@ -43,4 +43,6 @@ pub enum ServerError {
     MaxBufferSize,
     #[error("Failed to set `CTX_SIZE`. The `CTX_SIZE` is already set.")]
     ContextSize,
+    #[error("Failed to set `METADATA`. The `METADATA` is already set.")]
+    Metadata,
 }
