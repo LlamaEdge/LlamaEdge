@@ -2028,3 +2028,51 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 ```
 
 </details>
+
+<details>
+<summary> <b>Nous-Hermes-2-Mixtral-8x7B-DPO</b> </summary>
+<hr/>
+<b>Download the model</b>
+
+```bash
+curl -LO https://huggingface.co/NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO-GGUF/blob/main/Nous-Hermes-2-Mixtral-8x7B-DPO.Q5_K_M.gguf
+```
+
+  Note that check the sha256 of `Nous-Hermes-2-Mixtral-8x7B-DPO.Q5_K_M.gguf` after downloading.
+
+  ```text
+  e09228d3f9d764c4dd4d57bd83edbfb3548a5477c990246f6648ee382f11ee8b
+  ```
+
+<b>Chat with the model on the CLI</b>
+
+```bash
+curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Nous-Hermes-2-Mixtral-8x7B-DPO.Q5_K_M.gguf llama-chat.wasm -p chatml
+```
+
+<b>Chat with the model via a web UI</b>
+
+```bash
+curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+tar xzf chatbot-ui.tar.gz
+rm chatbot-ui.tar.gz
+
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Nous-Hermes-2-Mixtral-8x7B-DPO.Q5_K_M.gguf llama-api-server.wasm -p chatml
+```
+
+Open your browser to http://localhost:8080 to start the chat!
+
+<b>Send an API request to the server</b>
+
+Test the API server from another terminal using the following command
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H 'accept:application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{"messages":[{"role":"system", "content": "You are a sentient, superintelligent artificial general intelligence, here to teach and assist me."}, {"role":"user", "content": "Write a short story about Goku discovering kirby has teamed up with Majin Buu to destroy the world."}], "model":"Nous-Hermes-2-Mixtral-8x7B-DPO"}'
+```
+
+</details>
