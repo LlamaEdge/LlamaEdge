@@ -1,6 +1,6 @@
 use crate::{
     error, print_log_begin_separator, print_log_end_separator, Graph, ModelInfo, CTX_SIZE, GRAPH,
-    MAX_BUFFER_SIZE,
+    MAX_BUFFER_SIZE, METADATA,
 };
 use chat_prompts::{
     chat::{
@@ -211,7 +211,15 @@ pub(crate) async fn chat_completions_handler(
 
     // parse request
     let body_bytes = to_bytes(req.body_mut()).await?;
-    let mut chat_request: ChatCompletionRequest = serde_json::from_slice(&body_bytes).unwrap();
+    let mut chat_request: ChatCompletionRequest = match serde_json::from_slice(&body_bytes) {
+        Ok(chat_request) => chat_request,
+        Err(e) => {
+            return error::bad_request(format!(
+                "Fail to parse chat completion request: {msg}",
+                msg = e.to_string()
+            ));
+        }
+    };
 
     // build prompt
     let prompt = match build_prompt(&template, &mut chat_request) {
@@ -225,6 +233,11 @@ pub(crate) async fn chat_completions_handler(
         print_log_begin_separator("PROMPT", Some("*"), None);
         println!("\n{}", &prompt,);
         print_log_end_separator(Some("*"), None);
+    }
+
+    // update metadata
+    if let Err(msg) = update_metadata(&chat_request) {
+        return error::internal_server_error(msg);
     }
 
     let mut graph = crate::GRAPH.get().unwrap().lock().unwrap();
@@ -651,6 +664,63 @@ pub(crate) async fn infer(prompt: impl AsRef<str>) -> std::result::Result<Vec<u8
     output_size = std::cmp::min(*MAX_BUFFER_SIZE.get().unwrap(), output_size);
 
     Ok(output_buffer[..output_size].to_vec())
+}
+
+fn update_metadata(chat_request: &ChatCompletionRequest) -> Result<(), String> {
+    let mut should_update = false;
+    let mut metadata = METADATA.get().unwrap().clone();
+
+    // check if necessary to update n_predict with max_tokens
+    if let Some(max_tokens) = chat_request.max_tokens {
+        let max_tokens = max_tokens as u64;
+        if metadata.n_predict > max_tokens {
+            // update n_predict
+            metadata.n_predict = max_tokens;
+
+            if !should_update {
+                should_update = true;
+            }
+        }
+    }
+
+    // check if necessary to update temperature
+    if let Some(temp) = chat_request.temperature {
+        if metadata.temp != temp {
+            // update temperature
+            metadata.temp = temp;
+
+            if !should_update {
+                should_update = true;
+            }
+        }
+    }
+
+    // check if necessary to update repetition_penalty
+    if let Some(repeat_penalty) = chat_request.frequency_penalty {
+        if metadata.repeat_penalty != repeat_penalty {
+            // update repetition_penalty
+            metadata.repeat_penalty = repeat_penalty;
+
+            if !should_update {
+                should_update = true;
+            }
+        }
+    }
+
+    if should_update {
+        let mut graph = GRAPH.get().unwrap().lock().unwrap();
+
+        // update metadata
+        let config = serde_json::to_string(&metadata).unwrap();
+        if graph
+            .set_input(1, wasi_nn::TensorType::U8, &[1], config.as_bytes())
+            .is_err()
+        {
+            return Err(String::from("Fail to update metadata"));
+        }
+    }
+
+    Ok(())
 }
 
 fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> String {
