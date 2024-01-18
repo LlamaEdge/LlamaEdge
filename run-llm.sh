@@ -45,10 +45,6 @@ gpu_id=0
 n_parallel=8
 n_kv=4096
 verbose=0
-
-# 0: use repos in https://huggingface.co/second-state
-# 1: use external repo in https://huggingface.co/
-use_external_repo=0
 log_prompts=0
 log_stat=0
 # 0: server mode
@@ -170,8 +166,7 @@ printf "    Press Enter to continue ...\n\n"
 
 read
 
-# printf "[+] No repo provided from the command line\n"
-printf "[+] Please select a number from the list below or enter an URL:\n\n"
+printf "[+] The most popular models at https://huggingface.co/second-state:\n\n"
 
 is=0
 for r in "${repos[@]}"; do
@@ -182,7 +177,7 @@ done
 # ask for repo until index of sample repo is provided or an URL
 while [[ -z "$repo" ]]; do
     printf "\n    Or choose one from: https://huggingface.co/models?sort=trending&search=gguf\n\n"
-    read -p "[+] Select repo: " repo
+    read -p "[+] Please select a number from the list above or enter an URL: " repo
 
     # check if the input is a number
     if [[ "$repo" =~ ^[0-9]+$ ]]; then
@@ -193,7 +188,6 @@ while [[ -z "$repo" ]]; do
             repo=""
         fi
     elif [[ "$repo" =~ ^https?:// ]]; then
-        use_external_repo=1
         repo="$repo"
     else
         printf "[-] Invalid repo URL: %s\n" "$repo"
@@ -216,10 +210,10 @@ model_files_array=($model_files)
 sizes=()
 while IFS= read -r line; do
     sizes+=("$line")
-done < <(curl -s "$model_tree" | awk -F'[<>]' '/GB/{print $3}')
+done < <(curl -s "$model_tree" | awk -F'[<>]' '/GB|MB/{print $3}')
 
 # list all files in the provided git repo
-printf "[+] Model files:\n\n"
+printf "[+] Available models:\n\n"
 length=${#model_files_array[@]}
 for ((i=0; i<$length; i++)); do
     file=${model_files_array[i]}
@@ -253,16 +247,16 @@ done
 # ask for weights type until provided and available
 while [[ -z "$wtype" ]]; do
     printf "\n"
-    read -p "[+] Select weight type: " wtype
+    read -p "[+] Please select a number from the list above: " wtype
     wfile="${wfiles[$wtype]}"
 
     if [[ -z "$wfile" ]]; then
-        printf "[-] Invalid weight type: %s\n" "$wtype"
+        printf "[-] Invalid number: %s\n" "$wtype"
         wtype=""
     fi
 done
 
-printf "[+] Selected weight type: %s (%s)\n" "$wtype" "$wfile"
+# printf "[+] Selected model: %s (%s)\n" "$wtype" "$wfile"
 
 url="${repo%/}/resolve/main/$wfile"
 
@@ -286,23 +280,23 @@ elif [[ "$wfile" -nt "$chk" ]]; then
 fi
 
 if [[ $do_download -eq 1 ]]; then
-    printf "[+] Downloading weights from %s\n" "$url"
+    printf "[+] Downloading the selected model from %s\n" "$url"
 
     # download the weights file
     curl -o "$wfile" -# -L "$url"
 
     # create a check file if successful
     if [[ $? -eq 0 ]]; then
-        printf "[+] Creating check file %s\n\n" "$chk"
+        printf "[+] Creating check file %s \n" "$chk"
         touch "$chk"
     fi
 else
-    printf "[+] Using cached weights %s\n\n" "$wfile"
+    printf "[+] Using cached model %s \n" "$wfile"
 fi
 
 # * prompt type and reverse prompt
 
-if [ $use_external_repo -eq 0 ]; then
+if [[ $repo =~ ^https://huggingface\.co/second-state ]]; then
     readme_url="$repo/resolve/main/README.md"
 
     # Download the README.md file
@@ -314,7 +308,7 @@ if [ $use_external_repo -eq 0 ]; then
     # Extract the xxxx part
     prompt_type=$(echo $prompt_type_line | cut -d'`' -f2 | xargs)
 
-    printf "[+] Selected prompt type: %s (%s)\n\n" "$prompt_type_index" "$prompt_type"
+    printf "[+] Extracting prompt type: %s \n" "$prompt_type"
 
     # Check if "Reverse prompt" exists
     if grep -q "Reverse prompt:" README.md; then
@@ -324,16 +318,16 @@ if [ $use_external_repo -eq 0 ]; then
         # Extract the xxxx part
         reverse_prompt=$(echo $reverse_prompt_line | cut -d'`' -f2 | xargs)
 
-        echo "Reverse prompt: $reverse_prompt"
+        printf "[+] Extracting reverse prompt: %s \n\n" "$reverse_prompt"
+    else
+        printf "[+] No reverse prompt required\n\n"
     fi
 
     # Clean up
     rm README.md
-
 else
     printf "[+] Please select a number from the list below:\n"
     printf "    The definitions of the prompt types below can be found at https://github.com/second-state/LlamaEdge/raw/main/api-server/chat-prompts/README.md\n\n"
-
 
     is=0
     for r in "${prompt_types[@]}"; do
@@ -345,11 +339,10 @@ else
     read -p "[+] Select prompt type: " prompt_type_index
     prompt_type="${prompt_types[$prompt_type_index]}"
 
-    printf "[+] Selected prompt type: %s (%s)\n\n" "$prompt_type_index" "$prompt_type"
-
-    # todo: set reverse prompt
     # Ask user if they need to set "reverse prompt"
-    read -p "[+] Need reverse prompt? (y/n): " need_reverse_prompt
+    while [[ ! $need_reverse_prompt =~ ^[yYnN]$ ]]; do
+        read -p "[+] Need reverse prompt? (y/n): " need_reverse_prompt
+    done
 
     # If user answered yes, ask them to input a string
     if [[ "$need_reverse_prompt" == "y" || "$need_reverse_prompt" == "Y" ]]; then
@@ -397,7 +390,23 @@ if [[ "$reinstall_wasmedge" == "1" ]]; then
     fi
 
 elif [[ "$reinstall_wasmedge" == "2" ]]; then
-    printf "\n    * You need to download wasm_nn-ggml plugin from 'https://github.com/WasmEdge/WasmEdge/releases' and put it under plugins directory.\n\n"
+    wasmedge_path=$(which wasmedge)
+    wasmedge_root_path=${wasmedge_path%"/bin/wasmedge"}
+
+    found=0
+    for file in "$wasmedge_root_path/plugin/libwasmedgePluginWasiNN."*; do
+    if [[ -f $file ]]; then
+        found=1
+        break
+    fi
+    done
+
+    if [[ $found -eq 0 ]]; then
+        printf "\n    * Not found wasi-nn_ggml plugin. Please download it from https://github.com/WasmEdge/WasmEdge/releases/ and move it to %s. After that, please rerun the script. \n\n" "$wasmedge_root_path/plugin/"
+
+        exit 1
+    fi
+
 fi
 
 # * select llama-edge server
@@ -428,7 +437,7 @@ if [ -f "llama-api-server.wasm" ]; then
     version_existed=$(wasmedge llama-api-server.wasm -V | cut -d' ' -f2)
 fi
 
-printf "[+] Please select a release of LlamaEdge api-server from the list below:\n\n"
+printf "[+] The latest three releases: \n\n"
 for i in "${!release_names[@]}"; do
     if [[ ! ${release_names[$i]} =~ ^LlamaEdge\ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         continue
@@ -448,11 +457,10 @@ done
 release_index=""
 while [[ -z "$release_index" ]] || ! [[ "$release_index" =~ ^[0-9]+$ ]] || ((release_index < 1 || release_index > ${#release_names[@]})); do
     printf "\n"
-    read -p "[+] Select release number: " release_index
+    read -p "[+] Select a number from the list above: " release_index
 done
 
 release_name=${release_names[$release_index-1]}
-printf "[+] Selected release number: %s (%s)\n" "$release_index" "$release_name"
 
 # * Download llama-api-server.wasm
 
@@ -469,9 +477,9 @@ fi
 
 # * log options
 
-printf "[+] Select log options: \n"
+printf "[+] Log options: \n\n"
 
-log_options=("Show prompts" "Show execution statistics" "Show all" "No log")
+log_options=("Show prompts" "Show execution statistics" "Show all" "Disable log")
 
 for i in "${!log_options[@]}"; do
     printf "    %2d) %s\n" "$((i+1))" "${log_options[$i]}"
@@ -479,15 +487,15 @@ done
 
 while [[ -z "$log_option_index" ]]; do
     printf "\n"
-    read -p "[+] Select log option: " log_option_index
-    log_option="${log_options[$log_option_index]}"
+    read -p "[+] Select a number from the list above: " log_option_index
+    log_option="${log_options[$log_option_index - 1]}"
 
     if [[ -z "$log_option" ]]; then
-        printf "[-] Invalid log option: %s\n" "$log_option_index"
+        printf "[-] Invalid number: %s\n" "$log_option_index"
         log_option_index=""
     fi
 done
-printf "[+] Selected log option: %s (%s)\n" "$log_option_index" "$log_option"
+printf "[+] Selected log option: %s (%s)\n\n" "$log_option_index" "$log_option"
 
 if [[ "$log_option_index" == "1" ]]; then
     log_prompts=1
@@ -500,61 +508,30 @@ fi
 
 
 # * start server
-printf "[+] Running server\n"
+printf "[+] Start LlamaEdge server\n\n"
 
 model_name=${wfile%-Q*}
 
-set -x
-if [ "$log_prompts" -eq 1 ] && [ "$log_stat" -eq 1 ]; then
+cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm -p $prompt_type -m \"${model_name}\" --socket-addr \"0.0.0.0:$port\""
 
-    if [ -n "$reverse_prompt" ]; then
-
-        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm -p $prompt_type -m "${model_name}" -r "${reverse_prompt}" --socket-addr "0.0.0.0:$port" --log-prompts --log-stat
-
-    else
-
-        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm -p $prompt_type -m "${model_name}" --socket-addr "0.0.0.0:$port" --log-prompts --log-stat
-
-    fi
-
-elif [ "$log_prompts" -eq 1 ]; then
-
-    if [ -n "$reverse_prompt" ]; then
-
-        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm -p $prompt_type -m "${model_name}" -r "${reverse_prompt}" --socket-addr "0.0.0.0:$port" --log-prompts
-
-    else
-
-        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm -p $prompt_type -m "${model_name}" --socket-addr "0.0.0.0:$port" --log-prompts
-
-    fi
-
-elif [ "$log_stat" -eq 1 ]; then
-
-    if [ -n "$reverse_prompt" ]; then
-
-        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm -p $prompt_type -m "${model_name}" -r "${reverse_prompt}" --socket-addr "0.0.0.0:$port" --log-stat
-
-    else
-
-        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm -p $prompt_type -m "${model_name}" --socket-addr "0.0.0.0:$port" --log-stat
-
-    fi
-
-else
-
-    if [ -n "$reverse_prompt" ]; then
-
-        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm -p $prompt_type -m "${model_name}" -r "${reverse_prompt}" --socket-addr "0.0.0.0:$port"
-
-    else
-
-        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm -p $prompt_type -m "${model_name}" --socket-addr "0.0.0.0:$port"
-
-    fi
-
+# Add reverse prompt if it exists
+if [ -n "$reverse_prompt" ]; then
+    cmd="$cmd -r \"${reverse_prompt}\""
 fi
 
+# Add log prompts if log_prompts equals 1
+if [ "$log_prompts" -eq 1 ]; then
+    cmd="$cmd --log-prompts"
+fi
+
+# Add log stat if log_stat equals 1
+if [ "$log_stat" -eq 1 ]; then
+    cmd="$cmd --log-stat"
+fi
+
+# Execute the command
+set -x
+eval $cmd
 set +x
 
 exit 0
