@@ -124,7 +124,7 @@ Mixtral-8x7B-Instruct-v0.1::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao
 dolphin-2.6-phi-2::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/dolphin-2_6-phi-2.Q5_K_M.gguf
 ELYZA-japanese-Llama-2-7b-instruct::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/ELYZA-japanese-Llama-2-7b-instruct-q5_K_M.gguf
 ELYZA-japanese-Llama-2-7b-fast-instruct::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/ELYZA-japanese-Llama-2-7b-fast-instruct-q5_K_M.gguf
-Nous-Hermes-2-Mixtral-8x7B-DPO::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/Nous-Hermes-2-Mixtral-8x7B-DPO.Q5_K_M.gguf
+Nous-Hermes-2-Mixtral-8x7B-DPO::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/Nous-Hermes-2-Mixtral-8x7B-DPO-Q5_K_M.gguf
 Nous-Hermes-2-Mixtral-8x7B-SFT::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/Nous-Hermes-2-Mixtral-8x7B-SFT-Q5_K_M.gguf
 '
 
@@ -166,7 +166,7 @@ Mixtral-8x7B-Instruct-v0.1::0c57465507f21bed4364fca37efd310bee92e25a4ce4f5678ef9
 dolphin-2.6-phi-2::acc43043793230038f39491de557e70c9d99efddc41f1254e7064cc48f9b5c1e
 ELYZA-japanese-Llama-2-7b-instruct::53c0a17b0bba8aedc868e5dce72e5976cd99108966659b8466476957e99dc980
 ELYZA-japanese-Llama-2-7b-fast-instruct::3dc1e83340c2ee25903ff286da79a62999ab2b2ade7ae2a7c0d6db9f47e14087
-Nous-Hermes-2-Mixtral-8x7B-DPO::e09228d3f9d764c4dd4d57bd83edbfb3548a5477c990246f6648ee382f11ee8b
+Nous-Hermes-2-Mixtral-8x7B-DPO::90c325215de925f47d76e391aee3a6bbac3859cdc03c744ff925b4ff9dd381e2
 Nous-Hermes-2-Mixtral-8x7B-SFT::2599f102be866a80a86b5f03f75500704f6cd7de2dce51d27dd07293eb716770
 '
     prompt_templates='
