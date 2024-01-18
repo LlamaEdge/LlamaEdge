@@ -236,7 +236,7 @@ pub(crate) async fn chat_completions_handler(
             let mut metadata = METADATA.get().unwrap().clone();
 
             // update n_predict
-            metadata.n_predict = max_tokens;
+            metadata.n_predict = max_tokens - 1;
 
             // update metadata
             let config = serde_json::to_string(&metadata).unwrap();
