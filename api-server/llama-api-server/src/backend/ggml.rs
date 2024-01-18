@@ -211,7 +211,15 @@ pub(crate) async fn chat_completions_handler(
 
     // parse request
     let body_bytes = to_bytes(req.body_mut()).await?;
-    let mut chat_request: ChatCompletionRequest = serde_json::from_slice(&body_bytes).unwrap();
+    let mut chat_request: ChatCompletionRequest = match serde_json::from_slice(&body_bytes) {
+        Ok(chat_request) => chat_request,
+        Err(e) => {
+            return error::bad_request(format!(
+                "Fail to parse chat completion request: {msg}",
+                msg = e.to_string()
+            ));
+        }
+    };
 
     // build prompt
     let prompt = match build_prompt(&template, &mut chat_request) {
