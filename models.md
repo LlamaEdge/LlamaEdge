@@ -2035,20 +2035,20 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO-GGUF/blob/main/Nous-Hermes-2-Mixtral-8x7B-DPO.Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Nous-Hermes-2-Mixtral-8x7B-DPO-GGUF/resolve/main/Nous-Hermes-2-Mixtral-8x7B-DPO-Q5_K_M.gguf
 ```
 
-  Note that check the sha256 of `Nous-Hermes-2-Mixtral-8x7B-DPO.Q5_K_M.gguf` after downloading.
+  Note that check the sha256 of `Nous-Hermes-2-Mixtral-8x7B-DPO-Q5_K_M.gguf` after downloading.
 
   ```text
-  e09228d3f9d764c4dd4d57bd83edbfb3548a5477c990246f6648ee382f11ee8b
+  90c325215de925f47d76e391aee3a6bbac3859cdc03c744ff925b4ff9dd381e2
   ```
 
 <b>Chat with the model on the CLI</b>
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:Nous-Hermes-2-Mixtral-8x7B-DPO.Q5_K_M.gguf llama-chat.wasm -p chatml
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Nous-Hermes-2-Mixtral-8x7B-DPO-Q5_K_M.gguf llama-chat.wasm -p chatml
 ```
 
 <b>Chat with the model via a web UI</b>
@@ -2059,7 +2059,7 @@ curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/cha
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:Nous-Hermes-2-Mixtral-8x7B-DPO.Q5_K_M.gguf llama-api-server.wasm -p chatml
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Nous-Hermes-2-Mixtral-8x7B-DPO-Q5_K_M.gguf llama-api-server.wasm -p chatml
 ```
 
 Open your browser to http://localhost:8080 to start the chat!
