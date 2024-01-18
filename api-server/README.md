@@ -1,4 +1,4 @@
-# Ceate an OpenAI compatible API server for your LLM
+# Create an OpenAI compatible API server for your LLM
 
 An OpenAI-compatible web API allows the model to work with a large ecosystem of LLM tools and agent frameworks such as flows.network, LangChain and LlamaIndex.
 
@@ -6,7 +6,7 @@ An OpenAI-compatible web API allows the model to work with a large ecosystem of 
 
 <!-- code_chunk_output -->
 
-- [Ceate an OpenAI compatible API server for your LLM](#ceate-an-openai-compatible-api-server-for-your-llm)
+- [Create an OpenAI compatible API server for your LLM](#create-an-openai-compatible-api-server-for-your-llm)
   - [Dependencies](#dependencies)
   - [Get the llama-api-server.wasm app](#get-the-llama-api-serverwasm-app)
   - [Get model](#get-model)
