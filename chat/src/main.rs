@@ -469,16 +469,25 @@ fn main() -> Result<(), String> {
 }
 
 fn read_input() -> String {
+    let mut answer = String::new();
     loop {
-        let mut answer = String::new();
+        let mut temp = String::new();
         std::io::stdin()
-            .read_line(&mut answer)
-            .ok()
+            .read_line(&mut temp)
             .expect("Failed to read line");
-        if !answer.is_empty() && answer != "\n" && answer != "\r\n" {
-            return answer;
+
+        if temp == "\n" || temp == "\r\n" {
+            break;
         }
+
+        if temp.ends_with("\\\n") {
+            temp = temp.trim_end_matches("\\\n").to_string();
+            temp.push('\n');
+        }
+
+        answer.push_str(&temp);
     }
+    answer
 }
 
 fn print_log_begin_separator(
