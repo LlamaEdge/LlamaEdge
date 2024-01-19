@@ -480,7 +480,7 @@ fn read_input() -> String {
         let mut temp = String::new();
         std::io::stdin()
             .read_line(&mut temp)
-            .expect("Failed to read line");
+            .expect("The read bytes are not valid UTF-8");
 
         if temp == "\n" || temp == "\r\n" {
             break;
