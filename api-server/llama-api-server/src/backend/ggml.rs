@@ -222,7 +222,7 @@ pub(crate) async fn chat_completions_handler(
     };
 
     // build prompt
-    let prompt = match build_prompt(&template, &mut chat_request) {
+    let (prompt, avaible_completion_tokens) = match build_prompt(&template, &mut chat_request) {
         Ok(prompt) => prompt,
         Err(e) => {
             return error::internal_server_error(e.to_string());
@@ -236,7 +236,7 @@ pub(crate) async fn chat_completions_handler(
     }
 
     // update metadata
-    if let Err(msg) = update_metadata(&chat_request) {
+    if let Err(msg) = update_metadata(&chat_request, avaible_completion_tokens) {
         return error::internal_server_error(msg);
     }
 
@@ -566,7 +566,7 @@ pub(crate) async fn chat_completions_handler(
                         ))
                 }
                 Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::PromptTooLong)) => {
-                    println!("\n\n[WARNING] The prompt is too long.\n");
+                    println!("\n\n[WARNING] The prompt is too long. Please reduce the length of your input and try again.\n");
 
                     // Retrieve the output.
                     let mut output_buffer = vec![0u8; *MAX_BUFFER_SIZE.get().unwrap()];
@@ -680,16 +680,32 @@ pub(crate) async fn infer(prompt: impl AsRef<str>) -> std::result::Result<Vec<u8
     Ok(output_buffer[..output_size].to_vec())
 }
 
-fn update_metadata(chat_request: &ChatCompletionRequest) -> Result<(), String> {
+fn update_metadata(
+    chat_request: &ChatCompletionRequest,
+    available_completion_tokens: u64,
+) -> Result<(), String> {
     let mut should_update = false;
     let mut metadata = METADATA.get().unwrap().clone();
 
     // check if necessary to update n_predict with max_tokens
     if let Some(max_tokens) = chat_request.max_tokens {
         let max_tokens = max_tokens as u64;
-        if metadata.n_predict > max_tokens {
+
+        let max_completion_tokens = match available_completion_tokens < max_tokens {
+            true => available_completion_tokens,
+            false => max_tokens,
+        };
+
+        // update n_predict
+        metadata.n_predict = max_completion_tokens;
+
+        if !should_update {
+            should_update = true;
+        }
+    } else {
+        if metadata.n_predict > available_completion_tokens {
             // update n_predict
-            metadata.n_predict = max_tokens;
+            metadata.n_predict = available_completion_tokens;
 
             if !should_update {
                 should_update = true;
@@ -832,9 +848,11 @@ fn build_prompt(
     chat_request: &mut ChatCompletionRequest,
     // graph: &mut Graph,
     // max_prompt_tokens: u64,
-) -> Result<String, String> {
+) -> Result<(String, u64), String> {
     let mut graph = GRAPH.get().unwrap().lock().unwrap();
-    let max_prompt_tokens = *CTX_SIZE.get().unwrap() as u64 * 4 / 5;
+    let ctx_size = *CTX_SIZE.get().unwrap() as u64;
+    let max_prompt_tokens = ctx_size * 4 / 5;
+
     loop {
         // build prompt
         let prompt = match template.build(&mut chat_request.messages) {
@@ -880,7 +898,7 @@ fn build_prompt(
                         {
                             chat_request.messages.remove(1);
                         } else {
-                            return Ok(prompt);
+                            return Ok((prompt, ctx_size - max_prompt_tokens));
                         }
                     }
                     ChatCompletionRole::User => {
@@ -896,14 +914,14 @@ fn build_prompt(
                         {
                             chat_request.messages.remove(0);
                         } else {
-                            return Ok(prompt);
+                            return Ok((prompt, ctx_size - max_prompt_tokens));
                         }
                     }
                     _ => panic!("Found a unsupported chat message role!"),
                 }
                 continue;
             }
-            false => return Ok(prompt),
+            false => return Ok((prompt, ctx_size - max_prompt_tokens)),
         }
     }
 }
