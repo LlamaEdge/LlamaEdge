@@ -322,7 +322,13 @@ fn main() -> Result<(), String> {
         print_log_end_separator(Some("*"), None);
     }
 
-    print_log_end_separator(Some("-"), None);
+    let readme = "
+================================== Running in interactive mode. ===================================\n
+    - Press [Return] twice to end the input.
+    - Press [Ctrl+C] to interject at any time.
+    - To submit another line, end your input with '\\' and press [Return].\n";
+
+    println!("{}", readme);
 
     loop {
         println!("\n[You]: ");
