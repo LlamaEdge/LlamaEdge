@@ -332,70 +332,84 @@ pub(crate) async fn chat_completions_handler(
                         }
                     }
                     Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::ContextFull)) => {
-                        println!(
-                            "\n\n[WARNING] The message is cut off as the max context size is reached. You can try to ask the same question again, or increase the context size via the `--ctx-size` command option.\n"
-                        );
+                        match one_more_run_then_stop {
+                            true => {
+                                println!(
+                                    "\n\n[WARNING] The generated message is cut off as the max context size is reached. If you'd like to get the complete answer, please increase the context size by setting the `--ctx-size` command option with a larger value, and then ask the same question again.\n"
+                                );
 
-                        let chat_completion_chunk = ChatCompletionChunk {
-                            id: "chatcmpl-123".to_string(),
-                            object: "chat.completion.chunk".to_string(),
-                            created: SystemTime::now()
-                                .duration_since(std::time::UNIX_EPOCH)
-                                .unwrap()
-                                .as_secs(),
-                            model: model.clone(),
-                            system_fingerprint: "fp_44709d6fcb".to_string(),
-                            choices: vec![ChatCompletionChunkChoice {
-                                index: 0,
-                                delta: ChatCompletionChunkChoiceDelta {
-                                    role: Some(ChatCompletionRole::Assistant),
-                                    content: Some("<|WASMEDGE-GGML-CONTEXT-FULL|>".to_string()),
-                                    function_call: None,
-                                    tool_calls: None,
-                                },
-                                logprobs: None,
-                                finish_reason: Some(FinishReason::length),
-                            }],
-                        };
+                                let chat_completion_chunk = ChatCompletionChunk {
+                                    id: "chatcmpl-123".to_string(),
+                                    object: "chat.completion.chunk".to_string(),
+                                    created: SystemTime::now()
+                                        .duration_since(std::time::UNIX_EPOCH)
+                                        .unwrap()
+                                        .as_secs(),
+                                    model: model.clone(),
+                                    system_fingerprint: "fp_44709d6fcb".to_string(),
+                                    choices: vec![ChatCompletionChunkChoice {
+                                        index: 0,
+                                        delta: ChatCompletionChunkChoiceDelta {
+                                            role: Some(ChatCompletionRole::Assistant),
+                                            content: Some(
+                                                "<|WASMEDGE-GGML-CONTEXT-FULL|>".to_string(),
+                                            ),
+                                            function_call: None,
+                                            tool_calls: None,
+                                        },
+                                        logprobs: None,
+                                        finish_reason: Some(FinishReason::length),
+                                    }],
+                                };
 
-                        if let Err(e) = graph.finish_single() {
-                            println!("Error: {:?}", &e);
-                            return Err(e.to_string());
+                                if let Err(e) = graph.finish_single() {
+                                    println!("Error: {:?}", &e);
+                                    return Err(e.to_string());
+                                }
+
+                                one_more_run_then_stop = false;
+                                Ok(serde_json::to_string(&chat_completion_chunk).unwrap())
+                            }
+                            false => Ok("[GGML] End of sequence".to_string()),
                         }
-
-                        Ok(serde_json::to_string(&chat_completion_chunk).unwrap())
                     }
                     Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::PromptTooLong)) => {
-                        println!("\n\n[WARNING] The prompt is too long.");
+                        match one_more_run_then_stop {
+                            true => {
+                                println!("\n\n[WARNING] The prompt is too long. Please reduce the length of your input and try again.\n");
 
-                        let chat_completion_chunk = ChatCompletionChunk {
-                            id: "chatcmpl-123".to_string(),
-                            object: "chat.completion.chunk".to_string(),
-                            created: SystemTime::now()
-                                .duration_since(std::time::UNIX_EPOCH)
-                                .unwrap()
-                                .as_secs(),
-                            model: model.clone(),
-                            system_fingerprint: "fp_44709d6fcb".to_string(),
-                            choices: vec![ChatCompletionChunkChoice {
-                                index: 0,
-                                delta: ChatCompletionChunkChoiceDelta {
-                                    role: Some(ChatCompletionRole::Assistant),
-                                    content: None,
-                                    function_call: None,
-                                    tool_calls: None,
-                                },
-                                logprobs: None,
-                                finish_reason: Some(FinishReason::length),
-                            }],
-                        };
+                                let chat_completion_chunk = ChatCompletionChunk {
+                                    id: "chatcmpl-123".to_string(),
+                                    object: "chat.completion.chunk".to_string(),
+                                    created: SystemTime::now()
+                                        .duration_since(std::time::UNIX_EPOCH)
+                                        .unwrap()
+                                        .as_secs(),
+                                    model: model.clone(),
+                                    system_fingerprint: "fp_44709d6fcb".to_string(),
+                                    choices: vec![ChatCompletionChunkChoice {
+                                        index: 0,
+                                        delta: ChatCompletionChunkChoiceDelta {
+                                            role: Some(ChatCompletionRole::Assistant),
+                                            content: None,
+                                            function_call: None,
+                                            tool_calls: None,
+                                        },
+                                        logprobs: None,
+                                        finish_reason: Some(FinishReason::length),
+                                    }],
+                                };
 
-                        if let Err(e) = graph.finish_single() {
-                            println!("Error: {:?}", &e);
-                            return Err(e.to_string());
+                                if let Err(e) = graph.finish_single() {
+                                    println!("Error: {:?}", &e);
+                                    return Err(e.to_string());
+                                }
+
+                                one_more_run_then_stop = false;
+                                Ok(serde_json::to_string(&chat_completion_chunk).unwrap())
+                            }
+                            false => Ok("[GGML] End of sequence".to_string()),
                         }
-
-                        Ok(serde_json::to_string(&chat_completion_chunk).unwrap())
                     }
                     Err(e) => {
                         println!("Error: {:?}", &e);
@@ -405,8 +419,8 @@ pub(crate) async fn chat_completions_handler(
             });
 
             // create hyer stream
-            let stream =
-                stream.try_take_while(|x| future::ready(Ok(x != "[GGML] End of sequence")));
+            let stream = stream
+                .try_take_while(|x| future::ready(Ok(x != "[GGML] End of sequence" && x != "")));
 
             Response::builder()
                 .header("Access-Control-Allow-Origin", "*")
@@ -483,7 +497,7 @@ pub(crate) async fn chat_completions_handler(
                 }
                 Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::ContextFull)) => {
                     println!(
-                        "\n\n[WARNING] The message is cut off as the max context size is reached. Try to ask the same question again, or increase the context size via the `--ctx-size` command option.\n"
+                        "\n\n[WARNING] The generated message is cut off as the max context size is reached. If you'd like to get the complete answer, please increase the context size by setting the `--ctx-size` command option with a larger value, and then ask the same question again.\n"
                     );
 
                     // Retrieve the output.
