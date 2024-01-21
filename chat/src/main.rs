@@ -324,9 +324,9 @@ fn main() -> Result<(), String> {
 
     let readme = "
 ================================== Running in interactive mode. ===================================\n
-    - Press [Return] twice to end the input.
     - Press [Ctrl+C] to interject at any time.
-    - To submit another line, end your input with '\\' and press [Return].\n";
+    - Press [Return] to end the input.
+    - For multi-line inputs, end each line with '\\' and press [Return] to get another line.\n";
 
     println!("{}", readme);
 
@@ -474,6 +474,18 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
+// For single line input, just press [Return] to end the input.
+// For multi-line input, end your input with '\\' and press [Return].
+//
+// For example:
+//  [You]:
+//  what is the capital of France?[Return]
+//
+//  [You]:
+//  Count the words in the following sentence: \[Return]
+//  \[Return]
+//  You can use Git to save new files and any changes to already existing files as a bundle of changes called a commit, which can be thought of as a “revision” to your project.[Return]
+//
 fn read_input() -> String {
     let mut answer = String::new();
     loop {
@@ -482,18 +494,19 @@ fn read_input() -> String {
             .read_line(&mut temp)
             .expect("The read bytes are not valid UTF-8");
 
-        if temp == "\n" || temp == "\r\n" {
-            break;
-        }
-
         if temp.ends_with("\\\n") {
-            temp = temp.trim_end_matches("\\\n").to_string();
+            temp.pop();
+            temp.pop();
             temp.push('\n');
+            answer.push_str(&temp);
+            continue;
+        } else if temp.ends_with("\n") {
+            answer.push_str(&temp);
+            return answer;
+        } else {
+            return answer;
         }
-
-        answer.push_str(&temp);
     }
-    answer
 }
 
 fn print_log_begin_separator(
