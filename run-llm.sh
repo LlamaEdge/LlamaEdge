@@ -475,6 +475,19 @@ else
     printf "[+] Using cached llama-api-server.wasm\n\n"
 fi
 
+# * context size
+
+# Ask user if they need to set "ctx_size"
+while [[ ! $default_ctx_size =~ ^[yYnN]$ ]]; do
+    read -p "[+] Use default context size (512)? (y/n): " default_ctx_size
+done
+
+# If user answered yes, ask them to input a string
+if [[ "$default_ctx_size" == "n" || "$default_ctx_size" == "N" ]]; then
+    read -p "    Enter context size: " ctx_size
+    printf "\n"
+fi
+
 # * log options
 
 printf "[+] Log options: \n\n"
@@ -517,6 +530,11 @@ cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.w
 # Add reverse prompt if it exists
 if [ -n "$reverse_prompt" ]; then
     cmd="$cmd -r \"${reverse_prompt}\""
+fi
+
+# Add context size if it is not default
+if [ "$ctx_size" -ne 512 ]; then
+    cmd="$cmd --ctx-size $ctx_size"
 fi
 
 # Add log prompts if log_prompts equals 1
