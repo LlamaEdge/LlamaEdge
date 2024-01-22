@@ -24,12 +24,15 @@ if ! command -v make &> /dev/null; then
 fi
 if ! command -v jq &> /dev/null; then
     printf "[-] jq not found\n"
+    printf "    - For macOS, please install it with 'brew install jq'\n"
+    printf "    - For Debian/Ubuntu, please install it with 'sudo apt install jq'\n"
+    printf "    - For Fedora, please install it with 'sudo dnf install jq'\n"
+    printf "    - For CentOS/RHEL, please install it with 'sudo yum install jq'\n"
     exit 1
 fi
 
 # parse arguments
 port=8080
-ctx_size=512
 repo=""
 wtype=""
 backend="cpu"
@@ -55,13 +58,6 @@ function print_usage {
     printf "Usage:\n"
     printf "  ./run-llm.sh [--port] [--repo] [--wtype] [--backend] [--gpu-id] [--n-parallel] [--n-kv] [--verbose]\n\n"
     printf "  --port:         port number, default is 8080\n"
-    printf "  --ctx-size:     context size, default is 512\n"
-    # printf "  --backend:    cpu, cuda, metal, opencl, depends on the OS\n"
-    # printf "  --gpu-id:     gpu id, default is 0\n"
-    # printf "  --verbose:    verbose output\n\n"
-    # printf "  --mode:         running mode. 0: server mode (default) 1: local mode\n"
-    # printf "  --log-prompts:  print prompt log message\n"
-    # printf "  --log-stat:     print statistics log message\n\n"
     printf "Example:\n\n"
     printf '  bash <(curl -sSfL 'https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/run-llm.sh')"\n\n'
 }
@@ -74,23 +70,6 @@ while [[ $# -gt 0 ]]; do
             shift
             shift
             ;;
-        --ctx-size)
-            ctx_size="$2"
-            shift
-            shift
-            ;;
-        # --mode)
-        #     mode=1
-        #     shift
-        #     ;;
-        # --log-prompts)
-        #     log_prompts=1
-        #     shift
-        #     ;;
-        # --log-stat)
-        #     log_stat=1
-        #     shift
-        #     ;;
         --help)
             print_usage
             exit 0
@@ -255,8 +234,6 @@ while [[ -z "$wtype" ]]; do
         wtype=""
     fi
 done
-
-# printf "[+] Selected model: %s (%s)\n" "$wtype" "$wfile"
 
 url="${repo%/}/resolve/main/$wfile"
 
@@ -488,6 +465,34 @@ if [[ "$default_ctx_size" == "n" || "$default_ctx_size" == "N" ]]; then
     printf "\n"
 fi
 
+# * Number of tokens to predict
+
+# Ask user if they need to set "n_tokens"
+while [[ ! $default_n_predict =~ ^[yYnN]$ ]]; do
+    read -p "[+] Use default number of tokens to predict (1024)? (y/n): " default_n_predict
+done
+
+# If user answered yes, ask them to input a string
+if [[ "$default_n_predict" == "n" || "$default_n_predict" == "N" ]]; then
+    read -p "    Enter number of tokens to predict: " n_predict
+    printf "\n"
+fi
+
+# * n_gpu_layers
+
+# Ask user if they need to set "n_gpu_layers"
+if ! command -v jq &> /dev/null; then
+    while [[ ! $default_n_gpu_layers =~ ^[yYnN]$ ]]; do
+        read -p "[+] Use default number of GPU layers (100)? (y/n): " default_n_gpu_layers
+    done
+
+    # If user answered yes, ask them to input a string
+    if [[ "$default_n_gpu_layers" == "n" || "$default_n_gpu_layers" == "N" ]]; then
+        read -p "    Enter number of GPU layers: " n_gpu_layers
+        printf "\n"
+    fi
+fi
+
 # * log options
 
 printf "[+] Log options: \n\n"
@@ -535,6 +540,16 @@ fi
 # Add context size if it is not default
 if [ "$ctx_size" -ne 512 ]; then
     cmd="$cmd --ctx-size $ctx_size"
+fi
+
+# Add number of GPU layers if it is not default
+if [ "$n_gpu_layers" -ne 100 ]; then
+    cmd="$cmd --n-gpu-layers $n_gpu_layers"
+fi
+
+# Add number of tokens to predict if it is not default
+if [ "$n_predict" -ne 1024 ]; then
+    cmd="$cmd --n-predict $n_predict"
 fi
 
 # Add log prompts if log_prompts equals 1
