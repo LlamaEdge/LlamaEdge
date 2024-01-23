@@ -36,6 +36,9 @@ port=8080
 repo=""
 wtype=""
 backend="cpu"
+ctx_size=512
+n_predict=1024
+n_gpu_layers=100
 
 # if macOS, use metal backend by default
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -56,7 +59,7 @@ mode=0
 
 function print_usage {
     printf "Usage:\n"
-    printf "  ./run-llm.sh [--port] [--repo] [--wtype] [--backend] [--gpu-id] [--n-parallel] [--n-kv] [--verbose]\n\n"
+    printf "  ./run-llm.sh [--port]\n\n"
     printf "  --port:         port number, default is 8080\n"
     printf "Example:\n\n"
     printf '  bash <(curl -sSfL 'https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/run-llm.sh')"\n\n'
@@ -139,7 +142,7 @@ printf "    - The server will run with default settings which are not always opt
 printf "    - Do not judge the quality of a model based on the results from this script\n"
 printf "    - This script is only for demonstration purposes\n"
 printf "\n"
-printf "    If you don't know what you are doing, please press Ctrl-C to abort now\n"
+printf "    During the whole process, you can press Ctrl-C to abort the current process at any time.\n"
 printf "\n"
 printf "    Press Enter to continue ...\n\n"
 
@@ -337,8 +340,8 @@ reinstall_wasmedge=1
 if command -v wasmedge &> /dev/null
 then
     printf "    Found WasmEdge in the current environment:\n\n"
-    printf "     1) Reinstall WasmEdge and wasi-nn_ggml plugin (recommended)\n"
-    printf "     2) Keep current version\n\n"
+    printf "     1) Install the latest version of WasmEdge and wasi-nn_ggml plugin (recommended)\n"
+    printf "     2) Keep the current version\n\n"
     read -p "[+] Select a number from the list above: " reinstall_wasmedge
 fi
 
@@ -386,70 +389,177 @@ elif [[ "$reinstall_wasmedge" == "2" ]]; then
 
 fi
 
-# * select llama-edge server
 
+# * running mode
+
+printf "[+] Running mode: \n\n"
+
+running_modes=("API Server" "CLI ChatBot")
+
+for i in "${!running_modes[@]}"; do
+    printf "    %2d) %s\n" "$((i+1))" "${running_modes[$i]}"
+done
+
+while [[ -z "$running_mode_index" ]]; do
+    printf "\n"
+    read -p "[+] Select a number from the list above: " running_mode_index
+    running_mode="${running_modes[$running_mode_index - 1]}"
+
+    if [[ -z "$running_mode" ]]; then
+        printf "[-] Invalid number: %s\n" "$running_mode_index"
+        running_mode_index=""
+    fi
+done
+printf "[+] Selected running mode: %s (%s)\n\n" "$running_mode_index" "$running_mode"
+
+# * download llama-api-server.wasm or llama-chat.wasm
+#
 repo="second-state/LlamaEdge"
 releases=$(curl -s "https://api.github.com/repos/$repo/releases")
+if [[ "$running_mode_index" == "1" ]]; then
 
-release_names=()
-asset_urls=()
+    release_names=()
+    asset_urls=()
 
-for i in {0..2}
-do
-    release_info=$(echo $releases | jq -r ".[$i]")
-    release_name=$(echo $release_info | jq -r '.name')
+    for i in {0..2}
+    do
+        release_info=$(echo $releases | jq -r ".[$i]")
+        release_name=$(echo $release_info | jq -r '.name')
 
-    if [[ ! ${release_name} =~ ^LlamaEdge\ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        continue
+        if [[ ! ${release_name} =~ ^LlamaEdge\ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            continue
+        fi
+
+        release_names+=("$release_name")
+
+        asset_url=$(echo $release_info | jq -r '.assets[] | select(.name=="llama-api-server.wasm") | .browser_download_url')
+        asset_urls+=("$asset_url")
+    done
+
+    # check if the current directory contains llama-api-server.wasm
+    if [ -f "llama-api-server.wasm" ]; then
+        version_existed=$(wasmedge llama-api-server.wasm -V | cut -d' ' -f2)
     fi
 
-    release_names+=("$release_name")
+    printf "[+] The latest three releases of LlamaEdge APi Server: \n\n"
+    for i in "${!release_names[@]}"; do
+        if [[ ! ${release_names[$i]} =~ ^LlamaEdge\ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            continue
+        fi
 
-    asset_url=$(echo $release_info | jq -r '.assets[] | select(.name=="llama-api-server.wasm") | .browser_download_url')
-    asset_urls+=("$asset_url")
-done
+        release_info=${release_names[$i]}
+        version=$(echo $release_info | cut -d' ' -f2)
 
-# check if the current directory contains llama-api-server.wasm
-if [ -f "llama-api-server.wasm" ]; then
-    version_existed=$(wasmedge llama-api-server.wasm -V | cut -d' ' -f2)
-fi
+        have=" "
+        if [[ "$version" == "$version_existed" ]]; then
+            have="*"
+        fi
 
-printf "[+] The latest three releases: \n\n"
-for i in "${!release_names[@]}"; do
-    if [[ ! ${release_names[$i]} =~ ^LlamaEdge\ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        continue
+        printf "    %2d) %s %s\n" "$((i+1))" "$have" "${release_names[$i]}"
+    done
+
+    release_index=""
+    while [[ -z "$release_index" ]] || ! [[ "$release_index" =~ ^[0-9]+$ ]] || ((release_index < 1 || release_index > ${#release_names[@]})); do
+        printf "\n"
+        read -p "[+] Select a number from the list above: " release_index
+    done
+
+    release_name=${release_names[$release_index-1]}
+
+    # * Download llama-api-server.wasm
+
+    asset_url=${asset_urls[$((release_index-1))]}
+
+    version_selected=$(echo $release_name | cut -d' ' -f2)
+
+    if [[ "$version_selected" != "$version_existed" ]]; then
+        printf "[+] Downloading llama-api-server.wasm ...\n\n"
+        curl -LO $asset_url
+    else
+        printf "[+] Using cached llama-api-server.wasm\n\n"
     fi
-
-    release_info=${release_names[$i]}
-    version=$(echo $release_info | cut -d' ' -f2)
-
-    have=" "
-    if [[ "$version" == "$version_existed" ]]; then
-        have="*"
-    fi
-
-    printf "    %2d) %s %s\n" "$((i+1))" "$have" "${release_names[$i]}"
-done
-
-release_index=""
-while [[ -z "$release_index" ]] || ! [[ "$release_index" =~ ^[0-9]+$ ]] || ((release_index < 1 || release_index > ${#release_names[@]})); do
     printf "\n"
-    read -p "[+] Select a number from the list above: " release_index
-done
 
-release_name=${release_names[$release_index-1]}
+    # * download chatbot-ui
 
-# * Download llama-api-server.wasm
+    printf "[+] Downloading Chatbot-Web ...\n\n"
 
-asset_url=${asset_urls[$((release_index-1))]}
+    files_tarball="https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz"
+    curl -LO $files_tarball
+    if [ $? -ne 0 ]; then
+        printf "    \nFailed to download ui tarball. Please manually download from https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz and unzip the "chatbot-ui.tar.gz" to the current directory.\n"
+        exit 1
+    fi
+    tar xzf chatbot-ui.tar.gz
+    rm chatbot-ui.tar.gz
+    printf "\n"
 
-version_selected=$(echo $release_name | cut -d' ' -f2)
+elif [[ "$running_mode_index" == "2" ]]; then
 
-if [[ "$version_selected" != "$version_existed" ]]; then
-    printf "[+] Downloading llama-api-server.wasm to the current directory\n\n"
-    curl -LO $asset_url
+    release_names=()
+    asset_urls=()
+
+    for i in {0..2}
+    do
+        release_info=$(echo $releases | jq -r ".[$i]")
+        release_name=$(echo $release_info | jq -r '.name')
+
+        if [[ ! ${release_name} =~ ^LlamaEdge\ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            continue
+        fi
+
+        release_names+=("$release_name")
+
+        asset_url=$(echo $release_info | jq -r '.assets[] | select(.name=="llama-chat.wasm") | .browser_download_url')
+        asset_urls+=("$asset_url")
+    done
+
+    # check if the current directory contains llama-chat.wasm
+    if [ -f "llama-chat.wasm" ]; then
+        version_existed=$(wasmedge llama-chat.wasm -V | cut -d' ' -f2)
+    fi
+
+    printf "[+] The latest three releases of LlamaEdge CLI Chatbot: \n\n"
+    for i in "${!release_names[@]}"; do
+        if [[ ! ${release_names[$i]} =~ ^LlamaEdge\ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            continue
+        fi
+
+        release_info=${release_names[$i]}
+        version=$(echo $release_info | cut -d' ' -f2)
+
+        have=" "
+        if [[ "$version" == "$version_existed" ]]; then
+            have="*"
+        fi
+
+        printf "    %2d) %s %s\n" "$((i+1))" "$have" "${release_names[$i]}"
+    done
+
+    release_index=""
+    while [[ -z "$release_index" ]] || ! [[ "$release_index" =~ ^[0-9]+$ ]] || ((release_index < 1 || release_index > ${#release_names[@]})); do
+        printf "\n"
+        read -p "[+] Select a number from the list above: " release_index
+    done
+
+    release_name=${release_names[$release_index-1]}
+
+    # * Download llama-chat.wasm
+
+    asset_url=${asset_urls[$((release_index-1))]}
+
+    version_selected=$(echo $release_name | cut -d' ' -f2)
+
+    if [[ "$version_selected" != "$version_existed" ]]; then
+        printf "[+] Downloading llama-chat.wasm to the current directory\n\n"
+        curl -LO $asset_url
+    else
+        printf "[+] Using cached llama-chat.wasm\n\n"
+    fi
+
 else
-    printf "[+] Using cached llama-api-server.wasm\n\n"
+    printf "[-] Invalid running mode: %s\n" "$running_mode_index"
+    exit 1
 fi
 
 # * context size
@@ -524,47 +634,119 @@ elif [[ "$log_option_index" == "3" ]]; then
     log_stat=1
 fi
 
+# # * running mode
 
-# * start server
-printf "[+] Start LlamaEdge server\n\n"
+# printf "[+] Running mode: \n\n"
 
-model_name=${wfile%-Q*}
+# running_modes=("API Server" "CLI ChatBot")
 
-cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm -p $prompt_type -m \"${model_name}\" --socket-addr \"0.0.0.0:$port\""
+# for i in "${!running_modes[@]}"; do
+#     printf "    %2d) %s\n" "$((i+1))" "${running_modes[$i]}"
+# done
 
-# Add reverse prompt if it exists
-if [ -n "$reverse_prompt" ]; then
-    cmd="$cmd -r \"${reverse_prompt}\""
+# while [[ -z "$running_mode_index" ]]; do
+#     printf "\n"
+#     read -p "[+] Select a number from the list above: " running_mode_index
+#     running_mode="${running_modes[$running_mode_index - 1]}"
+
+#     if [[ -z "$running_mode" ]]; then
+#         printf "[-] Invalid number: %s\n" "$running_mode_index"
+#         running_mode_index=""
+#     fi
+# done
+# printf "[+] Selected running mode: %s (%s)\n\n" "$running_mode_index" "$running_mode"
+
+
+# * start server or chatbot
+
+if [[ "$running_mode_index" == "1" ]]; then
+
+    # * start server
+    printf "[+] Start LlamaEdge server\n\n"
+
+    model_name=${wfile%-Q*}
+
+    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm -p $prompt_type -m \"${model_name}\" --socket-addr \"0.0.0.0:$port\""
+
+    # Add reverse prompt if it exists
+    if [ -n "$reverse_prompt" ]; then
+        cmd="$cmd -r \"${reverse_prompt}\""
+    fi
+
+    # Add context size if it is not default
+    if [ "$ctx_size" -ne 512 ]; then
+        cmd="$cmd --ctx-size $ctx_size"
+    fi
+
+    # Add number of GPU layers if it is not default
+    if [ "$n_gpu_layers" -ne 100 ]; then
+        cmd="$cmd --n-gpu-layers $n_gpu_layers"
+    fi
+
+    # Add number of tokens to predict if it is not default
+    if [ "$n_predict" -ne 1024 ]; then
+        cmd="$cmd --n-predict $n_predict"
+    fi
+
+    # Add log prompts if log_prompts equals 1
+    if [ "$log_prompts" -eq 1 ]; then
+        cmd="$cmd --log-prompts"
+    fi
+
+    # Add log stat if log_stat equals 1
+    if [ "$log_stat" -eq 1 ]; then
+        cmd="$cmd --log-stat"
+    fi
+
+    # Execute the command
+    set -x
+    eval $cmd
+    set +x
+
+elif [[ "$running_mode_index" == "2" ]]; then
+
+    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-chat.wasm -p $prompt_type"
+
+    # Add reverse prompt if it exists
+    if [ -n "$reverse_prompt" ]; then
+        cmd="$cmd -r \"${reverse_prompt}\""
+    fi
+
+    # Add context size if it is not default
+    if [ "$ctx_size" -ne 512 ]; then
+        cmd="$cmd --ctx-size $ctx_size"
+    fi
+
+    # Add number of GPU layers if it is not default
+    if [ "$n_gpu_layers" -ne 100 ]; then
+        cmd="$cmd --n-gpu-layers $n_gpu_layers"
+    fi
+
+    # Add number of tokens to predict if it is not default
+    if [ "$n_predict" -ne 1024 ]; then
+        cmd="$cmd --n-predict $n_predict"
+    fi
+
+    # Add log prompts if log_prompts equals 1
+    if [ "$log_prompts" -eq 1 ]; then
+        cmd="$cmd --log-prompts"
+    fi
+
+    # Add log stat if log_stat equals 1
+    if [ "$log_stat" -eq 1 ]; then
+        cmd="$cmd --log-stat"
+    fi
+
+    # Execute the command
+    set -x
+    eval $cmd
+    set +x
+
+else
+    printf "[-] Invalid running mode: %s\n" "$running_mode_index"
+    exit 1
 fi
 
-# Add context size if it is not default
-if [ "$ctx_size" -ne 512 ]; then
-    cmd="$cmd --ctx-size $ctx_size"
-fi
 
-# Add number of GPU layers if it is not default
-if [ "$n_gpu_layers" -ne 100 ]; then
-    cmd="$cmd --n-gpu-layers $n_gpu_layers"
-fi
-
-# Add number of tokens to predict if it is not default
-if [ "$n_predict" -ne 1024 ]; then
-    cmd="$cmd --n-predict $n_predict"
-fi
-
-# Add log prompts if log_prompts equals 1
-if [ "$log_prompts" -eq 1 ]; then
-    cmd="$cmd --log-prompts"
-fi
-
-# Add log stat if log_stat equals 1
-if [ "$log_stat" -eq 1 ]; then
-    cmd="$cmd --log-stat"
-fi
-
-# Execute the command
-set -x
-eval $cmd
-set +x
 
 exit 0
