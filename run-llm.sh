@@ -298,9 +298,9 @@ if [[ $repo =~ ^https://huggingface\.co/second-state ]]; then
         # Extract the xxxx part
         reverse_prompt=$(echo $reverse_prompt_line | cut -d'`' -f2 | xargs)
 
-        printf "[+] Extracting reverse prompt: %s \n\n" "$reverse_prompt"
+        printf "[+] Extracting reverse prompt: %s \n" "$reverse_prompt"
     else
-        printf "[+] No reverse prompt required\n\n"
+        printf "[+] No reverse prompt required\n"
     fi
 
     # Clean up
@@ -333,15 +333,14 @@ fi
 
 # * install WasmEdge + wasi-nn_ggml plugin
 
-printf "[+] Installing WasmEdge ...\n"
+printf "[+] Installing WasmEdge ...\n\n"
 
 # Check if WasmEdge has been installed
 reinstall_wasmedge=1
 if command -v wasmedge &> /dev/null
 then
-    printf "    Found WasmEdge in the current environment:\n\n"
-    printf "     1) Install the latest version of WasmEdge and wasi-nn_ggml plugin (recommended)\n"
-    printf "     2) Keep the current version\n\n"
+    printf "    1) Install the latest version of WasmEdge and wasi-nn_ggml plugin (recommended)\n"
+    printf "    2) Keep the current version\n\n"
     read -p "[+] Select a number from the list above: " reinstall_wasmedge
 fi
 
@@ -410,7 +409,7 @@ while [[ -z "$running_mode_index" ]]; do
         running_mode_index=""
     fi
 done
-printf "[+] Selected running mode: %s (%s)\n\n" "$running_mode_index" "$running_mode"
+printf "[+] Selected running mode: %s (%s)\n" "$running_mode_index" "$running_mode"
 
 # * download llama-api-server.wasm or llama-chat.wasm
 #
@@ -475,24 +474,27 @@ if [[ "$running_mode_index" == "1" ]]; then
     if [[ "$version_selected" != "$version_existed" ]]; then
         printf "[+] Downloading llama-api-server.wasm ...\n\n"
         curl -LO $asset_url
+        printf "\n"
     else
-        printf "[+] Using cached llama-api-server.wasm\n\n"
+        printf "[+] Using cached llama-api-server.wasm\n"
     fi
-    printf "\n"
 
-    # * download chatbot-ui
+    # * chatbot-ui
 
-    printf "[+] Downloading Chatbot-Web ...\n\n"
-
-    files_tarball="https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz"
-    curl -LO $files_tarball
-    if [ $? -ne 0 ]; then
-        printf "    \nFailed to download ui tarball. Please manually download from https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz and unzip the "chatbot-ui.tar.gz" to the current directory.\n"
-        exit 1
+    if [ -d "chatbot-ui" ]; then
+        printf "[+] Using cached Chatbot web app\n"
+    else
+        printf "[+] Downloading Chatbot web app ...\n"
+        files_tarball="https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz"
+        curl -LO $files_tarball
+        if [ $? -ne 0 ]; then
+            printf "    \nFailed to download ui tarball. Please manually download from https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz and unzip the "chatbot-ui.tar.gz" to the current directory.\n"
+            exit 1
+        fi
+        tar xzf chatbot-ui.tar.gz
+        rm chatbot-ui.tar.gz
+        printf "\n"
     fi
-    tar xzf chatbot-ui.tar.gz
-    rm chatbot-ui.tar.gz
-    printf "\n"
 
 elif [[ "$running_mode_index" == "2" ]]; then
 
@@ -634,39 +636,17 @@ elif [[ "$log_option_index" == "3" ]]; then
     log_stat=1
 fi
 
-# # * running mode
-
-# printf "[+] Running mode: \n\n"
-
-# running_modes=("API Server" "CLI ChatBot")
-
-# for i in "${!running_modes[@]}"; do
-#     printf "    %2d) %s\n" "$((i+1))" "${running_modes[$i]}"
-# done
-
-# while [[ -z "$running_mode_index" ]]; do
-#     printf "\n"
-#     read -p "[+] Select a number from the list above: " running_mode_index
-#     running_mode="${running_modes[$running_mode_index - 1]}"
-
-#     if [[ -z "$running_mode" ]]; then
-#         printf "[-] Invalid number: %s\n" "$running_mode_index"
-#         running_mode_index=""
-#     fi
-# done
-# printf "[+] Selected running mode: %s (%s)\n\n" "$running_mode_index" "$running_mode"
-
-
-# * start server or chatbot
+# * start llama-api-server or llama-chat
 
 if [[ "$running_mode_index" == "1" ]]; then
 
     # * start server
     printf "[+] Start LlamaEdge server\n\n"
+    printf "    >>> Chatbot web app can be accessed at http://localhost:%s <<<\n\n" "$port"
 
     model_name=${wfile%-Q*}
 
-    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm -p $prompt_type -m \"${model_name}\" --socket-addr \"0.0.0.0:$port\""
+    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm -p $prompt_type -m \"${model_name}\" --socket-addr \"127.0.0.1:$port\""
 
     # Add reverse prompt if it exists
     if [ -n "$reverse_prompt" ]; then
