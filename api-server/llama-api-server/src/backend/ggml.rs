@@ -855,8 +855,6 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
 fn build_prompt(
     template: &ChatPrompt,
     chat_request: &mut ChatCompletionRequest,
-    // graph: &mut Graph,
-    // max_prompt_tokens: u64,
 ) -> Result<(String, u64), String> {
     let mut graph = GRAPH.get().unwrap().lock().unwrap();
     let ctx_size = *CTX_SIZE.get().unwrap() as u64;
