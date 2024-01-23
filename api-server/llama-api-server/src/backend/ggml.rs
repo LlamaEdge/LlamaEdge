@@ -443,8 +443,17 @@ pub(crate) async fn chat_completions_handler(
                         }
                     };
                     output_size = std::cmp::min(*MAX_BUFFER_SIZE.get().unwrap(), output_size);
+
                     // convert inference result to string
-                    let output = std::str::from_utf8(&output_buffer[..output_size]).unwrap();
+                    let output = match std::str::from_utf8(&output_buffer[..output_size]) {
+                        Ok(output) => output,
+                        Err(e) => {
+                            return error::internal_server_error(format!(
+                                "Failed to decode the result bytes to a utf-8 string. {}",
+                                e.to_string()
+                            ));
+                        }
+                    };
 
                     // post-process
                     let message = post_process(&output, template_ty);
