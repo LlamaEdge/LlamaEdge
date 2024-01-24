@@ -96,6 +96,7 @@ done
 # sample repos
 repos=(
     "https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF"
+    "https://huggingface.co/second-state/stablelm-2-zephyr-1.6b-GGUF"
     "https://huggingface.co/second-state/OpenChat-3.5-0106-GGUF"
     "https://huggingface.co/second-state/Yi-34B-Chat-GGUF"
     "https://huggingface.co/second-state/Yi-34Bx2-MoE-60B-GGUF"
@@ -106,7 +107,6 @@ repos=(
     "https://huggingface.co/second-state/Orca-2-13B-GGUF"
     "https://huggingface.co/second-state/TinyLlama-1.1B-Chat-v1.0-GGUF"
     "https://huggingface.co/second-state/SOLAR-10.7B-Instruct-v1.0-GGUF"
-    "https://huggingface.co/second-state/OpenHermes-2.5-Mistral-7B-GGUF"
 )
 
 # prompt types
