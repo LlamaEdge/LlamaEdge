@@ -105,7 +105,6 @@ repos=(
     "https://huggingface.co/second-state/dolphin-2.6-mistral-7B-GGUF"
     "https://huggingface.co/second-state/Orca-2-13B-GGUF"
     "https://huggingface.co/second-state/TinyLlama-1.1B-Chat-v1.0-GGUF"
-    "https://huggingface.co/second-state/OpenChat-3.5-0106-GGUF"
     "https://huggingface.co/second-state/SOLAR-10.7B-Instruct-v1.0-GGUF"
     "https://huggingface.co/second-state/OpenHermes-2.5-Mistral-7B-GGUF"
 )
