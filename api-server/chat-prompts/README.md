@@ -52,6 +52,14 @@ GPT4 User: {prompt}<|end_of_turn|>GPT4 Assistant:
 <s>[INST] {prompt} [/INST]
 ```
 
+- `stabllm-zephyr`
+
+```text
+<|user|>
+{prompt}<|endoftext|>
+<|assistant|>
+```
+
 - `mistrallite`
 
 ```text
