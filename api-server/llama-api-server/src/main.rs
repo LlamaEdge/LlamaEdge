@@ -133,6 +133,7 @@ async fn main() -> Result<(), ServerError> {
                     "baichuan-2",
                     "wizard-coder",
                     "zephyr",
+                    "stablelm-zephyr",
                     "intel-neural",
                     "deepseek-chat",
                     "deepseek-coder",
