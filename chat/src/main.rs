@@ -112,6 +112,7 @@ fn main() -> Result<(), String> {
                     "baichuan-2",
                     "wizard-coder",
                     "zephyr",
+                    "stablelm-zephyr",
                     "intel-neural",
                     "deepseek-chat",
                     "deepseek-coder",
@@ -576,6 +577,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         PromptTemplateType::Zephyr => {
             ChatPrompt::ZephyrChatPrompt(chat_prompts::chat::zephyr::ZephyrChatPrompt::default())
         }
+        PromptTemplateType::StableLMZephyr => ChatPrompt::StableLMZephyrChatPrompt(
+            chat_prompts::chat::zephyr::StableLMZephyrChatPrompt::default(),
+        ),
         PromptTemplateType::IntelNeural => {
             ChatPrompt::NeuralChatPrompt(chat_prompts::chat::intel::NeuralChatPrompt::default())
         }
