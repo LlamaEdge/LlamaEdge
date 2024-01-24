@@ -96,6 +96,11 @@ done
 # sample repos
 repos=(
     "https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF"
+    "https://huggingface.co/second-state/OpenChat-3.5-0106-GGUF"
+    "https://huggingface.co/second-state/Yi-34B-Chat-GGUF"
+    "https://huggingface.co/second-state/Yi-34Bx2-MoE-60B-GGUF"
+    "https://huggingface.co/second-state/Deepseek-LLM-7B-Chat-GGUF"
+    "https://huggingface.co/second-state/Deepseek-Coder-6.7B-Instruct-GGUF"
     "https://huggingface.co/second-state/Mistral-7B-Instruct-v0.2-GGUF"
     "https://huggingface.co/second-state/dolphin-2.6-mistral-7B-GGUF"
     "https://huggingface.co/second-state/Orca-2-13B-GGUF"
@@ -393,7 +398,7 @@ fi
 
 printf "[+] Running mode: \n\n"
 
-running_modes=("API Server" "CLI ChatBot")
+running_modes=("API Server with Chatbot web app" "CLI Chat")
 
 for i in "${!running_modes[@]}"; do
     printf "    %2d) %s\n" "$((i+1))" "${running_modes[$i]}"
@@ -568,7 +573,7 @@ fi
 
 # Ask user if they need to set "ctx_size"
 while [[ ! $default_ctx_size =~ ^[yYnN]$ ]]; do
-    read -p "[+] Use default context size (512)? (y/n): " default_ctx_size
+    read -p "[+] Use default size of the prompt context (512)? (y/n): " default_ctx_size
 done
 
 # If user answered yes, ask them to input a string
