@@ -49,6 +49,7 @@ pub enum ChatPrompt {
     Baichuan2ChatPrompt,
     WizardCoderPrompt,
     ZephyrChatPrompt,
+    StableLMZephyrChatPrompt,
     NeuralChatPrompt,
     DeepseekChatPrompt,
     DeepseekCoderPrompt,
