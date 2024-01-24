@@ -193,6 +193,9 @@ pub(crate) async fn chat_completions_handler(
             PromptTemplateType::Zephyr => {
                 ChatPrompt::ZephyrChatPrompt(chat_prompts::chat::zephyr::ZephyrChatPrompt::default())
             }
+            PromptTemplateType::StableLMZephyr => ChatPrompt::StableLMZephyrChatPrompt(
+                chat_prompts::chat::zephyr::StableLMZephyrChatPrompt::default(),
+            ),
             PromptTemplateType::IntelNeural => {
                 ChatPrompt::NeuralChatPrompt(chat_prompts::chat::intel::NeuralChatPrompt::default())
             }
