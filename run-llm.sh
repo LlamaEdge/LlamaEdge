@@ -141,6 +141,7 @@ prompt_types=(
     "deepseek-coder"
     "solar-instruct"
     "belle-llama-2-chat"
+    "human-assistant"
 )
 
 printf "\n"
