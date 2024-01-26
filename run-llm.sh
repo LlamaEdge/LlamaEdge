@@ -386,9 +386,17 @@ else
         printf "    %2d) %s\n" $is "$r"
         is=$((is+1))
     done
-
     printf "\n"
-    read -p "[+] Select prompt type: " prompt_type_index
+
+    prompt_type_index=-1
+    while ((prompt_type_index < 0 || prompt_type_index >= ${#prompt_types[@]})); do
+        read -p "[+] Select prompt type: " prompt_type_index
+        # Check if the input is a number
+        if ! [[ "$prompt_type_index" =~ ^[0-9]+$ ]]; then
+            echo "Invalid input. Please enter a number."
+            prompt_type_index=-1
+        fi
+    done
     prompt_type="${prompt_types[$prompt_type_index]}"
 
     # Ask user if they need to set "reverse prompt"
