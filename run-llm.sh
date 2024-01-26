@@ -85,7 +85,13 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# available weights types
+wtypes=("Q2_K" "Q3_K_L" "Q3_K_M" "Q3_K_S" "Q4_0" "Q4_K_M" "Q4_K_S" "Q5_0" "Q5_K_M" "Q5_K_S" "Q6_K" "Q8_0")
+
 wfiles=()
+for wt in "${wtypes[@]}"; do
+    wfiles+=("")
+done
 
 ss_urls=(
     "https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolve/main/Llama-2-7b-chat-hf-Q5_K_M.gguf"
