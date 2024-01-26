@@ -105,8 +105,8 @@ fn main() -> Result<(), String> {
                     "mistral-instruct",
                     "mistrallite",
                     "openchat",
-                    "belle-llama-2-chat",
-                    "vicuna-chat",
+                    "human-assistant",
+                    "vicuna-1.0-chat",
                     "vicuna-1.1-chat",
                     "chatml",
                     "baichuan-2",
@@ -556,8 +556,8 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         PromptTemplateType::CodeLlama => ChatPrompt::CodeLlamaInstructPrompt(
             chat_prompts::chat::llama::CodeLlamaInstructPrompt::default(),
         ),
-        PromptTemplateType::BelleLlama2Chat => ChatPrompt::BelleLlama2ChatPrompt(
-            chat_prompts::chat::belle::BelleLlama2ChatPrompt::default(),
+        PromptTemplateType::HumanAssistant => ChatPrompt::HumanAssistantChatPrompt(
+            chat_prompts::chat::belle::HumanAssistantChatPrompt::default(),
         ),
         PromptTemplateType::VicunaChat => {
             ChatPrompt::VicunaChatPrompt(chat_prompts::chat::vicuna::VicunaChatPrompt::default())
@@ -669,7 +669,7 @@ fn _post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> St
         } else {
             output.as_ref().trim().to_owned()
         }
-    } else if template_ty == PromptTemplateType::BelleLlama2Chat {
+    } else if template_ty == PromptTemplateType::HumanAssistant {
         if output.as_ref().contains("Human:") {
             output.as_ref().trim_end_matches("Human:").trim().to_owned()
         } else {
