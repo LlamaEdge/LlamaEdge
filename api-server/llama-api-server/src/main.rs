@@ -127,7 +127,7 @@ async fn main() -> Result<(), ServerError> {
                     "mistrallite",
                     "openchat",
                     "human-assistant",
-                    "vicuna-chat",
+                    "vicuna-1.0-chat",
                     "vicuna-1.1-chat",
                     "chatml",
                     "baichuan-2",
