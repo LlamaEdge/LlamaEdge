@@ -1,6 +1,10 @@
 use crate::error;
 use chat_prompts::PromptTemplateType;
-use endpoints::{chat::ChatCompletionRequest, completions::CompletionRequest};
+use endpoints::{
+    chat::ChatCompletionRequest,
+    completions::CompletionRequest,
+    embeddings::{EmbeddingObject, EmbeddingRequest},
+};
 use futures_util::TryStreamExt;
 use hyper::{body::to_bytes, Body, Request, Response};
 
@@ -33,9 +37,42 @@ pub(crate) async fn models_handler() -> Result<Response<Body>, hyper::Error> {
     }
 }
 
-pub(crate) async fn _embeddings_handler() -> Result<Response<Body>, hyper::Error> {
-    println!("llama_embeddings_handler not implemented");
-    error::not_implemented()
+pub(crate) async fn embeddings_handler(
+    mut req: Request<Body>,
+) -> Result<Response<Body>, hyper::Error> {
+    // parse request
+    let body_bytes = to_bytes(req.body_mut()).await?;
+    let embedding_request: EmbeddingRequest = match serde_json::from_slice(&body_bytes) {
+        Ok(embedding_request) => embedding_request,
+        Err(e) => {
+            return error::bad_request(format!(
+                "Fail to parse embedding request: {msg}",
+                msg = e.to_string()
+            ));
+        }
+    };
+
+    // ! debug
+    println!("embedding_request: {:?}", embedding_request);
+
+    let fake_embedding_object = EmbeddingObject {
+        index: 0,
+        object: String::from("embedding"),
+        embedding: vec![0.0],
+    };
+
+    // return response
+    let result = Response::builder()
+        .header("Access-Control-Allow-Origin", "*")
+        .header("Access-Control-Allow-Methods", "*")
+        .header("Access-Control-Allow-Headers", "*")
+        .body(Body::from(
+            serde_json::to_string(&fake_embedding_object).unwrap(),
+        ));
+    match result {
+        Ok(response) => Ok(response),
+        Err(e) => error::internal_server_error(e.to_string()),
+    }
 }
 
 pub(crate) async fn completions_handler(

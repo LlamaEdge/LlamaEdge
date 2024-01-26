@@ -14,8 +14,8 @@ pub(crate) async fn handle_llama_request(
             ggml::chat_completions_handler(req, template_ty, log_prompts).await
         }
         "/v1/completions" => ggml::completions_handler(req).await,
-        // "/v1/embeddings" => ggml::_embeddings_handler().await,
         "/v1/models" => ggml::models_handler().await,
+        "/v1/embeddings" => ggml::embeddings_handler(req).await,
         _ => error::invalid_endpoint(req.uri().path()),
     }
 }
