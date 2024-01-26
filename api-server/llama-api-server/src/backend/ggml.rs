@@ -4,7 +4,7 @@ use crate::{
 };
 use chat_prompts::{
     chat::{
-        belle::BelleLlama2ChatPrompt,
+        belle::HumanAssistantChatPrompt,
         llama::{CodeLlamaInstructPrompt, Llama2ChatPrompt},
         mistral::{MistralInstructPrompt, MistralLitePrompt},
         openchat::OpenChatPrompt,
@@ -172,8 +172,8 @@ pub(crate) async fn chat_completions_handler(
             PromptTemplateType::CodeLlama => {
                 ChatPrompt::CodeLlamaInstructPrompt(CodeLlamaInstructPrompt::default())
             }
-            PromptTemplateType::BelleLlama2Chat => {
-                ChatPrompt::BelleLlama2ChatPrompt(BelleLlama2ChatPrompt::default())
+            PromptTemplateType::HumanAssistant => {
+                ChatPrompt::HumanAssistantChatPrompt(HumanAssistantChatPrompt::default())
             }
             PromptTemplateType::VicunaChat => {
                 ChatPrompt::VicunaChatPrompt(chat_prompts::chat::vicuna::VicunaChatPrompt::default())
@@ -837,7 +837,7 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
         } else {
             output.as_ref().trim().to_owned()
         }
-    } else if template_ty == PromptTemplateType::BelleLlama2Chat {
+    } else if template_ty == PromptTemplateType::HumanAssistant {
         if output.as_ref().contains("Human:") {
             output.as_ref().trim_end_matches("Human:").trim().to_owned()
         } else {
