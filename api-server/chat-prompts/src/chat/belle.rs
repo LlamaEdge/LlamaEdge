@@ -4,8 +4,8 @@ use endpoints::chat::{ChatCompletionRequestMessage, ChatCompletionRole};
 
 /// Generate prompts for the `BELLE-Llama2-13B-chat` model.
 #[derive(Debug, Default, Clone)]
-pub struct BelleLlama2ChatPrompt;
-impl BelleLlama2ChatPrompt {
+pub struct HumanAssistantChatPrompt;
+impl HumanAssistantChatPrompt {
     /// Create a user prompt from a chat completion request message.
     fn append_user_message(
         &self,
@@ -38,7 +38,7 @@ impl BelleLlama2ChatPrompt {
         )
     }
 }
-impl BuildChatPrompt for BelleLlama2ChatPrompt {
+impl BuildChatPrompt for HumanAssistantChatPrompt {
     fn build(&self, messages: &mut Vec<ChatCompletionRequestMessage>) -> Result<String> {
         if messages.is_empty() {
             return Ok(String::new());
