@@ -283,11 +283,9 @@ else
     # Convert model_files into an array
     model_files_array=($model_files)
 
-    # find GGUF file sizes in the source
-    sizes=()
     while IFS= read -r line; do
         sizes+=("$line")
-    done < <(curl -s "$model_tree" | awk -F'[<>]' '/GB|MB/{print $3}')
+    done < <(curl -s "$model_tree" | awk -F 'download=true">' '/download=true">[0-9\.]+ (GB|MB)/ {print $2}' | awk '{print $1, $2}')
 
     # list all files in the provided git repo
     length=${#model_files_array[@]}
