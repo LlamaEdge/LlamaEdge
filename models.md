@@ -1303,20 +1303,20 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/second-state/Mixtral-8x7B-Instruct-v0.1-GGUF/resolve/main/mixtral-8x7b-instruct-v0.1.Q4_0.gguf
+curl -LO https://huggingface.co/second-state/Mixtral-8x7B-Instruct-v0.1-GGUF/resolve/main/Mixtral-8x7B-Instruct-v0.1-Q5_K_M.gguf
 ```
 
-  Note that check the sha256 of `mixtral-8x7b-instruct-v0.1.Q4_0.gguf` after downloading.
+Note that check the sha256 of `Mixtral-8x7B-Instruct-v0.1-Q5_K_M.gguf` after downloading.
 
-  ```text
-  0c57465507f21bed4364fca37efd310bee92e25a4ce4f5678ef9b44e95830e4e
-  ```
+```text
+ffc48e5363b830341d157b7501374232badbf98c18384aecb93ff5adbfe0bdd7
+```
 
 <b>Chat with the model on the CLI</b>
 
 ```bash
 curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:mixtral-8x7b-instruct-v0.1.Q4_0.gguf llama-chat.wasm -p mistral-instruct
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Mixtral-8x7B-Instruct-v0.1-Q5_K_M.gguf llama-chat.wasm -p mistral-instruct
 ```
 
 <b>Chat with the model via a web UI</b>
@@ -1327,7 +1327,7 @@ curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/cha
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:mixtral-8x7b-instruct-v0.1.Q4_0.gguf llama-api-server.wasm -p mistral-instruct
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Mixtral-8x7B-Instruct-v0.1-Q5_K_M.gguf llama-api-server.wasm -p mistral-instruct
 ```
 
 Open your browser to http://localhost:8080 to start the chat!
