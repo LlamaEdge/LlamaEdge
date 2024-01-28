@@ -138,3 +138,11 @@ Assistant:
 ```text
 Human: {input_1}\n\nAssistant:{output_1}Human: {input_2}\n\nAssistant:
 ```
+
+- `stablelm-zephyr`
+
+```text
+<|user|>
+{prompt}<|endoftext|>
+<|assistant|>
+```
