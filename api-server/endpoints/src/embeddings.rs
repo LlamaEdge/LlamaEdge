@@ -4,16 +4,16 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmbeddingRequest {
     /// ID of the model to use.
-    model: String,
+    pub model: String,
     /// Input text to embed. Each input must not exceed the max input tokens for the model (8191 tokens for text-embedding-ada-002) and cannot be an empty string.
-    input: Vec<String>,
+    pub input: Vec<String>,
     /// The format to return the embeddings in. Can be either float or base64.
     /// Defaults to float.
     #[serde(skip_serializing_if = "Option::is_none")]
-    encoding_format: Option<String>,
+    pub encoding_format: Option<String>,
     /// A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse.
     #[serde(skip_serializing_if = "Option::is_none")]
-    user: Option<String>,
+    pub user: Option<String>,
 }
 
 /// Represents an embedding vector returned by embedding endpoint.
