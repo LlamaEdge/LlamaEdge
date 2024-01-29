@@ -58,7 +58,18 @@ pub(crate) async fn embeddings_handler(
     let fake_embedding_object = EmbeddingObject {
         index: 0,
         object: String::from("embedding"),
-        embedding: vec![0.0],
+        embedding: vec![0.1, 0.2, 0.3, 0.4, 0.5],
+    };
+
+    let fake_embeddings_response = EmbeddingsResponse {
+        object: Some(String::from("list")),
+        data: Some(vec![fake_embedding_object]),
+        model: String::from("fake_model"),
+        usage: Usage {
+            prompt_tokens: 0,
+            completion_tokens: 0,
+            total_tokens: 0,
+        },
     };
 
     // return response
@@ -67,7 +78,7 @@ pub(crate) async fn embeddings_handler(
         .header("Access-Control-Allow-Methods", "*")
         .header("Access-Control-Allow-Headers", "*")
         .body(Body::from(
-            serde_json::to_string(&fake_embedding_object).unwrap(),
+            serde_json::to_string(&fake_embeddings_response).unwrap(),
         ));
     match result {
         Ok(response) => Ok(response),
