@@ -1,3 +1,4 @@
+use crate::common::Usage;
 use serde::{Deserialize, Serialize};
 
 /// Creates an embedding vector representing the input text.
@@ -14,6 +15,14 @@ pub struct EmbeddingRequest {
     /// A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct EmbeddingsResponse {
+    pub object: Option<String>,
+    pub data: Option<Vec<EmbeddingObject>>,
+    pub model: String,
+    pub usage: Usage,
 }
 
 /// Represents an embedding vector returned by embedding endpoint.
