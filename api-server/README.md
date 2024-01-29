@@ -225,9 +225,13 @@ The `-h` or `--help` option can list the available options of the `llama-api-ser
     -b, --batch-size <BATCH_SIZE>
             Batch size for prompt processing [default: 512]
         --temp <TEMP>
-            Temperature for sampling [default: 0.8]
+          Temperature for sampling [default: 0.8]
+        --top-p <TOP_P>
+          An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. 1.0 = disabled [default: 0.9]
         --repeat-penalty <REPEAT_PENALTY>
-            Penalize repeat sequence of tokens [default: 1.1]
+          Penalize repeat sequence of tokens [default: 1.1]
+        --presence-penalty <PRESENCE_PENALTY>
+          Repeat alpha presence penalty. 0.0 = disabled [default: 0.0]
     -r, --reverse-prompt <REVERSE_PROMPT>
             Halt generation at PROMPT, return control.
     -p, --prompt-template <TEMPLATE>
