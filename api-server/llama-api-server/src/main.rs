@@ -95,18 +95,34 @@ async fn main() -> Result<(), ServerError> {
         .arg(
             Arg::new("temp")
                 .long("temp")
-                .value_parser(clap::value_parser!(f32))
+                .value_parser(clap::value_parser!(f64))
                 .value_name("TEMP")
                 .help("Temperature for sampling")
                 .default_value("0.8"),
         )
         .arg(
+            Arg::new("top_p")
+                .long("top-p")
+                .value_parser(clap::value_parser!(f64))
+                .value_name("TOP_P")
+                .help("An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. 1.0 = disabled")
+                .default_value("0.9"),
+        )
+        .arg(
             Arg::new("repeat_penalty")
                 .long("repeat-penalty")
-                .value_parser(clap::value_parser!(f32))
+                .value_parser(clap::value_parser!(f64))
                 .value_name("REPEAT_PENALTY")
                 .help("Penalize repeat sequence of tokens")
                 .default_value("1.1"),
+        )
+        .arg(
+            Arg::new("presence_penalty")
+                .long("presence-penalty")
+                .value_parser(clap::value_parser!(f64))
+                .value_name("PRESENCE_PENALTY")
+                .help("Repeat alpha presence penalty. 0.0 = disabled")
+                .default_value("0.0"),
         )
         .arg(
             Arg::new("reverse_prompt")
@@ -295,7 +311,14 @@ async fn main() -> Result<(), ServerError> {
         }
     };
     println!("[INFO] Temperature for sampling: {temp}", temp = temp);
-    options.temp = *temp;
+    options.temperature = *temp;
+
+    // top-p
+    let top_p = matches.get_one::<f64>("top_p").unwrap();
+    println!(
+        "[INFO] Top-p sampling (1.0 = disabled): {top_p}",
+        top_p = top_p
+    );
 
     // repeat penalty
     let repeat_penalty = match matches.get_one::<f32>("repeat_penalty") {
@@ -311,6 +334,13 @@ async fn main() -> Result<(), ServerError> {
         penalty = repeat_penalty
     );
     options.repeat_penalty = *repeat_penalty;
+
+    // presence penalty
+    let presence_penalty = matches.get_one::<f64>("presence_penalty").unwrap();
+    println!(
+        "[INFO] Presence penalty (0.0 = disabled): {penalty}",
+        penalty = presence_penalty
+    );
 
     // reverse_prompt
     if let Some(reverse_prompt) = matches.get_one::<String>("reverse_prompt") {
@@ -567,9 +597,13 @@ struct Metadata {
     #[serde(rename = "batch-size")]
     batch_size: u64,
     #[serde(rename = "temp")]
-    temp: f32,
+    temperature: f64,
+    #[serde(rename = "top-p")]
+    top_p: f64,
     #[serde(rename = "repeat-penalty")]
-    repeat_penalty: f32,
+    repeat_penalty: f64,
+    #[serde(rename = "presence-penalty")]
+    presence_penalty: f64,
     #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
     reverse_prompt: Option<String>,
 }
