@@ -105,17 +105,19 @@ fn main() -> Result<(), String> {
                     "mistral-instruct",
                     "mistrallite",
                     "openchat",
-                    "belle-llama-2-chat",
-                    "vicuna-chat",
+                    "human-assistant",
+                    "vicuna-1.0-chat",
                     "vicuna-1.1-chat",
                     "chatml",
                     "baichuan-2",
                     "wizard-coder",
                     "zephyr",
+                    "stablelm-zephyr",
                     "intel-neural",
                     "deepseek-chat",
                     "deepseek-coder",
                     "solar-instruct",
+                    "phi-2-instruct",
                 ])
                 .value_name("TEMPLATE")
                 .help("Prompt template.")
@@ -317,6 +319,19 @@ fn main() -> Result<(), String> {
             ))
         }
     };
+
+    // get version info
+    let max_output_size = *MAX_BUFFER_SIZE.get().unwrap();
+    let mut output_buffer = vec![0u8; max_output_size];
+    let mut output_size = context.get_output(1, &mut output_buffer).unwrap();
+    output_size = std::cmp::min(max_output_size, output_size);
+    let metadata: serde_json::Value =
+        serde_json::from_slice(&output_buffer[..output_size]).unwrap();
+    println!(
+        "[INFO] Plugin version: b{} (commit {})",
+        metadata["llama_build_number"].as_u64().unwrap(),
+        metadata["llama_commit"].as_str().unwrap(),
+    );
 
     if log_stat || log_all {
         print_log_end_separator(Some("*"), None);
@@ -554,8 +569,8 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         PromptTemplateType::CodeLlama => ChatPrompt::CodeLlamaInstructPrompt(
             chat_prompts::chat::llama::CodeLlamaInstructPrompt::default(),
         ),
-        PromptTemplateType::BelleLlama2Chat => ChatPrompt::BelleLlama2ChatPrompt(
-            chat_prompts::chat::belle::BelleLlama2ChatPrompt::default(),
+        PromptTemplateType::HumanAssistant => ChatPrompt::HumanAssistantChatPrompt(
+            chat_prompts::chat::belle::HumanAssistantChatPrompt::default(),
         ),
         PromptTemplateType::VicunaChat => {
             ChatPrompt::VicunaChatPrompt(chat_prompts::chat::vicuna::VicunaChatPrompt::default())
@@ -575,6 +590,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         PromptTemplateType::Zephyr => {
             ChatPrompt::ZephyrChatPrompt(chat_prompts::chat::zephyr::ZephyrChatPrompt::default())
         }
+        PromptTemplateType::StableLMZephyr => ChatPrompt::StableLMZephyrChatPrompt(
+            chat_prompts::chat::zephyr::StableLMZephyrChatPrompt::default(),
+        ),
         PromptTemplateType::IntelNeural => {
             ChatPrompt::NeuralChatPrompt(chat_prompts::chat::intel::NeuralChatPrompt::default())
         }
@@ -587,6 +605,12 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         PromptTemplateType::SolarInstruct => ChatPrompt::SolarInstructPrompt(
             chat_prompts::chat::solar::SolarInstructPrompt::default(),
         ),
+        PromptTemplateType::Phi2Chat => {
+            ChatPrompt::Phi2ChatPrompt(chat_prompts::chat::phi::Phi2ChatPrompt::default())
+        }
+        PromptTemplateType::Phi2Instruct => {
+            ChatPrompt::Phi2InstructPrompt(chat_prompts::chat::phi::Phi2InstructPrompt::default())
+        }
     }
 }
 
@@ -658,7 +682,7 @@ fn _post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> St
         } else {
             output.as_ref().trim().to_owned()
         }
-    } else if template_ty == PromptTemplateType::BelleLlama2Chat {
+    } else if template_ty == PromptTemplateType::HumanAssistant {
         if output.as_ref().contains("Human:") {
             output.as_ref().trim_end_matches("Human:").trim().to_owned()
         } else {

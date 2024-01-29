@@ -6,6 +6,7 @@ pub mod intel;
 pub mod llama;
 pub mod mistral;
 pub mod openchat;
+pub mod phi;
 pub mod solar;
 pub mod vicuna;
 pub mod wizard;
@@ -21,6 +22,7 @@ use intel::*;
 use llama::*;
 use mistral::*;
 use openchat::*;
+use phi::*;
 use solar::*;
 use vicuna::*;
 use wizard::*;
@@ -38,7 +40,7 @@ pub enum ChatPrompt {
     MistralLitePrompt,
     OpenChatPrompt,
     CodeLlamaInstructPrompt,
-    BelleLlama2ChatPrompt,
+    HumanAssistantChatPrompt,
     /// Vicuna 1.0
     VicunaChatPrompt,
     /// Vicuna 1.1
@@ -47,8 +49,11 @@ pub enum ChatPrompt {
     Baichuan2ChatPrompt,
     WizardCoderPrompt,
     ZephyrChatPrompt,
+    StableLMZephyrChatPrompt,
     NeuralChatPrompt,
     DeepseekChatPrompt,
     DeepseekCoderPrompt,
     SolarInstructPrompt,
+    Phi2ChatPrompt,
+    Phi2InstructPrompt,
 }

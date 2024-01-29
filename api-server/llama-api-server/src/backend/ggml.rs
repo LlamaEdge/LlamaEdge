@@ -4,7 +4,7 @@ use crate::{
 };
 use chat_prompts::{
     chat::{
-        belle::BelleLlama2ChatPrompt,
+        belle::HumanAssistantChatPrompt,
         llama::{CodeLlamaInstructPrompt, Llama2ChatPrompt},
         mistral::{MistralInstructPrompt, MistralLitePrompt},
         openchat::OpenChatPrompt,
@@ -172,8 +172,8 @@ pub(crate) async fn chat_completions_handler(
             PromptTemplateType::CodeLlama => {
                 ChatPrompt::CodeLlamaInstructPrompt(CodeLlamaInstructPrompt::default())
             }
-            PromptTemplateType::BelleLlama2Chat => {
-                ChatPrompt::BelleLlama2ChatPrompt(BelleLlama2ChatPrompt::default())
+            PromptTemplateType::HumanAssistant => {
+                ChatPrompt::HumanAssistantChatPrompt(HumanAssistantChatPrompt::default())
             }
             PromptTemplateType::VicunaChat => {
                 ChatPrompt::VicunaChatPrompt(chat_prompts::chat::vicuna::VicunaChatPrompt::default())
@@ -193,6 +193,9 @@ pub(crate) async fn chat_completions_handler(
             PromptTemplateType::Zephyr => {
                 ChatPrompt::ZephyrChatPrompt(chat_prompts::chat::zephyr::ZephyrChatPrompt::default())
             }
+            PromptTemplateType::StableLMZephyr => ChatPrompt::StableLMZephyrChatPrompt(
+                chat_prompts::chat::zephyr::StableLMZephyrChatPrompt::default(),
+            ),
             PromptTemplateType::IntelNeural => {
                 ChatPrompt::NeuralChatPrompt(chat_prompts::chat::intel::NeuralChatPrompt::default())
             }
@@ -204,6 +207,12 @@ pub(crate) async fn chat_completions_handler(
             ),
             PromptTemplateType::SolarInstruct => ChatPrompt::SolarInstructPrompt(
                 chat_prompts::chat::solar::SolarInstructPrompt::default(),
+            ),
+            PromptTemplateType::Phi2Chat => {
+                ChatPrompt::Phi2ChatPrompt(chat_prompts::chat::phi::Phi2ChatPrompt::default())
+            }
+            PromptTemplateType::Phi2Instruct => ChatPrompt::Phi2InstructPrompt(
+                chat_prompts::chat::phi::Phi2InstructPrompt::default(),
             ),
         }
     }
@@ -443,8 +452,17 @@ pub(crate) async fn chat_completions_handler(
                         }
                     };
                     output_size = std::cmp::min(*MAX_BUFFER_SIZE.get().unwrap(), output_size);
+
                     // convert inference result to string
-                    let output = std::str::from_utf8(&output_buffer[..output_size]).unwrap();
+                    let output = match std::str::from_utf8(&output_buffer[..output_size]) {
+                        Ok(output) => output,
+                        Err(e) => {
+                            return error::internal_server_error(format!(
+                                "Failed to decode the result bytes to a utf-8 string. {}",
+                                e.to_string()
+                            ));
+                        }
+                    };
 
                     // post-process
                     let message = post_process(&output, template_ty);
@@ -819,7 +837,7 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
         } else {
             output.as_ref().trim().to_owned()
         }
-    } else if template_ty == PromptTemplateType::BelleLlama2Chat {
+    } else if template_ty == PromptTemplateType::HumanAssistant {
         if output.as_ref().contains("Human:") {
             output.as_ref().trim_end_matches("Human:").trim().to_owned()
         } else {
@@ -846,8 +864,6 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
 fn build_prompt(
     template: &ChatPrompt,
     chat_request: &mut ChatCompletionRequest,
-    // graph: &mut Graph,
-    // max_prompt_tokens: u64,
 ) -> Result<(String, u64), String> {
     let mut graph = GRAPH.get().unwrap().lock().unwrap();
     let ctx_size = *CTX_SIZE.get().unwrap() as u64;

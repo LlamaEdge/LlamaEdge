@@ -7,6 +7,8 @@ pub type Result<T> = std::result::Result<T, PromptError>;
 pub enum PromptError {
     #[error("No messages to create prompt from.")]
     NoMessages,
+    #[error("No user message to create prompt from.")]
+    NoUserMessage,
     #[error("Unknown chat completion role: {0:?}")]
     UnknownRole(ChatCompletionRole),
     #[error("Unknown prompt template type: {0}")]

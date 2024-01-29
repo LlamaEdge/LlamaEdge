@@ -126,13 +126,14 @@ async fn main() -> Result<(), ServerError> {
                     "mistral-instruct",
                     "mistrallite",
                     "openchat",
-                    "belle-llama-2-chat",
-                    "vicuna-chat",
+                    "human-assistant",
+                    "vicuna-1.0-chat",
                     "vicuna-1.1-chat",
                     "chatml",
                     "baichuan-2",
                     "wizard-coder",
                     "zephyr",
+                    "stablelm-zephyr",
                     "intel-neural",
                     "deepseek-chat",
                     "deepseek-coder",
@@ -310,6 +311,23 @@ async fn main() -> Result<(), ServerError> {
         return Err(ServerError::InternalServerError(
             "The GRAPH has already been initialized".to_owned(),
         ));
+    }
+
+    {
+        let graph = GRAPH.get().unwrap().lock().unwrap();
+
+        // get version info
+        let max_output_size = *MAX_BUFFER_SIZE.get().unwrap();
+        let mut output_buffer = vec![0u8; max_output_size];
+        let mut output_size = graph.get_output(1, &mut output_buffer).unwrap();
+        output_size = std::cmp::min(max_output_size, output_size);
+        let metadata: serde_json::Value =
+            serde_json::from_slice(&output_buffer[..output_size]).unwrap();
+        println!(
+            "[INFO] Plugin version: b{} (commit {})",
+            metadata["llama_build_number"].as_u64().unwrap(),
+            metadata["llama_commit"].as_str().unwrap(),
+        );
     }
 
     if log_stat || log_all {

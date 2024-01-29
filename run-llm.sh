@@ -1,438 +1,642 @@
 #!/bin/bash
+#
+# Helper script for deploying LlamaEdge API Server with a single Bash command
+#
+# - Works on Linux and macOS
+# - Supports: CPU, CUDA, Metal, OpenCL
+# - Can run GGUF models from https://huggingface.co/second-state/
+#
 
-retry_download() {
-    for i in {1..3}; do
-        if [ $i -gt 1 ]; then
-            echo "Retrying..."
-        fi
+set -e
 
-        curl -LO $1 -#
-        local r=$?
-        if [ $r -eq 0 ]; then
-            break
-        fi
-    done
+# required utils: curl, git, make
+if ! command -v curl &> /dev/null; then
+    printf "[-] curl not found\n"
+    exit 1
+fi
+if ! command -v git &> /dev/null; then
+    printf "[-] git not found\n"
+    exit 1
+fi
+if ! command -v make &> /dev/null; then
+    printf "[-] make not found\n"
+    exit 1
+fi
+if ! command -v jq &> /dev/null; then
+    printf "[-] jq not found\n"
+    printf "    - For macOS, please install it with 'brew install jq'\n"
+    printf "    - For Debian/Ubuntu, please install it with 'sudo apt install jq'\n"
+    printf "    - For Fedora, please install it with 'sudo dnf install jq'\n"
+    printf "    - For CentOS/RHEL, please install it with 'sudo yum install jq'\n"
+    exit 1
+fi
 
-    # Can only return the exit code
-    # https://stackoverflow.com/questions/17336915/return-value-in-a-bash-function
-    return $r
+# parse arguments
+port=8080
+repo=""
+wtype=""
+backend="cpu"
+ctx_size=512
+n_predict=1024
+n_gpu_layers=100
+
+# if macOS, use metal backend by default
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    backend="metal"
+elif command -v nvcc &> /dev/null; then
+    backend="cuda"
+fi
+
+gpu_id=0
+n_parallel=8
+n_kv=4096
+verbose=0
+log_prompts=0
+log_stat=0
+# 0: server mode
+# 1: local mode
+mode=0
+
+function print_usage {
+    printf "Usage:\n"
+    printf "  ./run-llm.sh [--port]\n\n"
+    printf "  --port:         port number, default is 8080\n"
+    printf "Example:\n\n"
+    printf '  bash <(curl -sSfL 'https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/run-llm.sh')"\n\n'
 }
 
-check_os() {
-    printf "Checking the operating system (macOS and Linux supported) ...\n"
-
-    # Check if the current operating system is macOS or Linux
-    if [[ "$OSTYPE" != "linux-gnu"* && "$OSTYPE" != "darwin"* ]]; then
-        echo "The OS should be macOS or Linux"
-        exit 1
-    fi
-}
-
-prereq() {
-    printf "Checking prerequisites ...\n"
-
-    # Check if git and curl are installed, if not, install them
-    for cmd in git curl
-    do
-        if ! command -v $cmd &> /dev/null
-        then
-            printf "'$cmd' is required for installation.\n"
+while [[ $# -gt 0 ]]; do
+    key="$1"
+    case $key in
+        --port)
+            port="$2"
+            shift
+            shift
+            ;;
+        --help)
+            print_usage
+            exit 0
+            ;;
+        *)
+            echo "Unknown argument: $key"
+            print_usage
             exit 1
-            # if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            #     sudo apt-get install $cmd
-            # elif [[ "$OSTYPE" == "darwin"* ]]; then
-            #     brew install $cmd
-            # fi
-        fi
-    done
-}
+            ;;
+    esac
+done
 
-install_wasmedge() {
-    printf "Installing WasmEdge ...\n\n"
+# available weights types
+wtypes=("Q2_K" "Q3_K_L" "Q3_K_M" "Q3_K_S" "Q4_0" "Q4_K_M" "Q4_K_S" "Q5_0" "Q5_K_M" "Q5_K_S" "Q6_K" "Q8_0")
 
-    # Check if WasmEdge has been installed
-    reinstall_wasmedge=1
-    if command -v wasmedge &> /dev/null
-    then
-        printf "'WasmEdge' has been installed, what do you want:\n\n"
-        printf "      1) Reinstall WasmEdge for me\n"
-        printf "      2) Keep my own WasmEdge\n"
+wfiles=()
+for wt in "${wtypes[@]}"; do
+    wfiles+=("")
+done
 
-        printf "\n      Please enter a number from the list above:"
-        read reinstall_wasmedge
-    fi
+ss_urls=(
+    "https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolve/main/Llama-2-7b-chat-hf-Q5_K_M.gguf"
+    "https://huggingface.co/second-state/stablelm-2-zephyr-1.6b-GGUF/resolve/main/stablelm-2-zephyr-1_6b-Q5_K_M.gguf"
+    "https://huggingface.co/second-state/OpenChat-3.5-0106-GGUF/resolve/main/openchat-3.5-0106-Q5_K_M.gguf"
+    "https://huggingface.co/second-state/Yi-34B-Chat-GGUF/resolve/main/Yi-34B-Chat-Q5_K_M.gguf"
+    "https://huggingface.co/second-state/Yi-34Bx2-MoE-60B-GGUF/resolve/main/Yi-34Bx2-MoE-60B-Q5_K_M.gguf"
+    "https://huggingface.co/second-state/Deepseek-LLM-7B-Chat-GGUF/resolve/main/deepseek-llm-7b-chat-Q5_K_M.gguf"
+    "https://huggingface.co/second-state/Deepseek-Coder-6.7B-Instruct-GGUF/resolve/main/deepseek-coder-6.7b-instruct-Q5_K_M.gguf"
+    "https://huggingface.co/second-state/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/Mistral-7B-Instruct-v0.2-Q5_K_M.gguf"
+    "https://huggingface.co/second-state/dolphin-2.6-mistral-7B-GGUF/resolve/main/dolphin-2.6-mistral-7b-Q5_K_M.gguf"
+    "https://huggingface.co/second-state/Orca-2-13B-GGUF/resolve/main/Orca-2-13b-Q5_K_M.gguf"
+    "https://huggingface.co/second-state/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/TinyLlama-1.1B-Chat-v1.0-Q5_K_M.gguf"
+    "https://huggingface.co/second-state/SOLAR-10.7B-Instruct-v1.0-GGUF/resolve/main/SOLAR-10.7B-Instruct-v1.0-Q5_K_M.gguf"
+)
 
-    while [[ "$reinstall_wasmedge" -ne 1 && "$reinstall_wasmedge" -ne 2 ]]; do
-        printf "      Invalid number. Please enter number 1 or 2\n"
-        read reinstall_wasmedge
-    done
+# sample models
+ss_models=(
+    "Llama-2-7B-Chat-GGUF"
+    "stablelm-2-zephyr-1.6b-GGUF"
+    "OpenChat-3.5-0106-GGUF"
+    "Yi-34B-Chat-GGUF"
+    "Yi-34Bx2-MoE-60B-GGUF"
+    "Deepseek-LLM-7B-Chat-GGUF"
+    "Deepseek-Coder-6.7B-Instruct-GGUF"
+    "Mistral-7B-Instruct-v0.2-GGUF"
+    "dolphin-2.6-mistral-7B-GGUF"
+    "Orca-2-13B-GGUF"
+    "TinyLlama-1.1B-Chat-v1.0-GGUF"
+    "SOLAR-10.7B-Instruct-v1.0-GGUF"
+)
 
+# prompt types
+prompt_types=(
+    "llama-2-chat"
+    "chatml"
+    "openchat"
+    "zephyr"
+    "codellama-instruct"
+    "mistral-instruct"
+    "mistrallite"
+    "vicuna-chat"
+    "vicuna-1.1-chat"
+    "wizard-coder"
+    "intel-neural"
+    "deepseek-chat"
+    "deepseek-coder"
+    "solar-instruct"
+    "belle-llama-2-chat"
+    "human-assistant"
+)
 
-    if [[ "$reinstall_wasmedge" == "1" ]]; then
-        # Run the command to install WasmEdge
+printf "\n"
+printf "[I] This is a helper script for deploying LlamaEdge API Server on this machine.\n\n"
+printf "    The following tasks will be done:\n"
+printf "    - Download GGUF model\n"
+printf "    - Install WasmEdge Runtime and the wasi-nn_ggml plugin\n"
+printf "    - Download LlamaEdge API Server\n"
+printf "\n"
+printf "    Upon the tasks done, an HTTP server will be started and it will serve the selected\n"
+printf "    model.\n"
+printf "\n"
+printf "    Please note:\n"
+printf "\n"
+printf "    - All downloaded files will be stored in the current folder\n"
+printf "    - The server will be listening on all network interfaces\n"
+printf "    - The server will run with default settings which are not always optimal\n"
+printf "    - Do not judge the quality of a model based on the results from this script\n"
+printf "    - This script is only for demonstration purposes\n"
+printf "\n"
+printf "    During the whole process, you can press Ctrl-C to abort the current process at any time.\n"
+printf "\n"
+printf "    Press Enter to continue ...\n\n"
+
+read
+
+# * install WasmEdge + wasi-nn_ggml plugin
+
+printf "[+] Installing WasmEdge ...\n\n"
+
+# Check if WasmEdge has been installed
+reinstall_wasmedge=1
+if command -v wasmedge &> /dev/null
+then
+    printf "    1) Install the latest version of WasmEdge and wasi-nn_ggml plugin (recommended)\n"
+    printf "    2) Keep the current version\n\n"
+    read -p "[+] Select a number from the list above: " reinstall_wasmedge
+fi
+
+while [[ "$reinstall_wasmedge" -ne 1 && "$reinstall_wasmedge" -ne 2 ]]; do
+    printf "    Invalid number. Please enter number 1 or 2\n"
+    read reinstall_wasmedge
+done
+
+if [[ "$reinstall_wasmedge" == "1" ]]; then
+    # uninstall WasmEdge
+    if bash <(curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/uninstall.sh) -q; then
+
+        # install WasmEdge + wasi-nn_ggml plugin
         if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugins wasi_nn-ggml; then
             source $HOME/.wasmedge/env
             wasmedge_path=$(which wasmedge)
-            printf "\n      The WasmEdge Runtime is installed in %s.\n\n      * To uninstall it, use the command 'bash <(curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/uninstall.sh) -q'\n" "$wasmedge_path"
+            printf "\n    The WasmEdge Runtime is installed in %s.\n\n    * To uninstall it, use the command 'bash <(curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/uninstall.sh) -q'\n\n" "$wasmedge_path"
         else
             echo "Failed to install WasmEdge"
             exit 1
         fi
-    elif [[ "$reinstall_wasmedge" == "2" ]]; then
-        printf "      * You need to download wasm_nn-ggml plugin from 'https://github.com/WasmEdge/WasmEdge/releases' and put it under plugins directory."
-    fi
-}
 
-download_model() {
-    printf "Downloading the gguf model ...\n\n"
-
-    models='
-Llama-2-7B-Chat::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/llama-2-7b-chat.Q5_K_M.gguf
-Llama-2-13B-Chat::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/llama-2-13b-chat.Q5_K_M.gguf
-BELLE-Llama2-13B-Chat::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/BELLE-Llama2-13B-Chat-0.4M-ggml-model-q4_0.gguf
-MistralLite-7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/mistrallite.Q5_K_M.gguf
-Mistral-7B-Instruct-v0.1::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/mistral-7b-instruct-v0.1.Q5_K_M.gguf
-Mistral-7B-Instruct-v0.2::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/mistral-7b-instruct-v0.2.Q4_0.gguf
-OpenChat-3.5-0106::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/openchat-3.5-0106-Q5_K_M.gguf
-Wizard-Vicuna::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/wizard-vicuna-13b-ggml-model-q8_0.gguf
-CausalLM-14B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/causallm_14b.Q5_1.gguf
-TinyLlama-1.1B-Chat-v1.0::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/tinyllama-1.1b-chat-v1.0.Q5_K_M.gguf
-TinyLlama-1.1B-Chat-v0.3::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/tinyllama-1.1b-chat-v0.3.Q5_K_M.gguf
-Baichuan2-13B-Chat::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/Baichuan2-13B-Chat-ggml-model-q4_0.gguf
-OpenHermes-2.5-Mistral-7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/openhermes-2.5-mistral-7b.Q5_K_M.gguf
-Dolphin-2.0-Mistral-7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/dolphin-2.0-mistral-7b-ggml-model-q4_0.gguf
-Dolphin-2.1-Mistral-7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/dolphin-2.1-mistral-7b-ggml-model-q4_0.gguf
-Dolphin-2.2-Yi-34B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/dolphin-2.2-yi-34b-ggml-model-q4_0.gguf
-Dolphin-2.2-Mistral-7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/dolphin-2.2-mistral-7b-ggml-model-q4_0.gguf
-Dolphin-2.2.1-Mistral-7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/dolphin-2.2.1-mistral-7b-ggml-model-q4_0.gguf
-Samantha-1.2-Mistral-7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/samantha-1.2-mistral-7b-ggml-model-q4_0.gguf
-Samantha-1.11-CodeLlama-34B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/Samantha-1.11-CodeLlama-34b-ggml-model-q4_0.gguf
-Samantha-1.11-7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/Samantha-1.11-7b-ggml-model-q4_0.gguf
-WizardLM-1.0-Uncensored-CodeLlama-34B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/WizardLM-1.0-Uncensored-CodeLlama-34b-ggml-model-q4_0.gguf
-WizardLM-7B-V1.0-Uncensored::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/wizardlm-7b-v1.0-uncensored.Q5_K_M.gguf
-WizardLM-13B-V1.0-Uncensored::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/wizardlm-13b-v1.0-uncensored.Q5_K_M.gguf
-WizardCoder-Python-7B-V1.0::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/WizardCoder-Python-7B-V1.0-ggml-model-q4_0.gguf
-Zephyr-7B-Alpha::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/zephyr-7b-alpha.Q5_K_M.gguf
-Orca-2-13B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/Orca-2-13b-ggml-model-q4_0.gguf
-Neural-Chat-7B-v3-1::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/neural-chat-7b-v3-1-ggml-model-q4_0.gguf
-Starling-LM-7B-alpha::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/starling-lm-7b-alpha.Q5_K_M.gguf
-Calm2-7B-Chat::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/calm2-7b-chat.Q4_K_M.gguf
-Deepseek-Coder-6.7B::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/deepseek-coder-6.7b-instruct.Q5_K_M.gguf
-Deepseek-LLM-7B-Chat::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/deepseek-llm-7b-chat.Q5_K_M.gguf
-SOLAR-10.7B-Instruct-v1.0::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/solar-10.7b-instruct-v1.0.Q5_K_M.gguf
-Mixtral-8x7B-Instruct-v0.1::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/mixtral-8x7b-instruct-v0.1.Q4_0.gguf
-dolphin-2.6-phi-2::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/dolphin-2_6-phi-2.Q5_K_M.gguf
-ELYZA-japanese-Llama-2-7b-instruct::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/ELYZA-japanese-Llama-2-7b-instruct-q5_K_M.gguf
-ELYZA-japanese-Llama-2-7b-fast-instruct::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/ELYZA-japanese-Llama-2-7b-fast-instruct-q5_K_M.gguf
-Nous-Hermes-2-Mixtral-8x7B-DPO::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/Nous-Hermes-2-Mixtral-8x7B-DPO-Q5_K_M.gguf
-Nous-Hermes-2-Mixtral-8x7B-SFT::https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/Nous-Hermes-2-Mixtral-8x7B-SFT-Q5_K_M.gguf
-'
-
-    sha256sums='
-Llama-2-7B-Chat::e0b99920cf47b94c78d2fb06a1eceb9ed795176dfa3f7feac64629f1b52b997f
-Llama-2-13B-Chat::ef36e090240040f97325758c1ad8e23f3801466a8eece3a9eac2d22d942f548a
-BELLE-Llama2-13B-Chat::56879e1fd6ee6a138286730e121f2dba1be51b8f7e261514a594dea89ef32fe7
-MistralLite-7B::d06d149c24eea0446ea7aad596aca396fe7f3302441e9375d5bbd3fd9ba8ebea
-Mistral-7B-Instruct-v0.1::c4b062ec7f0f160e848a0e34c4e291b9e39b3fc60df5b201c038e7064dbbdcdc
-Mistral-7B-Instruct-v0.2::25d80b918e4432661726ef408b248005bebefe3f8e1ac722d55d0c5dcf2893e0
-OpenChat-3.5-0106::c28f69693336ab63369451da7f1365e5003d79f3ac69566de72100a8299a967a
-Wizard-Vicuna::681b6571e624fd211ae81308b573f24f0016f6352252ae98241b44983bb7e756
-CausalLM-14B::8ddb4c04e6f0c06971e9b6723688206bf9a5b8ffc85611cc7843c0e8c8a66c4e
-TinyLlama-1.1B-Chat-v1.0::aa54a5fb99ace5b964859cf072346631b2da6109715a805d07161d157c66ce7f
-TinyLlama-1.1B-Chat-v0.3::7c255febbf29c97b5d6f57cdf62db2f2bc95c0e541dc72c0ca29786ca0fa5eed
-Baichuan2-13B-Chat::789685b86c86af68a1886949015661d3da0a9c959dffaae773afa4fe8cfdb840
-OpenHermes-2.5-Mistral-7B::61e9e801d9e60f61a4bf1cad3e29d975ab6866f027bcef51d1550f9cc7d2cca6
-Dolphin-2.0-Mistral-7B::37adbc161e6e98354ab06f6a79eaf30c4eb8dc60fb1226ef2fe8e84a84c5fdd6
-Dolphin-2.1-Mistral-7B::021b2d9eb466e2b2eb522bc6d66906bb94c0dac721d6278e6718a4b6c9ecd731
-Dolphin-2.2-Yi-34B::641b644fde162fd7f8e8991ca6873d8b0528b7a027f5d56b8ee005f7171ac002
-Dolphin-2.2-Mistral-7B::77cf0861b5bc064e222075d0c5b73205d262985fc195aed6d30a7d3bdfefbd6c
-Dolphin-2.2.1-Mistral-7B::c88edaa19afeb45075d566930571fc1f580329c6d6980f5222f442ee2894234e
-Samantha-1.2-Mistral-7B::c29d3e84c626b6631864cf111ed2ce847d74a105f3bd66845863bbd8ea06628e
-Samantha-1.11-CodeLlama-34B::67032c6b1bf358361da1b8162c5feb96dd7e02e5a42526543968caba7b7da47e
-Samantha-1.11-7B::343ea7fadb7f89ec88837604f7a7bc6ec4f5109516e555d8ec0e1e416b06b997
-WizardLM-1.0-Uncensored-CodeLlama-34B::4f000bba0cd527319fc2dfb4cabf447d8b48c2752dd8bd0c96f070b73cd53524
-WizardLM-7B-V1.0-Uncensored::3ef0d681351556466b3fae523e7f687e3bf550d7974b3515520b290f3a8443e2
-WizardLM-13B-V1.0-Uncensored::d5a9bf292e050f6e74b1be87134b02c922f61b0d665633ee4941249e80f36b50
-WizardCoder-Python-7B-V1.0::0398068cb367d45faa3b8ebea1cc75fc7dec1cd323033df68302964e66879fed
-Zephyr-7B-Alpha::2ad371d1aeca1ddf6281ca4ee77aa20ace60df33cab71d3bb681e669001e176e
-Orca-2-13B::8c9ca393b2d882bd7bd0ba672d52eafa29bb22b2cd740418198c1fa1adb6478b
-Neural-Chat-7B-v3-1::e57b76915fe5f0c0e48c43eb80fc326cb8366cbb13fcf617a477b1f32c0ac163
-Starling-LM-7B-alpha::b6144d3a48352f5a40245ab1e89bfc0b17e4d045bf0e78fb512480f34ae92eba
-Calm2-7B-Chat::42e829c19100c5d82c9432f0ee4c062e994fcf03966e8bfb2e92d1d91db12d56
-Deepseek-Coder-6.7B::0976ee1707fc97b142d7266a9a501893ea6f320e8a8227aa1f04bcab74a5f556
-Deepseek-LLM-7B-Chat::e5bcd887cc97ff63dbd17b8b9feac261516e985b5e78f1f544eb49cf403caaf6
-SOLAR-10.7B-Instruct-v1.0::4ade240f5dcc253272158f3659a56f5b1da8405510707476d23a7df943aa35f7
-Mixtral-8x7B-Instruct-v0.1::0c57465507f21bed4364fca37efd310bee92e25a4ce4f5678ef9b44e95830e4e
-dolphin-2.6-phi-2::acc43043793230038f39491de557e70c9d99efddc41f1254e7064cc48f9b5c1e
-ELYZA-japanese-Llama-2-7b-instruct::53c0a17b0bba8aedc868e5dce72e5976cd99108966659b8466476957e99dc980
-ELYZA-japanese-Llama-2-7b-fast-instruct::3dc1e83340c2ee25903ff286da79a62999ab2b2ade7ae2a7c0d6db9f47e14087
-Nous-Hermes-2-Mixtral-8x7B-DPO::90c325215de925f47d76e391aee3a6bbac3859cdc03c744ff925b4ff9dd381e2
-Nous-Hermes-2-Mixtral-8x7B-SFT::2599f102be866a80a86b5f03f75500704f6cd7de2dce51d27dd07293eb716770
-'
-    prompt_templates='
-Llama-2-7B-Chat::llama-2-chat
-Llama-2-13B-Chat::llama-2-chat
-BELLE-Llama2-13B-Chat::belle-llama-2-chat
-MistralLite-7B::mistrallite
-Mistral-7B-Instruct-v0.1::mistral-instruct
-Mistral-7B-Instruct-v0.2::mistral-instruct
-OpenChat-3.5-0106::openchat
-Wizard-Vicuna::vicuna-chat
-CausalLM-14B::chatml
-TinyLlama-1.1B-Chat-v1.0::chatml
-TinyLlama-1.1B-Chat-v0.3::chatml
-Baichuan2-13B-Chat::baichuan-2
-OpenHermes-2.5-Mistral-7B::chatml
-Dolphin-2.0-Mistral-7B::chatml
-Dolphin-2.1-Mistral-7B::chatml
-Dolphin-2.2-Yi-34B::chatml
-Dolphin-2.2-Mistral-7B::chatml
-Dolphin-2.2.1-Mistral-7B::chatml
-Samantha-1.2-Mistral-7B::chatml
-Samantha-1.11-CodeLlama-34B::vicuna-chat
-Samantha-1.11-7B::vicuna-chat
-WizardLM-1.0-Uncensored-CodeLlama-34B::vicuna-chat
-WizardLM-7B-V1.0-Uncensored::vicuna-chat
-WizardLM-13B-V1.0-Uncensored::vicuna-chat
-WizardCoder-Python-7B-V1.0::wizard-coder
-Zephyr-7B-Alpha::zephyr
-Orca-2-13B::chatml
-Neural-Chat-7B-v3-1::intel-neural
-Starling-LM-7B-alpha::openchat
-Calm2-7B-Chat::vicuna-1.1-chat
-Deepseek-Coder-6.7B::deepseek-coder
-Deepseek-LLM-7B-Chat::deepseek-chat
-SOLAR-10.7B-Instruct-v1.0::solar-instruct
-Mixtral-8x7B-Instruct-v0.1::mistral-instruct
-dolphin-2.6-phi-2::chatml
-ELYZA-japanese-Llama-2-7b-instruct::llama-2-chat
-ELYZA-japanese-Llama-2-7b-fast-instruct::llama-2-chat
-Nous-Hermes-2-Mixtral-8x7B-DPO::chatml
-Nous-Hermes-2-Mixtral-8x7B-SFT::chatml
-'
-
-    system_prompts='
-Dolphin-2.2-Yi-34B::You are a helpful AI assistant
-Samantha-1.11-CodeLlama-34B::You are a helpful AI assistant.
-Samantha-1.11-7B::You are Samantha, a sentient AI companion.
-WizardLM-1.0-Uncensored-CodeLlama-34B::You are a helpful AI assistant.
-WizardLM-7B-V1.0-Uncensored::You are a helpful AI assistant.
-WizardLM-13B-V1.0-Uncensored::You are a helpful AI assistant.
-WizardCoder-Python-7B-V1.0::Below is an instruction that describes a task. Write a response that appropriately completes the request.
-Zephyr-7B-Alpha::You are a friendly chatbot who always responds in the style of a pirate.
-Orca-2-13B::You are Orca, an AI language model created by Microsoft. You are a cautious assistant. You carefully follow instructions. You are helpful and harmless and you follow ethical guidelines and promote positive behavior.
-'
-
-    reverse_prompts='
-MistralLite-7B::</s>
-OpenChat-3.5-0106::<|end_of_turn|>
-Baichuan2-13B-Chat::用户:
-OpenHermes-2.5-Mistral-7B::<|im_end|>
-Dolphin-2.0-Mistral-7B::<|im_end|>
-Dolphin-2.1-Mistral-7B::<|im_end|>
-Dolphin-2.2-Yi-34B::<|im_end|>
-Dolphin-2.2-Mistral-7B::<|im_end|>
-Dolphin-2.2.1-Mistral-7B::<|im_end|>
-Samantha-1.2-Mistral-7B::<|im_end|>
-Zephyr-7B-Alpha::</s>
-Starling-LM-7B-alpha::<|end_of_turn|>
-'
-
-    model_names="Llama-2-7B-Chat Llama-2-13B-Chat BELLE-Llama2-13B-Chat MistralLite-7B Mistral-7B-Instruct-v0.1 Mistral-7B-Instruct-v0.2 OpenChat-3.5-0106 Wizard-Vicuna CausalLM-14B TinyLlama-1.1B-Chat-v1.0 TinyLlama-1.1B-Chat-v0.3 Baichuan2-13B-Chat OpenHermes-2.5-Mistral-7B Dolphin-2.0-Mistral-7B Dolphin-2.1-Mistral-7B Dolphin-2.2-Yi-34B Dolphin-2.2-Mistral-7B Dolphin-2.2.1-Mistral-7B Samantha-1.2-Mistral-7B Samantha-1.11-CodeLlama-34B Samantha-1.11-7B WizardLM-1.0-Uncensored-CodeLlama-34B WizardLM-7B-V1.0-Uncensored WizardLM-13B-V1.0-Uncensored WizardCoder-Python-7B-V1.0 Zephyr-7B-Alpha Orca-2-13B Neural-Chat-7B-v3-1 Starling-LM-7B-alpha Calm2-7B-Chat Deepseek-Coder-6.7B Deepseek-LLM-7B-Chat SOLAR-10.7B-Instruct-v1.0 Mixtral-8x7B-Instruct-v0.1 ELYZA-japanese-Llama-2-7b-fast-instruct ELYZA-japanese-Llama-2-7b-instruct dolphin-2.6-phi-2 Nous-Hermes-2-Mixtral-8x7B-DPO Nous-Hermes-2-Mixtral-8x7B-SFT"
-
-    # Convert model_names to an array
-    model_names_array=($model_names)
-
-    # Print the models with their corresponding numbers
-    for i in "${!model_names_array[@]}"; do
-       printf "      %d) %s\n" $((i+1)) "${model_names_array[$i]}"
-    done
-
-    printf "\n      Please enter a number from the list above: "
-    read model_number
-
-    # Validate the input
-    while [[ "$model_number" -lt 1 || "$model_number" -gt ${#model_names_array[@]} ]]; do
-        printf "\n      Invalid number. Please enter a number between 1 and %d: " ${#model_names_array[@]}
-        read model_number
-    done
-
-    # Get the model name from the array
-    model=${model_names_array[$((model_number-1))]}
-
-    # Check if the provided model name exists in the models string
-    url=$(echo "$models" | awk -F '::' -v model=$model '{for(i=1;i<=NF;i++)if($i==model)print $(i+1)}')
-
-    if [ -z "$url" ]; then
-        printf "\n      The URL for downloading the target gguf model does not exist.\n"
+    else
+        echo "Failed to uninstall WasmEdge"
         exit 1
     fi
 
-    filename=`basename $url`
-    if ls $filename &> /dev/null
-    then
-        printf "\n      * You picked %s, whose model file already exist, skipping downloading\n" "$model"
+elif [[ "$reinstall_wasmedge" == "2" ]]; then
+    wasmedge_path=$(which wasmedge)
+    wasmedge_root_path=${wasmedge_path%"/bin/wasmedge"}
+
+    found=0
+    for file in "$wasmedge_root_path/plugin/libwasmedgePluginWasiNN."*; do
+    if [[ -f $file ]]; then
+        found=1
+        break
+    fi
+    done
+
+    if [[ $found -eq 0 ]]; then
+        printf "\n    * Not found wasi-nn_ggml plugin. Please download it from https://github.com/WasmEdge/WasmEdge/releases/ and move it to %s. After that, please rerun the script. \n\n" "$wasmedge_root_path/plugin/"
+
+        exit 1
+    fi
+
+fi
+
+printf "[+] The most popular models at https://huggingface.co/second-state:\n\n"
+
+for i in "${!ss_models[@]}"; do
+    printf "    %2d) %s\n" "$((i+1))" "${ss_models[$i]}"
+done
+
+# ask for repo until index of sample repo is provided or an URL
+while [[ -z "$repo" ]]; do
+    printf "\n    Or choose one from: https://huggingface.co/models?sort=trending&search=gguf\n\n"
+
+    read -p "[+] Please select a number from the list above or enter an URL: " repo
+
+    # check if the input is a number
+    if [[ "$repo" =~ ^[0-9]+$ ]]; then
+        if [[ "$repo" -ge 1 && "$repo" -le ${#ss_models[@]} ]]; then
+            ss_model="${ss_models[$repo-1]}"
+            repo="${ss_urls[$repo-1]}"
+        else
+            printf "[-] Invalid repo index: %s\n" "$repo"
+            repo=""
+        fi
+    elif [[ "$repo" =~ ^https?:// ]]; then
+        repo="$repo"
     else
-        printf "\n      You picked %s, downloading from %s\n" "$model" "$url"
-        retry_download $url
+        printf "[-] Invalid repo URL: %s\n" "$repo"
+        repo=""
+    fi
+done
+
+
+# remove suffix
+repo=$(echo "$repo" | sed -E 's/\/tree\/main$//g')
+
+if [ -n "$ss_model" ]; then
+    ss_url=$repo
+    repo=${repo%/resolve/main/*}
+
+    # check file if the model has been downloaded before
+    wfile=$(basename "$ss_url")
+    if [ -f "$wfile" ]; then
+        printf "[+] Using cached model %s \n" "$wfile"
+    else
+        printf "[+] Downloading the selected model from %s\n" "$ss_url"
+
+        # download the weights file
+        curl -o "$wfile" -# -L "$ss_url"
+    fi
+
+else
+
+    printf "[+] Checking for GGUF model files in %s\n\n" "$repo"
+
+    # find GGUF files in the source
+    model_tree="${repo%/}/tree/main"
+    model_files=$(curl -s "$model_tree" | grep -i "\\.gguf</span>" | sed -E 's/.*<span class="truncate group-hover:underline">(.*)<\/span><\/a>/\1/g')
+    # Convert model_files into an array
+    model_files_array=($model_files)
+
+    while IFS= read -r line; do
+        sizes+=("$line")
+    done < <(curl -s "$model_tree" | awk -F 'download=true">' '/download=true">[0-9\.]+ (GB|MB)/ {print $2}' | awk '{print $1, $2}')
+
+    # list all files in the provided git repo
+    length=${#model_files_array[@]}
+    for ((i=0; i<$length; i++)); do
+        file=${model_files_array[i]}
+        size=${sizes[i]}
+        iw=-1
+        is=0
+        for wt in "${wtypes[@]}"; do
+            # uppercase
+            ufile=$(echo "$file" | tr '[:lower:]' '[:upper:]')
+            if [[ "$ufile" =~ "$wt" ]]; then
+                iw=$is
+                break
+            fi
+            is=$((is+1))
+        done
+
+        if [[ $iw -eq -1 ]]; then
+            continue
+        fi
+
+        wfiles[$iw]="$file"
+
+        have=" "
+        if [[ -f "$file" ]]; then
+            have="*"
+        fi
+
+        printf "    %2d) %s %7s   %s\n" $iw "$have" "$size" "$file"
+    done
+
+    # ask for weights type until provided and available
+    while [[ -z "$wtype" ]]; do
+        printf "\n"
+        read -p "[+] Please select a number from the list above: " wtype
+        wfile="${wfiles[$wtype]}"
+
+        if [[ -z "$wfile" ]]; then
+            printf "[-] Invalid number: %s\n" "$wtype"
+            wtype=""
+        fi
+    done
+
+    url="${repo%/}/resolve/main/$wfile"
+
+    # check file if the model has been downloaded before
+    if [ -f "$wfile" ]; then
+        printf "[+] Using cached model %s \n" "$wfile"
+    else
+        printf "[+] Downloading the selected model from %s\n" "$url"
+
+        # download the weights file
+        curl -o "$wfile" -# -L "$url"
+    fi
+
+fi
+
+# * prompt type and reverse prompt
+
+if [[ $repo =~ ^https://huggingface\.co/second-state ]]; then
+    readme_url="$repo/resolve/main/README.md"
+
+    # Download the README.md file
+    curl -s $readme_url -o README.md
+
+    # Extract the "Prompt type: xxxx" line
+    prompt_type_line=$(grep -i "Prompt type:" README.md)
+
+    # Extract the xxxx part
+    prompt_type=$(echo $prompt_type_line | cut -d'`' -f2 | xargs)
+
+    printf "[+] Extracting prompt type: %s \n" "$prompt_type"
+
+    # Check if "Reverse prompt" exists
+    if grep -q "Reverse prompt:" README.md; then
+        # Extract the "Reverse prompt: xxxx" line
+        reverse_prompt_line=$(grep -i "Reverse prompt:" README.md)
+
+        # Extract the xxxx part
+        reverse_prompt=$(echo $reverse_prompt_line | cut -d'`' -f2 | xargs)
+
+        printf "[+] Extracting reverse prompt: %s \n" "$reverse_prompt"
+    else
+        printf "[+] No reverse prompt required\n"
+    fi
+
+    # Clean up
+    rm README.md
+else
+    printf "[+] Please select a number from the list below:\n"
+    printf "    The definitions of the prompt types below can be found at https://github.com/second-state/LlamaEdge/raw/main/api-server/chat-prompts/README.md\n\n"
+
+    is=0
+    for r in "${prompt_types[@]}"; do
+        printf "    %2d) %s\n" $is "$r"
+        is=$((is+1))
+    done
+    printf "\n"
+
+    prompt_type_index=-1
+    while ((prompt_type_index < 0 || prompt_type_index >= ${#prompt_types[@]})); do
+        read -p "[+] Select prompt type: " prompt_type_index
+        # Check if the input is a number
+        if ! [[ "$prompt_type_index" =~ ^[0-9]+$ ]]; then
+            echo "Invalid input. Please enter a number."
+            prompt_type_index=-1
+        fi
+    done
+    prompt_type="${prompt_types[$prompt_type_index]}"
+
+    # Ask user if they need to set "reverse prompt"
+    while [[ ! $need_reverse_prompt =~ ^[yYnN]$ ]]; do
+        read -p "[+] Need reverse prompt? (y/n): " need_reverse_prompt
+    done
+
+    # If user answered yes, ask them to input a string
+    if [[ "$need_reverse_prompt" == "y" || "$need_reverse_prompt" == "Y" ]]; then
+        read -p "    Enter the reverse prompt: " reverse_prompt
+        printf "\n"
+    fi
+fi
+
+# * running mode
+
+printf "[+] Running mode: \n\n"
+
+running_modes=("API Server with Chatbot web app" "CLI Chat")
+
+for i in "${!running_modes[@]}"; do
+    printf "    %2d) %s\n" "$((i+1))" "${running_modes[$i]}"
+done
+
+while [[ -z "$running_mode_index" ]]; do
+    printf "\n"
+    read -p "[+] Select a number from the list above: " running_mode_index
+    running_mode="${running_modes[$running_mode_index - 1]}"
+
+    if [[ -z "$running_mode" ]]; then
+        printf "[-] Invalid number: %s\n" "$running_mode_index"
+        running_mode_index=""
+    fi
+done
+printf "[+] Selected running mode: %s (%s)\n" "$running_mode_index" "$running_mode"
+
+# * download llama-api-server.wasm or llama-chat.wasm
+
+repo="second-state/LlamaEdge"
+releases=$(curl -s "https://api.github.com/repos/$repo/releases")
+if [[ "$running_mode_index" == "1" ]]; then
+
+    release_names=()
+    asset_urls=()
+
+    for i in {0..2}
+    do
+        release_info=$(echo $releases | jq -r ".[$i]")
+        release_name=$(echo $release_info | jq -r '.name')
+
+        if [[ ! ${release_name} =~ ^LlamaEdge\ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            continue
+        fi
+
+        release_names+=("$release_name")
+
+        asset_url=$(echo $release_info | jq -r '.assets[] | select(.name=="llama-api-server.wasm") | .browser_download_url')
+        asset_urls+=("$asset_url")
+    done
+
+    # check if the current directory contains llama-api-server.wasm
+    if [ -f "llama-api-server.wasm" ]; then
+        version_existed=$(wasmedge llama-api-server.wasm -V | cut -d' ' -f2)
+    fi
+
+    printf "[+] The latest three releases of LlamaEdge APi Server: \n\n"
+    for i in "${!release_names[@]}"; do
+        if [[ ! ${release_names[$i]} =~ ^LlamaEdge\ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            continue
+        fi
+
+        release_info=${release_names[$i]}
+        version=$(echo $release_info | cut -d' ' -f2)
+
+        have=" "
+        if [[ "$version" == "$version_existed" ]]; then
+            have="*"
+        fi
+
+        printf "    %2d) %s %s\n" "$((i+1))" "$have" "${release_names[$i]}"
+    done
+
+    release_index=""
+    while [[ -z "$release_index" ]] || ! [[ "$release_index" =~ ^[0-9]+$ ]] || ((release_index < 1 || release_index > ${#release_names[@]})); do
+        printf "\n"
+        read -p "[+] Select a number from the list above: " release_index
+    done
+
+    release_name=${release_names[$release_index-1]}
+
+    # * Download llama-api-server.wasm
+
+    asset_url=${asset_urls[$((release_index-1))]}
+
+    version_selected=$(echo $release_name | cut -d' ' -f2)
+
+    if [[ "$version_selected" != "$version_existed" ]]; then
+        printf "[+] Downloading llama-api-server.wasm ...\n\n"
+        curl -LO $asset_url
+        printf "\n"
+    else
+        printf "[+] Using cached llama-api-server.wasm\n"
+    fi
+
+    # * chatbot-ui
+
+    if [ -d "chatbot-ui" ]; then
+        printf "[+] Using cached Chatbot web app\n"
+    else
+        printf "[+] Downloading Chatbot web app ...\n"
+        files_tarball="https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz"
+        curl -LO $files_tarball
         if [ $? -ne 0 ]; then
-            printf "\nFailed to download model file. Please try again\n"
+            printf "    \nFailed to download ui tarball. Please manually download from https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz and unzip the "chatbot-ui.tar.gz" to the current directory.\n"
             exit 1
         fi
+        tar xzf chatbot-ui.tar.gz
+        rm chatbot-ui.tar.gz
+        printf "\n"
     fi
 
-    {
-        if command -v sha256sum &> /dev/null
-        then
-            local cal_sum=$(sha256sum $filename | awk '{print $1}')
-            local ori_sum=$(echo "$sha256sums" | awk -F '::' -v model=$model '{for(i=1;i<=NF;i++)if($i==model)print $(i+1)}')
-            if [[ "$cal_sum" != "$ori_sum" ]]; then
-                printf "\n\n**************************\n"
-                printf "sha256sum of the model file $filename is not correct.\n"
-                printf "Please remove the file then\n"
-                printf "1) Manually download it from: $url\n"
-                printf "or\n"
-                printf "2) Ctrl+c to exit and restart this script\n"
-                printf "**************************\n\n"
-            fi
-        fi
-    }&
+    model_name=${wfile%-Q*}
 
-    model_file=$(basename $url)
+    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm --prompt-template ${prompt_type} --model-name ${model_name} --socket-addr 127.0.0.1:${port} --log-prompts"
 
-    # Check if the provided model name exists in the models string
-    prompt_template=$(echo "$prompt_templates" | awk -F '::' -v model=$model '{for(i=1;i<=NF;i++)if($i==model)print $(i+1)}')
-
-    if [ -z "$prompt_template" ]; then
-        printf "\n      The prompt template for the selected model does not exist.\n"
-        exit 1
-    fi
-
-    system_prompt=$(echo "$system_prompts" | awk -F '::' -v model=$model '{for(i=1;i<=NF;i++)if($i==model)print $(i+1)}')
-
-    reverse_prompt=$(echo "$reverse_prompts" | awk -F '::' -v model=$model '{for(i=1;i<=NF;i++)if($i==model)print $(i+1)}')
-}
-
-select_mode() {
-    printf "Do you want to run the model via CLI or create an API server for it?\n"
-    printf "      1) Run the model via CLI\n"
-    printf "      2) Create an API server\n"
-
-    printf "\n      Please enter a number from the list above:"
-    read running_mode
-
-    while [[ "$running_mode" -ne 1 && "$running_mode" -ne 2 ]]; do
-        printf "      Invalid number. Please enter number 1 or 2\n"
-        read running_mode
-    done
-}
-
-select_log_level() {
-    printf "Do you want to show the log info\n"
-    printf "      1) Yes\n"
-    printf "      2) No\n"
-
-    printf "\n      Please enter a number from the list above:"
-    read log_level
-
-    while [[ "$log_level" -ne 1 && "$log_level" -ne 2 ]]; do
-        printf "      Invalid number. Please enter number 1 or 2\n"
-        read log_level
-    done
-}
-
-download_server() {
-    printf "Downloading 'llama-api-server' wasm app ...\n"
-
-    wasm_url="https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/llama-api-server.wasm"
-    retry_download $wasm_url
-    if [ $? -ne 0 ]; then
-        printf "\nFailed to download wasm file. Please try again\n"
-        exit 1
-    fi
-}
-
-download_webui_files() {
-    printf "Downloading frontend resources of 'chatbot-ui' ...\n"
-
-    files_tarball="https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz"
-    retry_download $files_tarball
-    if [ $? -ne 0 ]; then
-        printf "\nFailed to download ui tarball. Please try again\n"
-        exit 1
-    fi
-    tar xzf chatbot-ui.tar.gz
-    rm chatbot-ui.tar.gz
-}
-
-start_server() {
-    printf "Starting llama-api-server ...\n\n"
-
-    set -x
+    # Add reverse prompt if it exists
     if [ -n "$reverse_prompt" ]; then
-        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-api-server.wasm -p $prompt_template -m "${model}" -r "${reverse_prompt[@]}"
+        cmd="$cmd --reverse-prompt \"${reverse_prompt}\""
+    fi
+
+    printf "[+] Will run the following command to start the server:\n\n"
+    printf "    %s\n\n" "$cmd"
+
+    # Ask user if they need to set "reverse prompt"
+    while [[ ! $start_server =~ ^[yYnN]$ ]]; do
+        read -p "[+] Confirm to start the server? (y/n): " start_server
+    done
+
+    # If user answered yes, ask them to input a string
+    if [[ "$start_server" == "y" || "$start_server" == "Y" ]]; then
+        printf "\n"
+        printf "    Chatbot web app can be accessed at http://localhost:%s after the server is started\n\n\n" "$port"
+        printf "********************* LlamaEdge API Server *********************\n\n"
+        eval $cmd
+
+    fi
+
+elif [[ "$running_mode_index" == "2" ]]; then
+
+    release_names=()
+    asset_urls=()
+
+    for i in {0..2}
+    do
+        release_info=$(echo $releases | jq -r ".[$i]")
+        release_name=$(echo $release_info | jq -r '.name')
+
+        if [[ ! ${release_name} =~ ^LlamaEdge\ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            continue
+        fi
+
+        release_names+=("$release_name")
+
+        asset_url=$(echo $release_info | jq -r '.assets[] | select(.name=="llama-chat.wasm") | .browser_download_url')
+        asset_urls+=("$asset_url")
+    done
+
+    # check if the current directory contains llama-chat.wasm
+    if [ -f "llama-chat.wasm" ]; then
+        version_existed=$(wasmedge llama-chat.wasm -V | cut -d' ' -f2)
+    fi
+
+    printf "[+] The latest three releases of LlamaEdge CLI Chatbot: \n\n"
+    for i in "${!release_names[@]}"; do
+        if [[ ! ${release_names[$i]} =~ ^LlamaEdge\ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            continue
+        fi
+
+        release_info=${release_names[$i]}
+        version=$(echo $release_info | cut -d' ' -f2)
+
+        have=" "
+        if [[ "$version" == "$version_existed" ]]; then
+            have="*"
+        fi
+
+        printf "    %2d) %s %s\n" "$((i+1))" "$have" "${release_names[$i]}"
+    done
+
+    release_index=""
+    while [[ -z "$release_index" ]] || ! [[ "$release_index" =~ ^[0-9]+$ ]] || ((release_index < 1 || release_index > ${#release_names[@]})); do
+        printf "\n"
+        read -p "[+] Select a number from the list above: " release_index
+    done
+
+    release_name=${release_names[$release_index-1]}
+
+    # * Download llama-chat.wasm
+
+    asset_url=${asset_urls[$((release_index-1))]}
+
+    version_selected=$(echo $release_name | cut -d' ' -f2)
+
+    if [[ "$version_selected" != "$version_existed" ]]; then
+        printf "[+] Downloading llama-chat.wasm to the current directory\n\n"
+        curl -LO $asset_url
     else
-        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-api-server.wasm -p $prompt_template -m "${model}"
-    fi
-    set +x
-}
-
-download_chat_wasm() {
-    printf "Downloading 'llama-chat' wasm ...\n"
-
-    wasm_url="https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/llama-chat.wasm"
-    retry_download $wasm_url
-    if [ $? -ne 0 ]; then
-        printf "\nFailed to download wasm file. Please try again\n"
-        exit 1
-    fi
-}
-
-start_chat() {
-    printf "starting llama-chat ... \n\n"
-
-    local log_stat=""
-    if [[ "$log_level" == "1" ]]; then
-        log_stat="--log-stat"
+        printf "[+] Using cached llama-chat.wasm\n\n"
     fi
 
+    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-chat.wasm --prompt-template $prompt_type"
+
+    # Add reverse prompt if it exists
+    if [ -n "$reverse_prompt" ]; then
+        cmd="$cmd --reverse-prompt \"${reverse_prompt}\""
+    fi
+
+    printf "[+] Will run the following command to start CLI Chat:\n\n"
+    printf "    %s\n\n" "$cmd"
+
+    # Ask user if they need to set "reverse prompt"
+    while [[ ! $start_chat =~ ^[yYnN]$ ]]; do
+        read -p "[+] Confirm to start CLI Chat? (y/n): " start_chat
+    done
+
+    # If user answered yes, ask them to input a string
+    if [[ "$start_chat" == "y" || "$start_chat" == "Y" ]]; then
+        printf "\n"
+
+        printf "********************* LlamaEdge *********************\n\n"
+        eval $cmd
+
+    fi
+
+    # Execute the command
     set -x
-    if [ -n "$reverse_prompt" ] && [ -n "$system_prompt" ]; then
-        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-chat.wasm --prompt-template $prompt_template -r "${reverse_prompt[@]}" -s "${system_prompt[@]}" $log_stat
-    elif [ -n "$reverse_prompt" ]; then
-        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-chat.wasm --prompt-template $prompt_template -r "${reverse_prompt[@]}" $log_stat
-    elif [ -n "$system_prompt" ]; then
-        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-chat.wasm --prompt-template $prompt_template -s "${system_prompt[@]}" $log_stat
-    else
-        wasmedge --dir .:. --nn-preload default:GGML:AUTO:$model_file llama-chat.wasm --prompt-template $prompt_template $log_stat
-    fi
+    eval $cmd
     set +x
-}
 
-main() {
-    check_os
-    printf "\n"
-    prereq
-    printf "\n"
-    install_wasmedge
-    printf "\n"
-    download_model
-    printf "\n"
-    select_mode
-    printf "\n"
-    if [[ "$running_mode" == "1" ]]; then
-        select_log_level
-        printf "\n"
-        download_chat_wasm
-        printf "\n"
-        start_chat
-    elif [[ "$running_mode" == "2" ]]; then
-        download_server
-        printf "\n"
-        download_webui_files
-        printf "\n"
-        start_server
-    fi
-}
+else
+    printf "[-] Invalid running mode: %s\n" "$running_mode_index"
+    exit 1
+fi
 
-main "$@" || exit 1
+exit 0
