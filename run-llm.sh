@@ -437,66 +437,30 @@ repo="second-state/LlamaEdge"
 releases=$(curl -s "https://api.github.com/repos/$repo/releases")
 if [[ "$running_mode_index" == "1" ]]; then
 
-    release_names=()
-    asset_urls=()
-
-    for i in {0..2}
-    do
-        release_info=$(echo $releases | jq -r ".[$i]")
-        release_name=$(echo $release_info | jq -r '.name')
-
-        if [[ ! ${release_name} =~ ^LlamaEdge\ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            continue
-        fi
-
-        release_names+=("$release_name")
-
-        asset_url=$(echo $release_info | jq -r '.assets[] | select(.name=="llama-api-server.wasm") | .browser_download_url')
-        asset_urls+=("$asset_url")
-    done
-
-    # check if the current directory contains llama-api-server.wasm
-    if [ -f "llama-api-server.wasm" ]; then
-        version_existed=$(wasmedge llama-api-server.wasm -V | cut -d' ' -f2)
-    fi
-
-    printf "[+] The latest three releases of LlamaEdge APi Server: \n\n"
-    for i in "${!release_names[@]}"; do
-        if [[ ! ${release_names[$i]} =~ ^LlamaEdge\ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            continue
-        fi
-
-        release_info=${release_names[$i]}
-        version=$(echo $release_info | cut -d' ' -f2)
-
-        have=" "
-        if [[ "$version" == "$version_existed" ]]; then
-            have="*"
-        fi
-
-        printf "    %2d) %s %s\n" "$((i+1))" "$have" "${release_names[$i]}"
-    done
-
-    release_index=""
-    while [[ -z "$release_index" ]] || ! [[ "$release_index" =~ ^[0-9]+$ ]] || ((release_index < 1 || release_index > ${#release_names[@]})); do
-        printf "\n"
-        read -p "[+] Select a number from the list above: " release_index
-    done
-
-    release_name=${release_names[$release_index-1]}
-
     # * Download llama-api-server.wasm
 
-    asset_url=${asset_urls[$((release_index-1))]}
+    if [ -f "llama-api-server.wasm" ]; then
+        # Ask user if they need to set "reverse prompt"
+        while [[ ! $use_cached_version =~ ^[yYnN]$ ]]; do
+            read -p "[+] You already have llama-api-server.wasm. Using the cached llama-api-server.wasm? otherwise, the latest will be downloaded. (y/n): " use_cached_version
+        done
 
-    version_selected=$(echo $release_name | cut -d' ' -f2)
+        # If user answered yes, ask them to input a string
+        if [[ "$use_cached_version" == "n" || "$use_cached_version" == "N" ]]; then
+            printf "[+] Downloading the latest llama-api-server.wasm ...\n"
+            curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
 
-    if [[ "$version_selected" != "$version_existed" ]]; then
-        printf "[+] Downloading llama-api-server.wasm ...\n\n"
-        curl -LO $asset_url
-        printf "\n"
+            printf "\n"
+
+        else
+            printf "[+] Using cached llama-api-server.wasm\n"
+        fi
+
     else
-        printf "[+] Using cached llama-api-server.wasm\n"
+        printf "[+] Downloading the latest llama-api-server.wasm ...\n"
+        curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
+
+        printf "\n"
     fi
 
     # * chatbot-ui
@@ -518,7 +482,7 @@ if [[ "$running_mode_index" == "1" ]]; then
 
     model_name=${wfile%-Q*}
 
-    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm --prompt-template ${prompt_type} --model-name ${model_name} --socket-addr 127.0.0.1:${port} --log-prompts"
+    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm --prompt-template ${prompt_type} --model-name ${model_name} --socket-addr 127.0.0.1:${port} --log-prompts --log-stat"
 
     # Add reverse prompt if it exists
     if [ -n "$reverse_prompt" ]; then
@@ -544,66 +508,33 @@ if [[ "$running_mode_index" == "1" ]]; then
 
 elif [[ "$running_mode_index" == "2" ]]; then
 
-    release_names=()
-    asset_urls=()
-
-    for i in {0..2}
-    do
-        release_info=$(echo $releases | jq -r ".[$i]")
-        release_name=$(echo $release_info | jq -r '.name')
-
-        if [[ ! ${release_name} =~ ^LlamaEdge\ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            continue
-        fi
-
-        release_names+=("$release_name")
-
-        asset_url=$(echo $release_info | jq -r '.assets[] | select(.name=="llama-chat.wasm") | .browser_download_url')
-        asset_urls+=("$asset_url")
-    done
-
-    # check if the current directory contains llama-chat.wasm
-    if [ -f "llama-chat.wasm" ]; then
-        version_existed=$(wasmedge llama-chat.wasm -V | cut -d' ' -f2)
-    fi
-
-    printf "[+] The latest three releases of LlamaEdge CLI Chatbot: \n\n"
-    for i in "${!release_names[@]}"; do
-        if [[ ! ${release_names[$i]} =~ ^LlamaEdge\ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            continue
-        fi
-
-        release_info=${release_names[$i]}
-        version=$(echo $release_info | cut -d' ' -f2)
-
-        have=" "
-        if [[ "$version" == "$version_existed" ]]; then
-            have="*"
-        fi
-
-        printf "    %2d) %s %s\n" "$((i+1))" "$have" "${release_names[$i]}"
-    done
-
-    release_index=""
-    while [[ -z "$release_index" ]] || ! [[ "$release_index" =~ ^[0-9]+$ ]] || ((release_index < 1 || release_index > ${#release_names[@]})); do
-        printf "\n"
-        read -p "[+] Select a number from the list above: " release_index
-    done
-
-    release_name=${release_names[$release_index-1]}
-
     # * Download llama-chat.wasm
 
-    asset_url=${asset_urls[$((release_index-1))]}
+    if [ -f "llama-chat.wasm" ]; then
+        # Ask user if they need to set "reverse prompt"
+        while [[ ! $use_cached_version =~ ^[yYnN]$ ]]; do
+            read -p "[+] You already have llama-chat.wasm. Using the cached llama-chat.wasm? otherwise, the latest will be downloaded. (y/n): " use_cached_version
+        done
 
-    version_selected=$(echo $release_name | cut -d' ' -f2)
+        # If user answered yes, ask them to input a string
+        if [[ "$use_cached_version" == "n" || "$use_cached_version" == "N" ]]; then
+            printf "[+] Downloading the latest llama-chat.wasm ...\n"
+            curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
 
-    if [[ "$version_selected" != "$version_existed" ]]; then
-        printf "[+] Downloading llama-chat.wasm to the current directory\n\n"
-        curl -LO $asset_url
+            printf "\n"
+
+        else
+            printf "[+] Using cached llama-chat.wasm\n"
+        fi
+
     else
-        printf "[+] Using cached llama-chat.wasm\n\n"
+        printf "[+] Downloading the latest llama-chat.wasm ...\n"
+        curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+
+        printf "\n"
     fi
+
+    # * prepare the command
 
     cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-chat.wasm --prompt-template $prompt_type"
 
@@ -624,15 +555,11 @@ elif [[ "$running_mode_index" == "2" ]]; then
     if [[ "$start_chat" == "y" || "$start_chat" == "Y" ]]; then
         printf "\n"
 
+        # Execute the command
         printf "********************* LlamaEdge *********************\n\n"
         eval $cmd
 
     fi
-
-    # Execute the command
-    set -x
-    eval $cmd
-    set +x
 
 else
     printf "[-] Invalid running mode: %s\n" "$running_mode_index"
