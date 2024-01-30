@@ -101,6 +101,7 @@ fn main() -> Result<(), String> {
                 .value_parser([
                     "llama-2-chat",
                     "codellama-instruct",
+                    "codellama-super-instruct",
                     "mistral-instruct-v0.1",
                     "mistral-instruct",
                     "mistrallite",
@@ -592,6 +593,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         }
         PromptTemplateType::CodeLlama => ChatPrompt::CodeLlamaInstructPrompt(
             chat_prompts::chat::llama::CodeLlamaInstructPrompt::default(),
+        ),
+        PromptTemplateType::CodeLlamaSuper => ChatPrompt::CodeLlamaSuperInstructPrompt(
+            chat_prompts::chat::llama::CodeLlamaSuperInstructPrompt::default(),
         ),
         PromptTemplateType::HumanAssistant => ChatPrompt::HumanAssistantChatPrompt(
             chat_prompts::chat::belle::HumanAssistantChatPrompt::default(),
