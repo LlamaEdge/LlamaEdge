@@ -290,7 +290,7 @@ impl BuildChatPrompt for CodeLlamaSuperInstructPrompt {
             }
         }
 
-        prompt.push_str(" Destination: user\n\n ");
+        prompt.push_str(" Destination:");
 
         Ok(prompt)
     }
