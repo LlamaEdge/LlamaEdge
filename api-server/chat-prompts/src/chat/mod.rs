@@ -40,6 +40,7 @@ pub enum ChatPrompt {
     MistralLitePrompt,
     OpenChatPrompt,
     CodeLlamaInstructPrompt,
+    CodeLlamaSuperInstructPrompt,
     HumanAssistantChatPrompt,
     /// Vicuna 1.0
     VicunaChatPrompt,

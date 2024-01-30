@@ -10,6 +10,7 @@ pub enum PromptTemplateType {
     MistralLite,
     OpenChat,
     CodeLlama,
+    CodeLlamaSuper,
     HumanAssistant,
     VicunaChat,
     Vicuna11Chat,
@@ -35,6 +36,7 @@ impl FromStr for PromptTemplateType {
             "mistral-instruct" => Ok(PromptTemplateType::MistralInstruct),
             "mistrallite" => Ok(PromptTemplateType::MistralLite),
             "codellama-instruct" => Ok(PromptTemplateType::CodeLlama),
+            "codellama-super-instruct" => Ok(PromptTemplateType::CodeLlamaSuper),
             "belle-llama-2-chat" => Ok(PromptTemplateType::HumanAssistant),
             "human-assistant" => Ok(PromptTemplateType::HumanAssistant),
             "vicuna-chat" => Ok(PromptTemplateType::VicunaChat),
@@ -80,6 +82,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::SolarInstruct => write!(f, "solar-instruct"),
             PromptTemplateType::Phi2Chat => write!(f, "phi-2-chat"),
             PromptTemplateType::Phi2Instruct => write!(f, "phi-2-instruct"),
+            PromptTemplateType::CodeLlamaSuper => write!(f, "codellama-super-instruct"),
         }
     }
 }
