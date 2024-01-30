@@ -265,7 +265,7 @@ impl BuildChatPrompt for CodeLlamaSuperInstructPrompt {
         let system_prompt = if messages[0].role == ChatCompletionRole::System {
             self.create_system_prompt(&messages[0])
         } else {
-            String::from("<<SYS>>\nYou are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe. <</SYS>>")
+            String::from("<s>Source: system\n\n You are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe. <step>")
         };
 
         // append user/assistant messages
