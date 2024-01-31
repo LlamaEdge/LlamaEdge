@@ -153,12 +153,15 @@ fn main() -> Result<(), String> {
     // model alias
     let model_name = matches
         .get_one::<String>("model_alias")
-        .unwrap()
-        .to_string();
-    println!("[INFO] Model alias: {alias}", alias = &model_name);
+        .ok_or(String::from(
+            "Fail to parse the `model_alias` option from the command line.",
+        ))?;
+    println!("[INFO] Model alias: {alias}", alias = model_name);
 
     // prompt context size
-    let ctx_size = matches.get_one::<u64>("ctx_size").unwrap();
+    let ctx_size = matches.get_one::<u64>("ctx_size").ok_or(String::from(
+        "Fail to parse the `ctx_size` option from the command line.",
+    ))?;
     println!("[INFO] Prompt context size: {size}", size = ctx_size);
     options.ctx_size = *ctx_size;
 
@@ -170,12 +173,16 @@ fn main() -> Result<(), String> {
     }
 
     // number of tokens to predict
-    let n_predict = matches.get_one::<u64>("n_predict").unwrap();
+    let n_predict = matches.get_one::<u64>("n_predict").ok_or(String::from(
+        "Fail to parse the `n_predict` option from the command line.",
+    ))?;
     println!("[INFO] Number of tokens to predict: {n}", n = n_predict);
     options.n_predict = *n_predict;
 
     // n_gpu_layers
-    let n_gpu_layers = matches.get_one::<u64>("n_gpu_layers").unwrap();
+    let n_gpu_layers = matches.get_one::<u64>("n_gpu_layers").ok_or(String::from(
+        "Fail to parse the `n_gpu_layers` option from the command line.",
+    ))?;
     println!(
         "[INFO] Number of layers to run on the GPU: {n}",
         n = n_gpu_layers
@@ -183,7 +190,9 @@ fn main() -> Result<(), String> {
     options.n_gpu_layers = *n_gpu_layers;
 
     // batch size
-    let batch_size = matches.get_one::<u64>("batch_size").unwrap();
+    let batch_size = matches.get_one::<u64>("batch_size").ok_or(String::from(
+        "Fail to parse the `batch_size` option from the command line.",
+    ))?;
     println!(
         "[INFO] Batch size for prompt processing: {size}",
         size = batch_size
@@ -191,12 +200,18 @@ fn main() -> Result<(), String> {
     options.batch_size = *batch_size;
 
     // temperature
-    let temp = matches.get_one::<f32>("temp").unwrap();
+    let temp = matches.get_one::<f32>("temp").ok_or(String::from(
+        "Fail to parse the `temp` option from the command line.",
+    ))?;
     println!("[INFO] Temperature for sampling: {temp}", temp = temp);
     options.temp = *temp;
 
     // repeat penalty
-    let repeat_penalty = matches.get_one::<f32>("repeat_penalty").unwrap();
+    let repeat_penalty = matches
+        .get_one::<f32>("repeat_penalty")
+        .ok_or(String::from(
+            "Fail to parse the `repeat_penalty` option from the command line.",
+        ))?;
     println!(
         "[INFO] Penalize repeat sequence of tokens: {penalty}",
         penalty = repeat_penalty
@@ -212,8 +227,9 @@ fn main() -> Result<(), String> {
     // system prompt
     let system_prompt = matches
         .get_one::<String>("system_prompt")
-        .unwrap()
-        .to_string();
+        .ok_or(String::from(
+            "Fail to parse the `system_prompt` option from the command line.",
+        ))?;
     let system_prompt = match system_prompt == "[Default system message for the prompt template]" {
         true => {
             println!("[INFO] Use default system prompt");
@@ -222,26 +238,25 @@ fn main() -> Result<(), String> {
         false => {
             println!(
                 "[INFO] Use custom system prompt: {prompt}",
-                prompt = &system_prompt
+                prompt = system_prompt
             );
-            system_prompt
+            system_prompt.to_string()
         }
     };
 
     // type of prompt template
     let prompt_template = matches
         .get_one::<String>("prompt_template")
-        .unwrap()
-        .to_string();
-    let template_ty = match PromptTemplateType::from_str(&prompt_template) {
-        Ok(template) => template,
-        Err(e) => {
-            return Err(format!(
-                "Fail to parse prompt template type: {msg}",
-                msg = e.to_string()
-            ))
-        }
-    };
+        .ok_or(String::from(
+            "Fail to parse the `prompt_template` option from the command line.",
+        ))?;
+
+    let template_ty = PromptTemplateType::from_str(&prompt_template).map_err(|e| {
+        format!(
+            "Fail to parse prompt template type: {msg}",
+            msg = e.to_string()
+        )
+    })?;
     println!("[INFO] Prompt template: {ty:?}", ty = &template_ty);
 
     // log prompts
@@ -321,16 +336,25 @@ fn main() -> Result<(), String> {
     };
 
     // get version info
-    let max_output_size = *MAX_BUFFER_SIZE.get().unwrap();
+    let max_output_size = *MAX_BUFFER_SIZE.get().ok_or(format!(
+        "Fail to get the underlying value of `MAX_BUFFER_SIZE`."
+    ))?;
     let mut output_buffer = vec![0u8; max_output_size];
-    let mut output_size = context.get_output(1, &mut output_buffer).unwrap();
+    let mut output_size = context
+        .get_output(1, &mut output_buffer)
+        .map_err(|e| e.to_string())?;
     output_size = std::cmp::min(max_output_size, output_size);
     let metadata: serde_json::Value =
-        serde_json::from_slice(&output_buffer[..output_size]).unwrap();
+        serde_json::from_slice(&output_buffer[..output_size]).map_err(|e| e.to_string())?;
+    let plugin_build_number = metadata["llama_build_number"].as_u64().ok_or(format!(
+        "Failed to convert the `llama_build_number` of the metadata to u64."
+    ))?;
+    let plugin_commit = metadata["llama_commit"].as_str().ok_or(String::from(
+        "Fail to convert the `llama_commit` of the metadata to string.",
+    ))?;
     println!(
         "[INFO] Plugin version: b{} (commit {})",
-        metadata["llama_build_number"].as_u64().unwrap(),
-        metadata["llama_commit"].as_str().unwrap(),
+        plugin_build_number, plugin_commit,
     );
 
     if log_stat || log_all {
@@ -410,7 +434,7 @@ fn main() -> Result<(), String> {
 
         match result {
             Ok(completion_message) => {
-                let token_info = get_token_info(&context);
+                let token_info = get_token_info(&context)?;
 
                 if log_prompts || log_stat || log_all {
                     print_log_begin_separator("STATISTICS", Some("*"), None);
@@ -439,14 +463,14 @@ fn main() -> Result<(), String> {
                     ));
 
                 // this is the required step. Otherwise, will get a cumulative number when retrieve the number of output tokens of each round
-                context.fini_single().unwrap();
+                context.fini_single().map_err(|e| e.to_string())?;
             }
             Err(ChatError::ContextFull(completion_message)) => {
                 println!(
                     "\n\n[WARNING] The message is cut off as the max context size is reached. You can try to ask the same question again, or increase the context size via the `--ctx-size` command option."
                 );
 
-                let token_info = get_token_info(&context);
+                let token_info = get_token_info(&context)?;
 
                 if log_prompts || log_stat || log_all {
                     print_log_begin_separator("STATISTICS", Some("*"), None);
@@ -475,7 +499,7 @@ fn main() -> Result<(), String> {
                     ));
 
                 // this is the required step. Otherwise, will get a cumulative number when retrieve the number of output tokens of each round
-                context.fini_single().unwrap();
+                context.fini_single().map_err(|e| e.to_string())?;
             }
             Err(e) => {
                 return Err(format!(
@@ -704,9 +728,13 @@ fn stream_compute(
         match context.compute_single() {
             Ok(_) => {
                 // Retrieve the output.
-                let max_output_size = *MAX_BUFFER_SIZE.get().unwrap();
+                let max_output_size = *MAX_BUFFER_SIZE.get().ok_or(ChatError::Operation(
+                    format!("Failed to get the underlying value of `MAX_BUFFER_SIZE`."),
+                ))?;
                 let mut output_buffer = vec![0u8; max_output_size];
-                let mut output_size = context.get_output_single(0, &mut output_buffer).unwrap();
+                let mut output_size = context
+                    .get_output_single(0, &mut output_buffer)
+                    .map_err(|e| ChatError::Operation(e.to_string()))?;
                 output_size = std::cmp::min(max_output_size, output_size);
                 let token = String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
 
@@ -725,15 +753,21 @@ fn stream_compute(
                 } else {
                     print!("{}", token);
                 }
-                std::io::stdout().flush().unwrap();
+                std::io::stdout()
+                    .flush()
+                    .map_err(|e| ChatError::Operation(e.to_string()))?;
 
                 output += &token;
             }
             Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::EndOfSequence)) => {
                 // Retrieve the output.
-                let max_output_size = *MAX_BUFFER_SIZE.get().unwrap();
+                let max_output_size = *MAX_BUFFER_SIZE.get().ok_or(ChatError::Operation(
+                    format!("Failed to get the underlying value of `MAX_BUFFER_SIZE`."),
+                ))?;
                 let mut output_buffer = vec![0u8; max_output_size];
-                let mut output_size = context.get_output_single(0, &mut output_buffer).unwrap();
+                let mut output_size = context
+                    .get_output_single(0, &mut output_buffer)
+                    .map_err(|e| ChatError::Operation(e.to_string()))?;
                 output_size = std::cmp::min(max_output_size, output_size);
                 let token = String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
 
@@ -752,13 +786,15 @@ fn stream_compute(
                 } else {
                     print!("{}", token);
                 }
-                std::io::stdout().flush().unwrap();
+                std::io::stdout()
+                    .flush()
+                    .map_err(|e| ChatError::Operation(e.to_string()))?;
 
                 output += &token;
                 break;
             }
             Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::PromptTooLong)) => {
-                panic!("[ERROR] BackendError: PromptTooLong. This error should not be triggered.")
+                return Err(ChatError::PromptTooLong);
             }
             Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::ContextFull)) => {
                 return Err(ChatError::ContextFull(output));
@@ -821,12 +857,19 @@ fn build_prompt(
         };
 
         // Retrieve the number of prompt tokens.
-        let max_input_size = *MAX_BUFFER_SIZE.get().unwrap();
+        let max_input_size = *MAX_BUFFER_SIZE.get().ok_or(format!(
+            "Failed to get the underlying value of `MAX_BUFFER_SIZE`."
+        ))?;
         let mut input_buffer = vec![0u8; max_input_size];
-        let mut input_size = context.get_output(1, &mut input_buffer).unwrap();
+        let mut input_size = context
+            .get_output(1, &mut input_buffer)
+            .map_err(|e| e.to_string())?;
         input_size = std::cmp::min(max_input_size, input_size);
-        let token_info: Value = serde_json::from_slice(&input_buffer[..input_size]).unwrap();
-        let prompt_tokens = token_info["input_tokens"].as_u64().unwrap();
+        let token_info: Value =
+            serde_json::from_slice(&input_buffer[..input_size]).map_err(|e| e.to_string())?;
+        let prompt_tokens = token_info["input_tokens"].as_u64().ok_or(format!(
+            "Failed to convert the `input_tokens` of the metadata to u64."
+        ))?;
 
         match prompt_tokens > max_prompt_tokens {
             true => {
@@ -872,16 +915,29 @@ fn build_prompt(
     }
 }
 
-fn get_token_info(context: &wasi_nn::GraphExecutionContext) -> TokenInfo {
-    let max_output_size = *MAX_BUFFER_SIZE.get().unwrap();
+fn get_token_info(context: &wasi_nn::GraphExecutionContext) -> Result<TokenInfo, String> {
+    let max_output_size = *MAX_BUFFER_SIZE.get().ok_or(format!(
+        "Failed to get the underlying value of `MAX_BUFFER_SIZE`."
+    ))?;
     let mut output_buffer = vec![0u8; max_output_size];
-    let mut output_size = context.get_output(1, &mut output_buffer).unwrap();
+    let mut output_size = context
+        .get_output(1, &mut output_buffer)
+        .map_err(|e| e.to_string())?;
     output_size = std::cmp::min(max_output_size, output_size);
-    let token_info: Value = serde_json::from_slice(&output_buffer[..output_size]).unwrap();
-    TokenInfo {
-        input_tokens: token_info["input_tokens"].as_u64().unwrap(),
-        output_tokens: token_info["output_tokens"].as_u64().unwrap(),
-    }
+    let token_info: Value =
+        serde_json::from_slice(&output_buffer[..output_size]).map_err(|e| e.to_string())?;
+
+    let input_tokens = token_info["input_tokens"].as_u64().ok_or(format!(
+        "Failed to convert the `input_tokens` of the metadata to u64."
+    ))?;
+    let output_tokens = token_info["output_tokens"].as_u64().ok_or(format!(
+        "Failed to convert the `output_tokens` of the metadata to u64."
+    ))?;
+
+    Ok(TokenInfo {
+        input_tokens,
+        output_tokens,
+    })
 }
 
 struct TokenInfo {

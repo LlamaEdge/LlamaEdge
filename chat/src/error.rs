@@ -4,6 +4,8 @@ use thiserror::Error;
 pub enum ChatError {
     #[error("Context full")]
     ContextFull(String),
+    #[error("The prompt is too long")]
+    PromptTooLong,
     #[error("Fail to compute")]
     Operation(String),
 }
