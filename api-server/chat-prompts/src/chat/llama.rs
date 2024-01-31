@@ -96,10 +96,6 @@ impl BuildChatPrompt for Llama2ChatPrompt {
             }
         }
 
-        // println!("*** [prompt begin] ***");
-        // println!("{}", &prompt);
-        // println!("*** [prompt end] ***");
-
         Ok(prompt)
     }
 }
@@ -198,15 +194,11 @@ impl BuildChatPrompt for CodeLlamaInstructPrompt {
             }
         }
 
-        // println!("*** [prompt begin] ***");
-        // println!("{}", &prompt);
-        // println!("*** [prompt end] ***");
-
         Ok(prompt)
     }
 }
 
-/// Generate prompts for the `Codellama-instruct` model.
+/// Generate prompts for the `Codellama-70b-instruct-hf` model.
 #[derive(Debug, Default, Clone)]
 pub struct CodeLlamaSuperInstructPrompt;
 impl CodeLlamaSuperInstructPrompt {
@@ -290,7 +282,7 @@ impl BuildChatPrompt for CodeLlamaSuperInstructPrompt {
             }
         }
 
-        prompt.push_str(" Destination:");
+        prompt.push_str(" Source: assistant\nDestination: user\n\n ");
 
         Ok(prompt)
     }
