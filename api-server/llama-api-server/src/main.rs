@@ -302,7 +302,7 @@ async fn main() -> Result<(), ServerError> {
     options.batch_size = *batch_size as u64;
 
     // temperature
-    let temp = match matches.get_one::<f32>("temp") {
+    let temp = match matches.get_one::<f64>("temp") {
         Some(temp) => temp,
         None => {
             return Err(ServerError::InternalServerError(
@@ -321,7 +321,7 @@ async fn main() -> Result<(), ServerError> {
     );
 
     // repeat penalty
-    let repeat_penalty = match matches.get_one::<f32>("repeat_penalty") {
+    let repeat_penalty = match matches.get_one::<f64>("repeat_penalty") {
         Some(repeat_penalty) => repeat_penalty,
         None => {
             return Err(ServerError::InternalServerError(
