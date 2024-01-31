@@ -187,21 +187,13 @@ while [[ "$reinstall_wasmedge" -ne 1 && "$reinstall_wasmedge" -ne 2 ]]; do
 done
 
 if [[ "$reinstall_wasmedge" == "1" ]]; then
-    # uninstall WasmEdge
-    if bash <(curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/uninstall.sh) -q; then
-
-        # install WasmEdge + wasi-nn_ggml plugin
-        if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugins wasi_nn-ggml; then
-            source $HOME/.wasmedge/env
-            wasmedge_path=$(which wasmedge)
-            printf "\n    The WasmEdge Runtime is installed in %s.\n\n    * To uninstall it, use the command 'bash <(curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/uninstall.sh) -q'\n\n" "$wasmedge_path"
-        else
-            echo "Failed to install WasmEdge"
-            exit 1
-        fi
-
+    # install WasmEdge + wasi-nn_ggml plugin
+    if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugins wasi_nn-ggml; then
+        source $HOME/.wasmedge/env
+        wasmedge_path=$(which wasmedge)
+        printf "\n    The WasmEdge Runtime is installed in %s.\n\n    * To uninstall it, use the command 'bash <(curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/uninstall.sh) -q'\n\n" "$wasmedge_path"
     else
-        echo "Failed to uninstall WasmEdge"
+        echo "Failed to install WasmEdge"
         exit 1
     fi
 
