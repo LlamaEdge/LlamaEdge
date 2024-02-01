@@ -433,12 +433,12 @@ if [[ "$running_mode_index" == "1" ]]; then
 
     if [ -f "llama-api-server.wasm" ]; then
         # Ask user if they need to set "reverse prompt"
-        while [[ ! $use_cached_version =~ ^[yYnN]$ ]]; do
-            read -p "[+] You already have llama-api-server.wasm. Using the cached llama-api-server.wasm? otherwise, the latest will be downloaded. (y/n): " use_cached_version
+        while [[ ! $use_latest_version =~ ^[yYnN]$ ]]; do
+            read -p "[+] You already have llama-api-server.wasm. Download the latest llama-api-server.wasm? (y/n): " use_latest_version
         done
 
         # If user answered yes, ask them to input a string
-        if [[ "$use_cached_version" == "n" || "$use_cached_version" == "N" ]]; then
+        if [[ "$use_latest_version" == "y" || "$use_latest_version" == "Y" ]]; then
             printf "[+] Downloading the latest llama-api-server.wasm ...\n"
             curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
 
@@ -504,12 +504,12 @@ elif [[ "$running_mode_index" == "2" ]]; then
 
     if [ -f "llama-chat.wasm" ]; then
         # Ask user if they need to set "reverse prompt"
-        while [[ ! $use_cached_version =~ ^[yYnN]$ ]]; do
-            read -p "[+] You already have llama-chat.wasm. Using the cached llama-chat.wasm? otherwise, the latest will be downloaded. (y/n): " use_cached_version
+        while [[ ! $use_latest_version =~ ^[yYnN]$ ]]; do
+            read -p "[+] You already have llama-chat.wasm. Download the latest llama-chat.wasm? (y/n): " use_latest_version
         done
 
         # If user answered yes, ask them to input a string
-        if [[ "$use_cached_version" == "n" || "$use_cached_version" == "N" ]]; then
+        if [[ "$use_latest_version" == "y" || "$use_latest_version" == "Y" ]]; then
             printf "[+] Downloading the latest llama-chat.wasm ...\n"
             curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
 

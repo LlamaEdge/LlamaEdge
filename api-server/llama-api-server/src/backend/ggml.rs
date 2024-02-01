@@ -50,14 +50,20 @@ pub(crate) async fn models_handler(
         data: vec![model],
     };
 
+    // serialize response
+    let s = match serde_json::to_string(&list_models_response) {
+        Ok(s) => s,
+        Err(e) => {
+            return error::internal_server_error(e.to_string());
+        }
+    };
+
     // return response
     let result = Response::builder()
         .header("Access-Control-Allow-Origin", "*")
         .header("Access-Control-Allow-Methods", "*")
         .header("Access-Control-Allow-Headers", "*")
-        .body(Body::from(
-            serde_json::to_string(&list_models_response).unwrap(),
-        ));
+        .body(Body::from(s));
     match result {
         Ok(response) => Ok(response),
         Err(e) => error::internal_server_error(e.to_string()),
@@ -76,7 +82,15 @@ pub(crate) async fn completions_handler(
 
     // parse request
     let body_bytes = to_bytes(req.body_mut()).await?;
-    let completion_request: CompletionRequest = serde_json::from_slice(&body_bytes).unwrap();
+    let completion_request: CompletionRequest = match serde_json::from_slice(&body_bytes) {
+        Ok(completion_request) => completion_request,
+        Err(e) => {
+            return error::bad_request(format!(
+                "Failed to deserialize completion request. {msg}",
+                msg = e.to_string()
+            ));
+        }
+    };
 
     let prompt = completion_request.prompt.join(" ");
 
@@ -91,7 +105,15 @@ pub(crate) async fn completions_handler(
     };
 
     // convert inference result to string
-    let model_answer = String::from_utf8(buffer.clone()).unwrap();
+    let model_answer = match String::from_utf8(buffer.clone()) {
+        Ok(model_answer) => model_answer,
+        Err(e) => {
+            return error::internal_server_error(format!(
+                "Failed to decode the buffer of the inference result to a utf-8 string. {}",
+                e.to_string()
+            ));
+        }
+    };
     let answer = model_answer.trim();
 
     // ! todo: a temp solution of computing the number of tokens in answer
@@ -101,13 +123,20 @@ pub(crate) async fn completions_handler(
 
     println!("[COMPLETION] New completion ends.");
 
+    let created = match SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+        Ok(created) => created.as_secs(),
+        Err(e) => {
+            return error::internal_server_error(format!(
+                "Failed to get the current time. {}",
+                e.to_string()
+            ));
+        }
+    };
+
     let completion_object = CompletionObject {
         id: uuid::Uuid::new_v4().to_string(),
         object: String::from("text_completion"),
-        created: SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
+        created,
         model: completion_request.model.clone().unwrap_or_default(),
         choices: vec![CompletionChoice {
             index: 0,
@@ -122,14 +151,20 @@ pub(crate) async fn completions_handler(
         },
     };
 
+    // serialize completion object
+    let s = match serde_json::to_string(&completion_object) {
+        Ok(s) => s,
+        Err(e) => {
+            return error::internal_server_error(e.to_string());
+        }
+    };
+
     // return response
     let result = Response::builder()
         .header("Access-Control-Allow-Origin", "*")
         .header("Access-Control-Allow-Methods", "*")
         .header("Access-Control-Allow-Headers", "*")
-        .body(Body::from(
-            serde_json::to_string(&completion_object).unwrap(),
-        ));
+        .body(Body::from(s));
     match result {
         Ok(response) => Ok(response),
         Err(e) => error::internal_server_error(e.to_string()),
@@ -252,7 +287,23 @@ pub(crate) async fn chat_completions_handler(
         return error::internal_server_error(msg);
     }
 
-    let mut graph = crate::GRAPH.get().unwrap().lock().unwrap();
+    let graph = match GRAPH.get() {
+        Some(graph) => graph,
+        None => {
+            return error::internal_server_error(String::from(
+                "Fail to get the underlying value of `GRAPH`.",
+            ));
+        }
+    };
+    let mut graph = match graph.lock() {
+        Ok(graph) => graph,
+        Err(e) => {
+            return error::internal_server_error(format!(
+                "Fail to acquire the lock of `GRAPH`. {}",
+                e.to_string()
+            ));
+        }
+    };
 
     // set input
     let tensor_data = prompt.as_bytes().to_vec();
@@ -264,17 +315,39 @@ pub(crate) async fn chat_completions_handler(
     };
 
     let result = match chat_request.stream {
-        Some(_) => {
+        Some(true) => {
             let model = chat_request.model.clone().unwrap_or_default();
             let mut one_more_run_then_stop = true;
             let stream = stream::repeat_with(move || {
-                let mut graph = crate::GRAPH.get().unwrap().lock().unwrap();
+                let graph = match GRAPH.get() {
+                    Some(graph) => graph,
+                    None => {
+                        return Err(String::from("Fail to get the underlying value of `GRAPH`."));
+                    }
+                };
+                let mut graph = match graph.lock() {
+                    Ok(graph) => graph,
+                    Err(e) => {
+                        return Err(format!(
+                            "Fail to acquire the lock of `GRAPH`. {}",
+                            e.to_string()
+                        ));
+                    }
+                };
 
                 // compute
                 match graph.compute_single() {
                     Ok(_) => {
                         // Retrieve the output.
-                        let mut output_buffer = vec![0u8; *MAX_BUFFER_SIZE.get().unwrap()];
+                        let max_buffer_size = match MAX_BUFFER_SIZE.get() {
+                            Some(max_buffer_size) => max_buffer_size,
+                            None => {
+                                return Err(String::from(
+                                    "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
+                                ));
+                            }
+                        };
+                        let mut output_buffer = vec![0u8; *max_buffer_size];
                         let mut output_size = match graph.get_output_single(0, &mut output_buffer) {
                             Ok(size) => size,
                             Err(e) => {
@@ -284,18 +357,25 @@ pub(crate) async fn chat_completions_handler(
                                 ));
                             }
                         };
-                        output_size = std::cmp::min(*MAX_BUFFER_SIZE.get().unwrap(), output_size);
+                        output_size = std::cmp::min(*max_buffer_size, output_size);
 
                         let output =
                             String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
 
+                        let created = match SystemTime::now().duration_since(std::time::UNIX_EPOCH)
+                        {
+                            Ok(created) => created.as_secs(),
+                            Err(e) => {
+                                return Err(format!(
+                                    "Failed to get the current time. {}",
+                                    e.to_string()
+                                ));
+                            }
+                        };
                         let chat_completion_chunk = ChatCompletionChunk {
                             id: "chatcmpl-123".to_string(),
                             object: "chat.completion.chunk".to_string(),
-                            created: SystemTime::now()
-                                .duration_since(std::time::UNIX_EPOCH)
-                                .unwrap()
-                                .as_secs(),
+                            created,
                             model: model.clone(),
                             system_fingerprint: "fp_44709d6fcb".to_string(),
                             choices: vec![ChatCompletionChunkChoice {
@@ -311,18 +391,37 @@ pub(crate) async fn chat_completions_handler(
                             }],
                         };
 
-                        Ok(serde_json::to_string(&chat_completion_chunk).unwrap())
+                        // serialize chat completion chunk
+                        let chunk = match serde_json::to_string(&chat_completion_chunk) {
+                            Ok(chunk) => chunk,
+                            Err(e) => {
+                                return Err(format!(
+                                    "Fail to serialize chat completion chunk. {}",
+                                    e.to_string()
+                                ));
+                            }
+                        };
+
+                        Ok(chunk)
                     }
                     Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::EndOfSequence)) => {
                         match one_more_run_then_stop {
                             true => {
+                                let created =
+                                    match SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+                                        Ok(created) => created.as_secs(),
+                                        Err(e) => {
+                                            return Err(format!(
+                                                "Failed to get the current time. {}",
+                                                e.to_string()
+                                            ));
+                                        }
+                                    };
+
                                 let chat_completion_chunk = ChatCompletionChunk {
                                     id: "chatcmpl-123".to_string(),
                                     object: "chat.completion.chunk".to_string(),
-                                    created: SystemTime::now()
-                                        .duration_since(std::time::UNIX_EPOCH)
-                                        .unwrap()
-                                        .as_secs(),
+                                    created,
                                     model: model.clone(),
                                     system_fingerprint: "fp_44709d6fcb".to_string(),
                                     choices: vec![ChatCompletionChunkChoice {
@@ -338,7 +437,19 @@ pub(crate) async fn chat_completions_handler(
                                     }],
                                 };
                                 one_more_run_then_stop = false;
-                                Ok(serde_json::to_string(&chat_completion_chunk).unwrap())
+
+                                // serialize chat completion chunk
+                                let chunk = match serde_json::to_string(&chat_completion_chunk) {
+                                    Ok(chunk) => chunk,
+                                    Err(e) => {
+                                        return Err(format!(
+                                            "Fail to serialize chat completion chunk. {}",
+                                            e.to_string()
+                                        ));
+                                    }
+                                };
+
+                                Ok(chunk)
                             }
                             false => Ok("[GGML] End of sequence".to_string()),
                         }
@@ -350,13 +461,21 @@ pub(crate) async fn chat_completions_handler(
                                     "\n\n[WARNING] The generated message is cut off as the max context size is reached. If you'd like to get the complete answer, please increase the context size by setting the `--ctx-size` command option with a larger value, and then ask the same question again.\n"
                                 );
 
+                                let created =
+                                    match SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+                                        Ok(created) => created.as_secs(),
+                                        Err(e) => {
+                                            return Err(format!(
+                                                "Failed to get the current time. {}",
+                                                e.to_string()
+                                            ));
+                                        }
+                                    };
+
                                 let chat_completion_chunk = ChatCompletionChunk {
                                     id: "chatcmpl-123".to_string(),
                                     object: "chat.completion.chunk".to_string(),
-                                    created: SystemTime::now()
-                                        .duration_since(std::time::UNIX_EPOCH)
-                                        .unwrap()
-                                        .as_secs(),
+                                    created,
                                     model: model.clone(),
                                     system_fingerprint: "fp_44709d6fcb".to_string(),
                                     choices: vec![ChatCompletionChunkChoice {
@@ -380,7 +499,19 @@ pub(crate) async fn chat_completions_handler(
                                 }
 
                                 one_more_run_then_stop = false;
-                                Ok(serde_json::to_string(&chat_completion_chunk).unwrap())
+
+                                // serialize chat completion chunk
+                                let chunk = match serde_json::to_string(&chat_completion_chunk) {
+                                    Ok(chunk) => chunk,
+                                    Err(e) => {
+                                        return Err(format!(
+                                            "Fail to serialize chat completion chunk. {}",
+                                            e.to_string()
+                                        ));
+                                    }
+                                };
+
+                                Ok(chunk)
                             }
                             false => Ok("[GGML] End of sequence".to_string()),
                         }
@@ -390,13 +521,21 @@ pub(crate) async fn chat_completions_handler(
                             true => {
                                 println!("\n\n[WARNING] The prompt is too long. Please reduce the length of your input and try again.\n");
 
+                                let created =
+                                    match SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+                                        Ok(created) => created.as_secs(),
+                                        Err(e) => {
+                                            return Err(format!(
+                                                "Failed to get the current time. {}",
+                                                e.to_string()
+                                            ));
+                                        }
+                                    };
+
                                 let chat_completion_chunk = ChatCompletionChunk {
                                     id: "chatcmpl-123".to_string(),
                                     object: "chat.completion.chunk".to_string(),
-                                    created: SystemTime::now()
-                                        .duration_since(std::time::UNIX_EPOCH)
-                                        .unwrap()
-                                        .as_secs(),
+                                    created,
                                     model: model.clone(),
                                     system_fingerprint: "fp_44709d6fcb".to_string(),
                                     choices: vec![ChatCompletionChunkChoice {
@@ -418,7 +557,19 @@ pub(crate) async fn chat_completions_handler(
                                 }
 
                                 one_more_run_then_stop = false;
-                                Ok(serde_json::to_string(&chat_completion_chunk).unwrap())
+
+                                // serialize chat completion chunk
+                                let chunk = match serde_json::to_string(&chat_completion_chunk) {
+                                    Ok(chunk) => chunk,
+                                    Err(e) => {
+                                        return Err(format!(
+                                            "Fail to serialize chat completion chunk. {}",
+                                            e.to_string()
+                                        ));
+                                    }
+                                };
+
+                                Ok(chunk)
                             }
                             false => Ok("[GGML] End of sequence".to_string()),
                         }
@@ -440,11 +591,19 @@ pub(crate) async fn chat_completions_handler(
                 .header("Access-Control-Allow-Headers", "*")
                 .body(Body::wrap_stream(stream))
         }
-        None => {
+        Some(false) | None => {
             match graph.compute() {
                 Ok(_) => {
                     // Retrieve the output.
-                    let mut output_buffer = vec![0u8; *MAX_BUFFER_SIZE.get().unwrap()];
+                    let max_buffer_size = match MAX_BUFFER_SIZE.get() {
+                        Some(max_buffer_size) => max_buffer_size,
+                        None => {
+                            return error::internal_server_error(String::from(
+                                "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
+                            ));
+                        }
+                    };
+                    let mut output_buffer = vec![0u8; *max_buffer_size];
                     let mut output_size = match graph.get_output(0, &mut output_buffer) {
                         Ok(size) => size,
                         Err(e) => {
@@ -454,7 +613,7 @@ pub(crate) async fn chat_completions_handler(
                             ));
                         }
                     };
-                    output_size = std::cmp::min(*MAX_BUFFER_SIZE.get().unwrap(), output_size);
+                    output_size = std::cmp::min(*max_buffer_size, output_size);
 
                     // convert inference result to string
                     let output = match std::str::from_utf8(&output_buffer[..output_size]) {
@@ -468,10 +627,26 @@ pub(crate) async fn chat_completions_handler(
                     };
 
                     // post-process
-                    let message = post_process(&output, template_ty);
+                    let message = match post_process(&output, template_ty) {
+                        Ok(message) => message,
+                        Err(e) => {
+                            return error::internal_server_error(format!(
+                                "Failed to post-process the output. {}",
+                                e.to_string()
+                            ));
+                        }
+                    };
 
                     // retrieve the number of prompt and completion tokens
-                    let token_info = get_token_info(&graph);
+                    let token_info = match get_token_info(&graph) {
+                        Ok(token_info) => token_info,
+                        Err(e) => {
+                            return error::internal_server_error(format!(
+                                "Failed to get the number of prompt and completion tokens. {}",
+                                e.to_string()
+                            ));
+                        }
+                    };
                     if log_prompts {
                         print_log_begin_separator("PROMPT (Tokens)", Some("*"), None);
                         println!(
@@ -481,14 +656,21 @@ pub(crate) async fn chat_completions_handler(
                         print_log_end_separator(Some("*"), None);
                     }
 
+                    let created = match SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+                        Ok(created) => created.as_secs(),
+                        Err(e) => {
+                            return error::internal_server_error(format!(
+                                "Failed to get the current time. {}",
+                                e.to_string()
+                            ));
+                        }
+                    };
+
                     // create ChatCompletionResponse
                     let chat_completion_obejct = ChatCompletionObject {
                         id: uuid::Uuid::new_v4().to_string(),
                         object: String::from("chat.completion"),
-                        created: SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap()
-                            .as_secs(),
+                        created,
                         model: chat_request.model.clone().unwrap_or_default(),
                         choices: vec![ChatCompletionObjectChoice {
                             index: 0,
@@ -507,14 +689,22 @@ pub(crate) async fn chat_completions_handler(
                         },
                     };
 
+                    let s = match serde_json::to_string(&chat_completion_obejct) {
+                        Ok(s) => s,
+                        Err(e) => {
+                            return error::internal_server_error(format!(
+                                "Fail to serialize chat completion object. {}",
+                                e.to_string()
+                            ));
+                        }
+                    };
+
                     // return response
                     Response::builder()
                         .header("Access-Control-Allow-Origin", "*")
                         .header("Access-Control-Allow-Methods", "*")
                         .header("Access-Control-Allow-Headers", "*")
-                        .body(Body::from(
-                            serde_json::to_string(&chat_completion_obejct).unwrap(),
-                        ))
+                        .body(Body::from(s))
                 }
                 Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::ContextFull)) => {
                     println!(
@@ -522,8 +712,15 @@ pub(crate) async fn chat_completions_handler(
                     );
 
                     // Retrieve the output.
-                    let max_buffer_size = *MAX_BUFFER_SIZE.get().unwrap();
-                    let mut output_buffer = vec![0u8; max_buffer_size];
+                    let max_buffer_size = match MAX_BUFFER_SIZE.get() {
+                        Some(max_buffer_size) => max_buffer_size,
+                        None => {
+                            return error::internal_server_error(String::from(
+                                "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
+                            ));
+                        }
+                    };
+                    let mut output_buffer = vec![0u8; *max_buffer_size];
                     let mut output_size = match graph.get_output(0, &mut output_buffer) {
                         Ok(size) => size,
                         Err(e) => {
@@ -533,15 +730,40 @@ pub(crate) async fn chat_completions_handler(
                             ));
                         }
                     };
-                    output_size = std::cmp::min(max_buffer_size, output_size);
+                    output_size = std::cmp::min(*max_buffer_size, output_size);
+
                     // convert inference result to string
-                    let output = std::str::from_utf8(&output_buffer[..output_size]).unwrap();
+                    let output = match std::str::from_utf8(&output_buffer[..output_size]) {
+                        Ok(output) => output,
+                        Err(e) => {
+                            return error::internal_server_error(format!(
+                                "Failed to decode the buffer of the inference result to a utf-8 string. {}",
+                                e.to_string()
+                            ));
+                        }
+                    };
 
                     // post-process
-                    let message = post_process(&output, template_ty);
+                    let message = match post_process(&output, template_ty) {
+                        Ok(message) => message,
+                        Err(e) => {
+                            return error::internal_server_error(format!(
+                                "Failed to post-process the output. {}",
+                                e.to_string()
+                            ));
+                        }
+                    };
 
                     // retrieve the number of prompt and completion tokens
-                    let token_info = get_token_info(&graph);
+                    let token_info = match get_token_info(&graph) {
+                        Ok(token_info) => token_info,
+                        Err(e) => {
+                            return error::internal_server_error(format!(
+                                "Failed to get the number of prompt and completion tokens. {}",
+                                e.to_string()
+                            ));
+                        }
+                    };
                     if log_prompts {
                         print_log_begin_separator("PROMPT (Tokens)", Some("*"), None);
                         println!(
@@ -551,14 +773,21 @@ pub(crate) async fn chat_completions_handler(
                         print_log_end_separator(Some("*"), None);
                     }
 
+                    let created = match SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+                        Ok(created) => created.as_secs(),
+                        Err(e) => {
+                            return error::internal_server_error(format!(
+                                "Failed to get the current time. {}",
+                                e.to_string()
+                            ));
+                        }
+                    };
+
                     // create ChatCompletionResponse
                     let chat_completion_obejct = ChatCompletionObject {
                         id: uuid::Uuid::new_v4().to_string(),
                         object: String::from("chat.completion"),
-                        created: SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap()
-                            .as_secs(),
+                        created,
                         model: chat_request.model.clone().unwrap_or_default(),
                         choices: vec![ChatCompletionObjectChoice {
                             index: 0,
@@ -577,20 +806,37 @@ pub(crate) async fn chat_completions_handler(
                         },
                     };
 
+                    // serialize chat completion object
+                    let s = match serde_json::to_string(&chat_completion_obejct) {
+                        Ok(s) => s,
+                        Err(e) => {
+                            return error::internal_server_error(format!(
+                                "Fail to serialize chat completion object. {}",
+                                e.to_string()
+                            ));
+                        }
+                    };
+
                     // return response
                     Response::builder()
                         .header("Access-Control-Allow-Origin", "*")
                         .header("Access-Control-Allow-Methods", "*")
                         .header("Access-Control-Allow-Headers", "*")
-                        .body(Body::from(
-                            serde_json::to_string(&chat_completion_obejct).unwrap(),
-                        ))
+                        .body(Body::from(s))
                 }
                 Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::PromptTooLong)) => {
                     println!("\n\n[WARNING] The prompt is too long. Please reduce the length of your input and try again.\n");
 
                     // Retrieve the output.
-                    let mut output_buffer = vec![0u8; *MAX_BUFFER_SIZE.get().unwrap()];
+                    let max_buffer_size = match MAX_BUFFER_SIZE.get() {
+                        Some(max_buffer_size) => max_buffer_size,
+                        None => {
+                            return error::internal_server_error(String::from(
+                                "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
+                            ));
+                        }
+                    };
+                    let mut output_buffer = vec![0u8; *max_buffer_size];
                     let mut output_size = match graph.get_output(0, &mut output_buffer) {
                         Ok(size) => size,
                         Err(e) => {
@@ -600,15 +846,40 @@ pub(crate) async fn chat_completions_handler(
                             ));
                         }
                     };
-                    output_size = std::cmp::min(*MAX_BUFFER_SIZE.get().unwrap(), output_size);
+                    output_size = std::cmp::min(*max_buffer_size, output_size);
+
                     // convert inference result to string
-                    let output = std::str::from_utf8(&output_buffer[..output_size]).unwrap();
+                    let output = match std::str::from_utf8(&output_buffer[..output_size]) {
+                        Ok(output) => output,
+                        Err(e) => {
+                            return error::internal_server_error(format!(
+                                "Failed to decode the buffer of the inference result to a utf-8 string. {}",
+                                e.to_string()
+                            ));
+                        }
+                    };
 
                     // post-process
-                    let message = post_process(&output, template_ty);
+                    let message = match post_process(output, template_ty) {
+                        Ok(message) => message,
+                        Err(e) => {
+                            return error::internal_server_error(format!(
+                                "Failed to post-process the output. {}",
+                                e.to_string()
+                            ));
+                        }
+                    };
 
                     // retrieve the number of prompt and completion tokens
-                    let token_info = get_token_info(&graph);
+                    let token_info = match get_token_info(&graph) {
+                        Ok(token_info) => token_info,
+                        Err(e) => {
+                            return error::internal_server_error(format!(
+                                "Failed to get the number of prompt and completion tokens. {}",
+                                e.to_string()
+                            ));
+                        }
+                    };
                     if log_prompts {
                         print_log_begin_separator("PROMPT (Tokens)", Some("*"), None);
                         println!(
@@ -618,14 +889,21 @@ pub(crate) async fn chat_completions_handler(
                         print_log_end_separator(Some("*"), None);
                     }
 
+                    let created = match SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+                        Ok(created) => created.as_secs(),
+                        Err(e) => {
+                            return error::internal_server_error(format!(
+                                "Failed to get the current time. {}",
+                                e.to_string()
+                            ));
+                        }
+                    };
+
                     // create ChatCompletionResponse
                     let chat_completion_obejct = ChatCompletionObject {
                         id: uuid::Uuid::new_v4().to_string(),
                         object: String::from("chat.completion"),
-                        created: SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap()
-                            .as_secs(),
+                        created,
                         model: chat_request.model.clone().unwrap_or_default(),
                         choices: vec![ChatCompletionObjectChoice {
                             index: 0,
@@ -644,14 +922,23 @@ pub(crate) async fn chat_completions_handler(
                         },
                     };
 
+                    // serialize chat completion object
+                    let s = match serde_json::to_string(&chat_completion_obejct) {
+                        Ok(s) => s,
+                        Err(e) => {
+                            return error::internal_server_error(format!(
+                                "Fail to serialize chat completion object. {}",
+                                e.to_string()
+                            ));
+                        }
+                    };
+
                     // return response
                     Response::builder()
                         .header("Access-Control-Allow-Origin", "*")
                         .header("Access-Control-Allow-Methods", "*")
                         .header("Access-Control-Allow-Headers", "*")
-                        .body(Body::from(
-                            serde_json::to_string(&chat_completion_obejct).unwrap(),
-                        ))
+                        .body(Body::from(s))
                 }
                 Err(e) => {
                     println!("Error: {:?}", &e);
@@ -669,7 +956,21 @@ pub(crate) async fn chat_completions_handler(
 
 /// Runs inference on the model with the given name and returns the output.
 pub(crate) async fn infer(prompt: impl AsRef<str>) -> std::result::Result<Vec<u8>, String> {
-    let mut graph = crate::GRAPH.get().unwrap().lock().unwrap();
+    let graph = match GRAPH.get() {
+        Some(graph) => graph,
+        None => {
+            return Err(String::from("Fail to get the underlying value of `GRAPH`."));
+        }
+    };
+    let mut graph = match graph.lock() {
+        Ok(graph) => graph,
+        Err(e) => {
+            return Err(format!(
+                "Fail to acquire the lock of `GRAPH`. {}",
+                e.to_string()
+            ));
+        }
+    };
 
     // set input
     let tensor_data = prompt.as_ref().as_bytes().to_vec();
@@ -686,7 +987,15 @@ pub(crate) async fn infer(prompt: impl AsRef<str>) -> std::result::Result<Vec<u8
     }
 
     // Retrieve the output.
-    let mut output_buffer = vec![0u8; *MAX_BUFFER_SIZE.get().unwrap()];
+    let max_buffer_size = match MAX_BUFFER_SIZE.get() {
+        Some(max_buffer_size) => max_buffer_size,
+        None => {
+            return Err(String::from(
+                "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
+            ))
+        }
+    };
+    let mut output_buffer = vec![0u8; *max_buffer_size];
     let mut output_size = match graph.get_output(0, &mut output_buffer) {
         Ok(size) => size,
         Err(e) => {
@@ -696,7 +1005,7 @@ pub(crate) async fn infer(prompt: impl AsRef<str>) -> std::result::Result<Vec<u8
             ))
         }
     };
-    output_size = std::cmp::min(*MAX_BUFFER_SIZE.get().unwrap(), output_size);
+    output_size = std::cmp::min(*max_buffer_size, output_size);
 
     Ok(output_buffer[..output_size].to_vec())
 }
@@ -706,7 +1015,14 @@ fn update_metadata(
     available_completion_tokens: u64,
 ) -> Result<(), String> {
     let mut should_update = false;
-    let mut metadata = METADATA.get().unwrap().clone();
+    let mut metadata = match METADATA.get() {
+        Some(metadata) => metadata.clone(),
+        None => {
+            return Err(String::from(
+                "Fail to get the underlying value of `METADATA`.",
+            ));
+        }
+    };
 
     // check if necessary to update n_predict with max_tokens
     if let Some(max_tokens) = chat_request.max_tokens {
@@ -759,10 +1075,34 @@ fn update_metadata(
     }
 
     if should_update {
-        let mut graph = GRAPH.get().unwrap().lock().unwrap();
+        // update metadata
+        let config = match serde_json::to_string(&metadata) {
+            Ok(config) => config,
+            Err(e) => {
+                return Err(format!(
+                    "Fail to serialize metadata to a JSON string. {}",
+                    e.to_string()
+                ));
+            }
+        };
+
+        let graph = match GRAPH.get() {
+            Some(graph) => graph,
+            None => {
+                return Err(String::from("Fail to get the underlying value of `GRAPH`."));
+            }
+        };
+        let mut graph = match graph.lock() {
+            Ok(graph) => graph,
+            Err(e) => {
+                return Err(format!(
+                    "Fail to acquire the lock of `GRAPH`. {}",
+                    e.to_string()
+                ));
+            }
+        };
 
         // update metadata
-        let config = serde_json::to_string(&metadata).unwrap();
         if graph
             .set_input(1, wasi_nn::TensorType::U8, &[1], config.as_bytes())
             .is_err()
@@ -774,8 +1114,11 @@ fn update_metadata(
     Ok(())
 }
 
-fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> String {
-    if template_ty == PromptTemplateType::Baichuan2 {
+fn post_process(
+    output: impl AsRef<str>,
+    template_ty: PromptTemplateType,
+) -> Result<String, String> {
+    let output = if template_ty == PromptTemplateType::Baichuan2 {
         if output.as_ref().contains("用户:") {
             output.as_ref().trim_end_matches("用户:").trim().to_owned()
         } else {
@@ -848,6 +1191,7 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
         }
     } else if template_ty == PromptTemplateType::SolarInstruct {
         let s = output.as_ref().trim();
+
         if s.starts_with("### Answer") {
             let s = s.trim_start_matches("###").trim();
 
@@ -861,15 +1205,40 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
         }
     } else {
         output.as_ref().trim().to_owned()
-    }
+    };
+
+    Ok(output)
 }
 
 fn build_prompt(
     template: &ChatPrompt,
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<(String, u64), String> {
-    let mut graph = GRAPH.get().unwrap().lock().unwrap();
-    let ctx_size = *CTX_SIZE.get().unwrap() as u64;
+    let graph = match GRAPH.get() {
+        Some(graph) => graph,
+        None => {
+            return Err(String::from("Fail to get the underlying value of `GRAPH`."));
+        }
+    };
+    let mut graph = match graph.lock() {
+        Ok(graph) => graph,
+        Err(e) => {
+            return Err(format!(
+                "Fail to acquire the lock of `GRAPH`. {}",
+                e.to_string()
+            ));
+        }
+    };
+
+    let ctx_size = match CTX_SIZE.get() {
+        Some(ctx_size) => *ctx_size as u64,
+        None => {
+            return Err(String::from(
+                "Fail to get the underlying value of `CTX_SIZE`.",
+            ));
+        }
+    };
+
     let max_prompt_tokens = ctx_size * 4 / 5;
 
     loop {
@@ -894,12 +1263,40 @@ fn build_prompt(
         };
 
         // Retrieve the number of prompt tokens.
-        let max_input_size = *MAX_BUFFER_SIZE.get().unwrap();
+        let max_input_size = match MAX_BUFFER_SIZE.get() {
+            Some(max_input_size) => *max_input_size,
+            None => {
+                return Err(String::from(
+                    "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
+                ));
+            }
+        };
         let mut input_buffer = vec![0u8; max_input_size];
-        let mut input_size = graph.get_output(1, &mut input_buffer).unwrap();
+        let mut input_size = match graph.get_output(1, &mut input_buffer) {
+            Ok(size) => size,
+            Err(e) => {
+                return Err(format!(
+                    "Fail to get token info: {msg}",
+                    msg = e.to_string()
+                ));
+            }
+        };
         input_size = std::cmp::min(max_input_size, input_size);
-        let token_info: Value = serde_json::from_slice(&input_buffer[..input_size]).unwrap();
-        let prompt_tokens = token_info["input_tokens"].as_u64().unwrap();
+        let token_info: Value = match serde_json::from_slice(&input_buffer[..input_size]) {
+            Ok(token_info) => token_info,
+            Err(e) => {
+                return Err(format!(
+                    "Fail to deserialize token info: {msg}",
+                    msg = e.to_string()
+                ));
+            }
+        };
+        let prompt_tokens = match token_info["input_tokens"].as_u64() {
+            Some(prompt_tokens) => prompt_tokens,
+            None => {
+                return Err(String::from("Fail to get `input_tokens`."));
+            }
+        };
 
         match prompt_tokens > max_prompt_tokens {
             true => {
@@ -945,16 +1342,52 @@ fn build_prompt(
     }
 }
 
-fn get_token_info(graph: &Graph) -> TokenInfo {
-    let max_output_size = *MAX_BUFFER_SIZE.get().unwrap();
+fn get_token_info(graph: &Graph) -> Result<TokenInfo, String> {
+    let max_output_size = match MAX_BUFFER_SIZE.get() {
+        Some(max_output_size) => *max_output_size,
+        None => {
+            return Err(String::from(
+                "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
+            ));
+        }
+    };
     let mut output_buffer = vec![0u8; max_output_size];
-    let mut output_size = graph.get_output(1, &mut output_buffer).unwrap();
+    let mut output_size = match graph.get_output(1, &mut output_buffer) {
+        Ok(size) => size,
+        Err(e) => {
+            return Err(format!(
+                "Fail to get token info: {msg}",
+                msg = e.to_string()
+            ));
+        }
+    };
     output_size = std::cmp::min(max_output_size, output_size);
-    let token_info: Value = serde_json::from_slice(&output_buffer[..output_size]).unwrap();
-    TokenInfo {
-        prompt_tokens: token_info["input_tokens"].as_u64().unwrap(),
-        completion_tokens: token_info["output_tokens"].as_u64().unwrap(),
-    }
+    let token_info: Value = match serde_json::from_slice(&output_buffer[..output_size]) {
+        Ok(token_info) => token_info,
+        Err(e) => {
+            return Err(format!(
+                "Fail to deserialize token info: {msg}",
+                msg = e.to_string()
+            ));
+        }
+    };
+
+    let prompt_tokens = match token_info["input_tokens"].as_u64() {
+        Some(prompt_tokens) => prompt_tokens,
+        None => {
+            return Err(String::from("Fail to convert `input_tokens` to u64."));
+        }
+    };
+    let completion_tokens = match token_info["output_tokens"].as_u64() {
+        Some(completion_tokens) => completion_tokens,
+        None => {
+            return Err(String::from("Fail to convert `output_tokens` to u64."));
+        }
+    };
+    Ok(TokenInfo {
+        prompt_tokens,
+        completion_tokens,
+    })
 }
 
 #[derive(Debug)]
