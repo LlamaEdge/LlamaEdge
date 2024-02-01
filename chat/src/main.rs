@@ -537,11 +537,19 @@ fn read_input() -> String {
         if temp.ends_with("\\\n") {
             temp.pop();
             temp.pop();
+            if temp.trim().is_empty() {
+                continue;
+            }
             temp.push('\n');
-            answer.push_str(&temp);
+            answer.push_str(temp.trim_start());
             continue;
         } else if temp.ends_with("\n") {
-            answer.push_str(&temp);
+            temp.pop();
+            if temp.trim().is_empty() {
+                continue;
+            }
+            temp.push('\n');
+            answer.push_str(temp.trim_start());
             return answer;
         } else {
             return answer;
