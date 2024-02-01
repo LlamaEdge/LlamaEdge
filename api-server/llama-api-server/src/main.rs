@@ -122,6 +122,7 @@ async fn main() -> Result<(), ServerError> {
                 .value_parser([
                     "llama-2-chat",
                     "codellama-instruct",
+                    "codellama-super-instruct",
                     "mistral-instruct-v0.1",
                     "mistral-instruct",
                     "mistrallite",
@@ -174,10 +175,14 @@ async fn main() -> Result<(), ServerError> {
         .get_matches();
 
     // socket address
-    let socket_addr = matches
-        .get_one::<String>("socket_addr")
-        .unwrap()
-        .to_string();
+    let socket_addr = match matches.get_one::<String>("socket_addr") {
+        Some(socket_addr) => socket_addr.to_string(),
+        None => {
+            return Err(ServerError::InternalServerError(
+                "Failed to parse the value of `socket_addr` CLI option".to_owned(),
+            ));
+        }
+    };
     let addr: SocketAddr = match socket_addr.parse() {
         Ok(addr) => addr,
         Err(e) => {
@@ -190,14 +195,25 @@ async fn main() -> Result<(), ServerError> {
     );
 
     // model name
-    let model_name = matches.get_one::<String>("model_name").unwrap().to_string();
+    let model_name = match matches.get_one::<String>("model_name") {
+        Some(model_name) => model_name.to_string(),
+        None => {
+            return Err(ServerError::InternalServerError(
+                "Failed to parse the value of `model_name` CLI option".to_owned(),
+            ));
+        }
+    };
     println!("[INFO] Model name: {name}", name = &model_name);
 
     // model alias
-    let model_alias = matches
-        .get_one::<String>("model_alias")
-        .unwrap()
-        .to_string();
+    let model_alias = match matches.get_one::<String>("model_alias") {
+        Some(model_alias) => model_alias.to_string(),
+        None => {
+            return Err(ServerError::InternalServerError(
+                "Failed to parse the value of `model_alias` CLI option".to_owned(),
+            ));
+        }
+    };
     println!("[INFO] Model alias: {alias}", alias = &model_alias);
 
     // create a `ModelInfo` instance
@@ -207,7 +223,14 @@ async fn main() -> Result<(), ServerError> {
     let mut options = Metadata::default();
 
     // prompt context size
-    let ctx_size = matches.get_one::<u32>("ctx_size").unwrap();
+    let ctx_size = match matches.get_one::<u32>("ctx_size") {
+        Some(ctx_size) => ctx_size,
+        None => {
+            return Err(ServerError::InternalServerError(
+                "Failed to parse the value of `ctx_size` CLI option".to_owned(),
+            ));
+        }
+    };
     println!("[INFO] Prompt context size: {size}", size = ctx_size);
     options.ctx_size = *ctx_size as u64;
 
@@ -221,12 +244,26 @@ async fn main() -> Result<(), ServerError> {
     }
 
     // number of tokens to predict
-    let n_predict = matches.get_one::<u32>("n_predict").unwrap();
+    let n_predict = match matches.get_one::<u32>("n_predict") {
+        Some(n_predict) => n_predict,
+        None => {
+            return Err(ServerError::InternalServerError(
+                "Failed to parse the value of `n_predict` CLI option".to_owned(),
+            ));
+        }
+    };
     println!("[INFO] Number of tokens to predict: {n}", n = n_predict);
     options.n_predict = *n_predict as u64;
 
     // n_gpu_layers
-    let n_gpu_layers = matches.get_one::<u32>("n_gpu_layers").unwrap();
+    let n_gpu_layers = match matches.get_one::<u32>("n_gpu_layers") {
+        Some(n_gpu_layers) => n_gpu_layers,
+        None => {
+            return Err(ServerError::InternalServerError(
+                "Failed to parse the value of `n_gpu_layers` CLI option".to_owned(),
+            ));
+        }
+    };
     println!(
         "[INFO] Number of layers to run on the GPU: {n}",
         n = n_gpu_layers
@@ -234,7 +271,14 @@ async fn main() -> Result<(), ServerError> {
     options.n_gpu_layers = *n_gpu_layers as u64;
 
     // batch size
-    let batch_size = matches.get_one::<u32>("batch_size").unwrap();
+    let batch_size = match matches.get_one::<u32>("batch_size") {
+        Some(batch_size) => batch_size,
+        None => {
+            return Err(ServerError::InternalServerError(
+                "Failed to parse the value of `batch_size` CLI option".to_owned(),
+            ));
+        }
+    };
     println!(
         "[INFO] Batch size for prompt processing: {size}",
         size = batch_size
@@ -242,12 +286,26 @@ async fn main() -> Result<(), ServerError> {
     options.batch_size = *batch_size as u64;
 
     // temperature
-    let temp = matches.get_one::<f32>("temp").unwrap();
+    let temp = match matches.get_one::<f32>("temp") {
+        Some(temp) => temp,
+        None => {
+            return Err(ServerError::InternalServerError(
+                "Failed to parse the value of `temp` CLI option".to_owned(),
+            ));
+        }
+    };
     println!("[INFO] Temperature for sampling: {temp}", temp = temp);
     options.temp = *temp;
 
     // repeat penalty
-    let repeat_penalty = matches.get_one::<f32>("repeat_penalty").unwrap();
+    let repeat_penalty = match matches.get_one::<f32>("repeat_penalty") {
+        Some(repeat_penalty) => repeat_penalty,
+        None => {
+            return Err(ServerError::InternalServerError(
+                "Failed to parse the value of `repeat_penalty` CLI option".to_owned(),
+            ));
+        }
+    };
     println!(
         "[INFO] Penalize repeat sequence of tokens: {penalty}",
         penalty = repeat_penalty
@@ -261,10 +319,14 @@ async fn main() -> Result<(), ServerError> {
     }
 
     // type of prompt template
-    let prompt_template = matches
-        .get_one::<String>("prompt_template")
-        .unwrap()
-        .to_string();
+    let prompt_template = match matches.get_one::<String>("prompt_template") {
+        Some(prompt_template) => prompt_template.to_string(),
+        None => {
+            return Err(ServerError::InternalServerError(
+                "Failed to parse the value of `prompt_template` CLI option".to_owned(),
+            ))
+        }
+    };
     let template_ty = match PromptTemplateType::from_str(&prompt_template) {
         Ok(template) => template,
         Err(e) => {
@@ -306,7 +368,24 @@ async fn main() -> Result<(), ServerError> {
         return Err(ServerError::Metadata);
     }
 
-    let graph = Graph::new(model_alias, METADATA.get().unwrap());
+    let graph = {
+        let metadata = match METADATA.get() {
+            Some(metadata) => metadata,
+            None => {
+                return Err(ServerError::InternalServerError(
+                    "The METADATA is not set".to_owned(),
+                ));
+            }
+        };
+
+        match Graph::new(model_alias, metadata) {
+            Ok(graph) => graph,
+            Err(e) => {
+                return Err(ServerError::InternalServerError(e.to_string()));
+            }
+        }
+    };
+
     if GRAPH.set(Mutex::new(graph)).is_err() {
         return Err(ServerError::InternalServerError(
             "The GRAPH has already been initialized".to_owned(),
@@ -314,19 +393,66 @@ async fn main() -> Result<(), ServerError> {
     }
 
     {
-        let graph = GRAPH.get().unwrap().lock().unwrap();
+        let graph = match GRAPH.get() {
+            Some(graph) => graph,
+            None => {
+                return Err(ServerError::InternalServerError(
+                    "The GRAPH is not set".to_owned(),
+                ));
+            }
+        };
+
+        let graph_locked = match graph.lock() {
+            Ok(graph) => graph,
+            Err(e) => {
+                return Err(ServerError::InternalServerError(e.to_string()));
+            }
+        };
 
         // get version info
-        let max_output_size = *MAX_BUFFER_SIZE.get().unwrap();
+        let max_output_size = match MAX_BUFFER_SIZE.get() {
+            Some(max_output_size) => *max_output_size,
+            None => {
+                return Err(ServerError::InternalServerError(
+                    "The MAX_BUFFER_SIZE is not set".to_owned(),
+                ));
+            }
+        };
         let mut output_buffer = vec![0u8; max_output_size];
-        let mut output_size = graph.get_output(1, &mut output_buffer).unwrap();
+        let mut output_size = match graph_locked.get_output(1, &mut output_buffer) {
+            Ok(output_size) => output_size,
+            Err(e) => {
+                return Err(ServerError::InternalServerError(e.to_string()));
+            }
+        };
         output_size = std::cmp::min(max_output_size, output_size);
         let metadata: serde_json::Value =
-            serde_json::from_slice(&output_buffer[..output_size]).unwrap();
+            match serde_json::from_slice(&output_buffer[..output_size]) {
+                Ok(metadata) => metadata,
+                Err(e) => {
+                    return Err(ServerError::InternalServerError(e.to_string()));
+                }
+            };
+
+        let plugin_build_number = match metadata["llama_build_number"].as_u64() {
+            Some(build_number) => build_number,
+            None => {
+                return Err(ServerError::InternalServerError(
+                    "Failed to convert the build number of the plugin to u64".to_owned(),
+                ));
+            }
+        };
+        let plugin_commit = match metadata["llama_commit"].as_str() {
+            Some(commit) => commit,
+            None => {
+                return Err(ServerError::InternalServerError(
+                    "Failed to convert the commit id of the plugin to string".to_owned(),
+                ));
+            }
+        };
         println!(
             "[INFO] Plugin version: b{} (commit {})",
-            metadata["llama_build_number"].as_u64().unwrap(),
-            metadata["llama_commit"].as_str().unwrap(),
+            plugin_build_number, plugin_commit,
         );
     }
 
@@ -335,10 +461,13 @@ async fn main() -> Result<(), ServerError> {
     }
 
     // the timestamp when the server is created
-    let created = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
+    let created = match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+        Ok(duration) => duration.as_secs(),
+        Err(e) => {
+            return Err(ServerError::InternalServerError(e.to_string()));
+        }
+    };
+
     let ref_created = std::sync::Arc::new(created);
 
     let new_service = make_service_fn(move |_| {
@@ -463,8 +592,8 @@ pub(crate) struct Graph {
     context: GraphExecutionContext,
 }
 impl Graph {
-    pub fn new(model_alias: impl AsRef<str>, options: &Metadata) -> Self {
-        let config = serde_json::to_string(&options).unwrap();
+    pub fn new(model_alias: impl AsRef<str>, options: &Metadata) -> Result<Self, String> {
+        let config = serde_json::to_string(&options).map_err(|e| e.to_string())?;
 
         // load the model
         let graph = wasi_nn::GraphBuilder::new(
@@ -473,15 +602,15 @@ impl Graph {
         )
         .config(config)
         .build_from_cache(model_alias.as_ref())
-        .unwrap();
+        .map_err(|e| e.to_string())?;
 
         // initialize the execution context
-        let context = graph.init_execution_context().unwrap();
+        let context = graph.init_execution_context().map_err(|e| e.to_string())?;
 
-        Self {
+        Ok(Self {
             _graph: graph,
             context,
-        }
+        })
     }
 
     pub fn set_input<T: Sized>(

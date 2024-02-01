@@ -5,7 +5,7 @@ use crate::{
 use chat_prompts::{
     chat::{
         belle::HumanAssistantChatPrompt,
-        llama::{CodeLlamaInstructPrompt, Llama2ChatPrompt},
+        llama::{CodeLlamaInstructPrompt, CodeLlamaSuperInstructPrompt, Llama2ChatPrompt},
         mistral::{MistralInstructPrompt, MistralLitePrompt},
         openchat::OpenChatPrompt,
         BuildChatPrompt, ChatPrompt,
@@ -171,6 +171,9 @@ pub(crate) async fn chat_completions_handler(
             PromptTemplateType::OpenChat => ChatPrompt::OpenChatPrompt(OpenChatPrompt::default()),
             PromptTemplateType::CodeLlama => {
                 ChatPrompt::CodeLlamaInstructPrompt(CodeLlamaInstructPrompt::default())
+            }
+            PromptTemplateType::CodeLlamaSuper => {
+                ChatPrompt::CodeLlamaSuperInstructPrompt(CodeLlamaSuperInstructPrompt::default())
             }
             PromptTemplateType::HumanAssistant => {
                 ChatPrompt::HumanAssistantChatPrompt(HumanAssistantChatPrompt::default())
