@@ -132,6 +132,8 @@ Options:
           Penalize repeat sequence of tokens [default: 1.1]
       --presence-penalty <PRESENCE_PENALTY>
           Repeat alpha presence penalty. 0.0 = disabled. [default: 0.0]
+      -frequency-penalty <FREQUENCY_PENALTY>
+          Repeat alpha frequency penalty. 0.0 = disabled [default: 0.0]
   -r, --reverse-prompt <REVERSE_PROMPT>
           Halt generation at PROMPT, return control.
   -s, --system-prompt <SYSTEM_PROMPT>
