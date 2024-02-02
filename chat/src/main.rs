@@ -96,6 +96,14 @@ fn main() -> Result<(), String> {
                 .default_value("0.0"),
         )
         .arg(
+            Arg::new("frequency_penalty")
+                .long("frequency-penalty")
+                .value_parser(clap::value_parser!(f64))
+                .value_name("FREQUENCY_PENALTY")
+                .help("Repeat alpha frequency penalty. 0.0 = disabled")
+                .default_value("0.0"),
+        )
+        .arg(
             Arg::new("reverse_prompt")
                 .short('r')
                 .long("reverse-prompt")
@@ -243,11 +251,28 @@ fn main() -> Result<(), String> {
     options.repeat_penalty = *repeat_penalty;
 
     // presence penalty
-    let presence_penalty = matches.get_one::<f64>("presence_penalty").unwrap();
+    let presence_penalty = matches
+        .get_one::<f64>("presence_penalty")
+        .ok_or(String::from(
+            "Fail to parse the `presence_penalty` option from the command line.",
+        ))?;
     println!(
         "[INFO] presence penalty (0.0 = disabled): {penalty}",
         penalty = presence_penalty
     );
+    options.presence_penalty = *presence_penalty;
+
+    // frequency penalty
+    let frequency_penalty = matches
+        .get_one::<f64>("frequency_penalty")
+        .ok_or(String::from(
+            "Fail to parse the `presence_penalty` option from the command line.",
+        ))?;
+    println!(
+        "[INFO] frequency penalty (0.0 = disabled): {penalty}",
+        penalty = frequency_penalty
+    );
+    options.frequency_penalty = *frequency_penalty;
 
     // reverse_prompt
     if let Some(reverse_prompt) = matches.get_one::<String>("reverse_prompt") {
@@ -863,6 +888,8 @@ struct Options {
     repeat_penalty: f64,
     #[serde(rename = "presence-penalty")]
     presence_penalty: f64,
+    #[serde(rename = "frequency-penalty")]
+    frequency_penalty: f64,
     #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
     reverse_prompt: Option<String>,
 }
