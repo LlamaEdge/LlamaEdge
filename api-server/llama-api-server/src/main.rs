@@ -98,7 +98,7 @@ async fn main() -> Result<(), ServerError> {
                 .value_parser(clap::value_parser!(f64))
                 .value_name("TEMP")
                 .help("Temperature for sampling")
-                .default_value("0.8"),
+                .default_value("1.0"),
         )
         .arg(
             Arg::new("top_p")
@@ -106,7 +106,7 @@ async fn main() -> Result<(), ServerError> {
                 .value_parser(clap::value_parser!(f64))
                 .value_name("TOP_P")
                 .help("An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. 1.0 = disabled")
-                .default_value("0.9"),
+                .default_value("1.0"),
         )
         .arg(
             Arg::new("repeat_penalty")
@@ -122,6 +122,14 @@ async fn main() -> Result<(), ServerError> {
                 .value_parser(clap::value_parser!(f64))
                 .value_name("PRESENCE_PENALTY")
                 .help("Repeat alpha presence penalty. 0.0 = disabled")
+                .default_value("0.0"),
+        )
+        .arg(
+            Arg::new("frequency_penalty")
+                .long("frequency-penalty")
+                .value_parser(clap::value_parser!(f64))
+                .value_name("FREQUENCY_PENALTY")
+                .help("Repeat alpha frequency penalty. 0.0 = disabled")
                 .default_value("0.0"),
         )
         .arg(
@@ -341,6 +349,15 @@ async fn main() -> Result<(), ServerError> {
         "[INFO] Presence penalty (0.0 = disabled): {penalty}",
         penalty = presence_penalty
     );
+    options.presence_penalty = *presence_penalty;
+
+    // frequency penalty
+    let frequency_penalty = matches.get_one::<f64>("frequency_penalty").unwrap();
+    println!(
+        "[INFO] Frequency penalty (0.0 = disabled): {penalty}",
+        penalty = frequency_penalty
+    );
+    options.frequency_penalty = *frequency_penalty;
 
     // reverse_prompt
     if let Some(reverse_prompt) = matches.get_one::<String>("reverse_prompt") {
@@ -604,6 +621,8 @@ struct Metadata {
     repeat_penalty: f64,
     #[serde(rename = "presence-penalty")]
     presence_penalty: f64,
+    #[serde(rename = "frequency-penalty")]
+    frequency_penalty: f64,
     #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
     reverse_prompt: Option<String>,
 }
