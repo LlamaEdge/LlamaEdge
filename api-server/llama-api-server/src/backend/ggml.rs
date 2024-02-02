@@ -1026,8 +1026,6 @@ fn update_metadata(
 
     // check if necessary to update n_predict with max_tokens
     if let Some(max_tokens) = chat_request.max_tokens {
-        let max_tokens = max_tokens as u64;
-
         let max_completion_tokens = match available_completion_tokens < max_tokens {
             true => available_completion_tokens,
             false => max_tokens,
@@ -1052,9 +1050,9 @@ fn update_metadata(
 
     // check if necessary to update temperature
     if let Some(temp) = chat_request.temperature {
-        if metadata.temp != temp {
+        if metadata.temperature != temp {
             // update temperature
-            metadata.temp = temp;
+            metadata.temperature = temp;
 
             if !should_update {
                 should_update = true;
@@ -1062,11 +1060,35 @@ fn update_metadata(
         }
     }
 
-    // check if necessary to update repetition_penalty
-    if let Some(repeat_penalty) = chat_request.frequency_penalty {
-        if metadata.repeat_penalty != repeat_penalty {
-            // update repetition_penalty
-            metadata.repeat_penalty = repeat_penalty;
+    // check if necessary to update top_p
+    if let Some(top_p) = chat_request.top_p {
+        if metadata.top_p != top_p {
+            // update top_p
+            metadata.top_p = top_p;
+
+            if !should_update {
+                should_update = true;
+            }
+        }
+    }
+
+    // check if necessary to update frequency_penalty
+    if let Some(frequency_penalty) = chat_request.frequency_penalty {
+        if metadata.frequency_penalty != frequency_penalty {
+            // update frequency_penalty
+            metadata.frequency_penalty = frequency_penalty;
+
+            if !should_update {
+                should_update = true;
+            }
+        }
+    }
+
+    // check if necessary to update presence_penalty
+    if let Some(presence_penalty) = chat_request.presence_penalty {
+        if metadata.presence_penalty != presence_penalty {
+            // update presence_penalty
+            metadata.presence_penalty = presence_penalty;
 
             if !should_update {
                 should_update = true;

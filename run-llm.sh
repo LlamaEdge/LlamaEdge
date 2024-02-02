@@ -22,14 +22,6 @@ if ! command -v make &> /dev/null; then
     printf "[-] make not found\n"
     exit 1
 fi
-if ! command -v jq &> /dev/null; then
-    printf "[-] jq not found\n"
-    printf "    - For macOS, please install it with 'brew install jq'\n"
-    printf "    - For Debian/Ubuntu, please install it with 'sudo apt install jq'\n"
-    printf "    - For Fedora, please install it with 'sudo dnf install jq'\n"
-    printf "    - For CentOS/RHEL, please install it with 'sudo yum install jq'\n"
-    exit 1
-fi
 
 # parse arguments
 port=8080
