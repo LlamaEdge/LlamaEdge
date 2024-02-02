@@ -232,6 +232,8 @@ The `-h` or `--help` option can list the available options of the `llama-api-ser
           Penalize repeat sequence of tokens [default: 1.1]
         --presence-penalty <PRESENCE_PENALTY>
           Repeat alpha presence penalty. 0.0 = disabled [default: 0.0]
+        -frequency-penalty <FREQUENCY_PENALTY>
+          Repeat alpha frequency penalty. 0.0 = disabled [default: 0.0]
     -r, --reverse-prompt <REVERSE_PROMPT>
             Halt generation at PROMPT, return control.
     -p, --prompt-template <TEMPLATE>

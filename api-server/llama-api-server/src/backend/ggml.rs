@@ -1072,11 +1072,11 @@ fn update_metadata(
         }
     }
 
-    // check if necessary to update repetition_penalty
-    if let Some(repeat_penalty) = chat_request.frequency_penalty {
-        if metadata.repeat_penalty != repeat_penalty {
-            // update repetition_penalty
-            metadata.repeat_penalty = repeat_penalty;
+    // check if necessary to update frequency_penalty
+    if let Some(frequency_penalty) = chat_request.frequency_penalty {
+        if metadata.frequency_penalty != frequency_penalty {
+            // update frequency_penalty
+            metadata.frequency_penalty = frequency_penalty;
 
             if !should_update {
                 should_update = true;
