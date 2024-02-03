@@ -317,8 +317,23 @@ pub(crate) async fn chat_completions_handler(
     let result = match chat_request.stream {
         Some(true) => {
             let model = chat_request.model.clone().unwrap_or_default();
+
+            let stop = {
+                let metadata = match METADATA.get() {
+                    Some(metadata) => metadata.clone(),
+                    None => {
+                        return error::internal_server_error(String::from(
+                            "Fail to get the underlying value of `METADATA`.",
+                        ));
+                    }
+                };
+                metadata.reverse_prompt
+            };
+            let ref_stop = std::sync::Arc::new(stop);
+
             let mut one_more_run_then_stop = true;
             let stream = stream::repeat_with(move || {
+                let reverse_prompt = ref_stop.clone();
                 let graph = match GRAPH.get() {
                     Some(graph) => graph,
                     None => {
@@ -338,71 +353,141 @@ pub(crate) async fn chat_completions_handler(
                 // compute
                 match graph.compute_single() {
                     Ok(_) => {
-                        // Retrieve the output.
-                        let max_buffer_size = match MAX_BUFFER_SIZE.get() {
-                            Some(max_buffer_size) => max_buffer_size,
-                            None => {
-                                return Err(String::from(
+                        match one_more_run_then_stop {
+                            true => {
+                                // Retrieve the output.
+                                let max_buffer_size = match MAX_BUFFER_SIZE.get() {
+                                    Some(max_buffer_size) => max_buffer_size,
+                                    None => {
+                                        return Err(String::from(
                                     "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
                                 ));
-                            }
-                        };
-                        let mut output_buffer = vec![0u8; *max_buffer_size];
-                        let mut output_size = match graph.get_output_single(0, &mut output_buffer) {
-                            Ok(size) => size,
-                            Err(e) => {
-                                return Err(format!(
-                                    "Fail to get output tensor: {msg}",
-                                    msg = e.to_string()
-                                ));
-                            }
-                        };
-                        output_size = std::cmp::min(*max_buffer_size, output_size);
+                                    }
+                                };
+                                let mut output_buffer = vec![0u8; *max_buffer_size];
+                                let mut output_size =
+                                    match graph.get_output_single(0, &mut output_buffer) {
+                                        Ok(size) => size,
+                                        Err(e) => {
+                                            return Err(format!(
+                                                "Fail to get output tensor: {msg}",
+                                                msg = e.to_string()
+                                            ));
+                                        }
+                                    };
+                                output_size = std::cmp::min(*max_buffer_size, output_size);
 
-                        let output =
-                            String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
+                                let output = String::from_utf8_lossy(&output_buffer[..output_size])
+                                    .to_string();
 
-                        let created = match SystemTime::now().duration_since(std::time::UNIX_EPOCH)
-                        {
-                            Ok(created) => created.as_secs(),
-                            Err(e) => {
-                                return Err(format!(
-                                    "Failed to get the current time. {}",
-                                    e.to_string()
-                                ));
+                                // ! debug
+                                println!("{:?}", &output);
+
+                                // let stop = &*reverse_prompt.clone();
+                                if let Some(stop) = &*reverse_prompt.clone() {
+                                    if output == *stop {
+                                        let created = match SystemTime::now()
+                                            .duration_since(std::time::UNIX_EPOCH)
+                                        {
+                                            Ok(created) => created.as_secs(),
+                                            Err(e) => {
+                                                return Err(format!(
+                                                    "Failed to get the current time. {}",
+                                                    e.to_string()
+                                                ));
+                                            }
+                                        };
+
+                                        let chat_completion_chunk = ChatCompletionChunk {
+                                            id: "chatcmpl-123".to_string(),
+                                            object: "chat.completion.chunk".to_string(),
+                                            created,
+                                            model: model.clone(),
+                                            system_fingerprint: "fp_44709d6fcb".to_string(),
+                                            choices: vec![ChatCompletionChunkChoice {
+                                                index: 0,
+                                                delta: ChatCompletionChunkChoiceDelta {
+                                                    role: Some(ChatCompletionRole::Assistant),
+                                                    content: Some(
+                                                        "<|WASMEDGE-GGML-EOS|>".to_string(),
+                                                    ),
+                                                    function_call: None,
+                                                    tool_calls: None,
+                                                },
+                                                logprobs: None,
+                                                finish_reason: Some(FinishReason::stop),
+                                            }],
+                                        };
+
+                                        if let Err(e) = graph.finish_single() {
+                                            println!("Error: {:?}", &e);
+                                            return Err(e.to_string());
+                                        }
+
+                                        one_more_run_then_stop = false;
+
+                                        // serialize chat completion chunk
+                                        let chunk =
+                                            match serde_json::to_string(&chat_completion_chunk) {
+                                                Ok(chunk) => chunk,
+                                                Err(e) => {
+                                                    return Err(format!(
+                                            "Fail to serialize chat completion chunk. {}",
+                                            e.to_string()
+                                        ));
+                                                }
+                                            };
+
+                                        return Ok(chunk);
+                                    }
+                                }
+
+                                let created =
+                                    match SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+                                        Ok(created) => created.as_secs(),
+                                        Err(e) => {
+                                            return Err(format!(
+                                                "Failed to get the current time. {}",
+                                                e.to_string()
+                                            ));
+                                        }
+                                    };
+                                let chat_completion_chunk = ChatCompletionChunk {
+                                    id: "chatcmpl-123".to_string(),
+                                    object: "chat.completion.chunk".to_string(),
+                                    created,
+                                    model: model.clone(),
+                                    system_fingerprint: "fp_44709d6fcb".to_string(),
+                                    choices: vec![ChatCompletionChunkChoice {
+                                        index: 0,
+                                        delta: ChatCompletionChunkChoiceDelta {
+                                            role: Some(ChatCompletionRole::Assistant),
+                                            content: Some(output),
+                                            function_call: None,
+                                            tool_calls: None,
+                                        },
+                                        logprobs: None,
+                                        finish_reason: None,
+                                    }],
+                                };
+
+                                // serialize chat completion chunk
+                                let chunk = match serde_json::to_string(&chat_completion_chunk) {
+                                    Ok(chunk) => chunk,
+                                    Err(e) => {
+                                        return Err(format!(
+                                            "Fail to serialize chat completion chunk. {}",
+                                            e.to_string()
+                                        ));
+                                    }
+                                };
+
+                                Ok(chunk)
                             }
-                        };
-                        let chat_completion_chunk = ChatCompletionChunk {
-                            id: "chatcmpl-123".to_string(),
-                            object: "chat.completion.chunk".to_string(),
-                            created,
-                            model: model.clone(),
-                            system_fingerprint: "fp_44709d6fcb".to_string(),
-                            choices: vec![ChatCompletionChunkChoice {
-                                index: 0,
-                                delta: ChatCompletionChunkChoiceDelta {
-                                    role: Some(ChatCompletionRole::Assistant),
-                                    content: Some(output),
-                                    function_call: None,
-                                    tool_calls: None,
-                                },
-                                logprobs: None,
-                                finish_reason: None,
-                            }],
-                        };
-
-                        // serialize chat completion chunk
-                        let chunk = match serde_json::to_string(&chat_completion_chunk) {
-                            Ok(chunk) => chunk,
-                            Err(e) => {
-                                return Err(format!(
-                                    "Fail to serialize chat completion chunk. {}",
-                                    e.to_string()
-                                ));
+                            false => {
+                                return Ok("[GGML] End of sequence".to_string());
                             }
-                        };
-
-                        Ok(chunk)
+                        }
                     }
                     Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::EndOfSequence)) => {
                         match one_more_run_then_stop {
