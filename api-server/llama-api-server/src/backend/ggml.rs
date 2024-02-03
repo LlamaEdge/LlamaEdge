@@ -436,6 +436,12 @@ pub(crate) async fn chat_completions_handler(
                                         finish_reason: Some(FinishReason::stop),
                                     }],
                                 };
+
+                                if let Err(e) = graph.finish_single() {
+                                    println!("Error: {:?}", &e);
+                                    return Err(e.to_string());
+                                }
+
                                 one_more_run_then_stop = false;
 
                                 // serialize chat completion chunk
