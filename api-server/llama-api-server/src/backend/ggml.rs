@@ -380,10 +380,6 @@ pub(crate) async fn chat_completions_handler(
                                 let output = String::from_utf8_lossy(&output_buffer[..output_size])
                                     .to_string();
 
-                                // ! debug
-                                println!("{:?}", &output);
-
-                                // let stop = &*reverse_prompt.clone();
                                 if let Some(stop) = &*reverse_prompt.clone() {
                                     if output == *stop {
                                         let created = match SystemTime::now()
