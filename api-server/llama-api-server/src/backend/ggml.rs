@@ -331,12 +331,9 @@ pub(crate) async fn chat_completions_handler(
             };
             let ref_stop = std::sync::Arc::new(stop);
 
-            // let mutex = UTF8_ENCODINGS.get_or_init(|| Mutex::new(Vec::new()));
-
             let mut one_more_run_then_stop = true;
             let stream = stream::repeat_with(move || {
                 let reverse_prompt = ref_stop.clone();
-                // let invalid_utf8_vec = ref_invalid_utf8_vec.clone();
 
                 let graph = match GRAPH.get() {
                     Some(graph) => graph,
