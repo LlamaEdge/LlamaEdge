@@ -557,9 +557,14 @@ fn main() -> Result<(), String> {
                 // this is the required step. Otherwise, will get a cumulative number when retrieve the number of output tokens of each round
                 context.fini_single().map_err(|e| e.to_string())?;
             }
-            Err(e) => {
+            Err(ChatError::PromptTooLong) => {
                 return Err(format!(
-                    "Fail to compute. Reason: {msg}",
+                    "Prompt is too long. Please reduce the length of the prompt."
+                ))
+            }
+            Err(ChatError::Operation(e)) => {
+                return Err(format!(
+                    "Operation error during the chat. Reason: {msg}",
                     msg = e.to_string()
                 ))
             }
@@ -782,6 +787,8 @@ fn stream_compute(
 ) -> Result<String, ChatError> {
     let mut output = String::new();
 
+    let mut invalid_utf8_vec = vec![];
+
     // Compute one token at a time, and get the token using the get_output_single().
     loop {
         match context.compute_single() {
@@ -791,11 +798,49 @@ fn stream_compute(
                     format!("Failed to get the underlying value of `MAX_BUFFER_SIZE`."),
                 ))?;
                 let mut output_buffer = vec![0u8; max_output_size];
-                let mut output_size = context
-                    .get_output_single(0, &mut output_buffer)
-                    .map_err(|e| ChatError::Operation(e.to_string()))?;
+                let mut output_size =
+                    context
+                        .get_output_single(0, &mut output_buffer)
+                        .map_err(|e| {
+                            ChatError::Operation(format!(
+                                "Failed by `get_output_single`. {}",
+                                e.to_string()
+                            ))
+                        })?;
                 output_size = std::cmp::min(max_output_size, output_size);
-                let token = String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
+
+                // decode the output buffer to a utf8 string
+                let token = match String::from_utf8(output_buffer[..output_size].to_vec()) {
+                    Ok(v) => v,
+                    Err(_e) => {
+                        invalid_utf8_vec.extend_from_slice(&output_buffer[..output_size]);
+
+                        if invalid_utf8_vec.len() > 3 {
+                            return Err(ChatError::Operation(String::from(
+                                "The length of the invalid utf8 bytes exceed 3.",
+                            )));
+                        }
+
+                        if invalid_utf8_vec.len() == 3 {
+                            let token = match String::from_utf8(invalid_utf8_vec.clone()) {
+                                Ok(v) => v,
+                                Err(e) => {
+                                    return Err(ChatError::Operation(format!(
+                                        "Failed to decode the invalid utf8 bytes to a utf8 string. {}",
+                                        e.to_string()
+                                    )));
+                                }
+                            };
+
+                            // clear invalid_utf8_vec
+                            invalid_utf8_vec.clear();
+
+                            token
+                        } else {
+                            continue;
+                        }
+                    }
+                };
 
                 // remove the redundant characters at the beginning of each answer
                 if output.is_empty() && (token == " " || token == "\n") {
@@ -859,7 +904,10 @@ fn stream_compute(
                 return Err(ChatError::ContextFull(output));
             }
             Err(err) => {
-                return Err(ChatError::Operation(err.to_string()));
+                return Err(ChatError::Operation(format!(
+                    "Stream compute error. {}",
+                    err.to_string()
+                )));
             }
         }
     }
