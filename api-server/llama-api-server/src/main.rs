@@ -22,6 +22,7 @@ static MAX_BUFFER_SIZE: OnceCell<usize> = OnceCell::new();
 static CTX_SIZE: OnceCell<usize> = OnceCell::new();
 static GRAPH: OnceCell<Mutex<Graph>> = OnceCell::new();
 static METADATA: OnceCell<Metadata> = OnceCell::new();
+static UTF8_ENCODINGS: OnceCell<Mutex<Vec<u8>>> = OnceCell::new();
 
 #[derive(Clone, Debug)]
 pub struct AppState {
