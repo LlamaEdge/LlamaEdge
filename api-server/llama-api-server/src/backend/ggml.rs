@@ -461,11 +461,6 @@ pub(crate) async fn chat_completions_handler(
                                             }],
                                         };
 
-                                        if let Err(e) = graph.finish_single() {
-                                            println!("Error: {:?}", &e);
-                                            return Err(e.to_string());
-                                        }
-
                                         one_more_run_then_stop = false;
 
                                         // serialize chat completion chunk
@@ -527,7 +522,13 @@ pub(crate) async fn chat_completions_handler(
                                 Ok(chunk)
                             }
                             false => {
-                                return Ok("[GGML] End of sequence".to_string());
+                                // clear context
+                                if let Err(e) = graph.finish_single() {
+                                    println!("Error: {:?}", &e);
+                                    return Err(e.to_string());
+                                }
+
+                                Ok("[GGML] End of sequence".to_string())
                             }
                         }
                     }
@@ -564,11 +565,6 @@ pub(crate) async fn chat_completions_handler(
                                     }],
                                 };
 
-                                if let Err(e) = graph.finish_single() {
-                                    println!("Error: {:?}", &e);
-                                    return Err(e.to_string());
-                                }
-
                                 one_more_run_then_stop = false;
 
                                 // serialize chat completion chunk
@@ -584,7 +580,15 @@ pub(crate) async fn chat_completions_handler(
 
                                 Ok(chunk)
                             }
-                            false => Ok("[GGML] End of sequence".to_string()),
+                            false => {
+                                // clear context
+                                if let Err(e) = graph.finish_single() {
+                                    println!("Error: {:?}", &e);
+                                    return Err(e.to_string());
+                                }
+
+                                Ok("[GGML] End of sequence".to_string())
+                            }
                         }
                     }
                     Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::ContextFull)) => {
@@ -626,11 +630,6 @@ pub(crate) async fn chat_completions_handler(
                                     }],
                                 };
 
-                                if let Err(e) = graph.finish_single() {
-                                    println!("Error: {:?}", &e);
-                                    return Err(e.to_string());
-                                }
-
                                 one_more_run_then_stop = false;
 
                                 // serialize chat completion chunk
@@ -646,7 +645,15 @@ pub(crate) async fn chat_completions_handler(
 
                                 Ok(chunk)
                             }
-                            false => Ok("[GGML] End of sequence".to_string()),
+                            false => {
+                                // clear context
+                                if let Err(e) = graph.finish_single() {
+                                    println!("Error: {:?}", &e);
+                                    return Err(e.to_string());
+                                }
+
+                                Ok("[GGML] End of sequence".to_string())
+                            }
                         }
                     }
                     Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::PromptTooLong)) => {
@@ -684,11 +691,6 @@ pub(crate) async fn chat_completions_handler(
                                     }],
                                 };
 
-                                if let Err(e) = graph.finish_single() {
-                                    println!("Error: {:?}", &e);
-                                    return Err(e.to_string());
-                                }
-
                                 one_more_run_then_stop = false;
 
                                 // serialize chat completion chunk
@@ -704,10 +706,24 @@ pub(crate) async fn chat_completions_handler(
 
                                 Ok(chunk)
                             }
-                            false => Ok("[GGML] End of sequence".to_string()),
+                            false => {
+                                // clear context
+                                if let Err(e) = graph.finish_single() {
+                                    println!("Error: {:?}", &e);
+                                    return Err(e.to_string());
+                                }
+
+                                Ok("[GGML] End of sequence".to_string())
+                            }
                         }
                     }
                     Err(e) => {
+                        // clear context
+                        if let Err(e) = graph.finish_single() {
+                            println!("Error: {:?}", &e);
+                            return Err(e.to_string());
+                        }
+
                         println!("Error: {:?}", &e);
                         return Err(e.to_string());
                     }
