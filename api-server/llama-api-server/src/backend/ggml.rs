@@ -1,6 +1,6 @@
 use crate::{
     error, print_log_begin_separator, print_log_end_separator, Graph, ModelInfo, CTX_SIZE, GRAPH,
-    MAX_BUFFER_SIZE, METADATA,
+    MAX_BUFFER_SIZE, METADATA, UTF8_ENCODINGS,
 };
 use chat_prompts::{
     chat::{
@@ -26,7 +26,7 @@ use futures::{future, stream};
 use futures_util::TryStreamExt;
 use hyper::{body::to_bytes, Body, Request, Response};
 use serde_json::Value;
-use std::time::SystemTime;
+use std::{sync::Mutex, time::SystemTime};
 
 /// Lists models available
 pub(crate) async fn models_handler(
@@ -334,6 +334,7 @@ pub(crate) async fn chat_completions_handler(
             let mut one_more_run_then_stop = true;
             let stream = stream::repeat_with(move || {
                 let reverse_prompt = ref_stop.clone();
+
                 let graph = match GRAPH.get() {
                     Some(graph) => graph,
                     None => {
@@ -360,8 +361,8 @@ pub(crate) async fn chat_completions_handler(
                                     Some(max_buffer_size) => max_buffer_size,
                                     None => {
                                         return Err(String::from(
-                                    "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
-                                ));
+                                            "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
+                                        ));
                                     }
                                 };
                                 let mut output_buffer = vec![0u8; *max_buffer_size];
@@ -377,8 +378,53 @@ pub(crate) async fn chat_completions_handler(
                                     };
                                 output_size = std::cmp::min(*max_buffer_size, output_size);
 
-                                let output = String::from_utf8_lossy(&output_buffer[..output_size])
-                                    .to_string();
+                                // decode the output buffer to a utf8 string
+                                let output = match String::from_utf8(
+                                    output_buffer[..output_size].to_vec(),
+                                ) {
+                                    Ok(token) => token,
+                                    Err(_) => {
+                                        let mutex =
+                                            UTF8_ENCODINGS.get_or_init(|| Mutex::new(Vec::new()));
+
+                                        let mut encodings = match mutex.lock() {
+                                            Ok(encodings) => encodings,
+                                            Err(e) => {
+                                                return Err(format!(
+                                                    "Fail to acquire the lock of `UTF8_ENCODINGS`. {}",
+                                                    e.to_string()
+                                                ));
+                                            }
+                                        };
+                                        encodings.extend_from_slice(&output_buffer[..output_size]);
+
+                                        if encodings.len() > 3 {
+                                            return Err(String::from(
+                                                "The length of the invalid utf8 bytes exceed 3.",
+                                            ));
+                                        }
+
+                                        if encodings.len() == 3 {
+                                            let token = match String::from_utf8(encodings.to_vec())
+                                            {
+                                                Ok(token) => token,
+                                                Err(e) => {
+                                                    return Err(format!(
+                                                        "Failed to decode the invalid utf8 bytes to a utf8 string. {}",
+                                                        e.to_string()
+                                                    ));
+                                                }
+                                            };
+
+                                            // clear encodings
+                                            encodings.clear();
+
+                                            token
+                                        } else {
+                                            String::new()
+                                        }
+                                    }
+                                };
 
                                 if let Some(stop) = &*reverse_prompt.clone() {
                                     if output == *stop {
