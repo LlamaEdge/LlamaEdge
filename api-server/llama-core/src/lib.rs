@@ -135,15 +135,3 @@ pub(crate) fn print_log_end_separator(ch: Option<&str>, len: Option<usize>) {
     separator.push_str("\n");
     println!("{}", separator);
 }
-
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) struct ModelInfo {
-    name: String,
-}
-impl ModelInfo {
-    fn new(name: impl AsRef<str>) -> Self {
-        Self {
-            name: name.as_ref().to_string(),
-        }
-    }
-}
