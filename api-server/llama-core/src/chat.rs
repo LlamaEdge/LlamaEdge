@@ -1,5 +1,5 @@
 use crate::{
-    error, print_log_begin_separator, print_log_end_separator, Graph, ModelInfo, CTX_SIZE, GRAPH,
+    error, print_log_begin_separator, print_log_end_separator, Graph, CTX_SIZE, GRAPH,
     MAX_BUFFER_SIZE, METADATA, UTF8_ENCODINGS,
 };
 use chat_prompts::{
