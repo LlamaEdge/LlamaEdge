@@ -2,8 +2,9 @@ use crate::error;
 use chat_prompts::PromptTemplateType;
 use endpoints::{
     chat::ChatCompletionRequest,
+    common::Usage,
     completions::CompletionRequest,
-    embeddings::{EmbeddingObject, EmbeddingRequest},
+    embeddings::{EmbeddingObject, EmbeddingRequest, EmbeddingsResponse},
 };
 use futures_util::TryStreamExt;
 use hyper::{body::to_bytes, Body, Request, Response};
