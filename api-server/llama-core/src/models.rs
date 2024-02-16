@@ -1,22 +1,21 @@
+use crate::{error::LlamaCoreError, get_graph};
 use endpoints::models::{ListModelsResponse, Model};
 
 /// Lists models available
-pub async fn models() -> ListModelsResponse {
-    // the timestamp when the server is created
-    let created = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
+pub async fn models() -> Result<ListModelsResponse, LlamaCoreError> {
+    let graph = get_graph()?;
+    let created = graph.created.as_secs();
+    let id = graph.name.clone();
 
     let model = Model {
-        id: String::from("Dummy-model-name"),
+        id,
         created,
         object: String::from("model"),
         owned_by: String::from("Not specified"),
     };
 
-    ListModelsResponse {
+    Ok(ListModelsResponse {
         object: String::from("list"),
         data: vec![model],
-    }
+    })
 }
