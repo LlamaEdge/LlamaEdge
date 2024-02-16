@@ -6,7 +6,12 @@ use hyper::{body::to_bytes, Body, Request, Response};
 
 /// Lists models available
 pub(crate) async fn models_handler() -> Result<Response<Body>, hyper::Error> {
-    let list_models_response = llama_core::models::models().await;
+    let list_models_response = match llama_core::models::models().await {
+        Ok(list_models_response) => list_models_response,
+        Err(e) => {
+            return error::internal_server_error(e.to_string());
+        }
+    };
 
     // serialize response
     let s = match serde_json::to_string(&list_models_response) {
