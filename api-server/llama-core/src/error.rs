@@ -5,6 +5,8 @@ pub enum LlamaCoreError {
     #[error("{0}")]
     Operation(String),
     #[error("{0}")]
+    InitContext(String),
+    #[error("{0}")]
     Backend(#[from] BackendError),
 }
 
