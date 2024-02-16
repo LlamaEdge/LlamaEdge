@@ -20,12 +20,11 @@ use endpoints::{
     },
     common::{FinishReason, Usage},
 };
+use error::{BackendError, LlamaCoreError};
 use futures::{
     future,
     stream::{self, TryStreamExt},
 };
-// use hyper::{body::to_bytes, Body, Request, Response};
-use error::{BackendError, LlamaCoreError};
 
 use serde_json::Value;
 use std::{sync::Mutex, time::SystemTime};
