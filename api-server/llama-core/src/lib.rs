@@ -46,11 +46,17 @@ pub struct Metadata {
 
 #[derive(Debug)]
 pub struct Graph {
+    pub name: String,
+    pub created: std::time::Duration,
     _graph: WasiNnGraph,
     context: GraphExecutionContext,
 }
 impl Graph {
-    pub fn new(model_alias: impl AsRef<str>, options: &Metadata) -> Result<Self, String> {
+    pub fn new(
+        model_name: impl Into<String>,
+        model_alias: impl AsRef<str>,
+        options: &Metadata,
+    ) -> Result<Self, String> {
         let config = serde_json::to_string(&options).map_err(|e| e.to_string())?;
 
         // load the model
@@ -65,7 +71,13 @@ impl Graph {
         // initialize the execution context
         let context = graph.init_execution_context().map_err(|e| e.to_string())?;
 
+        let created = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|e| e.to_string())?;
+
         Ok(Self {
+            name: model_name.into(),
+            created,
             _graph: graph,
             context,
         })
@@ -138,13 +150,23 @@ pub(crate) fn print_log_end_separator(ch: Option<&str>, len: Option<usize>) {
     println!("{}", separator);
 }
 
+/// Initialize the core context
+///
+/// # Arguments
+///
+/// * `metadata` - The metadata of the model
+///
+/// * `model_name` - The name of the model
+///
+/// * `model_alias` - The alias of the model
+///
 pub fn init_core_context(
     metadata: &Metadata,
-    model_alias: Option<&str>,
+    model_name: impl AsRef<str>,
+    model_alias: impl AsRef<str>,
 ) -> Result<(), LlamaCoreError> {
-    let alias = model_alias.unwrap_or("default");
-
-    let graph = Graph::new(alias, metadata).map_err(|e| LlamaCoreError::InitContext(e))?;
+    let graph = Graph::new(model_name.as_ref(), model_alias.as_ref(), metadata)
+        .map_err(|e| LlamaCoreError::InitContext(e))?;
 
     GRAPH.set(Mutex::new(graph)).map_err(|_| {
         LlamaCoreError::InitContext(format!("The `GRAPH` has already been initialized"))
