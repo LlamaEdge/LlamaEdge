@@ -10,9 +10,10 @@ use hyper::{
     Body, Request, Response, Server, StatusCode,
 };
 use once_cell::sync::OnceCell;
-use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, path::PathBuf, str::FromStr, sync::Mutex};
 use wasi_nn::{Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext, TensorType};
+
+use llama_core::Metadata;
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -22,7 +23,6 @@ static MAX_BUFFER_SIZE: OnceCell<usize> = OnceCell::new();
 static CTX_SIZE: OnceCell<usize> = OnceCell::new();
 static GRAPH: OnceCell<Mutex<Graph>> = OnceCell::new();
 static METADATA: OnceCell<Metadata> = OnceCell::new();
-static UTF8_ENCODINGS: OnceCell<Mutex<Vec<u8>>> = OnceCell::new();
 
 #[derive(Clone, Debug)]
 pub struct AppState {
@@ -241,9 +241,6 @@ async fn main() -> Result<(), ServerError> {
     };
     println!("[INFO] Model alias: {alias}", alias = &model_alias);
 
-    // create a `ModelInfo` instance
-    let model_info = ModelInfo::new(model_name);
-
     // create an `Options` instance
     let mut options = Metadata::default();
 
@@ -412,6 +409,9 @@ async fn main() -> Result<(), ServerError> {
         );
     }
 
+    // initialize the core context
+    llama_core::init_core_context(&options, None).unwrap();
+
     if METADATA.set(options).is_err() {
         return Err(ServerError::Metadata);
     }
@@ -440,6 +440,7 @@ async fn main() -> Result<(), ServerError> {
         ));
     }
 
+    // get the plugin version info
     {
         let graph = match GRAPH.get() {
             Some(graph) => graph,
@@ -508,20 +509,8 @@ async fn main() -> Result<(), ServerError> {
         print_log_end_separator(Some("*"), None);
     }
 
-    // the timestamp when the server is created
-    let created = match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
-        Ok(duration) => duration.as_secs(),
-        Err(e) => {
-            return Err(ServerError::InternalServerError(e.to_string()));
-        }
-    };
-
-    let ref_created = std::sync::Arc::new(created);
-
     let new_service = make_service_fn(move |_| {
-        let model_info = model_info.clone();
         let prompt_template_ty = ref_template_ty.clone();
-        let created = ref_created.clone();
         let log_prompts = ref_log_prompts.clone();
         let web_ui = matches
             .get_one::<String>("web_ui")
@@ -531,9 +520,7 @@ async fn main() -> Result<(), ServerError> {
             Ok::<_, Error>(service_fn(move |req| {
                 handle_request(
                     req,
-                    model_info.clone(),
                     *prompt_template_ty.clone(),
-                    *created.clone(),
                     *log_prompts.clone(),
                     web_ui.clone(),
                 )
@@ -553,9 +540,7 @@ async fn main() -> Result<(), ServerError> {
 
 async fn handle_request(
     req: Request<Body>,
-    model_info: ModelInfo,
     template_ty: PromptTemplateType,
-    created: u64,
     log_prompts: bool,
     web_ui: String,
 ) -> Result<Response<Body>, hyper::Error> {
@@ -570,9 +555,7 @@ async fn handle_request(
         "/echo" => {
             return Ok(Response::new(Body::from("echo test")));
         }
-        "/v1" => {
-            backend::handle_llama_request(req, model_info, template_ty, created, log_prompts).await
-        }
+        "/v1" => backend::handle_llama_request(req, template_ty, log_prompts).await,
         _ => Ok(static_response(path_str, web_ui)),
     }
 }
@@ -598,44 +581,6 @@ fn static_response(path_str: &str, root: String) -> Response<Body> {
                 .header(header::CONTENT_TYPE, "text/html")
                 .body(body)
                 .unwrap()
-        }
-    }
-}
-
-#[derive(Debug, Default, Clone, Deserialize, Serialize)]
-struct Metadata {
-    #[serde(rename = "enable-log")]
-    log_enable: bool,
-    #[serde(rename = "ctx-size")]
-    ctx_size: u64,
-    #[serde(rename = "n-predict")]
-    n_predict: u64,
-    #[serde(rename = "n-gpu-layers")]
-    n_gpu_layers: u64,
-    #[serde(rename = "batch-size")]
-    batch_size: u64,
-    #[serde(rename = "temp")]
-    temperature: f64,
-    #[serde(rename = "top-p")]
-    top_p: f64,
-    #[serde(rename = "repeat-penalty")]
-    repeat_penalty: f64,
-    #[serde(rename = "presence-penalty")]
-    presence_penalty: f64,
-    #[serde(rename = "frequency-penalty")]
-    frequency_penalty: f64,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
-    reverse_prompt: Option<String>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) struct ModelInfo {
-    name: String,
-}
-impl ModelInfo {
-    fn new(name: impl AsRef<str>) -> Self {
-        Self {
-            name: name.as_ref().to_string(),
         }
     }
 }
@@ -667,7 +612,7 @@ impl Graph {
         })
     }
 
-    pub fn set_input<T: Sized>(
+    pub fn _set_input<T: Sized>(
         &mut self,
         index: usize,
         tensor_type: TensorType,
@@ -677,11 +622,11 @@ impl Graph {
         self.context.set_input(index, tensor_type, dimensions, data)
     }
 
-    pub fn compute(&mut self) -> Result<(), WasiNnError> {
+    pub fn _compute(&mut self) -> Result<(), WasiNnError> {
         self.context.compute()
     }
 
-    pub fn compute_single(&mut self) -> Result<(), WasiNnError> {
+    pub fn _compute_single(&mut self) -> Result<(), WasiNnError> {
         self.context.compute_single()
     }
 
@@ -693,7 +638,7 @@ impl Graph {
         self.context.get_output(index, out_buffer)
     }
 
-    pub fn get_output_single<T: Sized>(
+    pub fn _get_output_single<T: Sized>(
         &self,
         index: usize,
         out_buffer: &mut [T],
@@ -701,7 +646,7 @@ impl Graph {
         self.context.get_output_single(index, out_buffer)
     }
 
-    pub fn finish_single(&mut self) -> Result<(), WasiNnError> {
+    pub fn _finish_single(&mut self) -> Result<(), WasiNnError> {
         self.context.fini_single()
     }
 }
