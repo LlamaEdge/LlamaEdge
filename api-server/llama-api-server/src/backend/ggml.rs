@@ -1,10 +1,7 @@
 use crate::error;
 use chat_prompts::PromptTemplateType;
 use endpoints::{
-    chat::ChatCompletionRequest,
-    common::Usage,
-    completions::CompletionRequest,
-    embeddings::{EmbeddingObject, EmbeddingRequest, EmbeddingsResponse},
+    chat::ChatCompletionRequest, completions::CompletionRequest, embeddings::EmbeddingRequest,
 };
 use futures_util::TryStreamExt;
 use hyper::{body::to_bytes, Body, Request, Response};
@@ -43,7 +40,7 @@ pub(crate) async fn embeddings_handler(
 ) -> Result<Response<Body>, hyper::Error> {
     // parse request
     let body_bytes = to_bytes(req.body_mut()).await?;
-    let embedding_request: EmbeddingRequest = match serde_json::from_slice(&body_bytes) {
+    let mut embedding_request: EmbeddingRequest = match serde_json::from_slice(&body_bytes) {
         Ok(embedding_request) => embedding_request,
         Err(e) => {
             return error::bad_request(format!(
@@ -53,36 +50,28 @@ pub(crate) async fn embeddings_handler(
         }
     };
 
-    // ! debug
-    println!("embedding_request: {:?}", embedding_request);
-
-    let fake_embedding_object = EmbeddingObject {
-        index: 0,
-        object: String::from("embedding"),
-        embedding: vec![0.1, 0.2, 0.3, 0.4, 0.5],
-    };
-
-    let fake_embeddings_response = EmbeddingsResponse {
-        object: Some(String::from("list")),
-        data: Some(vec![fake_embedding_object]),
-        model: String::from("fake_model"),
-        usage: Usage {
-            prompt_tokens: 0,
-            completion_tokens: 0,
-            total_tokens: 0,
-        },
-    };
-
-    // return response
-    let result = Response::builder()
-        .header("Access-Control-Allow-Origin", "*")
-        .header("Access-Control-Allow-Methods", "*")
-        .header("Access-Control-Allow-Headers", "*")
-        .body(Body::from(
-            serde_json::to_string(&fake_embeddings_response).unwrap(),
-        ));
-    match result {
-        Ok(response) => Ok(response),
+    match llama_core::embeddings::embeddings(&mut embedding_request).await {
+        Ok(embedding_object) => {
+            // serialize embedding object
+            match serde_json::to_string(&embedding_object) {
+                Ok(s) => {
+                    // return response
+                    let result = Response::builder()
+                        .header("Access-Control-Allow-Origin", "*")
+                        .header("Access-Control-Allow-Methods", "*")
+                        .header("Access-Control-Allow-Headers", "*")
+                        .body(Body::from(s));
+                    match result {
+                        Ok(response) => Ok(response),
+                        Err(e) => error::internal_server_error(e.to_string()),
+                    }
+                }
+                Err(e) => error::internal_server_error(format!(
+                    "Fail to serialize embedding object. {}",
+                    e.to_string()
+                )),
+            }
+        }
         Err(e) => error::internal_server_error(e.to_string()),
     }
 }
