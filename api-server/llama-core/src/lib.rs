@@ -19,6 +19,8 @@ pub(crate) static GRAPH: OnceCell<Mutex<Graph>> = OnceCell::new();
 pub(crate) static METADATA: OnceCell<Metadata> = OnceCell::new();
 pub static UTF8_ENCODINGS: OnceCell<Mutex<Vec<u8>>> = OnceCell::new();
 
+pub(crate) const MAX_BUFFER_SIZE_EMBEDDING: usize = 4096 * 15 + 128;
+
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct Metadata {
     #[serde(rename = "enable-log")]
@@ -41,6 +43,8 @@ pub struct Metadata {
     pub presence_penalty: f64,
     #[serde(rename = "frequency-penalty")]
     pub frequency_penalty: f64,
+    #[serde(rename = "embedding")]
+    pub embeddings: bool,
     #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
     pub reverse_prompt: Option<String>,
 }
