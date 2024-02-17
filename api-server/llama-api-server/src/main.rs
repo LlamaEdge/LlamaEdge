@@ -392,7 +392,7 @@ async fn main() -> Result<(), ServerError> {
         );
     }
 
-    // initialize the core context
+    // * initialize the core context
     llama_core::init_core_context(&options, &model_name, &model_alias).unwrap();
 
     // get the plugin version info

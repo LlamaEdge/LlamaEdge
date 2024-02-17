@@ -40,7 +40,7 @@ pub(crate) async fn embeddings_handler(
 ) -> Result<Response<Body>, hyper::Error> {
     // parse request
     let body_bytes = to_bytes(req.body_mut()).await?;
-    let mut embedding_request: EmbeddingRequest = match serde_json::from_slice(&body_bytes) {
+    let embedding_request: EmbeddingRequest = match serde_json::from_slice(&body_bytes) {
         Ok(embedding_request) => embedding_request,
         Err(e) => {
             return error::bad_request(format!(
@@ -50,10 +50,10 @@ pub(crate) async fn embeddings_handler(
         }
     };
 
-    match llama_core::embeddings::embeddings(&mut embedding_request).await {
-        Ok(embedding_object) => {
+    match llama_core::embeddings::embeddings(&embedding_request).await {
+        Ok(embeddings) => {
             // serialize embedding object
-            match serde_json::to_string(&embedding_object) {
+            match serde_json::to_string(&embeddings) {
                 Ok(s) => {
                     // return response
                     let result = Response::builder()
