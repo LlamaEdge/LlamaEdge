@@ -29,7 +29,7 @@ pub struct EmbeddingsResponse {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct EmbeddingObject {
     /// The index of the embedding in the list of embeddings.
-    pub index: u32,
+    pub index: u64,
     /// The object type, which is always "embedding".
     pub object: String,
     /// The embedding vector, which is a list of floats.
