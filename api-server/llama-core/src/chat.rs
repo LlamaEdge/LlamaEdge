@@ -558,10 +558,9 @@ pub async fn chat_completions(
                     finish_reason: FinishReason::stop,
                 }],
                 usage: Usage {
-                    prompt_tokens: token_info.prompt_tokens as u32,
-                    completion_tokens: token_info.completion_tokens as u32,
-                    total_tokens: token_info.prompt_tokens as u32
-                        + token_info.completion_tokens as u32,
+                    prompt_tokens: token_info.prompt_tokens,
+                    completion_tokens: token_info.completion_tokens,
+                    total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
                 },
             })
         }
@@ -639,10 +638,9 @@ pub async fn chat_completions(
                     finish_reason: FinishReason::length,
                 }],
                 usage: Usage {
-                    prompt_tokens: token_info.prompt_tokens as u32,
-                    completion_tokens: token_info.completion_tokens as u32,
-                    total_tokens: token_info.prompt_tokens as u32
-                        + token_info.completion_tokens as u32,
+                    prompt_tokens: token_info.prompt_tokens,
+                    completion_tokens: token_info.completion_tokens,
+                    total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
                 },
             })
         }
@@ -722,10 +720,9 @@ pub async fn chat_completions(
                     finish_reason: FinishReason::length,
                 }],
                 usage: Usage {
-                    prompt_tokens: token_info.prompt_tokens as u32,
-                    completion_tokens: token_info.completion_tokens as u32,
-                    total_tokens: token_info.completion_tokens as u32
-                        + token_info.completion_tokens as u32,
+                    prompt_tokens: token_info.prompt_tokens,
+                    completion_tokens: token_info.completion_tokens,
+                    total_tokens: token_info.completion_tokens + token_info.completion_tokens,
                 },
             })
         }
@@ -1150,7 +1147,7 @@ fn build_prompt(
     }
 }
 
-fn get_token_info(graph: &Graph) -> Result<TokenInfo, String> {
+pub(crate) fn get_token_info(graph: &Graph) -> Result<TokenInfo, String> {
     let max_output_size = match MAX_BUFFER_SIZE.get() {
         Some(max_output_size) => *max_output_size,
         None => {
@@ -1200,7 +1197,7 @@ fn get_token_info(graph: &Graph) -> Result<TokenInfo, String> {
 
 #[derive(Debug)]
 
-struct TokenInfo {
-    prompt_tokens: u64,
-    completion_tokens: u64,
+pub(crate) struct TokenInfo {
+    pub(crate) prompt_tokens: u64,
+    pub(crate) completion_tokens: u64,
 }
