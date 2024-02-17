@@ -81,8 +81,6 @@ pub async fn embeddings(
                     ))
                 })?;
 
-                println!("token_info: {:?}", &token_info);
-
                 usage.prompt_tokens += token_info.prompt_tokens;
                 usage.completion_tokens += token_info.completion_tokens;
                 usage.total_tokens = usage.prompt_tokens + usage.completion_tokens;
