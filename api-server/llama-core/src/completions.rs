@@ -12,7 +12,7 @@ pub async fn completions(request: &CompletionRequest) -> Result<CompletionObject
     let prompt = request.prompt.join(" ");
 
     // ! todo: a temp solution of computing the number of tokens in prompt
-    let prompt_tokens = prompt.split_whitespace().count() as u32;
+    let prompt_tokens = prompt.split_whitespace().count() as u64;
 
     let buffer = infer(prompt.trim()).await?;
 
@@ -26,7 +26,7 @@ pub async fn completions(request: &CompletionRequest) -> Result<CompletionObject
     let answer = model_answer.trim();
 
     // ! todo: a temp solution of computing the number of tokens in answer
-    let completion_tokens = answer.split_whitespace().count() as u32;
+    let completion_tokens = answer.split_whitespace().count() as u64;
 
     let created = SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
