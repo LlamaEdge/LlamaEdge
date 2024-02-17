@@ -51,9 +51,9 @@ pub(crate) async fn embeddings_handler(
     };
 
     match llama_core::embeddings::embeddings(&embedding_request).await {
-        Ok(embeddings) => {
+        Ok(embedding_response) => {
             // serialize embedding object
-            match serde_json::to_string(&embeddings) {
+            match serde_json::to_string(&embedding_response) {
                 Ok(s) => {
                     // return response
                     let result = Response::builder()
