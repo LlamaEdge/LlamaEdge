@@ -1,16 +1,17 @@
 use crate::{
+    chat::get_token_info,
     error::{BackendError, LlamaCoreError},
     GRAPH, MAX_BUFFER_SIZE_EMBEDDING, METADATA,
 };
-use endpoints::embeddings::{EmbeddingObject, EmbeddingRequest};
+use endpoints::{
+    common::Usage,
+    embeddings::{EmbeddingObject, EmbeddingRequest, EmbeddingsResponse},
+};
 use serde::{Deserialize, Serialize};
-
-// use text_splitter::TextSplitter;
-// use tiktoken_rs::cl100k_base;
 
 pub async fn embeddings(
     embedding_request: &EmbeddingRequest,
-) -> Result<Vec<EmbeddingObject>, LlamaCoreError> {
+) -> Result<EmbeddingsResponse, LlamaCoreError> {
     // update metadata to enable the `embedding` option
     update_metadata()?;
 
@@ -27,6 +28,7 @@ pub async fn embeddings(
 
     // compute embeddings
     let mut embeddings: Vec<EmbeddingObject> = Vec::new();
+    let mut usage = Usage::default();
     for (idx, input) in embedding_request.input.iter().enumerate() {
         // set input
         let tensor_data = input.as_bytes().to_vec();
@@ -70,6 +72,20 @@ pub async fn embeddings(
                 };
 
                 embeddings.push(embedding_object);
+
+                // retrieve the number of prompt and completion tokens
+                let token_info = get_token_info(&graph).map_err(|e| {
+                    LlamaCoreError::Operation(format!(
+                        "Failed to get the number of prompt and completion tokens. {}",
+                        e.to_string()
+                    ))
+                })?;
+
+                println!("token_info: {:?}", &token_info);
+
+                usage.prompt_tokens += token_info.prompt_tokens;
+                usage.completion_tokens += token_info.completion_tokens;
+                usage.total_tokens = usage.prompt_tokens + usage.completion_tokens;
             }
             Err(e) => {
                 return Err(LlamaCoreError::Backend(BackendError::Compute(
@@ -79,7 +95,14 @@ pub async fn embeddings(
         }
     }
 
-    Ok(embeddings)
+    let embedding_reponse = EmbeddingsResponse {
+        object: String::from("list"),
+        data: embeddings,
+        model: embedding_request.model.clone(),
+        usage,
+    };
+
+    Ok(embedding_reponse)
 }
 
 fn update_metadata() -> Result<(), LlamaCoreError> {
