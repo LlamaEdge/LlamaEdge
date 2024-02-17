@@ -19,8 +19,8 @@ pub struct EmbeddingRequest {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EmbeddingsResponse {
-    pub object: Option<String>,
-    pub data: Option<Vec<EmbeddingObject>>,
+    pub object: String,
+    pub data: Vec<EmbeddingObject>,
     pub model: String,
     pub usage: Usage,
 }
