@@ -248,17 +248,6 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
     })
 }
 
-pub fn debug_core() {
-    let ctx_size = CTX_SIZE.get().unwrap();
-    println!("[CORE] CTX_SIZE: {:?}", ctx_size);
-
-    let max_buffer_size = MAX_BUFFER_SIZE.get().unwrap();
-    println!("[CORE] MAX_BUFFER_SIZE: {:?}", max_buffer_size);
-
-    let metadata = METADATA.get().unwrap();
-    println!("[CORE] METADATA: {:?}", metadata);
-}
-
 pub(crate) fn get_graph() -> Result<std::sync::MutexGuard<'static, Graph>, LlamaCoreError> {
     let graph = GRAPH.get().ok_or(LlamaCoreError::Operation(String::from(
         "Fail to get the underlying value of `GRAPH`.",
