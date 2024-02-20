@@ -1,4 +1,4 @@
-# Prompt Templat Table
+# Prompt Template Table
 
 You can learn the prompt template name and its associated string format, and models that LlamaEdge supports from the following table.
 
