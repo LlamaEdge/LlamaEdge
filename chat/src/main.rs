@@ -812,32 +812,25 @@ fn stream_compute(
                 // decode the output buffer to a utf8 string
                 let token = match String::from_utf8(output_buffer[..output_size].to_vec()) {
                     Ok(v) => v,
-                    Err(_e) => {
+                    Err(_) => {
                         invalid_utf8_vec.extend_from_slice(&output_buffer[..output_size]);
 
-                        if invalid_utf8_vec.len() > 3 {
-                            return Err(ChatError::Operation(String::from(
-                                "The length of the invalid utf8 bytes exceed 3.",
-                            )));
-                        }
+                        match String::from_utf8(invalid_utf8_vec.clone()) {
+                            Ok(token) => {
+                                // clear invalid_utf8_vec
+                                invalid_utf8_vec.clear();
 
-                        if invalid_utf8_vec.len() == 3 {
-                            let token = match String::from_utf8(invalid_utf8_vec.clone()) {
-                                Ok(v) => v,
-                                Err(e) => {
-                                    return Err(ChatError::Operation(format!(
-                                        "Failed to decode the invalid utf8 bytes to a utf8 string. {}",
-                                        e.to_string()
+                                token
+                            }
+                            Err(_) => {
+                                if invalid_utf8_vec.len() > 3 {
+                                    return Err(ChatError::Operation(String::from(
+                                        "The length of the invalid utf8 bytes exceed 3.",
                                     )));
                                 }
-                            };
 
-                            // clear invalid_utf8_vec
-                            invalid_utf8_vec.clear();
-
-                            token
-                        } else {
-                            continue;
+                                continue;
+                            }
                         }
                     }
                 };
