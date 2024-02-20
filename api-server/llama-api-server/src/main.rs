@@ -14,7 +14,7 @@ use std::{net::SocketAddr, path::PathBuf, str::FromStr};
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
-const DEFAULT_SOCKET_ADDRESS: &str = "0.0.0.0:8080";
+const DEFAULT_SOCKET_ADDRESS: &str = "127.0.0.1:8080";
 
 #[derive(Clone, Debug)]
 pub struct AppState {
