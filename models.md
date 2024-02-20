@@ -1,6 +1,10 @@
 # GGUF Models
 
+**To catch up the latest model, please visit [Second State's Huggingface page](https://huggingface.co/second-state), which includes different kinds of auantized models.** 
+
 You can find the model download link, the command to run the model, the command to create an OpenAI compatible API server for the model, and the sha256sum of the model.
+
+Before you start, you need to [install WasmEdge and its ggml plugin via one single command line](https://github.com/second-state/LlamaEdge/tree/main/api-server#dependencies).
 
 <details>
 <summary> <b>Llama-2-7B-Chat</b> </summary>
