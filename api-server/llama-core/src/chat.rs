@@ -180,7 +180,7 @@ pub async fn chat_completions_stream(
                                         index: 0,
                                         delta: ChatCompletionChunkChoiceDelta {
                                             role: Some(ChatCompletionRole::Assistant),
-                                            content: Some("<|WASMEDGE-GGML-EOS|>".to_string()),
+                                            content: Some("data: [DONE]".to_string()),
                                             function_call: None,
                                             tool_calls: None,
                                         },
@@ -276,7 +276,7 @@ pub async fn chat_completions_stream(
                                 index: 0,
                                 delta: ChatCompletionChunkChoiceDelta {
                                     role: Some(ChatCompletionRole::Assistant),
-                                    content: Some("<|WASMEDGE-GGML-EOS|>".to_string()),
+                                    content: Some("data: [DONE]".to_string()),
                                     function_call: None,
                                     tool_calls: None,
                                 },
