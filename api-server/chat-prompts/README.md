@@ -121,7 +121,7 @@ GPT4 User: {prompt}<|end_of_turn|>GPT4 Assistant:
 </tr>
 
 <tr>
-<td>vicuna-chat</td>
+<td>vicuna-1.0-chat</td>
 <td>
   
 ```text
