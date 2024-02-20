@@ -5,7 +5,7 @@ You can learn the prompt template name and its associated string format, and mod
 <table>
   
 <tr>
-<td>Prompt Template Name</td>
+<td>Prompt type</td>
 <td>Format</td>
 <td>Models using this template</td>
 </tr>
@@ -230,7 +230,7 @@ Assistant:
 </tr>
 
 <tr>
-<td>belle-llama-2-chat</td>
+<td>human-assistant</td>
 <td>
 
 ```text
