@@ -147,7 +147,7 @@ pub async fn chat_completions_stream(
                                     }
                                     Err(_) => {
                                         // ! This is a temp check. In case, infinite cached encodings happen.
-                                        if cached_encodings.len() > 5 {
+                                        if cached_encodings.len() > 3 {
                                             return Err(LlamaCoreError::Operation(String::from(
                                                 "The length of the invalid utf8 bytes exceed 3.",
                                             )));
