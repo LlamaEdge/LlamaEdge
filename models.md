@@ -12,7 +12,7 @@ Before you start, you need to [install WasmEdge and its ggml plugin via one sing
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/Llama-2-7B-Chat-GGUF/resolve/main/Llama-2-7b-chat-hf-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolve/main/Llama-2-7b-chat-hf-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the downloaded model file to make sure it is correct.
@@ -61,7 +61,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/Llama-2-13B-Chat-GGUF/resolve/main/Llama-2-13b-chat-hf-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Llama-2-13B-Chat-GGUF/resolve/main/Llama-2-13b-chat-hf-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the downloaded model file to make sure it is correct.
@@ -109,7 +109,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/CodeLlama-13B-Instruct-GGUF/resolve/main/CodeLlama-13b-Instruct-hf-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/CodeLlama-13B-Instruct-GGUF/resolve/main/CodeLlama-13b-Instruct-hf-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the downloaded model file to make sure it is correct:
@@ -135,7 +135,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:CodeLlama-13b-Instruct-hf-Q5_K
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/Mistral-7B-Instruct-v0.1-GGUF/resolve/main/Mistral-7B-Instruct-v0.1-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Mistral-7B-Instruct-v0.1-GGUF/resolve/main/Mistral-7B-Instruct-v0.1-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the downloaded model file to make sure it is correct:
@@ -182,7 +182,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/Mistral-7B-Instruct-v0.2-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/Mistral-7B-Instruct-v0.2-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the downloaded model file to make sure it is correct:
@@ -231,7 +231,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/MistralLite-7B-GGUF/resolve/main/MistralLite-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/MistralLite-7B-GGUF/resolve/main/MistralLite-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the downloaded model file to make sure it is correct.
@@ -280,7 +280,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/OpenChat-3.5-0106-GGUF/resolve/main/openchat-3.5-0106-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/OpenChat-3.5-0106-GGUF/resolve/main/openchat-3.5-0106-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the downloaded model file to make sure it is correct.
@@ -328,7 +328,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/openchat-3.5-1210-GGUF/resolve/main/openchat-3.5-1210-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/openchat-3.5-1210-GGUF/resolve/main/openchat-3.5-1210-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the Downloaded model file to make sure it is correct.
@@ -377,7 +377,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/OpenChat-3.5-GGUF/resolve/main/openchat_3.5-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/OpenChat-3.5-GGUF/resolve/main/openchat_3.5-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the downloaded model file to make sure it is correct.
@@ -426,7 +426,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/Wizard-Vicuna-13B-Uncensored-GGUF/resolve/main/Wizard-Vicuna-13B-Uncensored-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Wizard-Vicuna-13B-Uncensored-GGUF/resolve/main/Wizard-Vicuna-13B-Uncensored-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the Downloaded model file to make sure it is correct.
@@ -475,7 +475,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/TinyLlama-1.1B-Chat-v1.0-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/TinyLlama-1.1B-Chat-v1.0-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the downloaded model file to make sure it is correct.
@@ -524,7 +524,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/Baichuan2-13B-Chat-GGUF/resolve/main/Baichuan2-13B-Chat-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Baichuan2-13B-Chat-GGUF/resolve/main/Baichuan2-13B-Chat-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the Downloaded model file to make sure it is correct.
@@ -573,7 +573,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/OpenHermes-2.5-Mistral-7B-GGUF/resolve/main/OpenHermes-2.5-Mistral-7B-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/OpenHermes-2.5-Mistral-7B-GGUF/resolve/main/OpenHermes-2.5-Mistral-7B-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the downloaded model file to make sure it is correct.
@@ -620,7 +620,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/Dolphin-2.2-Yi-34B-GGUF/resolve/main/dolphin-2_2-yi-34b-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Dolphin-2.2-Yi-34B-GGUF/resolve/main/dolphin-2_2-yi-34b-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the downloaded model file to make sure it is correct.
@@ -669,7 +669,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/dolphin-2.6-mistral-7B-GGUF/resolve/main/dolphin-2.6-mistral-7b-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/dolphin-2.6-mistral-7B-GGUF/resolve/main/dolphin-2.6-mistral-7b-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the downloaded model file to make sure it is correct.
@@ -719,7 +719,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/Samantha-1.2-Mistral-7B-GGUF/resolve/main/samantha-1.2-mistral-7b-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Samantha-1.2-Mistral-7B-GGUF/resolve/main/samantha-1.2-mistral-7b-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the downloaded model file to make sure it is correct.
@@ -768,7 +768,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/Samantha-1.11-CodeLlama-34B-GGUF/resolve/main/Samantha-1.11-CodeLlama-34b-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Samantha-1.11-CodeLlama-34B-GGUF/resolve/main/Samantha-1.11-CodeLlama-34b-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the downloaded model file to make sure it is correct.
@@ -817,7 +817,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/WizardCoder-Python-7B-v1.0-GGUF/resolve/main/WizardCoder-Python-7B-V1.0-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/WizardCoder-Python-7B-v1.0-GGUF/resolve/main/WizardCoder-Python-7B-V1.0-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the Downloaded model file to make sure it is correct.
@@ -866,7 +866,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/Zephyr-7B-Alpha-GGUF/resolve/main/zephyr-7b-alpha-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Zephyr-7B-Alpha-GGUF/resolve/main/zephyr-7b-alpha-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the downloaded model file to make sure it is correct.
@@ -915,7 +915,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/WizardLM-13B-V1.0-Uncensored-GGUF/resolve/main/WizardLM-13B-V1.0-Uncensored-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/WizardLM-13B-V1.0-Uncensored-GGUF/resolve/main/WizardLM-13B-V1.0-Uncensored-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the downloaded model file to make sure it is correct.
@@ -964,7 +964,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/Orca-2-13B-GGUF/resolve/main/Orca-2-13b-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Orca-2-13B-GGUF/resolve/main/Orca-2-13b-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the downloaded model file to make sure it is correct.
@@ -1013,7 +1013,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/Neural-Chat-7B-v3-1-GGUF/resolve/main/neural-chat-7b-v3-1-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Neural-Chat-7B-v3-1-GGUF/resolve/main/neural-chat-7b-v3-1-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the Downloaded model file to make sure it is correct.
@@ -1062,7 +1062,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/Yi-34B-Chat-GGUF/resolve/main/Yi-34B-Chat-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Yi-34B-Chat-GGUF/resolve/main/Yi-34B-Chat-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the downloaded model file to make sure it is correct.
@@ -1111,7 +1111,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/Starling-LM-7B-alpha-GGUF/resolve/main/Starling-LM-7B-alpha-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Starling-LM-7B-alpha-GGUF/resolve/main/Starling-LM-7B-alpha-Q5_K_M.gguf
 ```
 
 Please check the sha256sum of the downloaded model file to make sure it is correct.
@@ -1160,7 +1160,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/Deepseek-Coder-6.7B-Instruct-GGUF/resolve/main/deepseek-coder-6.7b-instruct-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Deepseek-Coder-6.7B-Instruct-GGUF/resolve/main/deepseek-coder-6.7b-instruct-Q5_K_M.gguf
 ```
 
 Note that check the sha256 of `deepseek-coder-6.7b-instruct-Q5_K_M.gguf` after downloading.
@@ -1209,7 +1209,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/Deepseek-LLM-7B-Chat-GGUF/resolve/main/deepseek-llm-7b-chat-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Deepseek-LLM-7B-Chat-GGUF/resolve/main/deepseek-llm-7b-chat-Q5_K_M.gguf
 ```
 
 Note that check the sha256 of `deepseek-llm-7b-chat-Q5_K_M.gguf` after downloading.
@@ -1258,7 +1258,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/SOLAR-10.7B-Instruct-v1.0-GGUF/resolve/main/SOLAR-10.7B-Instruct-v1.0-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/SOLAR-10.7B-Instruct-v1.0-GGUF/resolve/main/SOLAR-10.7B-Instruct-v1.0-Q5_K_M.gguf
 ```
 
 Note that check the sha256 of `solar-10.7b-instruct-v1.0.Q5_K_M.gguf` after downloading.
@@ -1307,7 +1307,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/Mixtral-8x7B-Instruct-v0.1-GGUF/resolve/main/Mixtral-8x7B-Instruct-v0.1-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Mixtral-8x7B-Instruct-v0.1-GGUF/resolve/main/Mixtral-8x7B-Instruct-v0.1-Q5_K_M.gguf
 ```
 
 Note that check the sha256 of `Mixtral-8x7B-Instruct-v0.1-Q5_K_M.gguf` after downloading.
@@ -1355,7 +1355,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/Nous-Hermes-2-Mixtral-8x7B-DPO-GGUF/resolve/main/Nous-Hermes-2-Mixtral-8x7B-DPO-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Nous-Hermes-2-Mixtral-8x7B-DPO-GGUF/resolve/main/Nous-Hermes-2-Mixtral-8x7B-DPO-Q5_K_M.gguf
 ```
 
 Note that check the sha256 of `Nous-Hermes-2-Mixtral-8x7B-DPO-Q5_K_M.gguf` after downloading.
@@ -1403,7 +1403,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <b>Download the model</b>
 
 ```bash
-curl -LO https://huggingface.co/LlamaEdge/Nous-Hermes-2-Mixtral-8x7B-SFT-GGUF/resolve/main/Nous-Hermes-2-Mixtral-8x7B-SFT-Q5_K_M.gguf
+curl -LO https://huggingface.co/second-state/Nous-Hermes-2-Mixtral-8x7B-SFT-GGUF/resolve/main/Nous-Hermes-2-Mixtral-8x7B-SFT-Q5_K_M.gguf
 ```
 
 Note that check the sha256 of `Nous-Hermes-2-Mixtral-8x7B-SFT-Q5_K_M.gguf` after downloading.
