@@ -9,20 +9,12 @@ use hyper::{
     service::{make_service_fn, service_fn},
     Body, Request, Response, Server, StatusCode,
 };
-use once_cell::sync::OnceCell;
-use serde::{Deserialize, Serialize};
-use std::{net::SocketAddr, path::PathBuf, str::FromStr, sync::Mutex};
-use wasi_nn::{Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext, TensorType};
+use llama_core::Metadata;
+use std::{net::SocketAddr, path::PathBuf, str::FromStr};
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
-const DEFAULT_SOCKET_ADDRESS: &str = "0.0.0.0:8080";
-
-static MAX_BUFFER_SIZE: OnceCell<usize> = OnceCell::new();
-static CTX_SIZE: OnceCell<usize> = OnceCell::new();
-static GRAPH: OnceCell<Mutex<Graph>> = OnceCell::new();
-static METADATA: OnceCell<Metadata> = OnceCell::new();
-static UTF8_ENCODINGS: OnceCell<Mutex<Vec<u8>>> = OnceCell::new();
+const DEFAULT_SOCKET_ADDRESS: &str = "127.0.0.1:8080";
 
 #[derive(Clone, Debug)]
 pub struct AppState {
@@ -241,9 +233,6 @@ async fn main() -> Result<(), ServerError> {
     };
     println!("[INFO] Model alias: {alias}", alias = &model_alias);
 
-    // create a `ModelInfo` instance
-    let model_info = ModelInfo::new(model_name);
-
     // create an `Options` instance
     let mut options = Metadata::default();
 
@@ -258,15 +247,6 @@ async fn main() -> Result<(), ServerError> {
     };
     println!("[INFO] Prompt context size: {size}", size = ctx_size);
     options.ctx_size = *ctx_size as u64;
-
-    // set `CTX_SIZE`
-    if CTX_SIZE.set(*ctx_size as usize).is_err() {
-        return Err(ServerError::ContextSize);
-    }
-    // set `MAX_BUFFER_SIZE`
-    if MAX_BUFFER_SIZE.set(*ctx_size as usize * 6).is_err() {
-        return Err(ServerError::MaxBufferSize);
-    }
 
     // number of tokens to predict
     let n_predict = match matches.get_one::<u32>("n_predict") {
@@ -412,116 +392,24 @@ async fn main() -> Result<(), ServerError> {
         );
     }
 
-    if METADATA.set(options).is_err() {
-        return Err(ServerError::Metadata);
-    }
+    // * initialize the core context
+    llama_core::init_core_context(&options, &model_name, &model_alias).unwrap();
 
-    let graph = {
-        let metadata = match METADATA.get() {
-            Some(metadata) => metadata,
-            None => {
-                return Err(ServerError::InternalServerError(
-                    "The METADATA is not set".to_owned(),
-                ));
-            }
-        };
-
-        match Graph::new(model_alias, metadata) {
-            Ok(graph) => graph,
-            Err(e) => {
-                return Err(ServerError::InternalServerError(e.to_string()));
-            }
-        }
-    };
-
-    if GRAPH.set(Mutex::new(graph)).is_err() {
-        return Err(ServerError::InternalServerError(
-            "The GRAPH has already been initialized".to_owned(),
-        ));
-    }
-
-    {
-        let graph = match GRAPH.get() {
-            Some(graph) => graph,
-            None => {
-                return Err(ServerError::InternalServerError(
-                    "The GRAPH is not set".to_owned(),
-                ));
-            }
-        };
-
-        let graph_locked = match graph.lock() {
-            Ok(graph) => graph,
-            Err(e) => {
-                return Err(ServerError::InternalServerError(e.to_string()));
-            }
-        };
-
-        // get version info
-        let max_output_size = match MAX_BUFFER_SIZE.get() {
-            Some(max_output_size) => *max_output_size,
-            None => {
-                return Err(ServerError::InternalServerError(
-                    "The MAX_BUFFER_SIZE is not set".to_owned(),
-                ));
-            }
-        };
-        let mut output_buffer = vec![0u8; max_output_size];
-        let mut output_size = match graph_locked.get_output(1, &mut output_buffer) {
-            Ok(output_size) => output_size,
-            Err(e) => {
-                return Err(ServerError::InternalServerError(e.to_string()));
-            }
-        };
-        output_size = std::cmp::min(max_output_size, output_size);
-        let metadata: serde_json::Value =
-            match serde_json::from_slice(&output_buffer[..output_size]) {
-                Ok(metadata) => metadata,
-                Err(e) => {
-                    return Err(ServerError::InternalServerError(e.to_string()));
-                }
-            };
-
-        let plugin_build_number = match metadata["llama_build_number"].as_u64() {
-            Some(build_number) => build_number,
-            None => {
-                return Err(ServerError::InternalServerError(
-                    "Failed to convert the build number of the plugin to u64".to_owned(),
-                ));
-            }
-        };
-        let plugin_commit = match metadata["llama_commit"].as_str() {
-            Some(commit) => commit,
-            None => {
-                return Err(ServerError::InternalServerError(
-                    "Failed to convert the commit id of the plugin to string".to_owned(),
-                ));
-            }
-        };
-        println!(
-            "[INFO] Plugin version: b{} (commit {})",
-            plugin_build_number, plugin_commit,
-        );
-    }
+    // get the plugin version info
+    let plugin_info = llama_core::get_plugin_info()
+        .map_err(|e| ServerError::InternalServerError(e.to_string()))?;
+    println!(
+        "[INFO] Plugin version: b{build_number} (commit {commit_id})",
+        build_number = plugin_info.build_number,
+        commit_id = plugin_info.commit_id,
+    );
 
     if log_stat || log_all {
         print_log_end_separator(Some("*"), None);
     }
 
-    // the timestamp when the server is created
-    let created = match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
-        Ok(duration) => duration.as_secs(),
-        Err(e) => {
-            return Err(ServerError::InternalServerError(e.to_string()));
-        }
-    };
-
-    let ref_created = std::sync::Arc::new(created);
-
     let new_service = make_service_fn(move |_| {
-        let model_info = model_info.clone();
         let prompt_template_ty = ref_template_ty.clone();
-        let created = ref_created.clone();
         let log_prompts = ref_log_prompts.clone();
         let web_ui = matches
             .get_one::<String>("web_ui")
@@ -531,9 +419,7 @@ async fn main() -> Result<(), ServerError> {
             Ok::<_, Error>(service_fn(move |req| {
                 handle_request(
                     req,
-                    model_info.clone(),
                     *prompt_template_ty.clone(),
-                    *created.clone(),
                     *log_prompts.clone(),
                     web_ui.clone(),
                 )
@@ -553,9 +439,7 @@ async fn main() -> Result<(), ServerError> {
 
 async fn handle_request(
     req: Request<Body>,
-    model_info: ModelInfo,
     template_ty: PromptTemplateType,
-    created: u64,
     log_prompts: bool,
     web_ui: String,
 ) -> Result<Response<Body>, hyper::Error> {
@@ -570,9 +454,7 @@ async fn handle_request(
         "/echo" => {
             return Ok(Response::new(Body::from("echo test")));
         }
-        "/v1" => {
-            backend::handle_llama_request(req, model_info, template_ty, created, log_prompts).await
-        }
+        "/v1" => backend::handle_llama_request(req, template_ty, log_prompts).await,
         _ => Ok(static_response(path_str, web_ui)),
     }
 }
@@ -599,110 +481,6 @@ fn static_response(path_str: &str, root: String) -> Response<Body> {
                 .body(body)
                 .unwrap()
         }
-    }
-}
-
-#[derive(Debug, Default, Clone, Deserialize, Serialize)]
-struct Metadata {
-    #[serde(rename = "enable-log")]
-    log_enable: bool,
-    #[serde(rename = "ctx-size")]
-    ctx_size: u64,
-    #[serde(rename = "n-predict")]
-    n_predict: u64,
-    #[serde(rename = "n-gpu-layers")]
-    n_gpu_layers: u64,
-    #[serde(rename = "batch-size")]
-    batch_size: u64,
-    #[serde(rename = "temp")]
-    temperature: f64,
-    #[serde(rename = "top-p")]
-    top_p: f64,
-    #[serde(rename = "repeat-penalty")]
-    repeat_penalty: f64,
-    #[serde(rename = "presence-penalty")]
-    presence_penalty: f64,
-    #[serde(rename = "frequency-penalty")]
-    frequency_penalty: f64,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
-    reverse_prompt: Option<String>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) struct ModelInfo {
-    name: String,
-}
-impl ModelInfo {
-    fn new(name: impl AsRef<str>) -> Self {
-        Self {
-            name: name.as_ref().to_string(),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct Graph {
-    _graph: WasiNnGraph,
-    context: GraphExecutionContext,
-}
-impl Graph {
-    pub fn new(model_alias: impl AsRef<str>, options: &Metadata) -> Result<Self, String> {
-        let config = serde_json::to_string(&options).map_err(|e| e.to_string())?;
-
-        // load the model
-        let graph = wasi_nn::GraphBuilder::new(
-            wasi_nn::GraphEncoding::Ggml,
-            wasi_nn::ExecutionTarget::AUTO,
-        )
-        .config(config)
-        .build_from_cache(model_alias.as_ref())
-        .map_err(|e| e.to_string())?;
-
-        // initialize the execution context
-        let context = graph.init_execution_context().map_err(|e| e.to_string())?;
-
-        Ok(Self {
-            _graph: graph,
-            context,
-        })
-    }
-
-    pub fn set_input<T: Sized>(
-        &mut self,
-        index: usize,
-        tensor_type: TensorType,
-        dimensions: &[usize],
-        data: impl AsRef<[T]>,
-    ) -> Result<(), WasiNnError> {
-        self.context.set_input(index, tensor_type, dimensions, data)
-    }
-
-    pub fn compute(&mut self) -> Result<(), WasiNnError> {
-        self.context.compute()
-    }
-
-    pub fn compute_single(&mut self) -> Result<(), WasiNnError> {
-        self.context.compute_single()
-    }
-
-    pub fn get_output<T: Sized>(
-        &self,
-        index: usize,
-        out_buffer: &mut [T],
-    ) -> Result<usize, WasiNnError> {
-        self.context.get_output(index, out_buffer)
-    }
-
-    pub fn get_output_single<T: Sized>(
-        &self,
-        index: usize,
-        out_buffer: &mut [T],
-    ) -> Result<usize, WasiNnError> {
-        self.context.get_output_single(index, out_buffer)
-    }
-
-    pub fn finish_single(&mut self) -> Result<(), WasiNnError> {
-        self.context.fini_single()
     }
 }
 

@@ -7,14 +7,14 @@ pub enum LlamaCppLogitBiasType {
     tokens,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Usage {
     /// Number of tokens in the prompt.
-    pub prompt_tokens: u32,
+    pub prompt_tokens: u64,
     /// Number of tokens in the generated completion.
-    pub completion_tokens: u32,
+    pub completion_tokens: u64,
     /// Total number of tokens used in the request (prompt + completion).
-    pub total_tokens: u32,
+    pub total_tokens: u64,
 }
 
 /// The reason the model stopped generating tokens.
