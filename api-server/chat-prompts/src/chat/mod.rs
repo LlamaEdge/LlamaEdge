@@ -2,6 +2,7 @@ pub mod baichuan;
 pub mod belle;
 pub mod chatml;
 pub mod deepseek;
+pub mod gemma;
 pub mod intel;
 pub mod llama;
 pub mod mistral;
@@ -18,6 +19,7 @@ use belle::*;
 use chatml::*;
 use deepseek::*;
 use endpoints::chat::ChatCompletionRequestMessage;
+use gemma::*;
 use intel::*;
 use llama::*;
 use mistral::*;
@@ -57,4 +59,5 @@ pub enum ChatPrompt {
     SolarInstructPrompt,
     Phi2ChatPrompt,
     Phi2InstructPrompt,
+    GemmaInstructPrompt,
 }
