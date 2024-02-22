@@ -86,6 +86,7 @@ for wt in "${wtypes[@]}"; do
 done
 
 ss_urls=(
+    https://huggingface.co/second-state/Gemma-7b-it-GGUF/resolve/main/gemma-7b-it-Q5_K_M.gguf
     "https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolve/main/Llama-2-7b-chat-hf-Q5_K_M.gguf"
     "https://huggingface.co/second-state/stablelm-2-zephyr-1.6b-GGUF/resolve/main/stablelm-2-zephyr-1_6b-Q5_K_M.gguf"
     "https://huggingface.co/second-state/OpenChat-3.5-0106-GGUF/resolve/main/openchat-3.5-0106-Q5_K_M.gguf"
@@ -102,6 +103,7 @@ ss_urls=(
 
 # sample models
 ss_models=(
+    "Gemma-7b-it-GGUF"
     "Llama-2-7B-Chat-GGUF"
     "stablelm-2-zephyr-1.6b-GGUF"
     "OpenChat-3.5-0106-GGUF"
@@ -118,6 +120,7 @@ ss_models=(
 
 # prompt types
 prompt_types=(
+    "gemma-instruct"
     "llama-2-chat"
     "chatml"
     "openchat"
@@ -361,7 +364,7 @@ if [[ $repo =~ ^https://huggingface\.co/second-state ]]; then
     rm README.md
 else
     printf "[+] Please select a number from the list below:\n"
-    printf "    The definitions of the prompt types below can be found at https://github.com/second-state/LlamaEdge/raw/main/api-server/chat-prompts/README.md\n\n"
+    printf "    The definitions of the prompt types below can be found at https://github.com/LlamaEdge/LlamaEdge/raw/main/api-server/chat-prompts/README.md\n\n"
 
     is=0
     for r in "${prompt_types[@]}"; do
@@ -432,7 +435,7 @@ if [[ "$running_mode_index" == "1" ]]; then
         # If user answered yes, ask them to input a string
         if [[ "$use_latest_version" == "y" || "$use_latest_version" == "Y" ]]; then
             printf "[+] Downloading the latest llama-api-server.wasm ...\n"
-            curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
+            curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
 
             printf "\n"
 
@@ -442,7 +445,7 @@ if [[ "$running_mode_index" == "1" ]]; then
 
     else
         printf "[+] Downloading the latest llama-api-server.wasm ...\n"
-        curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
+        curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
 
         printf "\n"
     fi
@@ -503,7 +506,7 @@ elif [[ "$running_mode_index" == "2" ]]; then
         # If user answered yes, ask them to input a string
         if [[ "$use_latest_version" == "y" || "$use_latest_version" == "Y" ]]; then
             printf "[+] Downloading the latest llama-chat.wasm ...\n"
-            curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+            curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
             printf "\n"
 
@@ -513,7 +516,7 @@ elif [[ "$running_mode_index" == "2" ]]; then
 
     else
         printf "[+] Downloading the latest llama-chat.wasm ...\n"
-        curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+        curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
         printf "\n"
     fi
