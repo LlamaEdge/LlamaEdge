@@ -156,6 +156,7 @@ async fn main() -> Result<(), ServerError> {
                     "deepseek-chat",
                     "deepseek-coder",
                     "solar-instruct",
+                    "gemma-instruct",
                 ])
                 .value_name("TEMPLATE")
                 .help("Sets the prompt template.")
@@ -393,7 +394,12 @@ async fn main() -> Result<(), ServerError> {
     }
 
     // * initialize the core context
-    llama_core::init_core_context(&options, &model_name, &model_alias).unwrap();
+    llama_core::init_core_context(&options, &model_name, &model_alias).map_err(|e| {
+        ServerError::InternalServerError(format!(
+            "Failed to initialize the core context. {}",
+            e.to_string()
+        ))
+    })?;
 
     // get the plugin version info
     let plugin_info = llama_core::get_plugin_info()

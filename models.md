@@ -4,7 +4,7 @@
 
 You can find the model download link, the command to run the model, the command to create an OpenAI compatible API server for the model, and the sha256sum of the model.
 
-Before you start, you need to [install WasmEdge and its ggml plugin via one single command line](https://github.com/second-state/LlamaEdge/tree/main/api-server#dependencies).
+Before you start, you need to [install WasmEdge and its ggml plugin via one single command line](https://github.com/LlamaEdge/LlamaEdge/tree/main/api-server#dependencies).
 
 <details>
 <summary> <b>Llama-2-7B-Chat</b> </summary>
@@ -24,7 +24,7 @@ Please check the sha256sum of the downloaded model file to make sure it is corre
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Llama-2-7b-chat-hf-Q5_K_M.gguf llama-chat.wasm -p llama-2-chat
 ```
@@ -32,8 +32,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:Llama-2-7b-chat-hf-Q5_K_M.gguf
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -73,15 +73,15 @@ Please check the sha256sum of the downloaded model file to make sure it is corre
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Llama-2-13b-chat-hf-Q5_K_M.gguf llama-chat.wasm -p llama-2-chat
 ```
 
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -121,7 +121,7 @@ b30d01b5a22f2b3dc6cd01084b50114dde5e63cbc240ee7ad20ebbd6c63eab95
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:CodeLlama-13b-Instruct-hf-Q5_K_M.gguf llama-chat.wasm -p codellama-instruct
 ```
@@ -147,14 +147,14 @@ Please check the sha256sum of the downloaded model file to make sure it is corre
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Mistral-7B-Instruct-v0.1-Q5_K_M.gguf llama-chat.wasm -p mistral-instruct
 ```
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -194,7 +194,7 @@ Please check the sha256sum of the downloaded model file to make sure it is corre
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Mistral-7B-Instruct-v0.2-Q5_K_M.gguf llama-chat.wasm -p mistral-instruct
 ```
@@ -202,8 +202,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:Mistral-7B-Instruct-v0.2-Q5_K_
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -243,7 +243,7 @@ c8f5d6117cc9ec8dceb2e28e1268770c0c32f39949fceceb105d1e0837e07361
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:MistralLite-Q5_K_M.gguf llama-chat.wasm -p mistrallite -r '</s>'
 ```
@@ -251,8 +251,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:MistralLite-Q5_K_M.gguf llama-
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -292,15 +292,15 @@ c28f69693336ab63369451da7f1365e5003d79f3ac69566de72100a8299a967a
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:openchat-3.5-0106-Q5_K_M.gguf llama-chat.wasm -p openchat -r '<|end_of_turn|>'
 ```
 
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -340,7 +340,7 @@ e1c5c50d0185d047f53ceb48a7c02d33f0a7fe0e1467f98c4b575502e9cabbdd
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:openchat-3.5-1210-Q5_K_M.gguf llama-chat.wasm -p openchat -r '<|end_of_turn|>'
 ```
@@ -348,8 +348,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:openchat-3.5-1210-Q5_K_M.gguf 
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -389,7 +389,7 @@ cea9e09a3e1d0fa779224710a543a07d92af46a64090af7a32001b94faf66a92
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:openchat_3.5-Q5_K_M.gguf llama-chat.wasm -p openchat -r '<|end_of_turn|>'
 ```
@@ -397,8 +397,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:openchat_3.5-Q5_K_M.gguf llama
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -438,7 +438,7 @@ bb6bda4e7383f1be98d7a9ab8c6cfff6daebb937badb11c25ed16e0f908f5b4d
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Wizard-Vicuna-13B-Uncensored-Q5_K_M.gguf llama-chat.wasm -p vicuna-1.0-chat
 ```
@@ -446,8 +446,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:Wizard-Vicuna-13B-Uncensored-Q
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -487,7 +487,7 @@ Please check the sha256sum of the downloaded model file to make sure it is corre
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:TinyLlama-1.1B-Chat-v1.0-Q5_K_M.gguf llama-chat.wasm -p chatml
 ```
@@ -495,8 +495,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:TinyLlama-1.1B-Chat-v1.0-Q5_K_
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -536,7 +536,7 @@ Please check the sha256sum of the Downloaded model file to make sure it is corre
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Baichuan2-13B-Chat-Q5_K_M.gguf llama-chat.wasm -p baichuan-2 -r '用户:'
 ```
@@ -544,8 +544,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:Baichuan2-13B-Chat-Q5_K_M.gguf
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -591,8 +591,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:OpenHermes-2.5-Mistral-7B-Q5_K
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -632,7 +632,7 @@ Please check the sha256sum of the downloaded model file to make sure it is corre
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2_2-yi-34b-Q5_K_M.gguf llama-chat.wasm -p chatml -r '<|im_end|>' -s 'You are a helpful AI assistant'
 ```
@@ -640,8 +640,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2_2-yi-34b-Q5_K_M.gguf
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -681,7 +681,7 @@ ec3c988cda2d831542449fcd0e82a039067a8da2c747b05268eee482b0e12bdf
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.6-mistral-7b-Q5_K_M.gguf llama-chat.wasm -p chatml
 ```
@@ -689,8 +689,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:dolphin-2.6-mistral-7b-Q5_K_M.
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -731,7 +731,7 @@ Please check the sha256sum of the downloaded model file to make sure it is corre
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:samantha-1.2-mistral-7b-Q5_K_M.gguf llama-chat.wasm -p chatml -r '<|im_end|>'
 ```
@@ -739,8 +739,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:samantha-1.2-mistral-7b-Q5_K_M
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -780,7 +780,7 @@ Please check the sha256sum of the downloaded model file to make sure it is corre
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-CodeLlama-34b-Q5_K_M.gguf llama-chat.wasm -p vicuna-1.0-chat -s 'You are a helpful AI assistant.'
 ```
@@ -788,8 +788,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:Samantha-1.11-CodeLlama-34b-Q5
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -829,7 +829,7 @@ ff61076feb2f3c9d049d12869532d6f5feb855ce501eff1a3d155ac6d29f283a
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:WizardCoder-Python-7B-V1.0-Q5_K_M.gguf llama-chat.wasm -p wizard-coder -s 'Below is an instruction that describes a task. Write a response that appropriately completes the request.'
 ```
@@ -837,8 +837,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:WizardCoder-Python-7B-V1.0-Q5_
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -878,7 +878,7 @@ cd035904c4b16904049c2ba7e45f1b34ad2868af3ecbe51d8c77daa371b96245
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:zephyr-7b-alpha-Q5_K_M.gguf llama-chat.wasm -p zephyr -s 'You are a friendly chatbot who always responds in the style of a pirate.' -r '</s>'
 ```
@@ -886,8 +886,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:zephyr-7b-alpha-Q5_K_M.gguf ll
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -927,7 +927,7 @@ a8329103ecc3a5a736b76e633970f39ded3f0a75a4d29f37f9e46d180ce2234b
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:WizardLM-13B-V1.0-Uncensored-Q5_K_M.gguf llama-chat.wasm -p vicuna-1.0-chat -s 'You are a helpful AI assistant.'
 ```
@@ -935,8 +935,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:WizardLM-13B-V1.0-Uncensored-Q
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -976,7 +976,7 @@ Please check the sha256sum of the downloaded model file to make sure it is corre
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Orca-2-13b-Q5_K_M.gguf llama-chat.wasm -p chatml -s 'You are Orca, an AI language model created by Microsoft. You are a cautious assistant. You carefully follow instructions. You are helpful and harmless and you follow ethical guidelines and promote positive behavior.'
 ```
@@ -984,8 +984,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:Orca-2-13b-Q5_K_M.gguf llama-c
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1025,7 +1025,7 @@ c754cefc47842167b229fc78bff511f96c173c00962e5dbb44ea11d206492370
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:neural-chat-7b-v3-1-Q5_K_M.gguf llama-chat.wasm -p intel-neural
 ```
@@ -1033,8 +1033,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:neural-chat-7b-v3-1-Q5_K_M.ggu
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1074,7 +1074,7 @@ b9693f42372a06ca8b044ab2c4db84e4359de207be1cc11fcf023f09a8238f76
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Yi-34B-Chat-Q5_K_M.gguf llama-chat.wasm -p chatml -r '<|im_end|>'
 ```
@@ -1082,8 +1082,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:Yi-34B-Chat-Q5_K_M.gguf llama-
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1123,7 +1123,7 @@ Please check the sha256sum of the downloaded model file to make sure it is corre
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Starling-LM-7B-alpha-Q5_K_M.gguf llama-chat.wasm -p openchat -r '<|end_of_turn|>'
 ```
@@ -1131,8 +1131,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:Starling-LM-7B-alpha-Q5_K_M.gg
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1172,7 +1172,7 @@ Note that check the sha256 of `deepseek-coder-6.7b-instruct-Q5_K_M.gguf` after d
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:deepseek-coder-6.7b-instruct-Q5_K_M.gguf llama-chat.wasm -p deepseek-coder
 ```
@@ -1180,8 +1180,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:deepseek-coder-6.7b-instruct-Q
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1221,7 +1221,7 @@ Note that check the sha256 of `deepseek-llm-7b-chat-Q5_K_M.gguf` after downloadi
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:deepseek-llm-7b-chat-Q5_K_M.gguf llama-chat.wasm -p deepseek-chat
 ```
@@ -1229,8 +1229,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:deepseek-llm-7b-chat-Q5_K_M.gg
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1270,7 +1270,7 @@ Note that check the sha256 of `solar-10.7b-instruct-v1.0.Q5_K_M.gguf` after down
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:SOLAR-10.7B-Instruct-v1.0-Q5_K_M.gguf llama-chat.wasm -p solar-instruct
 ```
@@ -1278,8 +1278,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:SOLAR-10.7B-Instruct-v1.0-Q5_K
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1319,15 +1319,15 @@ ffc48e5363b830341d157b7501374232badbf98c18384aecb93ff5adbfe0bdd7
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Mixtral-8x7B-Instruct-v0.1-Q5_K_M.gguf llama-chat.wasm -p mistral-instruct
 ```
 
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1367,15 +1367,15 @@ Note that check the sha256 of `Nous-Hermes-2-Mixtral-8x7B-DPO-Q5_K_M.gguf` after
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Nous-Hermes-2-Mixtral-8x7B-DPO-Q5_K_M.gguf llama-chat.wasm -p chatml
 ```
 
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 
@@ -1415,15 +1415,15 @@ Note that check the sha256 of `Nous-Hermes-2-Mixtral-8x7B-SFT-Q5_K_M.gguf` after
 <b>Chat with the model on the CLI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:Nous-Hermes-2-Mixtral-8x7B-SFT-Q5_K_M.gguf llama-chat.wasm -p chatml
 ```
 
 <b>Chat with the model via a web UI</b>
 
 ```bash
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 rm chatbot-ui.tar.gz
 

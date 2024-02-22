@@ -66,7 +66,7 @@ source $HOME/.bashrc
 Download the api server app
 
 ```console
-curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-api-server.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
 ```
 
 ## Get model
@@ -188,7 +188,7 @@ The command above starts the API server on the default socket address. Besides, 
 We provide a front-end Web UI for you to easily interact with the API. You can download and extract it by running:
 
 ```bash
-curl -LO https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
+curl -LO https://github.com/LlamaEdge/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz
 tar xzf chatbot-ui.tar.gz
 ```
 
@@ -237,7 +237,7 @@ The `-h` or `--help` option can list the available options of the `llama-api-ser
     -r, --reverse-prompt <REVERSE_PROMPT>
             Halt generation at PROMPT, return control.
     -p, --prompt-template <TEMPLATE>
-            Sets the prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, codellama-super-instruct, mistral-instruct-v0.1, mistral-instruct, mistrallite, openchat, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, chatml, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, solar-instruct]
+            Sets the prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, codellama-super-instruct, mistral-instruct-v0.1, mistral-instruct, mistrallite, openchat, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, chatml, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, solar-instruct, gemma-instruct]
         --log-prompts
             Print prompt strings to stdout
         --log-stat

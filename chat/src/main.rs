@@ -143,6 +143,7 @@ fn main() -> Result<(), String> {
                     "deepseek-coder",
                     "solar-instruct",
                     "phi-2-instruct",
+                    "gemma-instruct",
                 ])
                 .value_name("TEMPLATE")
                 .help("Prompt template.")
@@ -699,6 +700,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         PromptTemplateType::Phi2Instruct => {
             ChatPrompt::Phi2InstructPrompt(chat_prompts::chat::phi::Phi2InstructPrompt::default())
         }
+        PromptTemplateType::GemmaInstruct => ChatPrompt::GemmaInstructPrompt(
+            chat_prompts::chat::gemma::GemmaInstructPrompt::default(),
+        ),
     }
 }
 

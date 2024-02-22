@@ -916,6 +916,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         PromptTemplateType::Phi2Instruct => {
             ChatPrompt::Phi2InstructPrompt(chat_prompts::chat::phi::Phi2InstructPrompt::default())
         }
+        PromptTemplateType::GemmaInstruct => ChatPrompt::GemmaInstructPrompt(
+            chat_prompts::chat::gemma::GemmaInstructPrompt::default(),
+        ),
     }
 }
 
