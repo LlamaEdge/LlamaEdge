@@ -416,7 +416,8 @@ fn test_serialize_chat_completion_user_message() {
 pub enum ChatCompletionUserMessageContent {
     /// The text contents of the message.
     Text(String),
-    /// An array of content parts with a defined type, each can be of type `text` or `image_url` when passing in images. You can pass multiple images by adding multiple image_url content parts.
+    /// An array of content parts with a defined type, each can be of type `text` or `image_url` when passing in images.
+    /// It is required that there must be one content part of type `text` at least. Multiple images are allowed by adding multiple image_url content parts.
     Parts(Vec<ContentPart>),
 }
 
