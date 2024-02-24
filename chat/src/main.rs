@@ -175,8 +175,8 @@ fn main() -> Result<(), String> {
         .after_help("Example: the command to run `llama-2-7B` model,\n  wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf llama-chat.wasm -p llama-2-chat\n")
         .get_matches();
 
-    // create an `Options` instance
-    let mut options = Options::default();
+    // create an `Metadata` instance
+    let mut options = Metadata::default();
 
     // model alias
     let model_name = matches
@@ -916,30 +916,49 @@ fn stream_compute(
     Ok(output)
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
-struct Options {
+#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+pub struct Metadata {
+    // * Plugin parameters (used by this plugin):
     #[serde(rename = "enable-log")]
-    log_enable: bool,
-    #[serde(rename = "ctx-size")]
-    ctx_size: u64,
+    pub log_enable: bool,
+    // #[serde(rename = "enable-debug-log")]
+    // pub debug_log: bool,
+    // #[serde(rename = "stream-stdout")]
+    // pub stream_stdout: bool,
+    #[serde(rename = "embedding")]
+    pub embeddings: bool,
     #[serde(rename = "n-predict")]
-    n_predict: u64,
-    #[serde(rename = "n-gpu-layers")]
-    n_gpu_layers: u64,
-    #[serde(rename = "batch-size")]
-    batch_size: u64,
-    #[serde(rename = "temp")]
-    temperature: f64,
-    #[serde(rename = "top-p")]
-    top_p: f64,
-    #[serde(rename = "repeat-penalty")]
-    repeat_penalty: f64,
-    #[serde(rename = "presence-penalty")]
-    presence_penalty: f64,
-    #[serde(rename = "frequency-penalty")]
-    frequency_penalty: f64,
+    pub n_predict: u64,
     #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
-    reverse_prompt: Option<String>,
+    pub reverse_prompt: Option<String>,
+    // pub mmproj: String,
+    // pub image: String,
+
+    // * Model parameters (need to reload the model if updated):
+    #[serde(rename = "n-gpu-layers")]
+    pub n_gpu_layers: u64,
+    // #[serde(rename = "main-gpu")]
+    // pub main_gpu: u64,
+    // #[serde(rename = "tensor-split")]
+    // pub tensor_split: String,
+
+    // * Context parameters (used by the llama context):
+    #[serde(rename = "ctx-size")]
+    pub ctx_size: u64,
+    #[serde(rename = "batch-size")]
+    pub batch_size: u64,
+
+    // * Sampling parameters (used by the llama sampling context).
+    #[serde(rename = "temp")]
+    pub temperature: f64,
+    #[serde(rename = "top-p")]
+    pub top_p: f64,
+    #[serde(rename = "repeat-penalty")]
+    pub repeat_penalty: f64,
+    #[serde(rename = "presence-penalty")]
+    pub presence_penalty: f64,
+    #[serde(rename = "frequency-penalty")]
+    pub frequency_penalty: f64,
 }
 
 fn build_prompt(
