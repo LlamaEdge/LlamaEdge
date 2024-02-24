@@ -33,7 +33,6 @@ impl FromStr for PromptTemplateType {
     fn from_str(template: &str) -> std::result::Result<Self, Self::Err> {
         match template {
             "llama-2-chat" => Ok(PromptTemplateType::Llama2Chat),
-            "mistral-instruct-v0.1" => Ok(PromptTemplateType::MistralInstruct),
             "mistral-instruct" => Ok(PromptTemplateType::MistralInstruct),
             "mistrallite" => Ok(PromptTemplateType::MistralLite),
             "codellama-instruct" => Ok(PromptTemplateType::CodeLlama),
