@@ -30,9 +30,12 @@ impl SolarInstructPrompt {
         };
 
         match chat_history.as_ref().is_empty() {
-            true => format!("### User:\n{user_message}", user_message = content.trim(),),
+            true => format!(
+                "<s> ### User:\n{user_message}",
+                user_message = content.trim(),
+            ),
             false => format!(
-                "{chat_history}\n\n### User:\n{user_message}",
+                "{chat_history}\n\n<s> ### User:\n{user_message}",
                 chat_history = chat_history.as_ref().trim(),
                 user_message = content.trim(),
             ),
@@ -55,7 +58,7 @@ impl SolarInstructPrompt {
         };
 
         Ok(format!(
-            "{chat_history}\n\n### Assistant:\n{assistant_message}",
+            "{chat_history}\n\n### Assistant:\n{assistant_message}</s>",
             chat_history = chat_history.as_ref().trim(),
             assistant_message = content.trim(),
         ))
