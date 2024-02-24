@@ -160,7 +160,7 @@ impl StableLMZephyrChatPrompt {
         };
 
         Ok(format!(
-            "{chat_history}\n<|assistant|>\n{assistant_message}</s>",
+            "{chat_history}\n<|assistant|>\n{assistant_message}<|endoftext|>",
             chat_history = chat_history.as_ref().trim(),
             assistant_message = content.trim(),
         ))
