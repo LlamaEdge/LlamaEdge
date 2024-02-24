@@ -40,7 +40,6 @@ impl FromStr for PromptTemplateType {
             "codellama-super-instruct" => Ok(PromptTemplateType::CodeLlamaSuper),
             "belle-llama-2-chat" => Ok(PromptTemplateType::HumanAssistant),
             "human-assistant" => Ok(PromptTemplateType::HumanAssistant),
-            "vicuna-chat" => Ok(PromptTemplateType::VicunaChat),
             "vicuna-1.0-chat" => Ok(PromptTemplateType::VicunaChat),
             "vicuna-1.1-chat" => Ok(PromptTemplateType::Vicuna11Chat),
             "chatml" => Ok(PromptTemplateType::ChatML),
