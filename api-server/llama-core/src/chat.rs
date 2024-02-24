@@ -987,6 +987,8 @@ fn post_process(
                 .as_ref()
                 .trim_end_matches("<|end_of_sentence|>")
                 .trim()
+                .replace("<|end_of_sentence|>", " ")
+                .trim()
                 .to_owned()
         } else {
             output.as_ref().trim().to_owned()
@@ -1108,17 +1110,17 @@ fn build_prompt(
 
         match prompt_tokens > max_prompt_tokens {
             true => {
-                match chat_request.messages[0].role {
+                match chat_request.messages[0].role() {
                     ChatCompletionRole::System => {
                         if chat_request.messages.len() >= 4 {
-                            if chat_request.messages[1].role == ChatCompletionRole::User {
+                            if *chat_request.messages[1].role() == ChatCompletionRole::User {
                                 chat_request.messages.remove(1);
                             }
-                            if chat_request.messages[1].role == ChatCompletionRole::Assistant {
+                            if *chat_request.messages[1].role() == ChatCompletionRole::Assistant {
                                 chat_request.messages.remove(1);
                             }
                         } else if chat_request.messages.len() == 3
-                            && chat_request.messages[1].role == ChatCompletionRole::User
+                            && *chat_request.messages[1].role() == ChatCompletionRole::User
                         {
                             chat_request.messages.remove(1);
                         } else {
@@ -1127,14 +1129,14 @@ fn build_prompt(
                     }
                     ChatCompletionRole::User => {
                         if chat_request.messages.len() >= 3 {
-                            if chat_request.messages[0].role == ChatCompletionRole::User {
+                            if *chat_request.messages[0].role() == ChatCompletionRole::User {
                                 chat_request.messages.remove(0);
                             }
-                            if chat_request.messages[0].role == ChatCompletionRole::Assistant {
+                            if *chat_request.messages[0].role() == ChatCompletionRole::Assistant {
                                 chat_request.messages.remove(0);
                             }
                         } else if chat_request.messages.len() == 2
-                            && chat_request.messages[0].role == ChatCompletionRole::User
+                            && *chat_request.messages[0].role() == ChatCompletionRole::User
                         {
                             chat_request.messages.remove(0);
                         } else {
@@ -1143,6 +1145,7 @@ fn build_prompt(
                     }
                     _ => panic!("Found a unsupported chat message role!"),
                 }
+
                 continue;
             }
             false => return Ok((prompt, ctx_size - max_prompt_tokens)),
