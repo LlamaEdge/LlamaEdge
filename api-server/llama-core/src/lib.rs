@@ -23,16 +23,39 @@ pub(crate) const MAX_BUFFER_SIZE_EMBEDDING: usize = 4096 * 15 + 128;
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct Metadata {
+    // * Plugin parameters (used by this plugin):
     #[serde(rename = "enable-log")]
     pub log_enable: bool,
-    #[serde(rename = "ctx-size")]
-    pub ctx_size: u64,
+    // #[serde(rename = "enable-debug-log")]
+    // pub debug_log: bool,
+    // #[serde(rename = "stream-stdout")]
+    // pub stream_stdout: bool,
+    #[serde(rename = "embedding")]
+    pub embeddings: bool,
     #[serde(rename = "n-predict")]
     pub n_predict: u64,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
+    pub reverse_prompt: Option<String>,
+    /// path to the multimodal projector file for llava
+    pub mmproj: String,
+    /// Path to the image file for llava
+    pub image: String,
+
+    // * Model parameters (need to reload the model if updated):
     #[serde(rename = "n-gpu-layers")]
     pub n_gpu_layers: u64,
+    // #[serde(rename = "main-gpu")]
+    // pub main_gpu: u64,
+    // #[serde(rename = "tensor-split")]
+    // pub tensor_split: String,
+
+    // * Context parameters (used by the llama context):
+    #[serde(rename = "ctx-size")]
+    pub ctx_size: u64,
     #[serde(rename = "batch-size")]
     pub batch_size: u64,
+
+    // * Sampling parameters (used by the llama sampling context).
     #[serde(rename = "temp")]
     pub temperature: f64,
     #[serde(rename = "top-p")]
@@ -43,10 +66,6 @@ pub struct Metadata {
     pub presence_penalty: f64,
     #[serde(rename = "frequency-penalty")]
     pub frequency_penalty: f64,
-    #[serde(rename = "embedding")]
-    pub embeddings: bool,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
-    pub reverse_prompt: Option<String>,
 }
 
 #[derive(Debug)]
