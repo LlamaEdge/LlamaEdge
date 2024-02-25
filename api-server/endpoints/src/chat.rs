@@ -243,7 +243,7 @@ fn test_chat_serialize_chat_request() {
 
 /// Message for comprising the conversation.
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(untagged)]
+#[serde(tag = "role", rename_all = "lowercase")]
 pub enum ChatCompletionRequestMessage {
     System(ChatCompletionSystemMessage),
     User(ChatCompletionUserMessage),
@@ -295,7 +295,7 @@ impl ChatCompletionRequestMessage {
     }
 
     /// The role of the messages author.
-    pub fn role(&self) -> &ChatCompletionRole {
+    pub fn role(&self) -> ChatCompletionRole {
         match self {
             ChatCompletionRequestMessage::System(message) => message.role(),
             ChatCompletionRequestMessage::User(message) => message.role(),
@@ -329,12 +329,25 @@ fn test_chat_serialize_request_message() {
     assert_eq!(json, r#"{"content":"Hello, world!","role":"assistant"}"#);
 }
 
+#[test]
+fn test_chat_deserialize_request_message() {
+    let json = r#"{"content":"Hello, world!","role":"assistant"}"#;
+    let message: ChatCompletionRequestMessage = serde_json::from_str(json).unwrap();
+    assert_eq!(message.role(), ChatCompletionRole::Assistant);
+
+    let json = r#"{"content":"Hello, world!","role":"system"}"#;
+    let message: ChatCompletionRequestMessage = serde_json::from_str(json).unwrap();
+    assert_eq!(message.role(), ChatCompletionRole::System);
+
+    let json = r#"{"content":"Hello, world!","role":"user"}"#;
+    let message: ChatCompletionRequestMessage = serde_json::from_str(json).unwrap();
+    assert_eq!(message.role(), ChatCompletionRole::User);
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ChatCompletionSystemMessage {
     /// The contents of the system message.
     content: String,
-    /// The role of the messages author, in this case `system`.
-    role: ChatCompletionRole,
     /// An optional name for the participant. Provides the model information to differentiate between participants of the same role.
     #[serde(skip_serializing_if = "Option::is_none")]
     name: Option<String>,
@@ -350,13 +363,12 @@ impl ChatCompletionSystemMessage {
     pub fn new(content: impl Into<String>, name: Option<String>) -> Self {
         Self {
             content: content.into(),
-            role: ChatCompletionRole::System,
             name,
         }
     }
 
-    pub fn role(&self) -> &ChatCompletionRole {
-        &self.role
+    pub fn role(&self) -> ChatCompletionRole {
+        ChatCompletionRole::System
     }
 
     pub fn content(&self) -> &str {
@@ -372,8 +384,6 @@ impl ChatCompletionSystemMessage {
 pub struct ChatCompletionUserMessage {
     /// The contents of the user message.
     content: ChatCompletionUserMessageContent,
-    /// The role of the messages author, in this case `user`.
-    role: ChatCompletionRole,
     /// An optional name for the participant. Provides the model information to differentiate between participants of the same role.
     #[serde(skip_serializing_if = "Option::is_none")]
     name: Option<String>,
@@ -387,15 +397,11 @@ impl ChatCompletionUserMessage {
     ///
     /// * `name` - An optional name for the participant. Provides the model information to differentiate between participants of the same role.
     pub fn new(content: ChatCompletionUserMessageContent, name: Option<String>) -> Self {
-        Self {
-            content,
-            role: ChatCompletionRole::User,
-            name,
-        }
+        Self { content, name }
     }
 
-    pub fn role(&self) -> &ChatCompletionRole {
-        &self.role
+    pub fn role(&self) -> ChatCompletionRole {
+        ChatCompletionRole::User
     }
 
     pub fn content(&self) -> &ChatCompletionUserMessageContent {
@@ -412,8 +418,6 @@ pub struct ChatCompletionAssistantMessage {
     /// The contents of the assistant message. Required unless `tool_calls` is specified.
     #[serde(skip_serializing_if = "Option::is_none")]
     content: Option<String>,
-    /// The role of the messages author, in this case `assistant`.
-    role: ChatCompletionRole,
     /// An optional name for the participant. Provides the model information to differentiate between participants of the same role.
     #[serde(skip_serializing_if = "Option::is_none")]
     name: Option<String>,
@@ -439,13 +443,11 @@ impl ChatCompletionAssistantMessage {
         match tool_calls.is_some() {
             true => Self {
                 content: None,
-                role: ChatCompletionRole::Assistant,
                 name,
                 tool_calls,
             },
             false => Self {
                 content,
-                role: ChatCompletionRole::Assistant,
                 name,
                 tool_calls: None,
             },
@@ -453,8 +455,8 @@ impl ChatCompletionAssistantMessage {
     }
 
     /// The role of the messages author, in this case `assistant`.
-    pub fn role(&self) -> &ChatCompletionRole {
-        &self.role
+    pub fn role(&self) -> ChatCompletionRole {
+        ChatCompletionRole::Assistant
     }
 
     /// The contents of the assistant message. If `tool_calls` is specified, then `content` is None.
@@ -516,6 +518,13 @@ fn test_serialize_chat_completion_user_message() {
         json,
         r#"{"content":[{"type":"text","text":"Hello, world!"},{"type":"image_url","image_url":{"url":"https://example.com/image.png","detail":"auto"}}],"role":"user"}"#
     );
+}
+
+#[test]
+fn test_chat_deserialize_user_message_content() {
+    let json = r#"{"content":[{"type":"text","text":"Hello, world!"},{"type":"image_url","image_url":{"url":"https://example.com/image.png","detail":"auto"}}],"role":"user"}"#;
+    let content: ChatCompletionUserMessageContent = serde_json::from_str(json).unwrap();
+    println!("{:?}", content);
 }
 
 #[derive(Debug, Deserialize, Serialize)]
