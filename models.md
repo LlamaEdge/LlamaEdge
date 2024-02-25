@@ -1440,6 +1440,9 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 <details>
 <summary> <b>Llava-1.5</b> </summary>
 <hr/>
+
+Notice that the [wasmedge_rustls-0.13.5](https://github.com/WasmEdge/WasmEdge/releases/tag/0.13.5) is required.
+
 <b>Download model</b>
 
 ```bash
