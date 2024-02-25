@@ -1,6 +1,6 @@
 # GGUF Models
 
-**To catch up the latest model, please visit [Second State's Huggingface page](https://huggingface.co/second-state), which includes different kinds of auantized models.** 
+**To catch up the latest model, please visit [Second State's Huggingface page](https://huggingface.co/second-state), which includes different kinds of auantized models.**
 
 You can find the model download link, the command to run the model, the command to create an OpenAI compatible API server for the model, and the sha256sum of the model.
 
@@ -1267,14 +1267,6 @@ Note that check the sha256 of `solar-10.7b-instruct-v1.0.Q5_K_M.gguf` after down
 715704d0c565664cf49dc6b4e0e087871724b7cb00ecf36a126df1d3de26b843
 ```
 
-<b>Chat with the model on the CLI</b>
-
-```bash
-curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
-
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:SOLAR-10.7B-Instruct-v1.0-Q5_K_M.gguf llama-chat.wasm -p solar-instruct
-```
-
 <b>Chat with the model via a web UI</b>
 
 ```bash
@@ -1441,6 +1433,46 @@ curl -X POST http://localhost:8080/v1/chat/completions \
   -H 'accept:application/json' \
   -H 'Content-Type: application/json' \
   -d '{"messages":[{"role":"system", "content": "You are a sentient, superintelligent artificial general intelligence, here to teach and assist me."}, {"role":"user", "content": "Write a short story about Goku discovering kirby has teamed up with Majin Buu to destroy the world."}], "model":"Nous-Hermes-2-Mixtral-8x7B-SFT"}'
+```
+
+</details>
+
+<details>
+<summary> <b>Llava-1.5</b> </summary>
+<hr/>
+<b>Download model</b>
+
+```bash
+curl -LO https://huggingface.co/mys/ggml_llava-v1.5-7b/resolve/main/ggml-model-q5_k.gguf
+```
+
+<b>Download multimodal projector file</b>
+
+```bash
+curl -LO https://huggingface.co/mys/ggml_llava-v1.5-7b/resolve/main/mmproj-model-f16.gguf
+```
+
+
+<b>Chat with the model on the CLI</b>
+
+```bash
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Nous-Hermes-2-Mixtral-8x7B-SFT-Q5_K_M.gguf llama-chat.wasm -p chatml
+```
+
+<b>Chat with llama-api-server</b>
+
+```bash
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:ggml-model-q5_k.gguf llama-api-server.wasm -p vicuna-llava -c 2048 --llava-mmproj mmproj-model-f16.gguf
+```
+
+Send an API request to the server:
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+-H 'accept:application/json' \
+-H 'Content-Type: application/json' \
+-d '{"messages": [{"content": [{"type": "text","text": "what is in the picture?"},{"type": "image_url","image_url": {"url": "https://petweb1-1253856731.cos.ap-beijing.myqcloud.com/uploads/20200405/6944322520e28e9f3c497df873cdcd0b.jpg"}}],"role": "user"}],"model": "llava-1.5"}'
 ```
 
 </details>
