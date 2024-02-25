@@ -1452,14 +1452,6 @@ curl -LO https://huggingface.co/mys/ggml_llava-v1.5-7b/resolve/main/ggml-model-q
 curl -LO https://huggingface.co/mys/ggml_llava-v1.5-7b/resolve/main/mmproj-model-f16.gguf
 ```
 
-
-<b>Chat with the model on the CLI</b>
-
-```bash
-curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:Nous-Hermes-2-Mixtral-8x7B-SFT-Q5_K_M.gguf llama-chat.wasm -p chatml
-```
-
 <b>Chat with llama-api-server</b>
 
 ```bash
