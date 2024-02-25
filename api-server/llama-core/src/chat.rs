@@ -1143,14 +1143,14 @@ fn build_prompt(
                 match chat_request.messages[0].role() {
                     ChatCompletionRole::System => {
                         if chat_request.messages.len() >= 4 {
-                            if *chat_request.messages[1].role() == ChatCompletionRole::User {
+                            if chat_request.messages[1].role() == ChatCompletionRole::User {
                                 chat_request.messages.remove(1);
                             }
-                            if *chat_request.messages[1].role() == ChatCompletionRole::Assistant {
+                            if chat_request.messages[1].role() == ChatCompletionRole::Assistant {
                                 chat_request.messages.remove(1);
                             }
                         } else if chat_request.messages.len() == 3
-                            && *chat_request.messages[1].role() == ChatCompletionRole::User
+                            && chat_request.messages[1].role() == ChatCompletionRole::User
                         {
                             chat_request.messages.remove(1);
                         } else {
@@ -1159,14 +1159,14 @@ fn build_prompt(
                     }
                     ChatCompletionRole::User => {
                         if chat_request.messages.len() >= 3 {
-                            if *chat_request.messages[0].role() == ChatCompletionRole::User {
+                            if chat_request.messages[0].role() == ChatCompletionRole::User {
                                 chat_request.messages.remove(0);
                             }
-                            if *chat_request.messages[0].role() == ChatCompletionRole::Assistant {
+                            if chat_request.messages[0].role() == ChatCompletionRole::Assistant {
                                 chat_request.messages.remove(0);
                             }
                         } else if chat_request.messages.len() == 2
-                            && *chat_request.messages[0].role() == ChatCompletionRole::User
+                            && chat_request.messages[0].role() == ChatCompletionRole::User
                         {
                             chat_request.messages.remove(0);
                         } else {
