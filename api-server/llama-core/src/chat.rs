@@ -17,7 +17,7 @@ use endpoints::{
         ChatCompletionChunk, ChatCompletionChunkChoice, ChatCompletionChunkChoiceDelta,
         ChatCompletionObject, ChatCompletionObjectChoice, ChatCompletionObjectMessage,
         ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRole,
-        ChatCompletionUserMessageContent, ContentPart, ImageURL,
+        ChatCompletionUserMessageContent, ContentPart,
     },
     common::{FinishReason, Usage},
 };
@@ -748,21 +748,24 @@ async fn update_metadata(
         if let ChatCompletionUserMessageContent::Parts(parts) = user_message.content() {
             for part in parts {
                 if let ContentPart::Image(image) = part {
-                    let image_url = image.image_url();
-                    if let ImageURL::Url(ref url) = image_url.url {
-                        // update metadata image
-                        metadata.image = download_image(url).await?;
+                    let image = image.image();
+                    match image.is_url() {
+                        true => {
+                            // update metadata image
+                            metadata.image = download_image(&image.url).await?;
 
-                        if !should_update {
-                            should_update = true;
+                            if !should_update {
+                                should_update = true;
+                            }
+
+                            // todo: now only support a single image
+                            break;
                         }
-
-                        // todo: now only support a single image
-                        break;
-                    } else {
-                        return Err(LlamaCoreError::Operation(String::from(
-                            "Base64 image is not supported yet.",
-                        )));
+                        false => {
+                            return Err(LlamaCoreError::Operation(String::from(
+                                "Base64 image is not supported yet.",
+                            )));
+                        }
                     }
                 }
             }
