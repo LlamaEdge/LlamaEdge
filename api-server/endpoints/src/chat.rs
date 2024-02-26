@@ -242,7 +242,7 @@ fn test_chat_serialize_chat_request() {
 }
 
 /// Message for comprising the conversation.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "role", rename_all = "lowercase")]
 pub enum ChatCompletionRequestMessage {
     System(ChatCompletionSystemMessage),
@@ -344,7 +344,7 @@ fn test_chat_deserialize_request_message() {
     assert_eq!(message.role(), ChatCompletionRole::User);
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ChatCompletionSystemMessage {
     /// The contents of the system message.
     content: String,
@@ -380,7 +380,7 @@ impl ChatCompletionSystemMessage {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ChatCompletionUserMessage {
     /// The contents of the user message.
     content: ChatCompletionUserMessageContent,
@@ -450,7 +450,7 @@ fn test_chat_deserialize_user_message() {
     assert_eq!(message.content().ty(), "parts");
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ChatCompletionAssistantMessage {
     /// The contents of the assistant message. Required unless `tool_calls` is specified.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -512,7 +512,7 @@ impl ChatCompletionAssistantMessage {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ToolCall {
     /// The ID of the tool call.
     id: String,
@@ -523,7 +523,7 @@ pub struct ToolCall {
     function: Fuction,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Fuction {
     /// The name of the function that the model called.
     name: String,
@@ -531,7 +531,7 @@ pub struct Fuction {
     arguments: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum ChatCompletionUserMessageContent {
     /// The text contents of the message.
@@ -581,7 +581,7 @@ fn test_chat_deserialize_user_message_content() {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 // #[serde(untagged)]
 pub enum ContentPart {
@@ -629,7 +629,7 @@ fn test_chat_deserialize_content_part() {
     assert_eq!(content_part.ty(), "image_url");
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TextContentPart {
     /// The text content.
     text: String,
@@ -659,7 +659,7 @@ fn test_chat_deserialize_text_content_part() {
     assert_eq!(text_content_part.text, "Hello, world!");
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ImageContentPart {
     #[serde(rename = "image_url")]
     image: Image,
