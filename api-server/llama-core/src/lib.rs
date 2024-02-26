@@ -3,6 +3,7 @@ pub mod completions;
 pub mod embeddings;
 pub mod error;
 pub mod models;
+pub mod rag;
 
 pub use error::LlamaCoreError;
 
