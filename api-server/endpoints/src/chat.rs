@@ -210,7 +210,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"content":"Hello, world!","role":"system"},{"content":"Hello, world!","role":"user"},{"content":"Hello, world!","role":"assistant"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5}"#
         );
     }
 
@@ -224,7 +224,7 @@ fn test_chat_serialize_chat_request() {
         let user_message_content = ChatCompletionUserMessageContent::Parts(vec![
             ContentPart::Text(TextContentPart::new("what is in the picture?")),
             ContentPart::Image(ImageContentPart::new(Image {
-                url: ImageURL::Url("https://example.com/image.png".to_string()),
+                url: "https://example.com/image.png".to_string(),
                 detail: None,
             })),
         ]);
@@ -236,7 +236,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"content":"Hello, world!","role":"system"},{"content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}],"role":"user"}]}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}]}"#
         );
     }
 }
@@ -311,14 +311,14 @@ fn test_chat_serialize_request_message() {
         None,
     ));
     let json = serde_json::to_string(&message).unwrap();
-    assert_eq!(json, r#"{"content":"Hello, world!","role":"system"}"#);
+    assert_eq!(json, r#"{"role":"system","content":"Hello, world!"}"#);
 
     let message = ChatCompletionRequestMessage::User(ChatCompletionUserMessage::new(
         ChatCompletionUserMessageContent::Text("Hello, world!".to_string()),
         None,
     ));
     let json = serde_json::to_string(&message).unwrap();
-    assert_eq!(json, r#"{"content":"Hello, world!","role":"user"}"#);
+    assert_eq!(json, r#"{"role":"user","content":"Hello, world!"}"#);
 
     let message = ChatCompletionRequestMessage::Assistant(ChatCompletionAssistantMessage::new(
         Some("Hello, world!".to_string()),
@@ -326,7 +326,7 @@ fn test_chat_serialize_request_message() {
         None,
     ));
     let json = serde_json::to_string(&message).unwrap();
-    assert_eq!(json, r#"{"content":"Hello, world!","role":"assistant"}"#);
+    assert_eq!(json, r#"{"role":"assistant","content":"Hello, world!"}"#);
 }
 
 #[test]
@@ -413,6 +413,43 @@ impl ChatCompletionUserMessage {
     }
 }
 
+#[test]
+fn test_chat_serialize_user_message() {
+    let message = ChatCompletionUserMessage::new(
+        ChatCompletionUserMessageContent::Text("Hello, world!".to_string()),
+        None,
+    );
+    let json = serde_json::to_string(&message).unwrap();
+    assert_eq!(json, r#"{"content":"Hello, world!"}"#);
+
+    let message = ChatCompletionUserMessage::new(
+        ChatCompletionUserMessageContent::Parts(vec![
+            ContentPart::Text(TextContentPart::new("Hello, world!")),
+            ContentPart::Image(ImageContentPart::new(Image {
+                url: "https://example.com/image.png".to_string(),
+                detail: Some("auto".to_string()),
+            })),
+        ]),
+        None,
+    );
+    let json = serde_json::to_string(&message).unwrap();
+    assert_eq!(
+        json,
+        r#"{"content":[{"type":"text","text":"Hello, world!"},{"type":"image_url","image_url":{"url":"https://example.com/image.png","detail":"auto"}}]}"#
+    );
+}
+
+#[test]
+fn test_chat_deserialize_user_message() {
+    let json = r#"{"content":"Hello, world!"}"#;
+    let message: ChatCompletionUserMessage = serde_json::from_str(json).unwrap();
+    assert_eq!(message.content().ty(), "text");
+
+    let json = r#"{"content":[{"type":"text","text":"Hello, world!"},{"type":"image_url","image_url":{"url":"https://example.com/image.png","detail":"auto"}}]}"#;
+    let message: ChatCompletionUserMessage = serde_json::from_str(json).unwrap();
+    assert_eq!(message.content().ty(), "parts");
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ChatCompletionAssistantMessage {
     /// The contents of the assistant message. Required unless `tool_calls` is specified.
@@ -494,39 +531,6 @@ pub struct Fuction {
     arguments: String,
 }
 
-#[test]
-fn test_serialize_chat_completion_user_message() {
-    let message = ChatCompletionUserMessage::new(
-        ChatCompletionUserMessageContent::Text("Hello, world!".to_string()),
-        None,
-    );
-    let json = serde_json::to_string(&message).unwrap();
-    assert_eq!(json, r#"{"content":"Hello, world!","role":"user"}"#);
-
-    let message = ChatCompletionUserMessage::new(
-        ChatCompletionUserMessageContent::Parts(vec![
-            ContentPart::Text(TextContentPart::new("Hello, world!")),
-            ContentPart::Image(ImageContentPart::new(Image {
-                url: ImageURL::Url("https://example.com/image.png".to_string()),
-                detail: Some("auto".to_string()),
-            })),
-        ]),
-        None,
-    );
-    let json = serde_json::to_string(&message).unwrap();
-    assert_eq!(
-        json,
-        r#"{"content":[{"type":"text","text":"Hello, world!"},{"type":"image_url","image_url":{"url":"https://example.com/image.png","detail":"auto"}}],"role":"user"}"#
-    );
-}
-
-#[test]
-fn test_chat_deserialize_user_message_content() {
-    let json = r#"{"content":[{"type":"text","text":"Hello, world!"},{"type":"image_url","image_url":{"url":"https://example.com/image.png","detail":"auto"}}],"role":"user"}"#;
-    let content: ChatCompletionUserMessageContent = serde_json::from_str(json).unwrap();
-    println!("{:?}", content);
-}
-
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum ChatCompletionUserMessageContent {
@@ -536,9 +540,17 @@ pub enum ChatCompletionUserMessageContent {
     /// It is required that there must be one content part of type `text` at least. Multiple images are allowed by adding multiple image_url content parts.
     Parts(Vec<ContentPart>),
 }
+impl ChatCompletionUserMessageContent {
+    pub fn ty(&self) -> &str {
+        match self {
+            ChatCompletionUserMessageContent::Text(_) => "text",
+            ChatCompletionUserMessageContent::Parts(_) => "parts",
+        }
+    }
+}
 
 #[test]
-fn test_serialize_content() {
+fn test_chat_serialize_user_message_content() {
     let content = ChatCompletionUserMessageContent::Text("Hello, world!".to_string());
     let json = serde_json::to_string(&content).unwrap();
     assert_eq!(json, r#""Hello, world!""#);
@@ -546,7 +558,7 @@ fn test_serialize_content() {
     let content = ChatCompletionUserMessageContent::Parts(vec![
         ContentPart::Text(TextContentPart::new("Hello, world!")),
         ContentPart::Image(ImageContentPart::new(Image {
-            url: ImageURL::Url("https://example.com/image.png".to_string()),
+            url: "https://example.com/image.png".to_string(),
             detail: Some("auto".to_string()),
         })),
     ]);
@@ -557,17 +569,32 @@ fn test_serialize_content() {
     );
 }
 
+#[test]
+fn test_chat_deserialize_user_message_content() {
+    let json = r#"[{"type":"text","text":"Hello, world!"},{"type":"image_url","image_url":{"url":"https://example.com/image.png","detail":"auto"}}]"#;
+    let content: ChatCompletionUserMessageContent = serde_json::from_str(json).unwrap();
+    assert_eq!(content.ty(), "parts");
+    if let ChatCompletionUserMessageContent::Parts(parts) = content {
+        assert_eq!(parts.len(), 2);
+        assert_eq!(parts[0].ty(), "text");
+        assert_eq!(parts[1].ty(), "image_url");
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(untagged)]
+#[serde(tag = "type", rename_all = "lowercase")]
+// #[serde(untagged)]
 pub enum ContentPart {
+    #[serde(rename = "text")]
     Text(TextContentPart),
+    #[serde(rename = "image_url")]
     Image(ImageContentPart),
 }
 impl ContentPart {
     pub fn ty(&self) -> &str {
         match self {
-            ContentPart::Text(part) => part.ty(),
-            ContentPart::Image(part) => part.ty(),
+            ContentPart::Text(_) => "text",
+            ContentPart::Image(_) => "image_url",
         }
     }
 }
@@ -580,7 +607,7 @@ fn test_chat_serialize_content_part() {
     assert_eq!(json, r#"{"type":"text","text":"Hello, world!"}"#);
 
     let image_content_part = ImageContentPart::new(Image {
-        url: ImageURL::Url("https://example.com/image.png".to_string()),
+        url: "https://example.com/image.png".to_string(),
         detail: Some("auto".to_string()),
     });
     let content_part = ContentPart::Image(image_content_part);
@@ -591,25 +618,25 @@ fn test_chat_serialize_content_part() {
     );
 }
 
+#[test]
+fn test_chat_deserialize_content_part() {
+    let json = r#"{"type":"text","text":"Hello, world!"}"#;
+    let content_part: ContentPart = serde_json::from_str(json).unwrap();
+    assert_eq!(content_part.ty(), "text");
+
+    let json = r#"{"type":"image_url","image_url":{"url":"https://example.com/image.png","detail":"auto"}}"#;
+    let content_part: ContentPart = serde_json::from_str(json).unwrap();
+    assert_eq!(content_part.ty(), "image_url");
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct TextContentPart {
-    /// The type of the content part.
-    #[serde(rename = "type")]
-    ty: String,
     /// The text content.
     text: String,
 }
 impl TextContentPart {
     pub fn new(text: impl Into<String>) -> Self {
-        Self {
-            ty: "text".to_string(),
-            text: text.into(),
-        }
-    }
-
-    /// The type of the content part.
-    pub fn ty(&self) -> &str {
-        &self.ty
+        Self { text: text.into() }
     }
 
     /// The text content.
@@ -622,32 +649,28 @@ impl TextContentPart {
 fn test_chat_serialize_text_content_part() {
     let text_content_part = TextContentPart::new("Hello, world!");
     let json = serde_json::to_string(&text_content_part).unwrap();
-    assert_eq!(json, r#"{"type":"text","text":"Hello, world!"}"#);
+    assert_eq!(json, r#"{"text":"Hello, world!"}"#);
+}
+
+#[test]
+fn test_chat_deserialize_text_content_part() {
+    let json = r#"{"type":"text","text":"Hello, world!"}"#;
+    let text_content_part: TextContentPart = serde_json::from_str(json).unwrap();
+    assert_eq!(text_content_part.text, "Hello, world!");
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ImageContentPart {
-    /// The type of the content part.
-    #[serde(rename = "type")]
-    ty: String,
     #[serde(rename = "image_url")]
     image: Image,
 }
 impl ImageContentPart {
     pub fn new(image: Image) -> Self {
-        Self {
-            ty: "image_url".to_string(),
-            image,
-        }
-    }
-
-    /// The type of the content part.
-    pub fn ty(&self) -> &str {
-        &self.ty
+        Self { image }
     }
 
     /// The image URL.
-    pub fn image_url(&self) -> &Image {
+    pub fn image(&self) -> &Image {
         &self.image
     }
 }
@@ -655,56 +678,70 @@ impl ImageContentPart {
 #[test]
 fn test_chat_serialize_image_content_part() {
     let image_content_part = ImageContentPart::new(Image {
-        url: ImageURL::Url("https://example.com/image.png".to_string()),
+        url: "https://example.com/image.png".to_string(),
         detail: Some("auto".to_string()),
     });
     let json = serde_json::to_string(&image_content_part).unwrap();
     assert_eq!(
         json,
-        r#"{"type":"image_url","image_url":{"url":"https://example.com/image.png","detail":"auto"}}"#
+        r#"{"image_url":{"url":"https://example.com/image.png","detail":"auto"}}"#
     );
 
     let image_content_part = ImageContentPart::new(Image {
-        url: ImageURL::Url("https://example.com/image.png".to_string()),
+        url: "https://example.com/image.png".to_string(),
         detail: None,
     });
     let json = serde_json::to_string(&image_content_part).unwrap();
     assert_eq!(
         json,
-        r#"{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}"#
+        r#"{"image_url":{"url":"https://example.com/image.png"}}"#
     );
 
     let image_content_part = ImageContentPart::new(Image {
-        url: ImageURL::Base64("base64".to_string()),
+        url: "base64".to_string(),
         detail: Some("auto".to_string()),
     });
     let json = serde_json::to_string(&image_content_part).unwrap();
-    assert_eq!(
-        json,
-        r#"{"type":"image_url","image_url":{"url":"base64","detail":"auto"}}"#
-    );
+    assert_eq!(json, r#"{"image_url":{"url":"base64","detail":"auto"}}"#);
 
     let image_content_part = ImageContentPart::new(Image {
-        url: ImageURL::Base64("base64".to_string()),
+        url: "base64".to_string(),
         detail: None,
     });
     let json = serde_json::to_string(&image_content_part).unwrap();
-    assert_eq!(json, r#"{"type":"image_url","image_url":{"url":"base64"}}"#);
+    assert_eq!(json, r#"{"image_url":{"url":"base64"}}"#);
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[test]
+fn test_chat_deserialize_image_content_part() {
+    let json = r#"{"type":"image_url","image_url":{"url":"https://example.com/image.png","detail":"auto"}}"#;
+    let image_content_part: ImageContentPart = serde_json::from_str(json).unwrap();
+    // assert_eq!(image_content_part.ty, "image_url");
+    assert_eq!(
+        image_content_part.image.url,
+        "https://example.com/image.png"
+    );
+    assert_eq!(image_content_part.image.detail, Some("auto".to_string()));
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct Image {
     /// Either a URL of the image or the base64 encoded image data.
-    pub url: ImageURL,
+    pub url: String,
     /// Specifies the detail level of the image. Defaults to auto.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub detail: Option<String>,
+}
+impl Image {
+    pub fn is_url(&self) -> bool {
+        url::Url::parse(&self.url).is_ok()
+    }
 }
 
 #[test]
 fn test_chat_serialize_image() {
     let image = Image {
-        url: ImageURL::Url("https://example.com/image.png".to_string()),
+        url: "https://example.com/image.png".to_string(),
         detail: Some("auto".to_string()),
     };
     let json = serde_json::to_string(&image).unwrap();
@@ -714,34 +751,48 @@ fn test_chat_serialize_image() {
     );
 
     let image = Image {
-        url: ImageURL::Url("https://example.com/image.png".to_string()),
+        url: "https://example.com/image.png".to_string(),
         detail: None,
     };
     let json = serde_json::to_string(&image).unwrap();
     assert_eq!(json, r#"{"url":"https://example.com/image.png"}"#);
 
     let image = Image {
-        url: ImageURL::Base64("base64".to_string()),
+        url: "base64".to_string(),
         detail: Some("auto".to_string()),
     };
     let json = serde_json::to_string(&image).unwrap();
     assert_eq!(json, r#"{"url":"base64","detail":"auto"}"#);
 
     let image = Image {
-        url: ImageURL::Base64("base64".to_string()),
+        url: "base64".to_string(),
         detail: None,
     };
     let json = serde_json::to_string(&image).unwrap();
     assert_eq!(json, r#"{"url":"base64"}"#);
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(untagged)]
-pub enum ImageURL {
-    /// URL of the image.
-    Url(String),
-    /// Base64 encoded image data.
-    Base64(String),
+#[test]
+fn test_chat_deserialize_image() {
+    let json = r#"{"url":"https://example.com/image.png","detail":"auto"}"#;
+    let image: Image = serde_json::from_str(json).unwrap();
+    assert_eq!(image.url, "https://example.com/image.png");
+    assert_eq!(image.detail, Some("auto".to_string()));
+
+    let json = r#"{"url":"https://example.com/image.png"}"#;
+    let image: Image = serde_json::from_str(json).unwrap();
+    assert_eq!(image.url, "https://example.com/image.png");
+    assert_eq!(image.detail, None);
+
+    let json = r#"{"url":"base64","detail":"auto"}"#;
+    let image: Image = serde_json::from_str(json).unwrap();
+    assert_eq!(image.url, "base64");
+    assert_eq!(image.detail, Some("auto".to_string()));
+
+    let json = r#"{"url":"base64"}"#;
+    let image: Image = serde_json::from_str(json).unwrap();
+    assert_eq!(image.url, "base64");
+    assert_eq!(image.detail, None);
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq)]
