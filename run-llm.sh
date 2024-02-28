@@ -305,9 +305,17 @@ elif [ "$interactive" -eq 0 ]; then
     fi
     printf "\n"
 
-    printf "[+] Downloading gemma-2b-it-Q5_K_M.gguf ...\n"
-    curl -LO https://huggingface.co/second-state/Gemma-2b-it-GGUF/resolve/main/gemma-2b-it-Q5_K_M.gguf
-    printf "\n"
+    # * download gemma-2b-it-Q5_K_M.gguf
+    ss_url="https://huggingface.co/second-state/Gemma-2b-it-GGUF/resolve/main/gemma-2b-it-Q5_K_M.gguf"
+    wfile=$(basename "$ss_url")
+    if [ -f "$wfile" ]; then
+        printf "[+] Using cached model %s \n" "$wfile"
+    else
+        printf "[+] Downloading %s ...\n" "$ss_url"
+
+        # download the weights file
+        curl -o "$wfile" -# -L "$ss_url"
+    fi
 
     # * download llama-api-server.wasm
     printf "[+] Downloading the latest llama-api-server.wasm ...\n"
