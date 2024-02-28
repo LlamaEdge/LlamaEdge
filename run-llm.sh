@@ -51,10 +51,12 @@ log_stat=0
 # 0: non-interactive
 # 1: interactive
 interactive=0
+model=""
 
 function print_usage {
     printf "Usage:\n"
     printf "  ./run-llm.sh [--port]\n\n"
+    printf "  --model:        model name\n"
     printf "  --interactive:  run in interactive mode\n"
     printf "  --port:         port number, default is 8080\n"
     printf "Example:\n\n"
@@ -64,6 +66,11 @@ function print_usage {
 while [[ $# -gt 0 ]]; do
     key="$1"
     case $key in
+        --model)
+            model="$2"
+            shift
+            shift
+            ;;
         --interactive)
             interactive=1
             shift
@@ -111,19 +118,19 @@ ss_urls=(
 
 # sample models
 ss_models=(
-    "Gemma-2b-it-GGUF"
-    "Llama-2-7B-Chat-GGUF"
-    "stablelm-2-zephyr-1.6b-GGUF"
-    "OpenChat-3.5-0106-GGUF"
-    "Yi-34B-Chat-GGUF"
-    "Yi-34Bx2-MoE-60B-GGUF"
-    "Deepseek-LLM-7B-Chat-GGUF"
-    "Deepseek-Coder-6.7B-Instruct-GGUF"
-    "Mistral-7B-Instruct-v0.2-GGUF"
-    "dolphin-2.6-mistral-7B-GGUF"
-    "Orca-2-13B-GGUF"
-    "TinyLlama-1.1B-Chat-v1.0-GGUF"
-    "SOLAR-10.7B-Instruct-v1.0-GGUF"
+    "gemma-2b-it"
+    "llama-2-7b-chat"
+    "stablelm-2-zephyr-1.6b"
+    "openchat-3.5-0106"
+    "yi-34b-chat"
+    "yi-34bx2-moe-60b"
+    "deepseek-llm-7b-chat"
+    "deepseek-coder-6.7b-instruct"
+    "mistral-7b-instruct-v0.2"
+    "dolphin-2.6-mistral-7b"
+    "orca-2-13b"
+    "tinyllama-1.1b-chat-v1.0"
+    "solar-10.7b-instruct-v1.0"
 )
 
 # prompt types
@@ -148,12 +155,147 @@ prompt_types=(
 )
 
 
+if [ -n "$model" ]; then
+    printf "\n"
 
-if [ "$interactive" -eq 0 ]; then
+    # Check if the model is in the list of supported models
+    if [[ ! " ${ss_models[@]} " =~ " ${model} " ]]; then
+
+        printf "[+] ${model} is an invalid name or a unsupported model. Please check the model list:\n\n"
+
+        for i in "${!ss_models[@]}"; do
+            printf "    %2d) %s\n" "$((i+1))" "${ss_models[$i]}"
+        done
+        printf "\n"
+
+        # ask for repo until index of sample repo is provided or an URL
+        while [[ -z "$repo" ]]; do
+
+            read -p "[+] Please select a number from the list above: " repo
+
+            # check if the input is a number
+            if [[ "$repo" -ge 1 && "$repo" -le ${#ss_models[@]} ]]; then
+                ss_model="${ss_models[$repo-1]}"
+                repo="${ss_urls[$repo-1]}"
+            else
+                printf "[-] Invalid repo index: %s\n" "$repo"
+                repo=""
+            fi
+        done
+    else
+        # Find the index of the model in the list of supported models
+        for i in "${!ss_models[@]}"; do
+            if [[ "${ss_models[$i]}" = "${model}" ]]; then
+                ss_model="${ss_models[$i]}"
+                repo="${ss_urls[$i]}"
+
+                break
+            fi
+        done
+
+    fi
+
+    # remove suffix
+    repo=$(echo "$repo" | sed -E 's/\/tree\/main$//g')
+
+    ss_url=$repo
+
+    repo=${repo%/resolve/main/*}
+
+    # check file if the model has been downloaded before
+    wfile=$(basename "$ss_url")
+    if [ -f "$wfile" ]; then
+        printf "[+] Using cached model %s \n" "$wfile"
+    else
+        printf "[+] Downloading the selected model from %s\n" "$ss_url"
+
+        # download the weights file
+        curl -o "$wfile" -# -L "$ss_url"
+    fi
+
+    # * prompt type and reverse prompt
+
+    readme_url="$repo/resolve/main/README.md"
+
+    # Download the README.md file
+    curl -s $readme_url -o README.md
+
+    # Extract the "Prompt type: xxxx" line
+    prompt_type_line=$(grep -i "Prompt type:" README.md)
+
+    # Extract the xxxx part
+    prompt_type=$(echo $prompt_type_line | cut -d'`' -f2 | xargs)
+
+    printf "[+] Extracting prompt type: %s \n" "$prompt_type"
+
+    # Check if "Reverse prompt" exists
+    if grep -q "Reverse prompt:" README.md; then
+        # Extract the "Reverse prompt: xxxx" line
+        reverse_prompt_line=$(grep -i "Reverse prompt:" README.md)
+
+        # Extract the xxxx part
+        reverse_prompt=$(echo $reverse_prompt_line | cut -d'`' -f2 | xargs)
+
+        printf "[+] Extracting reverse prompt: %s \n" "$reverse_prompt"
+    else
+        printf "[+] No reverse prompt required\n"
+    fi
+
+    # Clean up
+    rm README.md
 
     # * install WasmEdge + wasi-nn_ggml plugin
-    printf "[+] Install WasmEdge with wasi-nn_ggml plugin ...\n"
-    if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- -v 0.13.5 --plugins wasi_nn-ggml; then
+    printf "[+] Install WasmEdge with wasi-nn_ggml plugin ...\n\n"
+    if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- -v 0.13.5 --plugins wasi_nn-ggml wasmedge_rustls; then
+        source $HOME/.wasmedge/env
+        wasmedge_path=$(which wasmedge)
+        printf "\n    The WasmEdge Runtime is installed in %s.\n\n" "$wasmedge_path"
+    else
+        echo "Failed to install WasmEdge"
+        exit 1
+    fi
+    printf "\n"
+
+    # * download llama-api-server.wasm
+    printf "[+] Downloading the latest llama-api-server.wasm ...\n"
+    curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+    printf "\n"
+
+    # * download chatbot-ui
+    printf "[+] Downloading Chatbot web app ...\n"
+    files_tarball="https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz"
+    curl -LO $files_tarball
+    if [ $? -ne 0 ]; then
+        printf "    \nFailed to download ui tarball. Please manually download from https://github.com/second-state/chatbot-ui/releases/latest/download/chatbot-ui.tar.gz and unzip the "chatbot-ui.tar.gz" to the current directory.\n"
+        exit 1
+    fi
+    tar xzf chatbot-ui.tar.gz
+    rm chatbot-ui.tar.gz
+    printf "\n"
+
+    model_name=${wfile%-Q*}
+
+    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm --prompt-template ${prompt_type} --model-name ${model_name} --socket-addr 127.0.0.1:${port} --log-prompts --log-stat"
+
+    # Add reverse prompt if it exists
+    if [ -n "$reverse_prompt" ]; then
+        cmd="$cmd --reverse-prompt \"${reverse_prompt}\""
+    fi
+
+    printf "\n"
+    printf "[+] Will run the following command to start the server:\n\n"
+    printf "    %s\n\n" "$cmd"
+    printf "    Chatbot web app can be accessed at http://127.0.0.1:%s after the server is started\n\n\n" "$port"
+    printf "*********************************** LlamaEdge API Server ********************************\n\n"
+    printf "********************* [LOG: MODEL INFO (Load Model & Init Execution Context)] *********************"
+    eval $cmd
+
+elif [ "$interactive" -eq 0 ]; then
+
+    printf "\n"
+    # * install WasmEdge + wasi-nn_ggml plugin
+    printf "[+] Install WasmEdge with wasi-nn_ggml plugin ...\n\n"
+    if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- -v 0.13.5 --plugins wasi_nn-ggml wasmedge_rustls; then
         source $HOME/.wasmedge/env
         wasmedge_path=$(which wasmedge)
         printf "\n    The WasmEdge Runtime is installed in %s.\n\n" "$wasmedge_path"
@@ -181,15 +323,14 @@ if [ "$interactive" -eq 0 ]; then
     printf "\n"
 
     # * start llama-api-server
-    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:gemma-2b-it-Q5_K_M.gguf llama-api-server.wasm -p gemma-instruct -c 4096 --log-prompts --log-stat"
+    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:gemma-2b-it-Q5_K_M.gguf llama-api-server.wasm -p gemma-instruct -c 4096 --model-name gemma-2b-it --socket-addr 127.0.0.1:${port} --log-prompts --log-stat"
 
     printf "[+] Will run the following command to start the server:\n\n"
     printf "    %s\n\n" "$cmd"
-    printf "    Chatbot web app can be accessed at http://0.0.0.0:%s after the server is started\n\n\n" "$port"
-    printf "********************* LlamaEdge API Server *********************\n\n"
+    printf "    Chatbot web app can be accessed at http://127.0.0.1:%s after the server is started\n\n\n" "$port"
+    printf "*********************************** LlamaEdge API Server ********************************\n\n"
     eval $cmd
 
-    printf "\n"
 elif [ "$interactive" -eq 1 ]; then
 
     printf "\n"
@@ -236,7 +377,7 @@ elif [ "$interactive" -eq 1 ]; then
 
     if [[ "$reinstall_wasmedge" == "1" ]]; then
         # install WasmEdge + wasi-nn_ggml plugin
-        if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugins wasi_nn-ggml; then
+        if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugins wasi_nn-ggml wasmedge_rustls; then
             source $HOME/.wasmedge/env
             wasmedge_path=$(which wasmedge)
             printf "\n    The WasmEdge Runtime is installed in %s.\n\n" "$wasmedge_path"
@@ -540,8 +681,8 @@ elif [ "$interactive" -eq 1 ]; then
         # If user answered yes, ask them to input a string
         if [[ "$start_server" == "y" || "$start_server" == "Y" ]]; then
             printf "\n"
-            printf "    Chatbot web app can be accessed at http://0.0.0.0:%s after the server is started\n\n\n" "$port"
-            printf "********************* LlamaEdge API Server *********************\n\n"
+            printf "    Chatbot web app can be accessed at http://127.0.0.1:%s after the server is started\n\n\n" "$port"
+            printf "*********************************** LlamaEdge API Server ********************************\n\n"
             eval $cmd
 
         fi
