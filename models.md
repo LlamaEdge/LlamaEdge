@@ -21,13 +21,13 @@ curl -LO https://huggingface.co/second-state/Llava-v1.5-7B-GGUF/resolve/main/lla
 <b>Download multimodal projector file</b>
 
 ```bash
-curl -LO https://huggingface.co/second-state/Llava-v1.5-7B-GGUF/resolve/main/mmproj-model-f16.gguf
+curl -LO https://huggingface.co/second-state/Llava-v1.5-7B-GGUF/resolve/main/llava-v1.5-7b-mmproj-model-f16.gguf
 ```
 
 <b>Chat with llama-api-server</b>
 
 ```bash
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:llava-v1.5-7b-Q5_K_M.gguf llama-api-server.wasm -p vicuna-llava -c 2048 --llava-mmproj mmproj-model-f16.gguf -m llava-v1.5
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:llava-v1.5-7b-Q5_K_M.gguf llama-api-server.wasm -p vicuna-llava -c 2048 --llava-mmproj llava-v1.5-7b-mmproj-model-f16.gguf -m llava-v1.5
 ```
 
 Send an API request to the server:
@@ -56,13 +56,13 @@ curl -LO https://huggingface.co/second-state/Llava-v1.6-Vicuna-7B-GGUF/resolve/m
 <b>Download multimodal projector file</b>
 
 ```bash
-curl -LO https://huggingface.co/second-state/Llava-v1.6-Vicuna-7B-GGUF/resolve/main/mmproj-model-f16.gguf
+curl -LO https://huggingface.co/second-state/Llava-v1.6-Vicuna-7B-GGUF/resolve/main/llava-v1.6-vicuna-7b-mmproj-model-f16.gguf
 ```
 
 <b>Chat with llama-api-server</b>
 
 ```bash
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:llava-v1.6-vicuna-7b-Q5_K_M.gguf llama-api-server.wasm -p vicuna-llava -c 4096 --llava-mmproj mmproj-model-f16.gguf -m llava-v1.6-vicuna-7b
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:llava-v1.6-vicuna-7b-Q5_K_M.gguf llama-api-server.wasm -p vicuna-llava -c 4096 --llava-mmproj llava-v1.6-vicuna-7b-mmproj-model-f16.gguf -m llava-v1.6-vicuna-7b
 ```
 
 Send an API request to the server:
