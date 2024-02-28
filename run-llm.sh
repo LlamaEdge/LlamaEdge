@@ -294,7 +294,7 @@ elif [ "$interactive" -eq 0 ]; then
 
     printf "\n"
     # * install WasmEdge + wasi-nn_ggml plugin
-    printf "[+] Install WasmEdge with wasi-nn_ggml plugin ...\n\n"
+    printf "[+] Installing WasmEdge with wasi-nn_ggml plugin ...\n\n"
     if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- -v 0.13.5 --plugins wasi_nn-ggml wasmedge_rustls; then
         source $HOME/.wasmedge/env
         wasmedge_path=$(which wasmedge)
@@ -303,6 +303,10 @@ elif [ "$interactive" -eq 0 ]; then
         echo "Failed to install WasmEdge"
         exit 1
     fi
+    printf "\n"
+
+    printf "[+] Downloading gemma-2b-it-Q5_K_M.gguf ...\n"
+    curl -LO https://huggingface.co/second-state/Gemma-2b-it-GGUF/resolve/main/gemma-2b-it-Q5_K_M.gguf
     printf "\n"
 
     # * download llama-api-server.wasm
