@@ -7,6 +7,76 @@ You can find the model download link, the command to run the model, the command 
 Before you start, you need to [install WasmEdge and its ggml plugin via one single command line](https://github.com/LlamaEdge/LlamaEdge/tree/main/api-server#dependencies).
 
 <details>
+<summary> <b>Llava-v1.5-7B</b> </summary>
+<hr/>
+
+Notice that the [wasmedge_rustls-0.13.5](https://github.com/WasmEdge/WasmEdge/releases/tag/0.13.5) is required.
+
+<b>Download model</b>
+
+```bash
+curl -LO https://huggingface.co/second-state/Llava-v1.5-7B-GGUF/resolve/main/llava-v1.5-7b-Q5_K_M.gguf
+```
+
+<b>Download multimodal projector file</b>
+
+```bash
+curl -LO https://huggingface.co/second-state/Llava-v1.5-7B-GGUF/resolve/main/mmproj-model-f16.gguf
+```
+
+<b>Chat with llama-api-server</b>
+
+```bash
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:llava-v1.5-7b-Q5_K_M.gguf llama-api-server.wasm -p vicuna-llava -c 2048 --llava-mmproj mmproj-model-f16.gguf -m llava-v1.5
+```
+
+Send an API request to the server:
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+-H 'accept:application/json' \
+-H 'Content-Type: application/json' \
+-d '{"messages": [{"content": [{"type": "text","text": "what is in the picture?"},{"type": "image_url","image_url": {"url": "https://petweb1-1253856731.cos.ap-beijing.myqcloud.com/uploads/20200405/6944322520e28e9f3c497df873cdcd0b.jpg"}}],"role": "user"}],"model": "llava-v1.5"}'
+```
+
+</details>
+
+<details>
+<summary> <b>Llava-v1.6-Vicuna-7B</b> </summary>
+<hr/>
+
+Notice that the [wasmedge_rustls-0.13.5](https://github.com/WasmEdge/WasmEdge/releases/tag/0.13.5) is required.
+
+<b>Download model</b>
+
+```bash
+curl -LO https://huggingface.co/second-state/Llava-v1.6-Vicuna-7B-GGUF/resolve/main/llava-v1.6-vicuna-7b-Q5_K_M.gguf
+```
+
+<b>Download multimodal projector file</b>
+
+```bash
+curl -LO https://huggingface.co/second-state/Llava-v1.6-Vicuna-7B-GGUF/resolve/main/mmproj-model-f16.gguf
+```
+
+<b>Chat with llama-api-server</b>
+
+```bash
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:llava-v1.6-vicuna-7b-Q5_K_M.gguf llama-api-server.wasm -p vicuna-llava -c 4096 --llava-mmproj mmproj-model-f16.gguf -m llava-v1.6-vicuna-7b
+```
+
+Send an API request to the server:
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+-H 'accept:application/json' \
+-H 'Content-Type: application/json' \
+-d '{"messages": [{"content": [{"type": "text","text": "what is in the picture?"},{"type": "image_url","image_url": {"url": "https://petweb1-1253856731.cos.ap-beijing.myqcloud.com/uploads/20200405/6944322520e28e9f3c497df873cdcd0b.jpg"}}],"role": "user"}],"model": "llava-v1.6-vicuna-7b"}'
+```
+
+</details>
+
+<details>
 <summary> <b>Llama-2-7B-Chat</b> </summary>
 <hr/>
 <b>Download the model</b>
@@ -1433,41 +1503,6 @@ curl -X POST http://localhost:8080/v1/chat/completions \
   -H 'accept:application/json' \
   -H 'Content-Type: application/json' \
   -d '{"messages":[{"role":"system", "content": "You are a sentient, superintelligent artificial general intelligence, here to teach and assist me."}, {"role":"user", "content": "Write a short story about Goku discovering kirby has teamed up with Majin Buu to destroy the world."}], "model":"Nous-Hermes-2-Mixtral-8x7B-SFT"}'
-```
-
-</details>
-
-<details>
-<summary> <b>Llava-1.5</b> </summary>
-<hr/>
-
-Notice that the [wasmedge_rustls-0.13.5](https://github.com/WasmEdge/WasmEdge/releases/tag/0.13.5) is required.
-
-<b>Download model</b>
-
-```bash
-curl -LO https://huggingface.co/mys/ggml_llava-v1.5-7b/resolve/main/ggml-model-q5_k.gguf
-```
-
-<b>Download multimodal projector file</b>
-
-```bash
-curl -LO https://huggingface.co/mys/ggml_llava-v1.5-7b/resolve/main/mmproj-model-f16.gguf
-```
-
-<b>Chat with llama-api-server</b>
-
-```bash
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:ggml-model-q5_k.gguf llama-api-server.wasm -p vicuna-llava -c 2048 --llava-mmproj mmproj-model-f16.gguf
-```
-
-Send an API request to the server:
-
-```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
--H 'accept:application/json' \
--H 'Content-Type: application/json' \
--d '{"messages": [{"content": [{"type": "text","text": "what is in the picture?"},{"type": "image_url","image_url": {"url": "https://petweb1-1253856731.cos.ap-beijing.myqcloud.com/uploads/20200405/6944322520e28e9f3c497df873cdcd0b.jpg"}}],"role": "user"}],"model": "llava-1.5"}'
 ```
 
 </details>
