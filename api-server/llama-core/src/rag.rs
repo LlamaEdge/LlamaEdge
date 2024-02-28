@@ -14,9 +14,13 @@ use qdrant::*;
 /// * `qdrant_url` - URL of the Qdrant server.
 ///
 /// * `qdrant_collection_name` - Name of the Qdrant collection to be created.
+///
+/// # Returns
+///
+/// Name of the Qdrant collection if successful.
 pub async fn rag_doc_chunks_to_embeddings(
     rag_embedding_request: &RagEmbeddingRequest,
-) -> Result<(), LlamaCoreError> {
+) -> Result<String, LlamaCoreError> {
     let embedding_request = &rag_embedding_request.embedding_request;
     let qdrant_url = rag_embedding_request.qdrant_url.as_str();
     let qdrant_collection_name = rag_embedding_request.qdrant_collection_name.as_str();
@@ -37,7 +41,7 @@ pub async fn rag_doc_chunks_to_embeddings(
     // create and upsert points
     qdrant_persist_embeddings(&qdrant_client, qdrant_collection_name, embeddings, chunks).await?;
 
-    Ok(())
+    Ok(qdrant_collection_name.to_string())
 }
 
 /// Convert a query to embeddings.
