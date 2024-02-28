@@ -383,7 +383,7 @@ async fn main() -> Result<(), ServerError> {
     };
     if !llava_mmproj.is_empty() {
         println!("[INFO] Multimodal projector: {path}", path = &llava_mmproj);
-        options.mmproj = llava_mmproj;
+        options.mmproj = Some(llava_mmproj);
     }
 
     // log prompts
