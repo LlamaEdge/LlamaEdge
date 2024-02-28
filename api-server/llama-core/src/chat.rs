@@ -752,7 +752,9 @@ async fn update_metadata(
                     match image.is_url() {
                         true => {
                             // update metadata image
-                            metadata.image = download_image(&image.url).await?;
+                            let img = download_image(&image.url).await?;
+
+                            metadata.image = Some(img);
 
                             if !should_update {
                                 should_update = true;
