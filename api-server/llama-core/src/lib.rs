@@ -38,9 +38,11 @@ pub struct Metadata {
     #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
     pub reverse_prompt: Option<String>,
     /// path to the multimodal projector file for llava
-    pub mmproj: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mmproj: Option<String>,
     /// Path to the image file for llava
-    pub image: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
 
     // * Model parameters (need to reload the model if updated):
     #[serde(rename = "n-gpu-layers")]
