@@ -239,8 +239,8 @@ pub(crate) async fn rag_doc_chunks_to_embeddings_handler(
     };
 
     match llama_core::rag::rag_doc_chunks_to_embeddings(&rag_embedding_request).await {
-        Ok(_) => {
-            let s = "Success".to_string();
+        Ok(collection_name) => {
+            let s = format!("The embeddings for the document chunks has been computed and persisted in the Qdrant collection '{}'.", collection_name);
 
             // return response
             let result = Response::builder()
