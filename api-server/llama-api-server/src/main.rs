@@ -140,13 +140,13 @@ async fn main() -> Result<(), ServerError> {
                     "llama-2-chat",
                     "codellama-instruct",
                     "codellama-super-instruct",
-                    "mistral-instruct-v0.1",
                     "mistral-instruct",
                     "mistrallite",
                     "openchat",
                     "human-assistant",
                     "vicuna-1.0-chat",
                     "vicuna-1.1-chat",
+                    "vicuna-llava",
                     "chatml",
                     "baichuan-2",
                     "wizard-coder",
@@ -161,6 +161,13 @@ async fn main() -> Result<(), ServerError> {
                 .value_name("TEMPLATE")
                 .help("Sets the prompt template.")
                 .default_value("llama-2-chat"),
+        )
+        .arg(
+            Arg::new("llava_mmproj")
+                .long("llava-mmproj")
+                .value_name("LLAVA_MMPROJ")
+                .help("Path to the multimodal projector file")
+                .default_value(""),
         )
         .arg(
             Arg::new("log_prompts")
@@ -364,6 +371,20 @@ async fn main() -> Result<(), ServerError> {
     };
     println!("[INFO] Prompt template: {ty:?}", ty = &template_ty);
     let ref_template_ty = std::sync::Arc::new(template_ty);
+
+    // multimodal projector file
+    let llava_mmproj = match matches.get_one::<String>("llava_mmproj") {
+        Some(llava_mmproj) => llava_mmproj.to_string(),
+        None => {
+            return Err(ServerError::InternalServerError(
+                "Failed to parse the value of `llava_mmproj` CLI option".to_owned(),
+            ));
+        }
+    };
+    if !llava_mmproj.is_empty() {
+        println!("[INFO] Multimodal projector: {path}", path = &llava_mmproj);
+        options.mmproj = Some(llava_mmproj);
+    }
 
     // log prompts
     let log_prompts = matches.get_flag("log_prompts");

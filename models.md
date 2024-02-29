@@ -1,10 +1,80 @@
 # GGUF Models
 
-**To catch up the latest model, please visit [Second State's Huggingface page](https://huggingface.co/second-state), which includes different kinds of auantized models.** 
+**To catch up the latest model, please visit [Second State's Huggingface page](https://huggingface.co/second-state), which includes different kinds of auantized models.**
 
 You can find the model download link, the command to run the model, the command to create an OpenAI compatible API server for the model, and the sha256sum of the model.
 
 Before you start, you need to [install WasmEdge and its ggml plugin via one single command line](https://github.com/LlamaEdge/LlamaEdge/tree/main/api-server#dependencies).
+
+<details>
+<summary> <b>Llava-v1.5-7B</b> </summary>
+<hr/>
+
+Notice that the [wasmedge_rustls-0.13.5](https://github.com/WasmEdge/WasmEdge/releases/tag/0.13.5) is required.
+
+<b>Download model</b>
+
+```bash
+curl -LO https://huggingface.co/second-state/Llava-v1.5-7B-GGUF/resolve/main/llava-v1.5-7b-Q5_K_M.gguf
+```
+
+<b>Download multimodal projector file</b>
+
+```bash
+curl -LO https://huggingface.co/second-state/Llava-v1.5-7B-GGUF/resolve/main/llava-v1.5-7b-mmproj-model-f16.gguf
+```
+
+<b>Chat with llama-api-server</b>
+
+```bash
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:llava-v1.5-7b-Q5_K_M.gguf llama-api-server.wasm -p vicuna-llava -c 2048 --llava-mmproj llava-v1.5-7b-mmproj-model-f16.gguf -m llava-v1.5
+```
+
+Send an API request to the server:
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+-H 'accept:application/json' \
+-H 'Content-Type: application/json' \
+-d '{"messages": [{"content": [{"type": "text","text": "what is in the picture?"},{"type": "image_url","image_url": {"url": "https://petweb1-1253856731.cos.ap-beijing.myqcloud.com/uploads/20200405/6944322520e28e9f3c497df873cdcd0b.jpg"}}],"role": "user"}],"model": "llava-v1.5"}'
+```
+
+</details>
+
+<details>
+<summary> <b>Llava-v1.6-Vicuna-7B</b> </summary>
+<hr/>
+
+Notice that the [wasmedge_rustls-0.13.5](https://github.com/WasmEdge/WasmEdge/releases/tag/0.13.5) is required.
+
+<b>Download model</b>
+
+```bash
+curl -LO https://huggingface.co/second-state/Llava-v1.6-Vicuna-7B-GGUF/resolve/main/llava-v1.6-vicuna-7b-Q5_K_M.gguf
+```
+
+<b>Download multimodal projector file</b>
+
+```bash
+curl -LO https://huggingface.co/second-state/Llava-v1.6-Vicuna-7B-GGUF/resolve/main/llava-v1.6-vicuna-7b-mmproj-model-f16.gguf
+```
+
+<b>Chat with llama-api-server</b>
+
+```bash
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:llava-v1.6-vicuna-7b-Q5_K_M.gguf llama-api-server.wasm -p vicuna-llava -c 4096 --llava-mmproj llava-v1.6-vicuna-7b-mmproj-model-f16.gguf -m llava-v1.6-vicuna-7b
+```
+
+Send an API request to the server:
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+-H 'accept:application/json' \
+-H 'Content-Type: application/json' \
+-d '{"messages": [{"content": [{"type": "text","text": "what is in the picture?"},{"type": "image_url","image_url": {"url": "https://petweb1-1253856731.cos.ap-beijing.myqcloud.com/uploads/20200405/6944322520e28e9f3c497df873cdcd0b.jpg"}}],"role": "user"}],"model": "llava-v1.6-vicuna-7b"}'
+```
+
+</details>
 
 <details>
 <summary> <b>Llama-2-7B-Chat</b> </summary>
@@ -1265,14 +1335,6 @@ Note that check the sha256 of `solar-10.7b-instruct-v1.0.Q5_K_M.gguf` after down
 
 ```text
 715704d0c565664cf49dc6b4e0e087871724b7cb00ecf36a126df1d3de26b843
-```
-
-<b>Chat with the model on the CLI</b>
-
-```bash
-curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-chat.wasm
-
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:SOLAR-10.7B-Instruct-v1.0-Q5_K_M.gguf llama-chat.wasm -p solar-instruct
 ```
 
 <b>Chat with the model via a web UI</b>

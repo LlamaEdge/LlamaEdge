@@ -1,6 +1,6 @@
 [package]
 name = "llama-core"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 
 [dependencies]
@@ -14,3 +14,5 @@ uuid = { version = "1.4", features = ["v4", "fast-rng", "macro-diagnostics"] }
 once_cell = "1.18"
 futures = { version = "0.3.6", default-features = false, features = ["async-await", "std"] }
 futures-util = "0.3"
+reqwest_wasi = { version = "0.11", features = ["json", "wasmedge-tls", "stream"] }
+qdrant_rest_client = { version = "0.0.2", features = ["wasmedge-tls"] }

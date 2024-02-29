@@ -5,7 +5,10 @@ use chat_prompts::{
     PromptTemplateType,
 };
 use clap::{crate_version, Arg, ArgAction, Command};
-use endpoints::chat::{ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRole};
+use endpoints::chat::{
+    ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRole,
+    ChatCompletionUserMessageContent,
+};
 use error::ChatError;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
@@ -126,7 +129,6 @@ fn main() -> Result<(), String> {
                     "llama-2-chat",
                     "codellama-instruct",
                     "codellama-super-instruct",
-                    "mistral-instruct-v0.1",
                     "mistral-instruct",
                     "mistrallite",
                     "openchat",
@@ -173,8 +175,8 @@ fn main() -> Result<(), String> {
         .after_help("Example: the command to run `llama-2-7B` model,\n  wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf llama-chat.wasm -p llama-2-chat\n")
         .get_matches();
 
-    // create an `Options` instance
-    let mut options = Options::default();
+    // create an `Metadata` instance
+    let mut options = Metadata::default();
 
     // model alias
     let model_name = matches
@@ -337,12 +339,9 @@ fn main() -> Result<(), String> {
     let mut chat_request = ChatCompletionRequest::default();
     // put system_prompt into the `messages` of chat_request
     if !system_prompt.is_empty() {
-        chat_request
-            .messages
-            .push(ChatCompletionRequestMessage::new(
-                ChatCompletionRole::System,
-                system_prompt,
-            ));
+        let system_message = ChatCompletionRequestMessage::new_system_message(system_prompt, None);
+
+        chat_request.messages.push(system_message);
     }
 
     // serialize metadata
@@ -428,15 +427,15 @@ fn main() -> Result<(), String> {
 
     loop {
         println!("\n[You]: ");
-        let user_message = read_input();
+        let user_input = read_input();
 
         // put the user message into the messages sequence of chat_request
-        chat_request
-            .messages
-            .push(ChatCompletionRequestMessage::new(
-                ChatCompletionRole::User,
-                user_message,
-            ));
+        let user_message = ChatCompletionRequestMessage::new_user_message(
+            ChatCompletionUserMessageContent::Text(user_input),
+            None,
+        );
+
+        chat_request.messages.push(user_message);
 
         if log_stat || log_all {
             print_log_begin_separator("STATISTICS (Set Input)", Some("*"), None);
@@ -511,13 +510,16 @@ fn main() -> Result<(), String> {
                     print_log_end_separator(Some("*"), None);
                 }
 
+                let processed_completion_message = post_process(&completion_message, template_ty);
+
+                let assistant_message = ChatCompletionRequestMessage::new_assistant_message(
+                    Some(processed_completion_message),
+                    None,
+                    None,
+                );
+
                 // put the assistant message into the message sequence of chat_request
-                chat_request
-                    .messages
-                    .push(ChatCompletionRequestMessage::new(
-                        ChatCompletionRole::Assistant,
-                        completion_message,
-                    ));
+                chat_request.messages.push(assistant_message);
 
                 // this is the required step. Otherwise, will get a cumulative number when retrieve the number of output tokens of each round
                 context.fini_single().map_err(|e| e.to_string())?;
@@ -547,13 +549,14 @@ fn main() -> Result<(), String> {
                     print_log_end_separator(Some("*"), None);
                 }
 
+                let assistant_message = ChatCompletionRequestMessage::new_assistant_message(
+                    Some(completion_message),
+                    None,
+                    None,
+                );
+
                 // put the assistant message into the message sequence of chat_request
-                chat_request
-                    .messages
-                    .push(ChatCompletionRequestMessage::new(
-                        ChatCompletionRole::Assistant,
-                        completion_message,
-                    ));
+                chat_request.messages.push(assistant_message);
 
                 // this is the required step. Otherwise, will get a cumulative number when retrieve the number of output tokens of each round
                 context.fini_single().map_err(|e| e.to_string())?;
@@ -667,6 +670,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         PromptTemplateType::Vicuna11Chat => {
             ChatPrompt::Vicuna11ChatPrompt(chat_prompts::chat::vicuna::Vicuna11ChatPrompt::default())
         }
+        PromptTemplateType::VicunaLlava => {
+            ChatPrompt::VicunaLlavaPrompt(chat_prompts::chat::vicuna::VicunaLlavaPrompt::default())
+        }
         PromptTemplateType::ChatML => {
             ChatPrompt::ChatMLPrompt(chat_prompts::chat::chatml::ChatMLPrompt::default())
         }
@@ -706,9 +712,7 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
     }
 }
 
-fn _post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> String {
-    println!("[DEBUG] Post-processing ...");
-
+fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> String {
     if template_ty == PromptTemplateType::Baichuan2 {
         if output.as_ref().contains("用户:") {
             output.as_ref().trim_end_matches("用户:").trim().to_owned()
@@ -769,6 +773,8 @@ fn _post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> St
             output
                 .as_ref()
                 .trim_end_matches("<|end_of_sentence|>")
+                .trim()
+                .replace("<|end_of_sentence|>", " ")
                 .trim()
                 .to_owned()
         } else {
@@ -913,30 +919,49 @@ fn stream_compute(
     Ok(output)
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
-struct Options {
+#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+pub struct Metadata {
+    // * Plugin parameters (used by this plugin):
     #[serde(rename = "enable-log")]
-    log_enable: bool,
-    #[serde(rename = "ctx-size")]
-    ctx_size: u64,
+    pub log_enable: bool,
+    // #[serde(rename = "enable-debug-log")]
+    // pub debug_log: bool,
+    // #[serde(rename = "stream-stdout")]
+    // pub stream_stdout: bool,
+    #[serde(rename = "embedding")]
+    pub embeddings: bool,
     #[serde(rename = "n-predict")]
-    n_predict: u64,
-    #[serde(rename = "n-gpu-layers")]
-    n_gpu_layers: u64,
-    #[serde(rename = "batch-size")]
-    batch_size: u64,
-    #[serde(rename = "temp")]
-    temperature: f64,
-    #[serde(rename = "top-p")]
-    top_p: f64,
-    #[serde(rename = "repeat-penalty")]
-    repeat_penalty: f64,
-    #[serde(rename = "presence-penalty")]
-    presence_penalty: f64,
-    #[serde(rename = "frequency-penalty")]
-    frequency_penalty: f64,
+    pub n_predict: u64,
     #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
-    reverse_prompt: Option<String>,
+    pub reverse_prompt: Option<String>,
+    // pub mmproj: String,
+    // pub image: String,
+
+    // * Model parameters (need to reload the model if updated):
+    #[serde(rename = "n-gpu-layers")]
+    pub n_gpu_layers: u64,
+    // #[serde(rename = "main-gpu")]
+    // pub main_gpu: u64,
+    // #[serde(rename = "tensor-split")]
+    // pub tensor_split: String,
+
+    // * Context parameters (used by the llama context):
+    #[serde(rename = "ctx-size")]
+    pub ctx_size: u64,
+    #[serde(rename = "batch-size")]
+    pub batch_size: u64,
+
+    // * Sampling parameters (used by the llama sampling context).
+    #[serde(rename = "temp")]
+    pub temperature: f64,
+    #[serde(rename = "top-p")]
+    pub top_p: f64,
+    #[serde(rename = "repeat-penalty")]
+    pub repeat_penalty: f64,
+    #[serde(rename = "presence-penalty")]
+    pub presence_penalty: f64,
+    #[serde(rename = "frequency-penalty")]
+    pub frequency_penalty: f64,
 }
 
 fn build_prompt(
@@ -983,17 +1008,17 @@ fn build_prompt(
 
         match prompt_tokens > max_prompt_tokens {
             true => {
-                match chat_request.messages[0].role {
+                match chat_request.messages[0].role() {
                     ChatCompletionRole::System => {
                         if chat_request.messages.len() >= 4 {
-                            if chat_request.messages[1].role == ChatCompletionRole::User {
+                            if chat_request.messages[1].role() == ChatCompletionRole::User {
                                 chat_request.messages.remove(1);
                             }
-                            if chat_request.messages[1].role == ChatCompletionRole::Assistant {
+                            if chat_request.messages[1].role() == ChatCompletionRole::Assistant {
                                 chat_request.messages.remove(1);
                             }
                         } else if chat_request.messages.len() == 3
-                            && chat_request.messages[1].role == ChatCompletionRole::User
+                            && chat_request.messages[1].role() == ChatCompletionRole::User
                         {
                             chat_request.messages.remove(1);
                         } else {
@@ -1002,14 +1027,14 @@ fn build_prompt(
                     }
                     ChatCompletionRole::User => {
                         if chat_request.messages.len() >= 3 {
-                            if chat_request.messages[0].role == ChatCompletionRole::User {
+                            if chat_request.messages[0].role() == ChatCompletionRole::User {
                                 chat_request.messages.remove(0);
                             }
-                            if chat_request.messages[0].role == ChatCompletionRole::Assistant {
+                            if chat_request.messages[0].role() == ChatCompletionRole::Assistant {
                                 chat_request.messages.remove(0);
                             }
                         } else if chat_request.messages.len() == 2
-                            && chat_request.messages[0].role == ChatCompletionRole::User
+                            && chat_request.messages[0].role() == ChatCompletionRole::User
                         {
                             chat_request.messages.remove(0);
                         } else {

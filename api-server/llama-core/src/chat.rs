@@ -16,7 +16,8 @@ use endpoints::{
     chat::{
         ChatCompletionChunk, ChatCompletionChunkChoice, ChatCompletionChunkChoiceDelta,
         ChatCompletionObject, ChatCompletionObjectChoice, ChatCompletionObjectMessage,
-        ChatCompletionRequest, ChatCompletionRole,
+        ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRole,
+        ChatCompletionUserMessageContent, ContentPart,
     },
     common::{FinishReason, Usage},
 };
@@ -49,9 +50,7 @@ pub async fn chat_completions_stream(
     }
 
     // update metadata
-    if let Err(msg) = update_metadata(&chat_request, avaible_completion_tokens) {
-        return Err(LlamaCoreError::Operation(msg));
-    }
+    update_metadata(&chat_request, avaible_completion_tokens).await?;
 
     let graph = GRAPH.get().ok_or(LlamaCoreError::Operation(String::from(
         "Fail to get the underlying value of `GRAPH`.",
@@ -462,9 +461,7 @@ pub async fn chat_completions(
     }
 
     // update metadata
-    update_metadata(&chat_request, avaible_completion_tokens).map_err(|e| {
-        LlamaCoreError::Operation(format!("Failed to update metadata. {}", e.to_string()))
-    })?;
+    update_metadata(&chat_request, avaible_completion_tokens).await?;
 
     // get graph
     let graph = GRAPH.get().ok_or(LlamaCoreError::Operation(String::from(
@@ -732,19 +729,50 @@ pub async fn chat_completions(
     }
 }
 
-fn update_metadata(
+async fn update_metadata(
     chat_request: &ChatCompletionRequest,
     available_completion_tokens: u64,
-) -> Result<(), String> {
+) -> Result<(), LlamaCoreError> {
     let mut should_update = false;
     let mut metadata = match METADATA.get() {
         Some(metadata) => metadata.clone(),
         None => {
-            return Err(String::from(
+            return Err(LlamaCoreError::Operation(String::from(
                 "Fail to get the underlying value of `METADATA`.",
-            ));
+            )));
         }
     };
+
+    // check if necessary to update `image`
+    if let Some(ChatCompletionRequestMessage::User(user_message)) = chat_request.messages.last() {
+        if let ChatCompletionUserMessageContent::Parts(parts) = user_message.content() {
+            for part in parts {
+                if let ContentPart::Image(image) = part {
+                    let image = image.image();
+                    match image.is_url() {
+                        true => {
+                            // update metadata image
+                            let img = download_image(&image.url).await?;
+
+                            metadata.image = Some(img);
+
+                            if !should_update {
+                                should_update = true;
+                            }
+
+                            // todo: now only support a single image
+                            break;
+                        }
+                        false => {
+                            return Err(LlamaCoreError::Operation(String::from(
+                                "Base64 image is not supported yet.",
+                            )));
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     // check if necessary to update n_predict with max_tokens
     if let Some(max_tokens) = chat_request.max_tokens {
@@ -823,26 +851,28 @@ fn update_metadata(
         let config = match serde_json::to_string(&metadata) {
             Ok(config) => config,
             Err(e) => {
-                return Err(format!(
+                return Err(LlamaCoreError::Operation(format!(
                     "Fail to serialize metadata to a JSON string. {}",
                     e.to_string()
-                ));
+                )));
             }
         };
 
         let graph = match GRAPH.get() {
             Some(graph) => graph,
             None => {
-                return Err(String::from("Fail to get the underlying value of `GRAPH`."));
+                return Err(LlamaCoreError::Operation(String::from(
+                    "Fail to get the underlying value of `GRAPH`.",
+                )));
             }
         };
         let mut graph = match graph.lock() {
             Ok(graph) => graph,
             Err(e) => {
-                return Err(format!(
+                return Err(LlamaCoreError::Operation(format!(
                     "Fail to acquire the lock of `GRAPH`. {}",
                     e.to_string()
-                ));
+                )));
             }
         };
 
@@ -851,7 +881,9 @@ fn update_metadata(
             .set_input(1, wasi_nn::TensorType::U8, &[1], config.as_bytes())
             .is_err()
         {
-            return Err(String::from("Fail to update metadata"));
+            return Err(LlamaCoreError::Operation(String::from(
+                "Fail to update metadata",
+            )));
         }
     }
 
@@ -882,6 +914,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         }
         PromptTemplateType::Vicuna11Chat => {
             ChatPrompt::Vicuna11ChatPrompt(chat_prompts::chat::vicuna::Vicuna11ChatPrompt::default())
+        }
+        PromptTemplateType::VicunaLlava => {
+            ChatPrompt::VicunaLlavaPrompt(chat_prompts::chat::vicuna::VicunaLlavaPrompt::default())
         }
         PromptTemplateType::ChatML => {
             ChatPrompt::ChatMLPrompt(chat_prompts::chat::chatml::ChatMLPrompt::default())
@@ -986,6 +1021,8 @@ fn post_process(
             output
                 .as_ref()
                 .trim_end_matches("<|end_of_sentence|>")
+                .trim()
+                .replace("<|end_of_sentence|>", " ")
                 .trim()
                 .to_owned()
         } else {
@@ -1108,17 +1145,17 @@ fn build_prompt(
 
         match prompt_tokens > max_prompt_tokens {
             true => {
-                match chat_request.messages[0].role {
+                match chat_request.messages[0].role() {
                     ChatCompletionRole::System => {
                         if chat_request.messages.len() >= 4 {
-                            if chat_request.messages[1].role == ChatCompletionRole::User {
+                            if chat_request.messages[1].role() == ChatCompletionRole::User {
                                 chat_request.messages.remove(1);
                             }
-                            if chat_request.messages[1].role == ChatCompletionRole::Assistant {
+                            if chat_request.messages[1].role() == ChatCompletionRole::Assistant {
                                 chat_request.messages.remove(1);
                             }
                         } else if chat_request.messages.len() == 3
-                            && chat_request.messages[1].role == ChatCompletionRole::User
+                            && chat_request.messages[1].role() == ChatCompletionRole::User
                         {
                             chat_request.messages.remove(1);
                         } else {
@@ -1127,14 +1164,14 @@ fn build_prompt(
                     }
                     ChatCompletionRole::User => {
                         if chat_request.messages.len() >= 3 {
-                            if chat_request.messages[0].role == ChatCompletionRole::User {
+                            if chat_request.messages[0].role() == ChatCompletionRole::User {
                                 chat_request.messages.remove(0);
                             }
-                            if chat_request.messages[0].role == ChatCompletionRole::Assistant {
+                            if chat_request.messages[0].role() == ChatCompletionRole::Assistant {
                                 chat_request.messages.remove(0);
                             }
                         } else if chat_request.messages.len() == 2
-                            && chat_request.messages[0].role == ChatCompletionRole::User
+                            && chat_request.messages[0].role() == ChatCompletionRole::User
                         {
                             chat_request.messages.remove(0);
                         } else {
@@ -1143,6 +1180,7 @@ fn build_prompt(
                     }
                     _ => panic!("Found a unsupported chat message role!"),
                 }
+
                 continue;
             }
             false => return Ok((prompt, ctx_size - max_prompt_tokens)),
@@ -1203,4 +1241,37 @@ pub(crate) fn get_token_info(graph: &Graph) -> Result<TokenInfo, String> {
 pub(crate) struct TokenInfo {
     pub(crate) prompt_tokens: u64,
     pub(crate) completion_tokens: u64,
+}
+
+/// Downloads an image from the given URL and returns the file name.
+async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> {
+    let image_url = image_url.as_ref();
+    // println!("[DEBUG] image_url: {}", image_url);
+    let url =
+        reqwest::Url::parse(image_url).map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
+    let response = reqwest::get(url)
+        .await
+        .map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
+
+    let fname = response
+        .url()
+        .path_segments()
+        .and_then(|segments| segments.last())
+        .and_then(|name| if name.is_empty() { None } else { Some(name) })
+        .ok_or(LlamaCoreError::Operation(format!(
+            "Fail to get the file name: {}",
+            image_url
+        )))?
+        .to_string();
+
+    let mut dest =
+        std::fs::File::create(&fname).map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
+
+    let mut content = response.bytes_stream();
+    while let Some(item) = content.try_next().await.unwrap() {
+        std::io::copy(&mut item.as_ref(), &mut dest)
+            .map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
+    }
+
+    Ok(fname)
 }
