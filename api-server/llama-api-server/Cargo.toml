@@ -12,7 +12,6 @@ chat-prompts.workspace = true
 serde_yaml = "0.9"
 hyper_wasi = { version = "0.15", features = ["full"] }
 tokio_wasi = { version = "1", features = ["full"] }
-wasi-nn = { git = "https://github.com/second-state/wasmedge-wasi-nn", branch = "ggml" }
 thiserror.workspace = true
 uuid = { version = "1.4", features = ["v4", "fast-rng", "macro-diagnostics"] }
 clap = { version = "4.4.6", features = ["cargo"] }
