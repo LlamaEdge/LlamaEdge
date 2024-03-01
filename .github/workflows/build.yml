@@ -10,7 +10,6 @@ on:
       - '**/Cargo.toml'
       - '**/*.rs'
       - '**/*.sh'
-      - '**/*.wasm'
   pull_request:
     branches:
       - dev
@@ -21,7 +20,6 @@ on:
       - '**/Cargo.toml'
       - '**/*.rs'
       - '**/*.sh'
-      - '**/*.wasm'
 
 jobs:
   build-wasm:
