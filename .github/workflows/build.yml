@@ -7,6 +7,9 @@ on:
       - main
     paths:
       - '.github/workflows/**'
+      - 'api-server/**'
+      - 'chat/**'
+      - 'simple/**'
       - '**/Cargo.toml'
       - '**/*.rs'
       - '**/*.sh'
@@ -17,6 +20,9 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - '.github/workflows/**'
+      - 'api-server/**'
+      - 'chat/**'
+      - 'simple/**'
       - '**/Cargo.toml'
       - '**/*.rs'
       - '**/*.sh'
