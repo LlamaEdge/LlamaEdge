@@ -147,6 +147,7 @@ async fn main() -> Result<(), ServerError> {
                     "vicuna-1.0-chat",
                     "vicuna-1.1-chat",
                     "vicuna-llava",
+                    "yi-llava",
                     "chatml",
                     "baichuan-2",
                     "wizard-coder",
