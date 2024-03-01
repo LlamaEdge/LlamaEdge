@@ -275,7 +275,7 @@ if [ -n "$model" ]; then
 
     model_name=${wfile%-Q*}
 
-    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm --prompt-template ${prompt_type} --model-name ${model_name} --socket-addr 127.0.0.1:${port} --log-prompts --log-stat"
+    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm --prompt-template ${prompt_type} --model-name ${model_name} --socket-addr 0.0.0.0:${port} --log-prompts --log-stat"
 
     # Add reverse prompt if it exists
     if [ -n "$reverse_prompt" ]; then
@@ -285,7 +285,7 @@ if [ -n "$model" ]; then
     printf "\n"
     printf "[+] Will run the following command to start the server:\n\n"
     printf "    %s\n\n" "$cmd"
-    printf "    Chatbot web app can be accessed at http://127.0.0.1:%s after the server is started\n\n\n" "$port"
+    printf "    Chatbot web app can be accessed at http://0.0.0.0:%s after the server is started\n\n\n" "$port"
     printf "*********************************** LlamaEdge API Server ********************************\n\n"
     printf "********************* [LOG: MODEL INFO (Load Model & Init Execution Context)] *********************"
     eval $cmd
@@ -335,11 +335,11 @@ elif [ "$interactive" -eq 0 ]; then
     printf "\n"
 
     # * start llama-api-server
-    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:gemma-2b-it-Q5_K_M.gguf llama-api-server.wasm -p gemma-instruct -c 4096 --model-name gemma-2b-it --socket-addr 127.0.0.1:${port} --log-prompts --log-stat"
+    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:gemma-2b-it-Q5_K_M.gguf llama-api-server.wasm -p gemma-instruct -c 4096 --model-name gemma-2b-it --socket-addr 0.0.0.0:${port} --log-prompts --log-stat"
 
     printf "[+] Will run the following command to start the server:\n\n"
     printf "    %s\n\n" "$cmd"
-    printf "    Chatbot web app can be accessed at http://127.0.0.1:%s after the server is started\n\n\n" "$port"
+    printf "    Chatbot web app can be accessed at http://0.0.0.0:%s after the server is started\n\n\n" "$port"
     printf "*********************************** LlamaEdge API Server ********************************\n\n"
     eval $cmd
 
@@ -675,7 +675,7 @@ elif [ "$interactive" -eq 1 ]; then
 
         model_name=${wfile%-Q*}
 
-        cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm --prompt-template ${prompt_type} --model-name ${model_name} --socket-addr 127.0.0.1:${port} --log-prompts --log-stat"
+        cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:$wfile llama-api-server.wasm --prompt-template ${prompt_type} --model-name ${model_name} --socket-addr 0.0.0.0:${port} --log-prompts --log-stat"
 
         # Add reverse prompt if it exists
         if [ -n "$reverse_prompt" ]; then
@@ -693,7 +693,7 @@ elif [ "$interactive" -eq 1 ]; then
         # If user answered yes, ask them to input a string
         if [[ "$start_server" == "y" || "$start_server" == "Y" ]]; then
             printf "\n"
-            printf "    Chatbot web app can be accessed at http://127.0.0.1:%s after the server is started\n\n\n" "$port"
+            printf "    Chatbot web app can be accessed at http://0.0.0.0:%s after the server is started\n\n\n" "$port"
             printf "*********************************** LlamaEdge API Server ********************************\n\n"
             eval $cmd
 
