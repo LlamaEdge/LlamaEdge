@@ -49,6 +49,7 @@ pub enum ChatPrompt {
     /// Vicuna 1.1
     Vicuna11ChatPrompt,
     VicunaLlavaPrompt,
+    YiLlavaPrompt,
     ChatMLPrompt,
     Baichuan2ChatPrompt,
     WizardCoderPrompt,
