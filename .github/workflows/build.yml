@@ -5,6 +5,7 @@ on:
     branches:
       - dev
       - main
+      - release-*
     paths:
       - '.github/workflows/**'
       - 'api-server/**'
