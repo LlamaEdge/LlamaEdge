@@ -918,6 +918,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         PromptTemplateType::VicunaLlava => {
             ChatPrompt::VicunaLlavaPrompt(chat_prompts::chat::vicuna::VicunaLlavaPrompt::default())
         }
+        PromptTemplateType::YiLlava => {
+            ChatPrompt::YiLlavaPrompt(chat_prompts::chat::vicuna::YiLlavaPrompt::default())
+        }
         PromptTemplateType::ChatML => {
             ChatPrompt::ChatMLPrompt(chat_prompts::chat::chatml::ChatMLPrompt::default())
         }
