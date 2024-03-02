@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 endpoints.workspace = true
 chat-prompts.workspace = true
-wasi-nn = { git = "https://github.com/second-state/wasmedge-wasi-nn", branch = "refactor-execution-context" }
+wasi-nn = { git = "https://github.com/second-state/wasmedge-wasi-nn", branch = "ggml" }
 thiserror.workspace = true
 serde.workspace = true
 serde_json = "1.0"

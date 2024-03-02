@@ -5,12 +5,15 @@ on:
     branches:
       - dev
       - main
+      - release-*
     paths:
       - '.github/workflows/**'
+      - 'api-server/**'
+      - 'chat/**'
+      - 'simple/**'
       - '**/Cargo.toml'
       - '**/*.rs'
       - '**/*.sh'
-      - '**/*.wasm'
   pull_request:
     branches:
       - dev
@@ -18,10 +21,12 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - '.github/workflows/**'
+      - 'api-server/**'
+      - 'chat/**'
+      - 'simple/**'
       - '**/Cargo.toml'
       - '**/*.rs'
       - '**/*.sh'
-      - '**/*.wasm'
 
 jobs:
   build-wasm:
