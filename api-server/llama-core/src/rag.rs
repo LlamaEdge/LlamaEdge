@@ -20,7 +20,7 @@ use qdrant::*;
 /// Name of the Qdrant collection if successful.
 pub async fn rag_doc_chunks_to_embeddings(
     rag_embedding_request: &RagEmbeddingRequest,
-) -> Result<String, LlamaCoreError> {
+) -> Result<EmbeddingsResponse, LlamaCoreError> {
     let embedding_request = &rag_embedding_request.embedding_request;
     let qdrant_url = rag_embedding_request.qdrant_url.as_str();
     let qdrant_collection_name = rag_embedding_request.qdrant_collection_name.as_str();
@@ -41,7 +41,7 @@ pub async fn rag_doc_chunks_to_embeddings(
     // create and upsert points
     qdrant_persist_embeddings(&qdrant_client, qdrant_collection_name, embeddings, chunks).await?;
 
-    Ok(qdrant_collection_name.to_string())
+    Ok(response)
 }
 
 /// Convert a query to embeddings.
@@ -93,7 +93,7 @@ async fn qdrant_create_collection(
     collection_name: impl AsRef<str>,
     dim: usize,
 ) -> Result<(), LlamaCoreError> {
-    println!("[+] Creating a collection ...");
+    println!("\n[+] Creating a collection ...");
     // let collection_name = "my_test";
     println!("    * Collection name: {}", collection_name.as_ref());
     println!("    * Dimension: {}", dim);
