@@ -260,7 +260,7 @@ async fn main() -> Result<(), ServerError> {
 
     // prompt context size
     let ctx_size = matches
-        .get_one::<u32>("ctx_size")
+        .get_one::<u64>("ctx_size")
         .ok_or(ServerError::ArgumentError(
             "Failed to parse the value of `ctx_size` CLI option".to_owned(),
         ))?;
@@ -269,7 +269,7 @@ async fn main() -> Result<(), ServerError> {
 
     // number of tokens to predict
     let n_predict = matches
-        .get_one::<u32>("n_predict")
+        .get_one::<u64>("n_predict")
         .ok_or(ServerError::ArgumentError(
             "Failed to parse the value of `n_predict` CLI option".to_owned(),
         ))?;
