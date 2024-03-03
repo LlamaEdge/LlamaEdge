@@ -1,6 +1,7 @@
 mod backend;
 mod error;
 
+use anyhow::Result;
 use chat_prompts::PromptTemplateType;
 use clap::{crate_version, Arg, ArgAction, Command};
 use error::ServerError;
@@ -10,11 +11,15 @@ use hyper::{
     Body, Request, Response, Server, StatusCode,
 };
 use llama_core::Metadata;
+use once_cell::sync::OnceCell;
 use std::{net::SocketAddr, path::PathBuf, str::FromStr};
+use url::Url;
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 const DEFAULT_SOCKET_ADDRESS: &str = "0.0.0.0:8080";
+
+pub(crate) static QDRANT_CONFIG: OnceCell<QdrantConfig> = OnceCell::new();
 
 #[derive(Clone, Debug)]
 pub struct AppState {
@@ -53,7 +58,7 @@ async fn main() -> Result<(), ServerError> {
             Arg::new("ctx_size")
                 .short('c')
                 .long("ctx-size")
-                .value_parser(clap::value_parser!(u32))
+                .value_parser(clap::value_parser!(u64))
                 .value_name("CTX_SIZE")
                 .help("Sets the prompt context size")
                 .default_value("512"),
@@ -62,7 +67,7 @@ async fn main() -> Result<(), ServerError> {
             Arg::new("n_predict")
                 .short('n')
                 .long("n-predict")
-                .value_parser(clap::value_parser!(u32))
+                .value_parser(clap::value_parser!(u64))
                 .value_name("N_PRDICT")
                 .help("Number of tokens to predict")
                 .default_value("1024"),
@@ -71,7 +76,7 @@ async fn main() -> Result<(), ServerError> {
             Arg::new("n_gpu_layers")
                 .short('g')
                 .long("n-gpu-layers")
-                .value_parser(clap::value_parser!(u32))
+                .value_parser(clap::value_parser!(u64))
                 .value_name("N_GPU_LAYERS")
                 .help("Number of layers to run on the GPU")
                 .default_value("100"),
@@ -80,7 +85,7 @@ async fn main() -> Result<(), ServerError> {
             Arg::new("batch_size")
                 .short('b')
                 .long("batch-size")
-                .value_parser(clap::value_parser!(u32))
+                .value_parser(clap::value_parser!(u64))
                 .value_name("BATCH_SIZE")
                 .help("Batch size for prompt processing")
                 .default_value("512"),
@@ -160,7 +165,7 @@ async fn main() -> Result<(), ServerError> {
                 ])
                 .value_name("TEMPLATE")
                 .help("Sets the prompt template.")
-                .default_value("llama-2-chat"),
+                .required(true)
         )
         .arg(
             Arg::new("llava_mmproj")
@@ -168,6 +173,25 @@ async fn main() -> Result<(), ServerError> {
                 .value_name("LLAVA_MMPROJ")
                 .help("Path to the multimodal projector file")
                 .default_value(""),
+        )
+        .arg(
+            Arg::new("qdrant_url")
+                .long("qdrant-url")
+                .help("Sets the url of Qdrant REST Service (e.g., http://localhost:6333)")
+                .default_value(""),
+        )
+        .arg(
+            Arg::new("qdrant_collection_name")
+                .long("qdrant-collection-name")
+                .help("Sets the collection name of Qdrant")
+                .default_value(""),
+        )
+        .arg(
+            Arg::new("qdrant_limit")
+                .long("qdrant-limit")
+                .value_parser(clap::value_parser!(u64))
+                .help("Max number of retrieved result.")
+                .default_value("3"),
         )
         .arg(
             Arg::new("log_prompts")
@@ -200,132 +224,109 @@ async fn main() -> Result<(), ServerError> {
         .get_matches();
 
     // socket address
-    let socket_addr = match matches.get_one::<String>("socket_addr") {
-        Some(socket_addr) => socket_addr.to_string(),
-        None => {
-            return Err(ServerError::InternalServerError(
+    let socket_addr =
+        matches
+            .get_one::<String>("socket_addr")
+            .ok_or(ServerError::ArgumentError(
                 "Failed to parse the value of `socket_addr` CLI option".to_owned(),
-            ));
-        }
-    };
-    let addr: SocketAddr = match socket_addr.parse() {
-        Ok(addr) => addr,
-        Err(e) => {
-            return Err(ServerError::SocketAddr(e.to_string()));
-        }
-    };
+            ))?;
+    let addr = socket_addr
+        .parse::<SocketAddr>()
+        .map_err(|e| ServerError::SocketAddr(e.to_string()))?;
     println!(
         "[INFO] Socket address: {socket_addr}",
         socket_addr = socket_addr
     );
 
     // model name
-    let model_name = match matches.get_one::<String>("model_name") {
-        Some(model_name) => model_name.to_string(),
-        None => {
-            return Err(ServerError::InternalServerError(
-                "Failed to parse the value of `model_name` CLI option".to_owned(),
-            ));
-        }
-    };
+    let model_name = matches
+        .get_one::<String>("model_name")
+        .ok_or(ServerError::ArgumentError(
+            "Failed to parse the value of `model_name` CLI option".to_owned(),
+        ))?;
     println!("[INFO] Model name: {name}", name = &model_name);
 
     // model alias
-    let model_alias = match matches.get_one::<String>("model_alias") {
-        Some(model_alias) => model_alias.to_string(),
-        None => {
-            return Err(ServerError::InternalServerError(
+    let model_alias =
+        matches
+            .get_one::<String>("model_alias")
+            .ok_or(ServerError::ArgumentError(
                 "Failed to parse the value of `model_alias` CLI option".to_owned(),
-            ));
-        }
-    };
+            ))?;
     println!("[INFO] Model alias: {alias}", alias = &model_alias);
 
     // create an `Options` instance
     let mut options = Metadata::default();
 
     // prompt context size
-    let ctx_size = match matches.get_one::<u32>("ctx_size") {
-        Some(ctx_size) => ctx_size,
-        None => {
-            return Err(ServerError::InternalServerError(
-                "Failed to parse the value of `ctx_size` CLI option".to_owned(),
-            ));
-        }
-    };
+    let ctx_size = matches
+        .get_one::<u32>("ctx_size")
+        .ok_or(ServerError::ArgumentError(
+            "Failed to parse the value of `ctx_size` CLI option".to_owned(),
+        ))?;
     println!("[INFO] Prompt context size: {size}", size = ctx_size);
     options.ctx_size = *ctx_size as u64;
 
     // number of tokens to predict
-    let n_predict = match matches.get_one::<u32>("n_predict") {
-        Some(n_predict) => n_predict,
-        None => {
-            return Err(ServerError::InternalServerError(
-                "Failed to parse the value of `n_predict` CLI option".to_owned(),
-            ));
-        }
-    };
+    let n_predict = matches
+        .get_one::<u32>("n_predict")
+        .ok_or(ServerError::ArgumentError(
+            "Failed to parse the value of `n_predict` CLI option".to_owned(),
+        ))?;
     println!("[INFO] Number of tokens to predict: {n}", n = n_predict);
     options.n_predict = *n_predict as u64;
 
     // n_gpu_layers
-    let n_gpu_layers = match matches.get_one::<u32>("n_gpu_layers") {
-        Some(n_gpu_layers) => n_gpu_layers,
-        None => {
-            return Err(ServerError::InternalServerError(
-                "Failed to parse the value of `n_gpu_layers` CLI option".to_owned(),
-            ));
-        }
-    };
+    let n_gpu_layers = matches
+        .get_one::<u64>("n_gpu_layers")
+        .ok_or(ServerError::ArgumentError(
+            "Failed to parse the value of `n_gpu_layers` CLI option".to_owned(),
+        ))?;
     println!(
         "[INFO] Number of layers to run on the GPU: {n}",
         n = n_gpu_layers
     );
-    options.n_gpu_layers = *n_gpu_layers as u64;
+    options.n_gpu_layers = *n_gpu_layers;
 
     // batch size
-    let batch_size = match matches.get_one::<u32>("batch_size") {
-        Some(batch_size) => batch_size,
-        None => {
-            return Err(ServerError::InternalServerError(
-                "Failed to parse the value of `batch_size` CLI option".to_owned(),
-            ));
-        }
-    };
+    let batch_size = matches
+        .get_one::<u64>("batch_size")
+        .ok_or(ServerError::ArgumentError(
+            "Failed to parse the value of `batch_size` CLI option".to_owned(),
+        ))?;
     println!(
         "[INFO] Batch size for prompt processing: {size}",
         size = batch_size
     );
-    options.batch_size = *batch_size as u64;
+    options.batch_size = *batch_size;
 
     // temperature
-    let temp = match matches.get_one::<f64>("temp") {
-        Some(temp) => temp,
-        None => {
-            return Err(ServerError::InternalServerError(
-                "Failed to parse the value of `temp` CLI option".to_owned(),
-            ));
-        }
-    };
+    let temp = matches
+        .get_one::<f64>("temp")
+        .ok_or(ServerError::ArgumentError(
+            "Failed to parse the value of `temp` CLI option".to_owned(),
+        ))?;
     println!("[INFO] Temperature for sampling: {temp}", temp = temp);
     options.temperature = *temp;
 
     // top-p
-    let top_p = matches.get_one::<f64>("top_p").unwrap();
+    let top_p = matches
+        .get_one::<f64>("top_p")
+        .ok_or(error::ServerError::ArgumentError(
+            "Failed to parse the value of `top_p` CLI option".to_owned(),
+        ))?;
     println!(
         "[INFO] Top-p sampling (1.0 = disabled): {top_p}",
         top_p = top_p
     );
 
     // repeat penalty
-    let repeat_penalty = match matches.get_one::<f64>("repeat_penalty") {
-        Some(repeat_penalty) => repeat_penalty,
-        None => {
-            return Err(ServerError::InternalServerError(
+    let repeat_penalty =
+        matches
+            .get_one::<f64>("repeat_penalty")
+            .ok_or(ServerError::ArgumentError(
                 "Failed to parse the value of `repeat_penalty` CLI option".to_owned(),
-            ));
-        }
-    };
+            ))?;
     println!(
         "[INFO] Penalize repeat sequence of tokens: {penalty}",
         penalty = repeat_penalty
@@ -333,7 +334,12 @@ async fn main() -> Result<(), ServerError> {
     options.repeat_penalty = *repeat_penalty;
 
     // presence penalty
-    let presence_penalty = matches.get_one::<f64>("presence_penalty").unwrap();
+    let presence_penalty =
+        matches
+            .get_one::<f64>("presence_penalty")
+            .ok_or(error::ServerError::ArgumentError(
+                "Failed to parse the value of `presence_penalty` CLI option".to_owned(),
+            ))?;
     println!(
         "[INFO] Presence penalty (0.0 = disabled): {penalty}",
         penalty = presence_penalty
@@ -341,7 +347,12 @@ async fn main() -> Result<(), ServerError> {
     options.presence_penalty = *presence_penalty;
 
     // frequency penalty
-    let frequency_penalty = matches.get_one::<f64>("frequency_penalty").unwrap();
+    let frequency_penalty =
+        matches
+            .get_one::<f64>("frequency_penalty")
+            .ok_or(error::ServerError::ArgumentError(
+                "Failed to parse the value of `frequency_penalty` CLI option".to_owned(),
+            ))?;
     println!(
         "[INFO] Frequency penalty (0.0 = disabled): {penalty}",
         penalty = frequency_penalty
@@ -355,41 +366,86 @@ async fn main() -> Result<(), ServerError> {
     }
 
     // type of prompt template
-    let prompt_template = match matches.get_one::<String>("prompt_template") {
-        Some(prompt_template) => prompt_template.to_string(),
-        None => {
-            return Err(ServerError::InternalServerError(
-                "Failed to parse the value of `prompt_template` CLI option".to_owned(),
-            ))
-        }
-    };
-    let template_ty = match PromptTemplateType::from_str(&prompt_template) {
-        Ok(template) => template,
-        Err(e) => {
-            return Err(ServerError::InvalidPromptTemplateType(e.to_string()));
-        }
-    };
+    let prompt_template =
+        matches
+            .get_one::<String>("prompt_template")
+            .ok_or(ServerError::ArgumentError(
+                "The `prompt_template` CLI option is required".to_owned(),
+            ))?;
+    let template_ty = PromptTemplateType::from_str(&prompt_template)
+        .map_err(|e| ServerError::InvalidPromptTemplateType(e.to_string()))?;
     println!("[INFO] Prompt template: {ty:?}", ty = &template_ty);
     let ref_template_ty = std::sync::Arc::new(template_ty);
 
     // multimodal projector file
-    let llava_mmproj = match matches.get_one::<String>("llava_mmproj") {
-        Some(llava_mmproj) => llava_mmproj.to_string(),
-        None => {
-            return Err(ServerError::InternalServerError(
+    let llava_mmproj =
+        matches
+            .get_one::<String>("llava_mmproj")
+            .ok_or(ServerError::ArgumentError(
                 "Failed to parse the value of `llava_mmproj` CLI option".to_owned(),
-            ));
-        }
-    };
+            ))?;
     if !llava_mmproj.is_empty() {
-        println!("[INFO] Multimodal projector: {path}", path = &llava_mmproj);
-        options.mmproj = Some(llava_mmproj);
+        println!("[INFO] Multimodal projector: {path}", path = llava_mmproj);
+        options.mmproj = Some(llava_mmproj.to_owned());
     }
 
     // log prompts
     let log_prompts = matches.get_flag("log_prompts");
     println!("[INFO] Log prompts: {enable}", enable = log_prompts);
     let ref_log_prompts = std::sync::Arc::new(log_prompts);
+
+    // qdrant url
+    let qdrant_url = matches
+        .get_one::<String>("qdrant_url")
+        .ok_or(ServerError::ArgumentError(
+            "Failed to parse the value of `qdrant_url` CLI option".to_owned(),
+        ))?;
+    if !qdrant_url.is_empty() {
+        if !is_valid_url(&qdrant_url) {
+            return Err(ServerError::ArgumentError(format!(
+                "The URL of Qdrant REST API is invalid: {}.",
+                qdrant_url
+            )));
+        }
+
+        println!(
+            "[INFO] Qdrant server address: {socket_addr}",
+            socket_addr = qdrant_url
+        );
+
+        // qdrant collection name
+        let qdrant_collection_name = matches.get_one::<String>("qdrant_collection_name").ok_or(
+            ServerError::ArgumentError(
+                "Failed to parse the value of `qdrant_collection_name` CLI option".to_owned(),
+            ),
+        )?;
+        println!(
+            "[INFO] Qdrant collection name: {name}",
+            name = &qdrant_collection_name
+        );
+
+        // qdrant limit
+        let qdrant_limit =
+            matches
+                .get_one::<u64>("qdrant_limit")
+                .ok_or(ServerError::ArgumentError(
+                    "Failed to parse the value of `qdrant_limit` CLI option".to_owned(),
+                ))?;
+        println!(
+            "[INFO] Max number of retrieved result: {limit}",
+            limit = qdrant_limit
+        );
+
+        let qdrant_config = QdrantConfig {
+            url: qdrant_url.to_owned(),
+            collection_name: qdrant_collection_name.to_owned(),
+            limit: *qdrant_limit,
+        };
+
+        QDRANT_CONFIG
+            .set(qdrant_config)
+            .map_err(|_| ServerError::Operation("Failed to set '`QDRANT_CONFIG`.".to_string()))?;
+    }
 
     // log statistics
     let log_stat = matches.get_flag("log_stat");
@@ -416,15 +472,15 @@ async fn main() -> Result<(), ServerError> {
 
     // * initialize the core context
     llama_core::init_core_context(&options, &model_name, &model_alias).map_err(|e| {
-        ServerError::InternalServerError(format!(
+        ServerError::Operation(format!(
             "Failed to initialize the core context. {}",
             e.to_string()
         ))
     })?;
 
     // get the plugin version info
-    let plugin_info = llama_core::get_plugin_info()
-        .map_err(|e| ServerError::InternalServerError(e.to_string()))?;
+    let plugin_info =
+        llama_core::get_plugin_info().map_err(|e| ServerError::Operation(e.to_string()))?;
     println!(
         "[INFO] Plugin version: b{build_number} (commit {commit_id})",
         build_number = plugin_info.build_number,
@@ -460,7 +516,7 @@ async fn main() -> Result<(), ServerError> {
 
     match server.await {
         Ok(_) => Ok(()),
-        Err(e) => Err(ServerError::InternalServerError(e.to_string())),
+        Err(e) => Err(ServerError::Operation(e.to_string())),
     }
 }
 
@@ -537,4 +593,15 @@ pub(crate) fn print_log_end_separator(ch: Option<&str>, len: Option<usize>) {
     separator.push_str(ch.repeat(len.unwrap_or(100)).as_str());
     separator.push_str("\n");
     println!("{}", separator);
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct QdrantConfig {
+    pub(crate) url: String,
+    pub(crate) collection_name: String,
+    pub(crate) limit: u64,
+}
+
+fn is_valid_url(url: &str) -> bool {
+    Url::parse(url).is_ok()
 }

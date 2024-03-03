@@ -43,10 +43,14 @@ pub(crate) fn invalid_endpoint(msg: impl AsRef<str>) -> Result<Response<Body>, h
 
 #[derive(Error, Clone, Debug, PartialEq, Eq)]
 pub enum ServerError {
+    /// Error returned while parsing socket address failed
     #[error("Failed to parse socket address: {0}")]
     SocketAddr(String),
-    #[error("Internal server error: {0}")]
-    InternalServerError(String),
+    /// Error returned while parsing CLI options failed
+    #[error("{0}")]
+    ArgumentError(String),
     #[error("Invalid prompt template type: {0}")]
     InvalidPromptTemplateType(String),
+    #[error("{0}")]
+    Operation(String),
 }
