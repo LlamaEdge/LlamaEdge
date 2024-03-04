@@ -30,15 +30,23 @@ on:
 
 jobs:
   build-wasm:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, ubuntu-20.04, macos-12, macos-13]
     steps:
       - name: Clone project
         id: checkout
         uses: actions/checkout@v3
 
-      - name: Setup rustup
-        id: rustup
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Install Rust-nightly
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          target: wasm32-wasi
+          components: rustfmt, clippy
+
+      - name: Install Rust-stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           target: wasm32-wasi
 
@@ -46,16 +54,22 @@ jobs:
         id: build_simple
         run: |
           cd simple
+          cargo +nightly fmt --all -- --check
+          cargo +nightly clippy --target wasm32-wasi -- -D warnings
           cargo build --target wasm32-wasi --release
 
       - name: Build chat
         id: build_chat
         run: |
           cd chat
+          cargo +nightly fmt --all -- --check
+          cargo +nightly clippy --target wasm32-wasi -- -D warnings
           cargo build --target wasm32-wasi --release
 
       - name: Build api-server
         id: build_api_server
         run: |
           cd api-server
+          cargo +nightly fmt --all -- --check
+          cargo +nightly clippy --target wasm32-wasi -- -D warnings
           cargo build --target wasm32-wasi --release
