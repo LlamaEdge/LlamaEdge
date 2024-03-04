@@ -101,6 +101,8 @@ pub async fn embeddings(
 }
 
 fn update_metadata() -> Result<(), LlamaCoreError> {
+    let mut should_update = false;
+
     let mut metadata = match METADATA.get() {
         Some(metadata) => metadata.clone(),
         None => {
@@ -110,46 +112,54 @@ fn update_metadata() -> Result<(), LlamaCoreError> {
         }
     };
 
-    // enable `embedding` option
-    metadata.embeddings = true;
+    // check if the `embedding` option is enabled
+    if !metadata.embeddings {
+        metadata.embeddings = true;
 
-    // update metadata
-    let config = match serde_json::to_string(&metadata) {
-        Ok(config) => config,
-        Err(e) => {
-            return Err(LlamaCoreError::Operation(format!(
-                "Fail to serialize metadata to a JSON string. {}",
-                e
+        if !should_update {
+            should_update = true;
+        }
+    }
+
+    if should_update {
+        // update metadata
+        let config = match serde_json::to_string(&metadata) {
+            Ok(config) => config,
+            Err(e) => {
+                return Err(LlamaCoreError::Operation(format!(
+                    "Fail to serialize metadata to a JSON string. {}",
+                    e
+                )));
+            }
+        };
+
+        let graph = match GRAPH.get() {
+            Some(graph) => graph,
+            None => {
+                return Err(LlamaCoreError::Operation(String::from(
+                    "Fail to get the underlying value of `GRAPH`.",
+                )));
+            }
+        };
+        let mut graph = match graph.lock() {
+            Ok(graph) => graph,
+            Err(e) => {
+                return Err(LlamaCoreError::Operation(format!(
+                    "Fail to acquire the lock of `GRAPH`. {}",
+                    e
+                )));
+            }
+        };
+
+        // update metadata
+        if graph
+            .set_input(1, wasi_nn::TensorType::U8, &[1], config.as_bytes())
+            .is_err()
+        {
+            return Err(LlamaCoreError::Backend(BackendError::SetInput(
+                String::from("Fail to update metadata."),
             )));
         }
-    };
-
-    let graph = match GRAPH.get() {
-        Some(graph) => graph,
-        None => {
-            return Err(LlamaCoreError::Operation(String::from(
-                "Fail to get the underlying value of `GRAPH`.",
-            )));
-        }
-    };
-    let mut graph = match graph.lock() {
-        Ok(graph) => graph,
-        Err(e) => {
-            return Err(LlamaCoreError::Operation(format!(
-                "Fail to acquire the lock of `GRAPH`. {}",
-                e
-            )));
-        }
-    };
-
-    // update metadata
-    if graph
-        .set_input(1, wasi_nn::TensorType::U8, &[1], config.as_bytes())
-        .is_err()
-    {
-        return Err(LlamaCoreError::Backend(BackendError::SetInput(
-            String::from("Fail to update metadata."),
-        )));
     }
 
     Ok(())
