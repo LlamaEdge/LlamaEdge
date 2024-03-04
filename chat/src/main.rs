@@ -13,8 +13,7 @@ use error::ChatError;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::io::Write;
-use std::str::FromStr;
+use std::{io::Write, str::FromStr};
 
 static MAX_BUFFER_SIZE: OnceCell<usize> = OnceCell::new();
 
