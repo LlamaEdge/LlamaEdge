@@ -20,7 +20,7 @@ pub(crate) static GRAPH: OnceCell<Mutex<Graph>> = OnceCell::new();
 pub(crate) static METADATA: OnceCell<Metadata> = OnceCell::new();
 pub static UTF8_ENCODINGS: OnceCell<Mutex<Vec<u8>>> = OnceCell::new();
 
-pub(crate) const MAX_BUFFER_SIZE_EMBEDDING: usize = 4096 * 15 + 128;
+pub(crate) const MAX_BUFFER_SIZE_EMBEDDING: usize = 2usize.pow(14) * 15 + 128;
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct Metadata {
@@ -209,7 +209,7 @@ pub fn init_core_context(
 
     // set `MAX_BUFFER_SIZE`
     MAX_BUFFER_SIZE
-        .set(metadata.ctx_size as usize * 6)
+        .set(2usize.pow(14) * 15 + 128)
         .map_err(|e| {
             LlamaCoreError::InitContext(format!(
                 "The `MAX_BUFFER_SIZE` has already been initialized: {}",
