@@ -1,9 +1,8 @@
 use super::BuildChatPrompt;
 use crate::error::{PromptError, Result};
 use endpoints::chat::{
-    ChatCompletionAssistantMessage, ChatCompletionRequestMessage,
-    ChatCompletionSystemMessage, ChatCompletionUserMessage, ChatCompletionUserMessageContent,
-    ContentPart,
+    ChatCompletionAssistantMessage, ChatCompletionRequestMessage, ChatCompletionSystemMessage,
+    ChatCompletionUserMessage, ChatCompletionUserMessageContent, ContentPart,
 };
 
 /// Generate prompts for the `DeepSeek-LLM-Chat` model.

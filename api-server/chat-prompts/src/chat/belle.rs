@@ -1,8 +1,8 @@
 use super::BuildChatPrompt;
 use crate::error::{PromptError, Result};
 use endpoints::chat::{
-    ChatCompletionAssistantMessage, ChatCompletionRequestMessage,
-    ChatCompletionUserMessage, ChatCompletionUserMessageContent, ContentPart,
+    ChatCompletionAssistantMessage, ChatCompletionRequestMessage, ChatCompletionUserMessage,
+    ChatCompletionUserMessageContent, ContentPart,
 };
 
 /// Generate prompts for the `BELLE-Llama2-13B-chat` model.
