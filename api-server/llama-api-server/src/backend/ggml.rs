@@ -47,10 +47,7 @@ pub(crate) async fn embeddings_handler(
     let embedding_request: EmbeddingRequest = match serde_json::from_slice(&body_bytes) {
         Ok(embedding_request) => embedding_request,
         Err(e) => {
-            return error::bad_request(format!(
-                "Fail to parse embedding request: {msg}",
-                msg = e.to_string()
-            ));
+            return error::bad_request(format!("Fail to parse embedding request: {msg}", msg = e));
         }
     };
 
@@ -72,7 +69,7 @@ pub(crate) async fn embeddings_handler(
                 }
                 Err(e) => error::internal_server_error(format!(
                     "Fail to serialize embedding object. {}",
-                    e.to_string()
+                    e
                 )),
             }
         }
@@ -90,7 +87,7 @@ pub(crate) async fn completions_handler(
         Err(e) => {
             return error::bad_request(format!(
                 "Failed to deserialize completion request. {msg}",
-                msg = e.to_string()
+                msg = e
             ));
         }
     };
@@ -103,7 +100,7 @@ pub(crate) async fn completions_handler(
                 Err(e) => {
                     return error::internal_server_error(format!(
                         "Failed to serialize completion object. {msg}",
-                        msg = e.to_string()
+                        msg = e
                     ));
                 }
             };
@@ -151,7 +148,7 @@ pub(crate) async fn chat_completions_handler(
         Err(e) => {
             return error::bad_request(format!(
                 "Fail to parse chat completion request: {msg}",
-                msg = e.to_string()
+                msg = e
             ));
         }
     };
@@ -203,7 +200,7 @@ async fn chat_completions(
                 Err(e) => {
                     return error::internal_server_error(format!(
                         "Fail to serialize chat completion object. {}",
-                        e.to_string()
+                        e
                     ));
                 }
             };
@@ -235,10 +232,7 @@ pub(crate) async fn rag_doc_chunks_to_embeddings_handler(
     let rag_embedding_request: RagEmbeddingRequest = match serde_json::from_slice(&body_bytes) {
         Ok(embedding_request) => embedding_request,
         Err(e) => {
-            return error::bad_request(format!(
-                "Fail to parse embedding request: {msg}",
-                msg = e.to_string()
-            ));
+            return error::bad_request(format!("Fail to parse embedding request: {msg}", msg = e));
         }
     };
 
@@ -260,7 +254,7 @@ pub(crate) async fn rag_doc_chunks_to_embeddings_handler(
                 }
                 Err(e) => error::internal_server_error(format!(
                     "Fail to serialize embedding object. {}",
-                    e.to_string()
+                    e
                 )),
             }
         }
@@ -279,10 +273,7 @@ pub(crate) async fn rag_doc_chunks_to_embeddings2_handler(
     let embedding_request: EmbeddingRequest = match serde_json::from_slice(&body_bytes) {
         Ok(embedding_request) => embedding_request,
         Err(e) => {
-            return error::bad_request(format!(
-                "Fail to parse embedding request: {msg}",
-                msg = e.to_string()
-            ));
+            return error::bad_request(format!("Fail to parse embedding request: {msg}", msg = e));
         }
     };
 
@@ -318,7 +309,7 @@ pub(crate) async fn rag_doc_chunks_to_embeddings2_handler(
                 }
                 Err(e) => error::internal_server_error(format!(
                     "Fail to serialize embedding object. {}",
-                    e.to_string()
+                    e
                 )),
             }
         }
@@ -356,7 +347,7 @@ pub(crate) async fn rag_query_handler(
         Err(e) => {
             return error::bad_request(format!(
                 "Fail to parse chat completion request: {msg}",
-                msg = e.to_string()
+                msg = e
             ));
         }
     };
@@ -493,7 +484,7 @@ pub(crate) async fn rag_query2_handler(
         Err(e) => {
             return error::bad_request(format!(
                 "Fail to parse chat completion request: {msg}",
-                msg = e.to_string()
+                msg = e
             ));
         }
     };

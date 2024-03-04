@@ -83,7 +83,7 @@ pub async fn rag_retrieve_context(
         limit,
     )
     .await
-    .map_err(|e| LlamaCoreError::Operation(e))?;
+    .map_err(LlamaCoreError::Operation)?;
 
     Ok(search_result)
 }
@@ -101,7 +101,7 @@ async fn qdrant_create_collection(
         .create_collection(collection_name.as_ref(), dim as u32)
         .await
     {
-        println!("Failed to create collection. {}", err.to_string());
+        println!("Failed to create collection. {}", err);
         return Err(LlamaCoreError::Operation(err.to_string()));
     }
 
@@ -141,7 +141,7 @@ async fn qdrant_persist_embeddings(
         .upsert_points(collection_name.as_ref(), points)
         .await
     {
-        println!("Failed to upsert points. {}", err.to_string());
+        println!("Failed to upsert points. {}", err);
         return Err(LlamaCoreError::Operation(err.to_string()));
     }
 

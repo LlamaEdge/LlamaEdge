@@ -164,7 +164,7 @@ pub(crate) fn print_log_begin_separator(
     separator.push_str(ch.repeat(separator_len).as_str());
     separator.push_str(&title);
     separator.push_str(ch.repeat(separator_len).as_str());
-    separator.push_str("\n");
+    separator.push('\n');
     println!("{}", separator);
     total_len
 }
@@ -173,7 +173,7 @@ pub(crate) fn print_log_end_separator(ch: Option<&str>, len: Option<usize>) {
     let ch = ch.unwrap_or("-");
     let mut separator = "\n\n".to_string();
     separator.push_str(ch.repeat(len.unwrap_or(100)).as_str());
-    separator.push_str("\n");
+    separator.push('\n');
     println!("{}", separator);
 }
 
@@ -193,10 +193,10 @@ pub fn init_core_context(
     model_alias: impl AsRef<str>,
 ) -> Result<(), LlamaCoreError> {
     let graph = Graph::new(model_name.as_ref(), model_alias.as_ref(), metadata)
-        .map_err(|e| LlamaCoreError::InitContext(e))?;
+        .map_err(LlamaCoreError::InitContext)?;
 
     GRAPH.set(Mutex::new(graph)).map_err(|_| {
-        LlamaCoreError::InitContext(format!("The `GRAPH` has already been initialized"))
+        LlamaCoreError::InitContext("The `GRAPH` has already been initialized".to_string())
     })?;
 
     // set `CTX_SIZE`
@@ -219,7 +219,7 @@ pub fn init_core_context(
 
     // set `METADATA`
     METADATA.set(metadata.clone()).map_err(|_| {
-        LlamaCoreError::InitContext(format!("The `METADATA` has already been initialized"))
+        LlamaCoreError::InitContext("The `METADATA` has already been initialized".to_string())
     })?;
 
     Ok(())
@@ -237,7 +237,7 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
     let mut output_size: usize = graph.get_output(1, &mut output_buffer).map_err(|e| {
         LlamaCoreError::Backend(BackendError::GetOutput(format!(
             "Fail to get plugin metadata. {msg}",
-            msg = e.to_string()
+            msg = e
         )))
     })?;
     output_size = std::cmp::min(max_output_size, output_size);
@@ -245,7 +245,7 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
         .map_err(|e| {
             LlamaCoreError::Operation(format!(
                 "Fail to deserialize the plugin metadata. {msg}",
-                msg = e.to_string()
+                msg = e
             ))
         })?;
 
@@ -276,10 +276,7 @@ pub(crate) fn get_graph() -> Result<std::sync::MutexGuard<'static, Graph>, Llama
     )))?;
 
     let graph = graph.lock().map_err(|e| {
-        LlamaCoreError::Operation(format!(
-            "Fail to acquire the lock of `GRAPH`. {}",
-            e.to_string()
-        ))
+        LlamaCoreError::Operation(format!("Fail to acquire the lock of `GRAPH`. {}", e))
     })?;
 
     Ok(graph)

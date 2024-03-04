@@ -22,7 +22,7 @@ impl DeepseekChatPrompt {
                 for part in parts {
                     if let ContentPart::Text(text_content) = part {
                         content.push_str(text_content.text());
-                        content.push_str("\n");
+                        content.push('\n');
                     }
                 }
                 content
@@ -72,7 +72,7 @@ impl BuildChatPrompt for DeepseekChatPrompt {
         for message in messages {
             match message {
                 ChatCompletionRequestMessage::User(message) => {
-                    prompt = self.append_user_message(&prompt, &message);
+                    prompt = self.append_user_message(&prompt, message);
                 }
                 ChatCompletionRequestMessage::Assistant(message) => {
                     prompt = self.append_assistant_message(&prompt, message)?;
@@ -96,9 +96,7 @@ impl DeepseekCoderPrompt {
         let content = message.content();
         match content.is_empty() {
             true => String::from("You are an AI programming assistant, utilizing the DeepSeek Coder model, developed by DeepSeek Company, and you only answer questions related to computer science. For politically sensitive questions, security and privacy issues, and other non-computer science questions, you will refuse to answer."),
-            false => format!(
-                "{content}"
-            )
+            false => content.to_string(),
         }
     }
 
@@ -116,7 +114,7 @@ impl DeepseekCoderPrompt {
                 for part in parts {
                     if let ContentPart::Text(text_content) = part {
                         content.push_str(text_content.text());
-                        content.push_str("\n");
+                        content.push('\n');
                     }
                 }
                 content
@@ -168,7 +166,7 @@ impl BuildChatPrompt for DeepseekCoderPrompt {
         // system prompt
         let system_prompt = match messages[0] {
             ChatCompletionRequestMessage::System(ref message) => {
-                self.create_system_prompt(&message)
+                self.create_system_prompt(message)
             }
             _ => String::from("You are an AI programming assistant, utilizing the DeepSeek Coder model, developed by DeepSeek Company, and you only answer questions related to computer science. For politically sensitive questions, security and privacy issues, and other non-computer science questions, you will refuse to answer."),
         };

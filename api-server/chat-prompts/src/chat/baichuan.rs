@@ -11,7 +11,7 @@ pub struct Baichuan2ChatPrompt;
 impl Baichuan2ChatPrompt {
     /// Create a system prompt from a chat completion request message.
     fn create_system_prompt(&self, message: &ChatCompletionSystemMessage) -> String {
-        format!("{content}", content = message.content())
+        message.content().to_string()
     }
 
     /// Create a user prompt from a chat completion request message.
@@ -28,7 +28,7 @@ impl Baichuan2ChatPrompt {
                 for part in parts {
                     if let ContentPart::Text(text_content) = part {
                         content.push_str(text_content.text());
-                        content.push_str("\n");
+                        content.push('\n');
                     }
                 }
                 content
@@ -86,9 +86,7 @@ impl BuildChatPrompt for Baichuan2ChatPrompt {
 
         // system prompt
         let system_prompt = match messages[0] {
-            ChatCompletionRequestMessage::System(ref message) => {
-                self.create_system_prompt(&message)
-            }
+            ChatCompletionRequestMessage::System(ref message) => self.create_system_prompt(message),
             _ => String::from("以下内容为人类用户与一位智能助手的对话。"),
         };
 
