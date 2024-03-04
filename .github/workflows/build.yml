@@ -9,6 +9,7 @@ on:
       - feat-*
       - ci-*
       - refactor-*
+      - fix-*
     paths:
       - '.github/workflows/**'
       - '**/Cargo.toml'
