@@ -10,7 +10,7 @@ pub(crate) fn not_implemented() -> Result<Response<Body>, hyper::Error> {
 
 pub(crate) fn internal_server_error(msg: impl AsRef<str>) -> Result<Response<Body>, hyper::Error> {
     let err_msg = match msg.as_ref().is_empty() {
-        true => format!("500 Internal Server Error"),
+        true => "500 Internal Server Error".to_string(),
         false => format!("500 Internal Server Error: {}", msg.as_ref()),
     };
     let mut response = Response::new(Body::from(err_msg));
@@ -20,7 +20,7 @@ pub(crate) fn internal_server_error(msg: impl AsRef<str>) -> Result<Response<Bod
 
 pub(crate) fn bad_request(msg: impl AsRef<str>) -> Result<Response<Body>, hyper::Error> {
     let err_msg = match msg.as_ref().is_empty() {
-        true => format!("400 Bad Request"),
+        true => "400 Bad Request".to_string(),
         false => format!("400 Bad Request: {}", msg.as_ref()),
     };
     let mut response = Response::new(Body::from(err_msg));
@@ -30,7 +30,7 @@ pub(crate) fn bad_request(msg: impl AsRef<str>) -> Result<Response<Body>, hyper:
 
 pub(crate) fn invalid_endpoint(msg: impl AsRef<str>) -> Result<Response<Body>, hyper::Error> {
     let err_msg = match msg.as_ref().is_empty() {
-        true => format!("404 The requested service endpoint is not found"),
+        true => "404 The requested service endpoint is not found".to_string(),
         false => format!(
             "404 The requested service endpoint is not found: {}",
             msg.as_ref()

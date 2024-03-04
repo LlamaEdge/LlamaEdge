@@ -265,7 +265,7 @@ async fn main() -> Result<(), ServerError> {
             "Failed to parse the value of `ctx_size` CLI option".to_owned(),
         ))?;
     println!("[INFO] Prompt context size: {size}", size = ctx_size);
-    options.ctx_size = *ctx_size as u64;
+    options.ctx_size = *ctx_size;
 
     // number of tokens to predict
     let n_predict = matches
@@ -274,7 +274,7 @@ async fn main() -> Result<(), ServerError> {
             "Failed to parse the value of `n_predict` CLI option".to_owned(),
         ))?;
     println!("[INFO] Number of tokens to predict: {n}", n = n_predict);
-    options.n_predict = *n_predict as u64;
+    options.n_predict = *n_predict;
 
     // n_gpu_layers
     let n_gpu_layers = matches
@@ -372,7 +372,7 @@ async fn main() -> Result<(), ServerError> {
             .ok_or(ServerError::ArgumentError(
                 "The `prompt_template` CLI option is required".to_owned(),
             ))?;
-    let template_ty = PromptTemplateType::from_str(&prompt_template)
+    let template_ty = PromptTemplateType::from_str(prompt_template)
         .map_err(|e| ServerError::InvalidPromptTemplateType(e.to_string()))?;
     println!("[INFO] Prompt template: {ty:?}", ty = &template_ty);
     let ref_template_ty = std::sync::Arc::new(template_ty);
@@ -401,7 +401,7 @@ async fn main() -> Result<(), ServerError> {
             "Failed to parse the value of `qdrant_url` CLI option".to_owned(),
         ))?;
     if !qdrant_url.is_empty() {
-        if !is_valid_url(&qdrant_url) {
+        if !is_valid_url(qdrant_url) {
             return Err(ServerError::ArgumentError(format!(
                 "The URL of Qdrant REST API is invalid: {}.",
                 qdrant_url
@@ -471,11 +471,8 @@ async fn main() -> Result<(), ServerError> {
     }
 
     // * initialize the core context
-    llama_core::init_core_context(&options, &model_name, &model_alias).map_err(|e| {
-        ServerError::Operation(format!(
-            "Failed to initialize the core context. {}",
-            e.to_string()
-        ))
+    llama_core::init_core_context(&options, model_name, model_alias).map_err(|e| {
+        ServerError::Operation(format!("Failed to initialize the core context. {}", e))
     })?;
 
     // get the plugin version info
@@ -534,9 +531,7 @@ async fn handle_request(
     let root_path = "/".to_owned() + root_path.to_str().unwrap_or_default();
 
     match root_path.as_str() {
-        "/echo" => {
-            return Ok(Response::new(Body::from("echo test")));
-        }
+        "/echo" => Ok(Response::new(Body::from("echo test"))),
         "/v1" => backend::handle_llama_request(req, template_ty, log_prompts).await,
         _ => Ok(static_response(path_str, web_ui)),
     }
@@ -582,7 +577,7 @@ pub(crate) fn print_log_begin_separator(
     separator.push_str(ch.repeat(separator_len).as_str());
     separator.push_str(&title);
     separator.push_str(ch.repeat(separator_len).as_str());
-    separator.push_str("\n");
+    separator.push('\n');
     println!("{}", separator);
     total_len
 }
@@ -591,8 +586,7 @@ pub(crate) fn print_log_end_separator(ch: Option<&str>, len: Option<usize>) {
     let ch = ch.unwrap_or("-");
     let mut separator = "\n\n".to_string();
     separator.push_str(ch.repeat(len.unwrap_or(100)).as_str());
-    separator.push_str("\n");
-    println!("{}", separator);
+    separator.push_str("\n\n");
 }
 
 #[derive(Debug, Clone)]

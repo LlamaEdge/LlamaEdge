@@ -141,16 +141,11 @@ fn main() -> Result<(), String> {
     // set metadata
     let metadata = serde_json::to_string(&options).expect("Fail to serialize options");
     context
-        .set_input(
-            1,
-            wasi_nn::TensorType::U8,
-            &[1],
-            metadata.as_bytes().to_owned(),
-        )
+        .set_input(1, wasi_nn::TensorType::U8, &[1], metadata.as_bytes())
         .expect("Fail to set metadata");
 
     // set input tensor
-    let tensor_data = prompt.as_str().as_bytes().to_vec();
+    let tensor_data = prompt.as_bytes().to_vec();
     context
         .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
         .expect("Failed to set prompt as the input tensor");

@@ -20,10 +20,7 @@ pub async fn embeddings(
         "Fail to get the underlying value of `GRAPH`.",
     )))?;
     let mut graph = graph.lock().map_err(|e| {
-        LlamaCoreError::Operation(format!(
-            "Fail to acquire the lock of `GRAPH`. {}",
-            e.to_string()
-        ))
+        LlamaCoreError::Operation(format!("Fail to acquire the lock of `GRAPH`. {}", e))
     })?;
 
     // compute embeddings
@@ -44,7 +41,7 @@ pub async fn embeddings(
                     graph.get_output(0, &mut output_buffer).map_err(|e| {
                         LlamaCoreError::Operation(format!(
                             "Fail to get output tensor: {msg}",
-                            msg = e.to_string()
+                            msg = e
                         ))
                     })?;
                 output_size = std::cmp::min(MAX_BUFFER_SIZE_EMBEDDING, output_size);
@@ -53,7 +50,7 @@ pub async fn embeddings(
                 let output = std::str::from_utf8(&output_buffer[..output_size]).map_err(|e| {
                     LlamaCoreError::Operation(format!(
                         "Failed to decode the buffer of the inference result to a utf-8 string. {}",
-                        e.to_string()
+                        e
                     ))
                 })?;
 
@@ -61,7 +58,7 @@ pub async fn embeddings(
                 let embedding = serde_json::from_str::<Embedding>(output).map_err(|e| {
                     LlamaCoreError::Operation(format!(
                         "Failed to deserialize embedding data. {}",
-                        e.to_string()
+                        e
                     ))
                 })?;
 
@@ -77,7 +74,7 @@ pub async fn embeddings(
                 let token_info = get_token_info(&graph).map_err(|e| {
                     LlamaCoreError::Operation(format!(
                         "Failed to get the number of prompt and completion tokens. {}",
-                        e.to_string()
+                        e
                     ))
                 })?;
 
@@ -122,7 +119,7 @@ fn update_metadata() -> Result<(), LlamaCoreError> {
         Err(e) => {
             return Err(LlamaCoreError::Operation(format!(
                 "Fail to serialize metadata to a JSON string. {}",
-                e.to_string()
+                e
             )));
         }
     };
@@ -140,7 +137,7 @@ fn update_metadata() -> Result<(), LlamaCoreError> {
         Err(e) => {
             return Err(LlamaCoreError::Operation(format!(
                 "Fail to acquire the lock of `GRAPH`. {}",
-                e.to_string()
+                e
             )));
         }
     };

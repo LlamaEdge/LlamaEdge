@@ -20,7 +20,7 @@ pub async fn completions(request: &CompletionRequest) -> Result<CompletionObject
     let model_answer = String::from_utf8(buffer.clone()).map_err(|e| {
         LlamaCoreError::Operation(format!(
             "Failed to decode the buffer of the inference result to a utf-8 string. {}",
-            e.to_string()
+            e
         ))
     })?;
     let answer = model_answer.trim();
@@ -30,9 +30,7 @@ pub async fn completions(request: &CompletionRequest) -> Result<CompletionObject
 
     let created = SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map_err(|e| {
-            LlamaCoreError::Operation(format!("Failed to get the current time. {}", e.to_string()))
-        })?;
+        .map_err(|e| LlamaCoreError::Operation(format!("Failed to get the current time. {}", e)))?;
 
     Ok(CompletionObject {
         id: uuid::Uuid::new_v4().to_string(),
@@ -59,10 +57,7 @@ async fn infer(prompt: impl AsRef<str>) -> std::result::Result<Vec<u8>, LlamaCor
         "Fail to get the underlying value of `GRAPH`.".to_string(),
     ))?;
     let mut graph = graph.lock().map_err(|e| {
-        LlamaCoreError::Operation(format!(
-            "Fail to acquire the lock of `GRAPH`. {}",
-            e.to_string()
-        ))
+        LlamaCoreError::Operation(format!("Fail to acquire the lock of `GRAPH`. {}", e))
     })?;
 
     // set input

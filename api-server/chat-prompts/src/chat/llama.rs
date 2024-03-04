@@ -34,7 +34,7 @@ impl Llama2ChatPrompt {
                 for part in parts {
                     if let ContentPart::Text(text_content) = part {
                         content.push_str(text_content.text());
-                        content.push_str("\n");
+                        content.push('\n');
                     }
                 }
                 content
@@ -96,7 +96,7 @@ impl BuildChatPrompt for Llama2ChatPrompt {
         // system prompt
         let system_prompt = match messages[0] {
             ChatCompletionRequestMessage::System(ref message) => {
-                self.create_system_prompt(&message)
+                self.create_system_prompt(message)
             }
             _ => String::from("<<SYS>>\nYou are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe. <</SYS>>"),
         };
@@ -148,7 +148,7 @@ impl CodeLlamaInstructPrompt {
                 for part in parts {
                     if let ContentPart::Text(text_content) = part {
                         content.push_str(text_content.text());
-                        content.push_str("\n");
+                        content.push('\n');
                     }
                 }
                 content
@@ -200,7 +200,7 @@ impl BuildChatPrompt for CodeLlamaInstructPrompt {
         // system prompt
         let system_prompt = match messages[0] {
             ChatCompletionRequestMessage::System(ref message) => {
-                self.create_system_prompt(&message)
+                self.create_system_prompt(message)
             }
             _ => String::from("<<SYS>>\nWrite code to solve the following coding problem that obeys the constraints and passes the example test cases. Please wrap your code answer using ```: <</SYS>>"),
         };
@@ -252,7 +252,7 @@ impl CodeLlamaSuperInstructPrompt {
                 for part in parts {
                     if let ContentPart::Text(text_content) = part {
                         content.push_str(text_content.text());
-                        content.push_str("\n");
+                        content.push('\n');
                     }
                 }
                 content
@@ -304,7 +304,7 @@ impl BuildChatPrompt for CodeLlamaSuperInstructPrompt {
         // system prompt
         let system_prompt = match messages[0] {
             ChatCompletionRequestMessage::System(ref message) => {
-                self.create_system_prompt(&message)
+                self.create_system_prompt(message)
             }
             _ => String::from("<s>Source: system\n\n Write code to solve the following coding problem that obeys the constraints and passes the example test cases. Please wrap your code answer using ```: <step>")
         };

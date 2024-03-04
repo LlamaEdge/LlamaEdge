@@ -14,7 +14,7 @@ impl WizardCoderPrompt {
         let content = message.content();
         match content.is_empty() {
             true => String::from("Below is an instruction that describes a task. Write a response that appropriately completes the request."),
-            false => format!("{content}"),
+            false => content.to_string(),
         }
     }
 
@@ -31,7 +31,7 @@ impl WizardCoderPrompt {
                 for part in parts {
                     if let ContentPart::Text(text_content) = part {
                         content.push_str(text_content.text());
-                        content.push_str("\n");
+                        content.push('\n');
                     }
                 }
                 content
@@ -54,7 +54,7 @@ impl BuildChatPrompt for WizardCoderPrompt {
         // system prompt
         let system_prompt = match messages[0] {
             ChatCompletionRequestMessage::System(ref message) => {
-                self.create_system_prompt(&message)
+                self.create_system_prompt(message)
             }
             _ => String::from("Below is an instruction that describes a task. Write a response that appropriately completes the request."),
         };
@@ -62,7 +62,7 @@ impl BuildChatPrompt for WizardCoderPrompt {
         let message = messages.last().unwrap();
         let mut prompt = match message {
             ChatCompletionRequestMessage::User(ref message) => {
-                self.append_user_message(&system_prompt, &message)
+                self.append_user_message(system_prompt, message)
             }
             _ => return Err(crate::error::PromptError::NoUserMessage),
         };

@@ -32,7 +32,7 @@ impl NeuralChatPrompt {
                 for part in parts {
                     if let ContentPart::Text(text_content) = part {
                         content.push_str(text_content.text());
-                        content.push_str("\n");
+                        content.push('\n');
                     }
                 }
                 content
@@ -84,7 +84,7 @@ impl BuildChatPrompt for NeuralChatPrompt {
         // system prompt
         let system_prompt = match messages[0] {
             ChatCompletionRequestMessage::System(ref message) => {
-                self.create_system_prompt(&message)
+                self.create_system_prompt(message)
             }
             _ => String::from("### System:\nYou are a chatbot developed by Intel. Please answer all questions to the best of your ability.")
         };
