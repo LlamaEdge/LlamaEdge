@@ -72,14 +72,11 @@ async fn infer(prompt: impl AsRef<str>) -> std::result::Result<Vec<u8>, LlamaCor
         .map_err(|e| LlamaCoreError::Backend(BackendError::Compute(e.to_string())))?;
 
     // Retrieve the output
-    let max_buffer_size = MAX_BUFFER_SIZE.get().ok_or(LlamaCoreError::Operation(
-        "Fail to get the underlying value of `MAX_BUFFER_SIZE`.".to_string(),
-    ))?;
-    let mut output_buffer = vec![0u8; *max_buffer_size];
+    let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
     let mut output_size = graph
         .get_output(0, &mut output_buffer)
         .map_err(|e| LlamaCoreError::Backend(BackendError::GetOutput(e.to_string())))?;
-    output_size = std::cmp::min(*max_buffer_size, output_size);
+    output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
 
     Ok(output_buffer[..output_size].to_vec())
 }

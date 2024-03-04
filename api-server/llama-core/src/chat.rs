@@ -98,14 +98,8 @@ pub async fn chat_completions_stream(
             Ok(_) => {
                 match one_more_run_then_stop {
                     true => {
-                        // Retrieve the output.
-                        let max_buffer_size = MAX_BUFFER_SIZE.get().ok_or(
-                            LlamaCoreError::Operation(String::from(
-                                "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
-                            )),
-                        )?;
-
-                        let mut output_buffer = vec![0u8; *max_buffer_size];
+                        // Retrieve the output
+                        let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
                         let mut output_size = graph
                             .get_output_single(0, &mut output_buffer)
                             .map_err(|e| {
@@ -114,7 +108,7 @@ pub async fn chat_completions_stream(
                                     msg = e
                                 )))
                             })?;
-                        output_size = std::cmp::min(*max_buffer_size, output_size);
+                        output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
 
                         // decode the output buffer to a utf8 string
                         let output = match String::from_utf8(output_buffer[..output_size].to_vec())
@@ -472,17 +466,12 @@ pub async fn chat_completions(
     match graph.compute() {
         Ok(_) => {
             // Retrieve the output.
-            let max_buffer_size =
-                MAX_BUFFER_SIZE
-                    .get()
-                    .ok_or(LlamaCoreError::Operation(String::from(
-                        "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
-                    )))?;
-            let mut output_buffer = vec![0u8; *max_buffer_size];
+            let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
             let mut output_size: usize = graph.get_output(0, &mut output_buffer).map_err(|e| {
                 LlamaCoreError::Operation(format!("Fail to get output tensor: {msg}", msg = e))
             })?;
-            output_size = std::cmp::min(*max_buffer_size, output_size);
+
+            output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
 
             // convert inference result to string
             let output = std::str::from_utf8(&output_buffer[..output_size]).map_err(|e| {
@@ -543,17 +532,11 @@ pub async fn chat_completions(
         }
         Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::ContextFull)) => {
             // Retrieve the output.
-            let max_buffer_size =
-                MAX_BUFFER_SIZE
-                    .get()
-                    .ok_or(LlamaCoreError::Operation(String::from(
-                        "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
-                    )))?;
-            let mut output_buffer = vec![0u8; *max_buffer_size];
+            let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
             let mut output_size = graph.get_output(0, &mut output_buffer).map_err(|e| {
                 LlamaCoreError::Operation(format!("Fail to get output tensor: {msg}", msg = e))
             })?;
-            output_size = std::cmp::min(*max_buffer_size, output_size);
+            output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
 
             // convert inference result to string
             let output = std::str::from_utf8(&output_buffer[..output_size]).map_err(|e| {
@@ -616,17 +599,11 @@ pub async fn chat_completions(
             println!("\n\n[WARNING] The prompt is too long. Please reduce the length of your input and try again.\n");
 
             // Retrieve the output.
-            let max_buffer_size =
-                MAX_BUFFER_SIZE
-                    .get()
-                    .ok_or(LlamaCoreError::Operation(String::from(
-                        "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
-                    )))?;
-            let mut output_buffer = vec![0u8; *max_buffer_size];
+            let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
             let mut output_size = graph.get_output(0, &mut output_buffer).map_err(|e| {
                 LlamaCoreError::Operation(format!("Fail to get output tensor: {msg}", msg = e))
             })?;
-            output_size = std::cmp::min(*max_buffer_size, output_size);
+            output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
 
             // convert inference result to string
             let output = std::str::from_utf8(&output_buffer[..output_size]).map_err(|e| {
@@ -696,6 +673,7 @@ async fn update_metadata(
     available_completion_tokens: u64,
 ) -> Result<(), LlamaCoreError> {
     let mut should_update = false;
+
     let mut metadata = match METADATA.get() {
         Some(metadata) => metadata.clone(),
         None => {
@@ -803,6 +781,15 @@ async fn update_metadata(
             if !should_update {
                 should_update = true;
             }
+        }
+    }
+
+    // check if the `embedding` option is disabled
+    if metadata.embeddings {
+        metadata.embeddings = false;
+
+        if !should_update {
+            should_update = true;
         }
     }
 
@@ -1058,22 +1045,14 @@ fn build_prompt(
         };
 
         // Retrieve the number of prompt tokens.
-        let max_input_size = match MAX_BUFFER_SIZE.get() {
-            Some(max_input_size) => *max_input_size,
-            None => {
-                return Err(String::from(
-                    "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
-                ));
-            }
-        };
-        let mut input_buffer = vec![0u8; max_input_size];
+        let mut input_buffer = vec![0u8; MAX_BUFFER_SIZE];
         let mut input_size = match graph.get_output(1, &mut input_buffer) {
             Ok(size) => size,
             Err(e) => {
                 return Err(format!("Fail to get token info: {msg}", msg = e));
             }
         };
-        input_size = std::cmp::min(max_input_size, input_size);
+        input_size = std::cmp::min(MAX_BUFFER_SIZE, input_size);
         let token_info: Value = match serde_json::from_slice(&input_buffer[..input_size]) {
             Ok(token_info) => token_info,
             Err(e) => {
@@ -1133,22 +1112,14 @@ fn build_prompt(
 }
 
 pub(crate) fn get_token_info(graph: &Graph) -> Result<TokenInfo, String> {
-    let max_output_size = match MAX_BUFFER_SIZE.get() {
-        Some(max_output_size) => *max_output_size,
-        None => {
-            return Err(String::from(
-                "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
-            ));
-        }
-    };
-    let mut output_buffer = vec![0u8; max_output_size];
+    let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
     let mut output_size = match graph.get_output(1, &mut output_buffer) {
         Ok(size) => size,
         Err(e) => {
             return Err(format!("Fail to get token info: {msg}", msg = e));
         }
     };
-    output_size = std::cmp::min(max_output_size, output_size);
+    output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
     let token_info: Value = match serde_json::from_slice(&output_buffer[..output_size]) {
         Ok(token_info) => token_info,
         Err(e) => {

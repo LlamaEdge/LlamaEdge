@@ -14,12 +14,12 @@ use wasi_nn::{Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext,
 
 use crate::error::BackendError;
 
-pub(crate) static MAX_BUFFER_SIZE: OnceCell<usize> = OnceCell::new();
 pub(crate) static CTX_SIZE: OnceCell<usize> = OnceCell::new();
 pub(crate) static GRAPH: OnceCell<Mutex<Graph>> = OnceCell::new();
 pub(crate) static METADATA: OnceCell<Metadata> = OnceCell::new();
 pub static UTF8_ENCODINGS: OnceCell<Mutex<Vec<u8>>> = OnceCell::new();
 
+pub(crate) const MAX_BUFFER_SIZE: usize = 2usize.pow(14) * 15 + 128;
 pub(crate) const MAX_BUFFER_SIZE_EMBEDDING: usize = 2usize.pow(14) * 15 + 128;
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
@@ -207,16 +207,6 @@ pub fn init_core_context(
         ))
     })?;
 
-    // set `MAX_BUFFER_SIZE`
-    MAX_BUFFER_SIZE
-        .set(2usize.pow(14) * 15 + 128)
-        .map_err(|e| {
-            LlamaCoreError::InitContext(format!(
-                "The `MAX_BUFFER_SIZE` has already been initialized: {}",
-                e
-            ))
-        })?;
-
     // set `METADATA`
     METADATA.set(metadata.clone()).map_err(|_| {
         LlamaCoreError::InitContext("The `METADATA` has already been initialized".to_string())
@@ -232,15 +222,14 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
     let graph = get_graph()?;
 
     // get the plugin metadata
-    let max_output_size = get_max_buffer_size()?;
-    let mut output_buffer = vec![0u8; max_output_size];
+    let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
     let mut output_size: usize = graph.get_output(1, &mut output_buffer).map_err(|e| {
         LlamaCoreError::Backend(BackendError::GetOutput(format!(
             "Fail to get plugin metadata. {msg}",
             msg = e
         )))
     })?;
-    output_size = std::cmp::min(max_output_size, output_size);
+    output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
     let metadata: serde_json::Value = serde_json::from_slice(&output_buffer[..output_size])
         .map_err(|e| {
             LlamaCoreError::Operation(format!(
@@ -280,17 +269,6 @@ pub(crate) fn get_graph() -> Result<std::sync::MutexGuard<'static, Graph>, Llama
     })?;
 
     Ok(graph)
-}
-
-pub(crate) fn get_max_buffer_size() -> Result<usize, LlamaCoreError> {
-    // Retrieve the output.
-    let max_buffer_size = MAX_BUFFER_SIZE
-        .get()
-        .ok_or(LlamaCoreError::Operation(String::from(
-            "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
-        )))?;
-
-    Ok(*max_buffer_size)
 }
 
 /// Version info of the `wasi-nn_ggml` plugin, including the build number and the commit id.
