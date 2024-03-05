@@ -50,22 +50,19 @@ pub async fn chat_completions_stream(
     }
 
     // update metadata
-    update_metadata(&chat_request, avaible_completion_tokens).await?;
+    update_metadata(chat_request, avaible_completion_tokens).await?;
 
     let graph = GRAPH.get().ok_or(LlamaCoreError::Operation(String::from(
         "Fail to get the underlying value of `GRAPH`.",
     )))?;
     let mut graph = graph.lock().map_err(|e| {
-        LlamaCoreError::Operation(format!(
-            "Fail to acquire the lock of `GRAPH`. {}",
-            e.to_string()
-        ))
+        LlamaCoreError::Operation(format!("Fail to acquire the lock of `GRAPH`. {}", e))
     })?;
 
     // set input
     let tensor_data = prompt.as_bytes().to_vec();
     if graph
-        .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
+        .set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data)
         .is_err()
     {
         return Err(LlamaCoreError::Operation(String::from(
@@ -93,10 +90,7 @@ pub async fn chat_completions_stream(
             "Fail to get the underlying value of `GRAPH`.",
         )))?;
         let mut graph = graph.lock().map_err(|e| {
-            LlamaCoreError::Operation(format!(
-                "Fail to acquire the lock of `GRAPH`. {}",
-                e.to_string()
-            ))
+            LlamaCoreError::Operation(format!("Fail to acquire the lock of `GRAPH`. {}", e))
         })?;
 
         // compute
@@ -104,23 +98,17 @@ pub async fn chat_completions_stream(
             Ok(_) => {
                 match one_more_run_then_stop {
                     true => {
-                        // Retrieve the output.
-                        let max_buffer_size = MAX_BUFFER_SIZE.get().ok_or(
-                            LlamaCoreError::Operation(String::from(
-                                "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
-                            )),
-                        )?;
-
-                        let mut output_buffer = vec![0u8; *max_buffer_size];
+                        // Retrieve the output
+                        let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
                         let mut output_size = graph
                             .get_output_single(0, &mut output_buffer)
                             .map_err(|e| {
                                 LlamaCoreError::Backend(BackendError::GetOutputSingle(format!(
                                     "Fail to get output tensor: {msg}",
-                                    msg = e.to_string()
+                                    msg = e
                                 )))
                             })?;
-                        output_size = std::cmp::min(*max_buffer_size, output_size);
+                        output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
 
                         // decode the output buffer to a utf8 string
                         let output = match String::from_utf8(output_buffer[..output_size].to_vec())
@@ -131,7 +119,7 @@ pub async fn chat_completions_stream(
                                 let mut cached_encodings = mutex.lock().map_err(|e| {
                                     LlamaCoreError::Operation(format!(
                                         "Fail to acquire the lock of `UTF8_ENCODINGS`. {}",
-                                        e.to_string()
+                                        e
                                     ))
                                 })?;
 
@@ -165,7 +153,7 @@ pub async fn chat_completions_stream(
                                     .map_err(|e| {
                                         LlamaCoreError::Operation(format!(
                                             "Failed to get the current time. {}",
-                                            e.to_string()
+                                            e
                                         ))
                                     })?;
 
@@ -195,7 +183,7 @@ pub async fn chat_completions_stream(
                                     serde_json::to_string(&chat_completion_chunk).map_err(|e| {
                                         LlamaCoreError::Operation(format!(
                                             "Failed to serialize chat completion chunk. {}",
-                                            e.to_string()
+                                            e
                                         ))
                                     })?;
 
@@ -208,7 +196,7 @@ pub async fn chat_completions_stream(
                             .map_err(|e| {
                                 LlamaCoreError::Operation(format!(
                                     "Failed to get the current time. {}",
-                                    e.to_string()
+                                    e
                                 ))
                             })?;
 
@@ -235,7 +223,7 @@ pub async fn chat_completions_stream(
                         let chunk = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
                             LlamaCoreError::Operation(format!(
                                 "Failed to serialize chat completion chunk. {}",
-                                e.to_string()
+                                e
                             ))
                         })?;
 
@@ -253,7 +241,9 @@ pub async fn chat_completions_stream(
                     }
                 }
             }
-            Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::EndOfSequence)) => {
+            Err(wasmedge_wasi_nn::Error::BackendError(
+                wasmedge_wasi_nn::BackendError::EndOfSequence,
+            )) => {
                 match one_more_run_then_stop {
                     true => {
                         let created = SystemTime::now()
@@ -261,7 +251,7 @@ pub async fn chat_completions_stream(
                             .map_err(|e| {
                                 LlamaCoreError::Operation(format!(
                                     "Failed to get the current time. {}",
-                                    e.to_string()
+                                    e
                                 ))
                             })?;
 
@@ -290,7 +280,7 @@ pub async fn chat_completions_stream(
                         let chunk = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
                             LlamaCoreError::Operation(format!(
                                 "Failed to serialize chat completion chunk. {}",
-                                e.to_string()
+                                e
                             ))
                         })?;
 
@@ -308,7 +298,9 @@ pub async fn chat_completions_stream(
                     }
                 }
             }
-            Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::ContextFull)) => {
+            Err(wasmedge_wasi_nn::Error::BackendError(
+                wasmedge_wasi_nn::BackendError::ContextFull,
+            )) => {
                 match one_more_run_then_stop {
                     true => {
                         let created = SystemTime::now()
@@ -316,7 +308,7 @@ pub async fn chat_completions_stream(
                             .map_err(|e| {
                                 LlamaCoreError::Operation(format!(
                                     "Failed to get the current time. {}",
-                                    e.to_string()
+                                    e
                                 ))
                             })?;
 
@@ -345,7 +337,7 @@ pub async fn chat_completions_stream(
                         let chunk = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
                             LlamaCoreError::Operation(format!(
                                 "Failed to serialize chat completion chunk. {}",
-                                e.to_string()
+                                e
                             ))
                         })?;
 
@@ -363,7 +355,9 @@ pub async fn chat_completions_stream(
                     }
                 }
             }
-            Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::PromptTooLong)) => {
+            Err(wasmedge_wasi_nn::Error::BackendError(
+                wasmedge_wasi_nn::BackendError::PromptTooLong,
+            )) => {
                 match one_more_run_then_stop {
                     true => {
                         let created = SystemTime::now()
@@ -371,7 +365,7 @@ pub async fn chat_completions_stream(
                             .map_err(|e| {
                                 LlamaCoreError::Operation(format!(
                                     "Failed to get the current time. {}",
-                                    e.to_string()
+                                    e
                                 ))
                             })?;
 
@@ -400,7 +394,7 @@ pub async fn chat_completions_stream(
                         let chunk = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
                             LlamaCoreError::Operation(format!(
                                 "Failed to serialize chat completion chunk. {}",
-                                e.to_string()
+                                e
                             ))
                         })?;
 
@@ -428,13 +422,13 @@ pub async fn chat_completions_stream(
                 }
 
                 println!("Error: {:?}", &e);
-                return Err(LlamaCoreError::Backend(BackendError::ComputeSingle(
+                Err(LlamaCoreError::Backend(BackendError::ComputeSingle(
                     e.to_string(),
-                )));
+                )))
             }
         }
     })
-    .try_take_while(|x| future::ready(Ok(x != "[GGML] End of sequence" && x != "")));
+    .try_take_while(|x| future::ready(Ok(x != "[GGML] End of sequence" && !x.is_empty())));
 
     Ok(stream)
 }
@@ -449,10 +443,8 @@ pub async fn chat_completions(
     let template = create_prompt_template(template_ty);
 
     // build prompt
-    let (prompt, avaible_completion_tokens) =
-        build_prompt(&template, chat_request).map_err(|e| {
-            LlamaCoreError::Operation(format!("Failed to build prompt. {}", e.to_string()))
-        })?;
+    let (prompt, avaible_completion_tokens) = build_prompt(&template, chat_request)
+        .map_err(|e| LlamaCoreError::Operation(format!("Failed to build prompt. {}", e)))?;
 
     if log_prompts {
         print_log_begin_separator("PROMPT", Some("*"), None);
@@ -461,64 +453,50 @@ pub async fn chat_completions(
     }
 
     // update metadata
-    update_metadata(&chat_request, avaible_completion_tokens).await?;
+    update_metadata(chat_request, avaible_completion_tokens).await?;
 
     // get graph
     let graph = GRAPH.get().ok_or(LlamaCoreError::Operation(String::from(
         "Fail to get the underlying value of `GRAPH`.",
     )))?;
     let mut graph = graph.lock().map_err(|e| {
-        LlamaCoreError::Operation(format!(
-            "Fail to acquire the lock of `GRAPH`. {}",
-            e.to_string()
-        ))
+        LlamaCoreError::Operation(format!("Fail to acquire the lock of `GRAPH`. {}", e))
     })?;
 
     // set input
     let tensor_data = prompt.as_bytes().to_vec();
     graph
-        .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
+        .set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data)
         .map_err(|e| LlamaCoreError::Backend(BackendError::SetInput(e.to_string())))?;
 
     match graph.compute() {
         Ok(_) => {
             // Retrieve the output.
-            let max_buffer_size =
-                MAX_BUFFER_SIZE
-                    .get()
-                    .ok_or(LlamaCoreError::Operation(String::from(
-                        "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
-                    )))?;
-            let mut output_buffer = vec![0u8; *max_buffer_size];
+            let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
             let mut output_size: usize = graph.get_output(0, &mut output_buffer).map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Fail to get output tensor: {msg}",
-                    msg = e.to_string()
-                ))
+                LlamaCoreError::Operation(format!("Fail to get output tensor: {msg}", msg = e))
             })?;
-            output_size = std::cmp::min(*max_buffer_size, output_size);
+
+            output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
 
             // convert inference result to string
             let output = std::str::from_utf8(&output_buffer[..output_size]).map_err(|e| {
                 LlamaCoreError::Operation(format!(
                     "Failed to decode the buffer of the inference result to a utf-8 string. {}",
-                    e.to_string()
+                    e
                 ))
             })?;
 
             // post-process
-            let message = post_process(&output, template_ty).map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Failed to post-process the output. {}",
-                    e.to_string()
-                ))
+            let message = post_process(output, template_ty).map_err(|e| {
+                LlamaCoreError::Operation(format!("Failed to post-process the output. {}", e))
             })?;
 
             // retrieve the number of prompt and completion tokens
             let token_info = get_token_info(&graph).map_err(|e| {
                 LlamaCoreError::Operation(format!(
                     "Failed to get the number of prompt and completion tokens. {}",
-                    e.to_string()
+                    e
                 ))
             })?;
             if log_prompts {
@@ -533,10 +511,7 @@ pub async fn chat_completions(
             let created = SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|e| {
-                    LlamaCoreError::Operation(format!(
-                        "Failed to get the current time. {}",
-                        e.to_string()
-                    ))
+                    LlamaCoreError::Operation(format!("Failed to get the current time. {}", e))
                 })?;
 
             // create ChatCompletionResponse
@@ -561,44 +536,32 @@ pub async fn chat_completions(
                 },
             })
         }
-        Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::ContextFull)) => {
+        Err(wasmedge_wasi_nn::Error::BackendError(wasmedge_wasi_nn::BackendError::ContextFull)) => {
             // Retrieve the output.
-            let max_buffer_size =
-                MAX_BUFFER_SIZE
-                    .get()
-                    .ok_or(LlamaCoreError::Operation(String::from(
-                        "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
-                    )))?;
-            let mut output_buffer = vec![0u8; *max_buffer_size];
+            let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
             let mut output_size = graph.get_output(0, &mut output_buffer).map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Fail to get output tensor: {msg}",
-                    msg = e.to_string()
-                ))
+                LlamaCoreError::Operation(format!("Fail to get output tensor: {msg}", msg = e))
             })?;
-            output_size = std::cmp::min(*max_buffer_size, output_size);
+            output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
 
             // convert inference result to string
             let output = std::str::from_utf8(&output_buffer[..output_size]).map_err(|e| {
                 LlamaCoreError::Operation(format!(
                     "Failed to decode the buffer of the inference result to a utf-8 string. {}",
-                    e.to_string()
+                    e
                 ))
             })?;
 
             // post-process
-            let message = post_process(&output, template_ty).map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Failed to post-process the output. {}",
-                    e.to_string()
-                ))
+            let message = post_process(output, template_ty).map_err(|e| {
+                LlamaCoreError::Operation(format!("Failed to post-process the output. {}", e))
             })?;
 
             // retrieve the number of prompt and completion tokens
             let token_info = get_token_info(&graph).map_err(|e| {
                 LlamaCoreError::Operation(format!(
                     "Failed to get the number of prompt and completion tokens. {}",
-                    e.to_string()
+                    e
                 ))
             })?;
             if log_prompts {
@@ -613,10 +576,7 @@ pub async fn chat_completions(
             let created = SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|e| {
-                    LlamaCoreError::Operation(format!(
-                        "Failed to get the current time. {}",
-                        e.to_string()
-                    ))
+                    LlamaCoreError::Operation(format!("Failed to get the current time. {}", e))
                 })?;
 
             // create ChatCompletionResponse
@@ -641,46 +601,36 @@ pub async fn chat_completions(
                 },
             })
         }
-        Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::PromptTooLong)) => {
+        Err(wasmedge_wasi_nn::Error::BackendError(
+            wasmedge_wasi_nn::BackendError::PromptTooLong,
+        )) => {
             println!("\n\n[WARNING] The prompt is too long. Please reduce the length of your input and try again.\n");
 
             // Retrieve the output.
-            let max_buffer_size =
-                MAX_BUFFER_SIZE
-                    .get()
-                    .ok_or(LlamaCoreError::Operation(String::from(
-                        "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
-                    )))?;
-            let mut output_buffer = vec![0u8; *max_buffer_size];
+            let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
             let mut output_size = graph.get_output(0, &mut output_buffer).map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Fail to get output tensor: {msg}",
-                    msg = e.to_string()
-                ))
+                LlamaCoreError::Operation(format!("Fail to get output tensor: {msg}", msg = e))
             })?;
-            output_size = std::cmp::min(*max_buffer_size, output_size);
+            output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
 
             // convert inference result to string
             let output = std::str::from_utf8(&output_buffer[..output_size]).map_err(|e| {
                 LlamaCoreError::Operation(format!(
                     "Failed to decode the buffer of the inference result to a utf-8 string. {}",
-                    e.to_string()
+                    e
                 ))
             })?;
 
             // post-process
             let message = post_process(output, template_ty).map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Failed to post-process the output. {}",
-                    e.to_string()
-                ))
+                LlamaCoreError::Operation(format!("Failed to post-process the output. {}", e))
             })?;
 
             // retrieve the number of prompt and completion token
             let token_info = get_token_info(&graph).map_err(|e| {
                 LlamaCoreError::Operation(format!(
                     "Failed to get the number of prompt and completion tokens. {}",
-                    e.to_string()
+                    e
                 ))
             })?;
             if log_prompts {
@@ -695,10 +645,7 @@ pub async fn chat_completions(
             let created = SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|e| {
-                    LlamaCoreError::Operation(format!(
-                        "Failed to get the current time. {}",
-                        e.to_string()
-                    ))
+                    LlamaCoreError::Operation(format!("Failed to get the current time. {}", e))
                 })?;
 
             // create ChatCompletionResponse
@@ -734,6 +681,7 @@ async fn update_metadata(
     available_completion_tokens: u64,
 ) -> Result<(), LlamaCoreError> {
     let mut should_update = false;
+
     let mut metadata = match METADATA.get() {
         Some(metadata) => metadata.clone(),
         None => {
@@ -787,14 +735,12 @@ async fn update_metadata(
         if !should_update {
             should_update = true;
         }
-    } else {
-        if metadata.n_predict > available_completion_tokens {
-            // update n_predict
-            metadata.n_predict = available_completion_tokens;
+    } else if metadata.n_predict > available_completion_tokens {
+        // update n_predict
+        metadata.n_predict = available_completion_tokens;
 
-            if !should_update {
-                should_update = true;
-            }
+        if !should_update {
+            should_update = true;
         }
     }
 
@@ -846,6 +792,15 @@ async fn update_metadata(
         }
     }
 
+    // check if the `embedding` option is disabled
+    if metadata.embeddings {
+        metadata.embeddings = false;
+
+        if !should_update {
+            should_update = true;
+        }
+    }
+
     if should_update {
         // update metadata
         let config = match serde_json::to_string(&metadata) {
@@ -853,7 +808,7 @@ async fn update_metadata(
             Err(e) => {
                 return Err(LlamaCoreError::Operation(format!(
                     "Fail to serialize metadata to a JSON string. {}",
-                    e.to_string()
+                    e
                 )));
             }
         };
@@ -871,14 +826,14 @@ async fn update_metadata(
             Err(e) => {
                 return Err(LlamaCoreError::Operation(format!(
                     "Fail to acquire the lock of `GRAPH`. {}",
-                    e.to_string()
+                    e
                 )));
             }
         };
 
         // update metadata
         if graph
-            .set_input(1, wasi_nn::TensorType::U8, &[1], config.as_bytes())
+            .set_input(1, wasmedge_wasi_nn::TensorType::U8, &[1], config.as_bytes())
             .is_err()
         {
             return Err(LlamaCoreError::Operation(String::from(
@@ -892,68 +847,66 @@ async fn update_metadata(
 
 fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
     match template_ty {
-        PromptTemplateType::Llama2Chat => ChatPrompt::Llama2ChatPrompt(Llama2ChatPrompt::default()),
+        PromptTemplateType::Llama2Chat => ChatPrompt::Llama2ChatPrompt(Llama2ChatPrompt),
         PromptTemplateType::MistralInstruct => {
-            ChatPrompt::MistralInstructPrompt(MistralInstructPrompt::default())
+            ChatPrompt::MistralInstructPrompt(MistralInstructPrompt)
         }
-        PromptTemplateType::MistralLite => {
-            ChatPrompt::MistralLitePrompt(MistralLitePrompt::default())
-        }
-        PromptTemplateType::OpenChat => ChatPrompt::OpenChatPrompt(OpenChatPrompt::default()),
+        PromptTemplateType::MistralLite => ChatPrompt::MistralLitePrompt(MistralLitePrompt),
+        PromptTemplateType::OpenChat => ChatPrompt::OpenChatPrompt(OpenChatPrompt),
         PromptTemplateType::CodeLlama => {
-            ChatPrompt::CodeLlamaInstructPrompt(CodeLlamaInstructPrompt::default())
+            ChatPrompt::CodeLlamaInstructPrompt(CodeLlamaInstructPrompt)
         }
         PromptTemplateType::CodeLlamaSuper => {
-            ChatPrompt::CodeLlamaSuperInstructPrompt(CodeLlamaSuperInstructPrompt::default())
+            ChatPrompt::CodeLlamaSuperInstructPrompt(CodeLlamaSuperInstructPrompt)
         }
         PromptTemplateType::HumanAssistant => {
-            ChatPrompt::HumanAssistantChatPrompt(HumanAssistantChatPrompt::default())
+            ChatPrompt::HumanAssistantChatPrompt(HumanAssistantChatPrompt)
         }
         PromptTemplateType::VicunaChat => {
-            ChatPrompt::VicunaChatPrompt(chat_prompts::chat::vicuna::VicunaChatPrompt::default())
+            ChatPrompt::VicunaChatPrompt(chat_prompts::chat::vicuna::VicunaChatPrompt)
         }
         PromptTemplateType::Vicuna11Chat => {
-            ChatPrompt::Vicuna11ChatPrompt(chat_prompts::chat::vicuna::Vicuna11ChatPrompt::default())
+            ChatPrompt::Vicuna11ChatPrompt(chat_prompts::chat::vicuna::Vicuna11ChatPrompt)
         }
         PromptTemplateType::VicunaLlava => {
-            ChatPrompt::VicunaLlavaPrompt(chat_prompts::chat::vicuna::VicunaLlavaPrompt::default())
+            ChatPrompt::VicunaLlavaPrompt(chat_prompts::chat::vicuna::VicunaLlavaPrompt)
         }
         PromptTemplateType::ChatML => {
-            ChatPrompt::ChatMLPrompt(chat_prompts::chat::chatml::ChatMLPrompt::default())
+            ChatPrompt::ChatMLPrompt(chat_prompts::chat::chatml::ChatMLPrompt)
         }
-        PromptTemplateType::Baichuan2 => ChatPrompt::Baichuan2ChatPrompt(
-            chat_prompts::chat::baichuan::Baichuan2ChatPrompt::default(),
-        ),
+        PromptTemplateType::Baichuan2 => {
+            ChatPrompt::Baichuan2ChatPrompt(chat_prompts::chat::baichuan::Baichuan2ChatPrompt)
+        }
         PromptTemplateType::WizardCoder => {
-            ChatPrompt::WizardCoderPrompt(chat_prompts::chat::wizard::WizardCoderPrompt::default())
+            ChatPrompt::WizardCoderPrompt(chat_prompts::chat::wizard::WizardCoderPrompt)
         }
         PromptTemplateType::Zephyr => {
-            ChatPrompt::ZephyrChatPrompt(chat_prompts::chat::zephyr::ZephyrChatPrompt::default())
+            ChatPrompt::ZephyrChatPrompt(chat_prompts::chat::zephyr::ZephyrChatPrompt)
         }
         PromptTemplateType::StableLMZephyr => ChatPrompt::StableLMZephyrChatPrompt(
-            chat_prompts::chat::zephyr::StableLMZephyrChatPrompt::default(),
+            chat_prompts::chat::zephyr::StableLMZephyrChatPrompt,
         ),
         PromptTemplateType::IntelNeural => {
-            ChatPrompt::NeuralChatPrompt(chat_prompts::chat::intel::NeuralChatPrompt::default())
+            ChatPrompt::NeuralChatPrompt(chat_prompts::chat::intel::NeuralChatPrompt)
         }
-        PromptTemplateType::DeepseekChat => ChatPrompt::DeepseekChatPrompt(
-            chat_prompts::chat::deepseek::DeepseekChatPrompt::default(),
-        ),
-        PromptTemplateType::DeepseekCoder => ChatPrompt::DeepseekCoderPrompt(
-            chat_prompts::chat::deepseek::DeepseekCoderPrompt::default(),
-        ),
-        PromptTemplateType::SolarInstruct => ChatPrompt::SolarInstructPrompt(
-            chat_prompts::chat::solar::SolarInstructPrompt::default(),
-        ),
+        PromptTemplateType::DeepseekChat => {
+            ChatPrompt::DeepseekChatPrompt(chat_prompts::chat::deepseek::DeepseekChatPrompt)
+        }
+        PromptTemplateType::DeepseekCoder => {
+            ChatPrompt::DeepseekCoderPrompt(chat_prompts::chat::deepseek::DeepseekCoderPrompt)
+        }
+        PromptTemplateType::SolarInstruct => {
+            ChatPrompt::SolarInstructPrompt(chat_prompts::chat::solar::SolarInstructPrompt)
+        }
         PromptTemplateType::Phi2Chat => {
-            ChatPrompt::Phi2ChatPrompt(chat_prompts::chat::phi::Phi2ChatPrompt::default())
+            ChatPrompt::Phi2ChatPrompt(chat_prompts::chat::phi::Phi2ChatPrompt)
         }
         PromptTemplateType::Phi2Instruct => {
-            ChatPrompt::Phi2InstructPrompt(chat_prompts::chat::phi::Phi2InstructPrompt::default())
+            ChatPrompt::Phi2InstructPrompt(chat_prompts::chat::phi::Phi2InstructPrompt)
         }
-        PromptTemplateType::GemmaInstruct => ChatPrompt::GemmaInstructPrompt(
-            chat_prompts::chat::gemma::GemmaInstructPrompt::default(),
-        ),
+        PromptTemplateType::GemmaInstruct => {
+            ChatPrompt::GemmaInstructPrompt(chat_prompts::chat::gemma::GemmaInstructPrompt)
+        }
     }
 }
 
@@ -1068,10 +1021,7 @@ fn build_prompt(
     let mut graph = match graph.lock() {
         Ok(graph) => graph,
         Err(e) => {
-            return Err(format!(
-                "Fail to acquire the lock of `GRAPH`. {}",
-                e.to_string()
-            ));
+            return Err(format!("Fail to acquire the lock of `GRAPH`. {}", e));
         }
     };
 
@@ -1090,50 +1040,31 @@ fn build_prompt(
         // build prompt
         let prompt = match template.build(&mut chat_request.messages) {
             Ok(prompt) => prompt,
-            Err(e) => {
-                return Err(format!(
-                    "Fail to build chat prompts: {msg}",
-                    msg = e.to_string()
-                ))
-            }
+            Err(e) => return Err(format!("Fail to build chat prompts: {msg}", msg = e)),
         };
 
         // read input tensor
         let tensor_data = prompt.trim().as_bytes().to_vec();
         if graph
-            .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
+            .set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data)
             .is_err()
         {
             return Err(String::from("Fail to set input tensor"));
         };
 
         // Retrieve the number of prompt tokens.
-        let max_input_size = match MAX_BUFFER_SIZE.get() {
-            Some(max_input_size) => *max_input_size,
-            None => {
-                return Err(String::from(
-                    "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
-                ));
-            }
-        };
-        let mut input_buffer = vec![0u8; max_input_size];
+        let mut input_buffer = vec![0u8; MAX_BUFFER_SIZE];
         let mut input_size = match graph.get_output(1, &mut input_buffer) {
             Ok(size) => size,
             Err(e) => {
-                return Err(format!(
-                    "Fail to get token info: {msg}",
-                    msg = e.to_string()
-                ));
+                return Err(format!("Fail to get token info: {msg}", msg = e));
             }
         };
-        input_size = std::cmp::min(max_input_size, input_size);
+        input_size = std::cmp::min(MAX_BUFFER_SIZE, input_size);
         let token_info: Value = match serde_json::from_slice(&input_buffer[..input_size]) {
             Ok(token_info) => token_info,
             Err(e) => {
-                return Err(format!(
-                    "Fail to deserialize token info: {msg}",
-                    msg = e.to_string()
-                ));
+                return Err(format!("Fail to deserialize token info: {msg}", msg = e));
             }
         };
         let prompt_tokens = match token_info["input_tokens"].as_u64() {
@@ -1189,32 +1120,18 @@ fn build_prompt(
 }
 
 pub(crate) fn get_token_info(graph: &Graph) -> Result<TokenInfo, String> {
-    let max_output_size = match MAX_BUFFER_SIZE.get() {
-        Some(max_output_size) => *max_output_size,
-        None => {
-            return Err(String::from(
-                "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
-            ));
-        }
-    };
-    let mut output_buffer = vec![0u8; max_output_size];
+    let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
     let mut output_size = match graph.get_output(1, &mut output_buffer) {
         Ok(size) => size,
         Err(e) => {
-            return Err(format!(
-                "Fail to get token info: {msg}",
-                msg = e.to_string()
-            ));
+            return Err(format!("Fail to get token info: {msg}", msg = e));
         }
     };
-    output_size = std::cmp::min(max_output_size, output_size);
+    output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
     let token_info: Value = match serde_json::from_slice(&output_buffer[..output_size]) {
         Ok(token_info) => token_info,
         Err(e) => {
-            return Err(format!(
-                "Fail to deserialize token info: {msg}",
-                msg = e.to_string()
-            ));
+            return Err(format!("Fail to deserialize token info: {msg}", msg = e));
         }
     };
 

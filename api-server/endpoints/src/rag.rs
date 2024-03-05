@@ -31,6 +31,18 @@ impl RagEmbeddingRequest {
             qdrant_collection_name: qdrant_collection_name.as_ref().to_string(),
         }
     }
+
+    pub fn from_embedding_request(
+        embedding_request: EmbeddingRequest,
+        qdrant_url: impl AsRef<str>,
+        qdrant_collection_name: impl AsRef<str>,
+    ) -> Self {
+        RagEmbeddingRequest {
+            embedding_request,
+            qdrant_url: qdrant_url.as_ref().to_string(),
+            qdrant_collection_name: qdrant_collection_name.as_ref().to_string(),
+        }
+    }
 }
 
 #[test]
@@ -155,6 +167,33 @@ impl RagChatCompletionsRequest {
             user: self.user.clone(),
             functions: None,
             function_call: None,
+        }
+    }
+
+    pub fn from_chat_completions_request(
+        chat_completions_request: ChatCompletionRequest,
+        qdrant_url: impl Into<String>,
+        qdrant_collection_name: impl Into<String>,
+        limit: u64,
+    ) -> Self {
+        RagChatCompletionsRequest {
+            chat_model: chat_completions_request.model,
+            messages: chat_completions_request.messages,
+            embedding_model: "dummy-embedding-model".to_string(),
+            encoding_format: None,
+            qdrant_url: qdrant_url.into(),
+            qdrant_collection_name: qdrant_collection_name.into(),
+            limit,
+            temperature: chat_completions_request.temperature,
+            top_p: chat_completions_request.top_p,
+            n_choice: chat_completions_request.n_choice,
+            stream: chat_completions_request.stream,
+            stop: chat_completions_request.stop,
+            max_tokens: chat_completions_request.max_tokens,
+            presence_penalty: chat_completions_request.presence_penalty,
+            frequency_penalty: chat_completions_request.frequency_penalty,
+            logit_bias: chat_completions_request.logit_bias,
+            user: chat_completions_request.user,
         }
     }
 }

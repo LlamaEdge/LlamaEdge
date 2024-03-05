@@ -31,7 +31,7 @@ impl ZephyrChatPrompt {
                 for part in parts {
                     if let ContentPart::Text(text_content) = part {
                         content.push_str(text_content.text());
-                        content.push_str("\n");
+                        content.push('\n');
                     }
                 }
                 content
@@ -82,9 +82,7 @@ impl BuildChatPrompt for ZephyrChatPrompt {
 
         // system prompt
         let system_prompt = match messages[0] {
-            ChatCompletionRequestMessage::System(ref message) => {
-                self.create_system_prompt(&message)
-            }
+            ChatCompletionRequestMessage::System(ref message) => self.create_system_prompt(message),
             _ => String::from("<|system|>\nYou are a friendly chatbot.</s>"),
         };
 
@@ -124,7 +122,7 @@ impl StableLMZephyrChatPrompt {
                 for part in parts {
                     if let ContentPart::Text(text_content) = part {
                         content.push_str(text_content.text());
-                        content.push_str("\n");
+                        content.push('\n');
                     }
                 }
                 content

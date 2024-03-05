@@ -13,8 +13,7 @@ use error::ChatError;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::io::Write;
-use std::str::FromStr;
+use std::{io::Write, str::FromStr};
 
 static MAX_BUFFER_SIZE: OnceCell<usize> = OnceCell::new();
 
@@ -310,12 +309,8 @@ fn main() -> Result<(), String> {
             "Fail to parse the `prompt_template` option from the command line.",
         ))?;
 
-    let template_ty = PromptTemplateType::from_str(&prompt_template).map_err(|e| {
-        format!(
-            "Fail to parse prompt template type: {msg}",
-            msg = e.to_string()
-        )
-    })?;
+    let template_ty = PromptTemplateType::from_str(prompt_template)
+        .map_err(|e| format!("Fail to parse prompt template type: {msg}", msg = e))?;
     println!("[INFO] Prompt template: {ty:?}", ty = &template_ty);
 
     // log prompts
@@ -335,7 +330,7 @@ fn main() -> Result<(), String> {
         options.log_enable = true;
     }
 
-    let template = create_prompt_template(template_ty.clone());
+    let template = create_prompt_template(template_ty);
     let mut chat_request = ChatCompletionRequest::default();
     // put system_prompt into the `messages` of chat_request
     if !system_prompt.is_empty() {
@@ -347,12 +342,7 @@ fn main() -> Result<(), String> {
     // serialize metadata
     let metadata = match serde_json::to_string(&options) {
         Ok(metadata) => metadata,
-        Err(e) => {
-            return Err(format!(
-                "Fail to serialize options: {msg}",
-                msg = e.to_string()
-            ))
-        }
+        Err(e) => return Err(format!("Fail to serialize options: {msg}", msg = e)),
     };
 
     if log_stat || log_all {
@@ -364,20 +354,15 @@ fn main() -> Result<(), String> {
     }
 
     // load the model into wasi-nn
-    let graph = match wasi_nn::GraphBuilder::new(
-        wasi_nn::GraphEncoding::Ggml,
-        wasi_nn::ExecutionTarget::AUTO,
+    let graph = match wasmedge_wasi_nn::GraphBuilder::new(
+        wasmedge_wasi_nn::GraphEncoding::Ggml,
+        wasmedge_wasi_nn::ExecutionTarget::AUTO,
     )
     .config(metadata)
     .build_from_cache(model_name.as_ref())
     {
         Ok(graph) => graph,
-        Err(e) => {
-            return Err(format!(
-                "Fail to load model into wasi-nn: {msg}",
-                msg = e.to_string()
-            ))
-        }
+        Err(e) => return Err(format!("Fail to load model into wasi-nn: {msg}", msg = e)),
     };
 
     // initialize the execution context
@@ -386,15 +371,15 @@ fn main() -> Result<(), String> {
         Err(e) => {
             return Err(format!(
                 "Fail to create wasi-nn execution context: {msg}",
-                msg = e.to_string()
+                msg = e
             ))
         }
     };
 
     // get version info
-    let max_output_size = *MAX_BUFFER_SIZE.get().ok_or(format!(
-        "Fail to get the underlying value of `MAX_BUFFER_SIZE`."
-    ))?;
+    let max_output_size = *MAX_BUFFER_SIZE
+        .get()
+        .ok_or("Fail to get the underlying value of `MAX_BUFFER_SIZE`.".to_string())?;
     let mut output_buffer = vec![0u8; max_output_size];
     let mut output_size = context
         .get_output(1, &mut output_buffer)
@@ -402,9 +387,9 @@ fn main() -> Result<(), String> {
     output_size = std::cmp::min(max_output_size, output_size);
     let metadata: serde_json::Value =
         serde_json::from_slice(&output_buffer[..output_size]).map_err(|e| e.to_string())?;
-    let plugin_build_number = metadata["llama_build_number"].as_u64().ok_or(format!(
-        "Failed to convert the `llama_build_number` of the metadata to u64."
-    ))?;
+    let plugin_build_number = metadata["llama_build_number"]
+        .as_u64()
+        .ok_or("Failed to convert the `llama_build_number` of the metadata to u64.".to_string())?;
     let plugin_commit = metadata["llama_commit"].as_str().ok_or(String::from(
         "Fail to convert the `llama_commit` of the metadata to string.",
     ))?;
@@ -450,12 +435,7 @@ fn main() -> Result<(), String> {
             max_prompt_tokens,
         ) {
             Ok(prompt) => prompt,
-            Err(e) => {
-                return Err(format!(
-                    "Fail to generate prompt. Reason: {msg}",
-                    msg = e.to_string()
-                ))
-            }
+            Err(e) => return Err(format!("Fail to generate prompt. Reason: {msg}", msg = e)),
         };
 
         if log_stat || log_all {
@@ -562,14 +542,14 @@ fn main() -> Result<(), String> {
                 context.fini_single().map_err(|e| e.to_string())?;
             }
             Err(ChatError::PromptTooLong) => {
-                return Err(format!(
-                    "Prompt is too long. Please reduce the length of the prompt."
-                ))
+                return Err(
+                    "Prompt is too long. Please reduce the length of the prompt.".to_string(),
+                )
             }
             Err(ChatError::Operation(e)) => {
                 return Err(format!(
                     "Operation error during the chat. Reason: {msg}",
-                    msg = e.to_string()
+                    msg = e
                 ))
             }
         }
@@ -604,7 +584,7 @@ fn read_input() -> String {
             temp.push('\n');
             answer.push_str(&temp);
             continue;
-        } else if temp.ends_with("\n") {
+        } else if temp.ends_with('\n') {
             answer.push_str(&temp);
             return answer;
         } else {
@@ -628,7 +608,7 @@ fn print_log_begin_separator(
     separator.push_str(ch.repeat(separator_len).as_str());
     separator.push_str(&title);
     separator.push_str(ch.repeat(separator_len).as_str());
-    separator.push_str("\n");
+    separator.push('\n');
     println!("{}", separator);
     total_len
 }
@@ -637,78 +617,78 @@ fn print_log_end_separator(ch: Option<&str>, len: Option<usize>) {
     let ch = ch.unwrap_or("-");
     let mut separator = "\n\n".to_string();
     separator.push_str(ch.repeat(len.unwrap_or(100)).as_str());
-    separator.push_str("\n");
+    separator.push('\n');
     println!("{}", separator);
 }
 
 fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
     match template_ty {
         PromptTemplateType::Llama2Chat => {
-            ChatPrompt::Llama2ChatPrompt(chat_prompts::chat::llama::Llama2ChatPrompt::default())
+            ChatPrompt::Llama2ChatPrompt(chat_prompts::chat::llama::Llama2ChatPrompt)
         }
-        PromptTemplateType::MistralInstruct => ChatPrompt::MistralInstructPrompt(
-            chat_prompts::chat::mistral::MistralInstructPrompt::default(),
-        ),
+        PromptTemplateType::MistralInstruct => {
+            ChatPrompt::MistralInstructPrompt(chat_prompts::chat::mistral::MistralInstructPrompt)
+        }
         PromptTemplateType::MistralLite => {
-            ChatPrompt::MistralLitePrompt(chat_prompts::chat::mistral::MistralLitePrompt::default())
+            ChatPrompt::MistralLitePrompt(chat_prompts::chat::mistral::MistralLitePrompt)
         }
         PromptTemplateType::OpenChat => {
-            ChatPrompt::OpenChatPrompt(chat_prompts::chat::openchat::OpenChatPrompt::default())
+            ChatPrompt::OpenChatPrompt(chat_prompts::chat::openchat::OpenChatPrompt)
         }
-        PromptTemplateType::CodeLlama => ChatPrompt::CodeLlamaInstructPrompt(
-            chat_prompts::chat::llama::CodeLlamaInstructPrompt::default(),
-        ),
+        PromptTemplateType::CodeLlama => {
+            ChatPrompt::CodeLlamaInstructPrompt(chat_prompts::chat::llama::CodeLlamaInstructPrompt)
+        }
         PromptTemplateType::CodeLlamaSuper => ChatPrompt::CodeLlamaSuperInstructPrompt(
-            chat_prompts::chat::llama::CodeLlamaSuperInstructPrompt::default(),
+            chat_prompts::chat::llama::CodeLlamaSuperInstructPrompt,
         ),
         PromptTemplateType::HumanAssistant => ChatPrompt::HumanAssistantChatPrompt(
-            chat_prompts::chat::belle::HumanAssistantChatPrompt::default(),
+            chat_prompts::chat::belle::HumanAssistantChatPrompt,
         ),
         PromptTemplateType::VicunaChat => {
-            ChatPrompt::VicunaChatPrompt(chat_prompts::chat::vicuna::VicunaChatPrompt::default())
+            ChatPrompt::VicunaChatPrompt(chat_prompts::chat::vicuna::VicunaChatPrompt)
         }
         PromptTemplateType::Vicuna11Chat => {
-            ChatPrompt::Vicuna11ChatPrompt(chat_prompts::chat::vicuna::Vicuna11ChatPrompt::default())
+            ChatPrompt::Vicuna11ChatPrompt(chat_prompts::chat::vicuna::Vicuna11ChatPrompt)
         }
         PromptTemplateType::VicunaLlava => {
-            ChatPrompt::VicunaLlavaPrompt(chat_prompts::chat::vicuna::VicunaLlavaPrompt::default())
+            ChatPrompt::VicunaLlavaPrompt(chat_prompts::chat::vicuna::VicunaLlavaPrompt)
         }
         PromptTemplateType::ChatML => {
-            ChatPrompt::ChatMLPrompt(chat_prompts::chat::chatml::ChatMLPrompt::default())
+            ChatPrompt::ChatMLPrompt(chat_prompts::chat::chatml::ChatMLPrompt)
         }
-        PromptTemplateType::Baichuan2 => ChatPrompt::Baichuan2ChatPrompt(
-            chat_prompts::chat::baichuan::Baichuan2ChatPrompt::default(),
-        ),
+        PromptTemplateType::Baichuan2 => {
+            ChatPrompt::Baichuan2ChatPrompt(chat_prompts::chat::baichuan::Baichuan2ChatPrompt)
+        }
         PromptTemplateType::WizardCoder => {
-            ChatPrompt::WizardCoderPrompt(chat_prompts::chat::wizard::WizardCoderPrompt::default())
+            ChatPrompt::WizardCoderPrompt(chat_prompts::chat::wizard::WizardCoderPrompt)
         }
         PromptTemplateType::Zephyr => {
-            ChatPrompt::ZephyrChatPrompt(chat_prompts::chat::zephyr::ZephyrChatPrompt::default())
+            ChatPrompt::ZephyrChatPrompt(chat_prompts::chat::zephyr::ZephyrChatPrompt)
         }
         PromptTemplateType::StableLMZephyr => ChatPrompt::StableLMZephyrChatPrompt(
-            chat_prompts::chat::zephyr::StableLMZephyrChatPrompt::default(),
+            chat_prompts::chat::zephyr::StableLMZephyrChatPrompt,
         ),
         PromptTemplateType::IntelNeural => {
-            ChatPrompt::NeuralChatPrompt(chat_prompts::chat::intel::NeuralChatPrompt::default())
+            ChatPrompt::NeuralChatPrompt(chat_prompts::chat::intel::NeuralChatPrompt)
         }
-        PromptTemplateType::DeepseekChat => ChatPrompt::DeepseekChatPrompt(
-            chat_prompts::chat::deepseek::DeepseekChatPrompt::default(),
-        ),
-        PromptTemplateType::DeepseekCoder => ChatPrompt::DeepseekCoderPrompt(
-            chat_prompts::chat::deepseek::DeepseekCoderPrompt::default(),
-        ),
-        PromptTemplateType::SolarInstruct => ChatPrompt::SolarInstructPrompt(
-            chat_prompts::chat::solar::SolarInstructPrompt::default(),
-        ),
+        PromptTemplateType::DeepseekChat => {
+            ChatPrompt::DeepseekChatPrompt(chat_prompts::chat::deepseek::DeepseekChatPrompt)
+        }
+        PromptTemplateType::DeepseekCoder => {
+            ChatPrompt::DeepseekCoderPrompt(chat_prompts::chat::deepseek::DeepseekCoderPrompt)
+        }
+        PromptTemplateType::SolarInstruct => {
+            ChatPrompt::SolarInstructPrompt(chat_prompts::chat::solar::SolarInstructPrompt)
+        }
         PromptTemplateType::Phi2Chat => {
-            ChatPrompt::Phi2ChatPrompt(chat_prompts::chat::phi::Phi2ChatPrompt::default())
+            ChatPrompt::Phi2ChatPrompt(chat_prompts::chat::phi::Phi2ChatPrompt)
         }
         PromptTemplateType::Phi2Instruct => {
-            ChatPrompt::Phi2InstructPrompt(chat_prompts::chat::phi::Phi2InstructPrompt::default())
+            ChatPrompt::Phi2InstructPrompt(chat_prompts::chat::phi::Phi2InstructPrompt)
         }
-        PromptTemplateType::GemmaInstruct => ChatPrompt::GemmaInstructPrompt(
-            chat_prompts::chat::gemma::GemmaInstructPrompt::default(),
-        ),
+        PromptTemplateType::GemmaInstruct => {
+            ChatPrompt::GemmaInstructPrompt(chat_prompts::chat::gemma::GemmaInstructPrompt)
+        }
     }
 }
 
@@ -792,7 +772,7 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
 }
 
 fn stream_compute(
-    context: &mut wasi_nn::GraphExecutionContext,
+    context: &mut wasmedge_wasi_nn::GraphExecutionContext,
     stop: Option<&str>,
 ) -> Result<String, ChatError> {
     let mut output = String::new();
@@ -805,17 +785,14 @@ fn stream_compute(
             Ok(_) => {
                 // Retrieve the output.
                 let max_output_size = *MAX_BUFFER_SIZE.get().ok_or(ChatError::Operation(
-                    format!("Failed to get the underlying value of `MAX_BUFFER_SIZE`."),
+                    "Failed to get the underlying value of `MAX_BUFFER_SIZE`.".to_string(),
                 ))?;
                 let mut output_buffer = vec![0u8; max_output_size];
                 let mut output_size =
                     context
                         .get_output_single(0, &mut output_buffer)
                         .map_err(|e| {
-                            ChatError::Operation(format!(
-                                "Failed by `get_output_single`. {}",
-                                e.to_string()
-                            ))
+                            ChatError::Operation(format!("Failed by `get_output_single`. {}", e))
                         })?;
                 output_size = std::cmp::min(max_output_size, output_size);
 
@@ -855,7 +832,7 @@ fn stream_compute(
                     break;
                 }
 
-                if output.is_empty() && token.starts_with(" ") {
+                if output.is_empty() && token.starts_with(' ') {
                     print!("{}", token.trim_start());
                 } else {
                     print!("{}", token);
@@ -866,10 +843,12 @@ fn stream_compute(
 
                 output += &token;
             }
-            Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::EndOfSequence)) => {
+            Err(wasmedge_wasi_nn::Error::BackendError(
+                wasmedge_wasi_nn::BackendError::EndOfSequence,
+            )) => {
                 // Retrieve the output.
                 let max_output_size = *MAX_BUFFER_SIZE.get().ok_or(ChatError::Operation(
-                    format!("Failed to get the underlying value of `MAX_BUFFER_SIZE`."),
+                    "Failed to get the underlying value of `MAX_BUFFER_SIZE`.".to_string(),
                 ))?;
                 let mut output_buffer = vec![0u8; max_output_size];
                 let mut output_size = context
@@ -888,7 +867,7 @@ fn stream_compute(
                     break;
                 }
 
-                if output.is_empty() && token.starts_with(" ") {
+                if output.is_empty() && token.starts_with(' ') {
                     print!("{}", token.trim_start());
                 } else {
                     print!("{}", token);
@@ -900,21 +879,25 @@ fn stream_compute(
                 output += &token;
                 break;
             }
-            Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::PromptTooLong)) => {
+            Err(wasmedge_wasi_nn::Error::BackendError(
+                wasmedge_wasi_nn::BackendError::PromptTooLong,
+            )) => {
                 return Err(ChatError::PromptTooLong);
             }
-            Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::ContextFull)) => {
+            Err(wasmedge_wasi_nn::Error::BackendError(
+                wasmedge_wasi_nn::BackendError::ContextFull,
+            )) => {
                 return Err(ChatError::ContextFull(output));
             }
             Err(err) => {
                 return Err(ChatError::Operation(format!(
                     "Stream compute error. {}",
-                    err.to_string()
+                    err
                 )));
             }
         }
     }
-    println!("");
+    println!("\n");
 
     Ok(output)
 }
@@ -967,34 +950,29 @@ pub struct Metadata {
 fn build_prompt(
     template: &ChatPrompt,
     chat_request: &mut ChatCompletionRequest,
-    context: &mut wasi_nn::GraphExecutionContext,
+    context: &mut wasmedge_wasi_nn::GraphExecutionContext,
     max_prompt_tokens: u64,
 ) -> Result<String, String> {
     loop {
         // build prompt
         let prompt = match template.build(&mut chat_request.messages) {
             Ok(prompt) => prompt,
-            Err(e) => {
-                return Err(format!(
-                    "Fail to build chat prompts: {msg}",
-                    msg = e.to_string()
-                ))
-            }
+            Err(e) => return Err(format!("Fail to build chat prompts: {msg}", msg = e)),
         };
 
         // read input tensor
         let tensor_data = prompt.trim().as_bytes().to_vec();
         if context
-            .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
+            .set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data)
             .is_err()
         {
             return Err(String::from("Fail to set input tensor"));
         };
 
         // Retrieve the number of prompt tokens.
-        let max_input_size = *MAX_BUFFER_SIZE.get().ok_or(format!(
-            "Failed to get the underlying value of `MAX_BUFFER_SIZE`."
-        ))?;
+        let max_input_size = *MAX_BUFFER_SIZE
+            .get()
+            .ok_or("Failed to get the underlying value of `MAX_BUFFER_SIZE`.".to_string())?;
         let mut input_buffer = vec![0u8; max_input_size];
         let mut input_size = context
             .get_output(1, &mut input_buffer)
@@ -1002,9 +980,9 @@ fn build_prompt(
         input_size = std::cmp::min(max_input_size, input_size);
         let token_info: Value =
             serde_json::from_slice(&input_buffer[..input_size]).map_err(|e| e.to_string())?;
-        let prompt_tokens = token_info["input_tokens"].as_u64().ok_or(format!(
-            "Failed to convert the `input_tokens` of the metadata to u64."
-        ))?;
+        let prompt_tokens = token_info["input_tokens"]
+            .as_u64()
+            .ok_or("Failed to convert the `input_tokens` of the metadata to u64.".to_string())?;
 
         match prompt_tokens > max_prompt_tokens {
             true => {
@@ -1050,10 +1028,10 @@ fn build_prompt(
     }
 }
 
-fn get_token_info(context: &wasi_nn::GraphExecutionContext) -> Result<TokenInfo, String> {
-    let max_output_size = *MAX_BUFFER_SIZE.get().ok_or(format!(
-        "Failed to get the underlying value of `MAX_BUFFER_SIZE`."
-    ))?;
+fn get_token_info(context: &wasmedge_wasi_nn::GraphExecutionContext) -> Result<TokenInfo, String> {
+    let max_output_size = *MAX_BUFFER_SIZE
+        .get()
+        .ok_or("Failed to get the underlying value of `MAX_BUFFER_SIZE`.".to_string())?;
     let mut output_buffer = vec![0u8; max_output_size];
     let mut output_size = context
         .get_output(1, &mut output_buffer)
@@ -1062,12 +1040,12 @@ fn get_token_info(context: &wasi_nn::GraphExecutionContext) -> Result<TokenInfo,
     let token_info: Value =
         serde_json::from_slice(&output_buffer[..output_size]).map_err(|e| e.to_string())?;
 
-    let input_tokens = token_info["input_tokens"].as_u64().ok_or(format!(
-        "Failed to convert the `input_tokens` of the metadata to u64."
-    ))?;
-    let output_tokens = token_info["output_tokens"].as_u64().ok_or(format!(
-        "Failed to convert the `output_tokens` of the metadata to u64."
-    ))?;
+    let input_tokens = token_info["input_tokens"]
+        .as_u64()
+        .ok_or("Failed to convert the `input_tokens` of the metadata to u64.".to_string())?;
+    let output_tokens = token_info["output_tokens"]
+        .as_u64()
+        .ok_or("Failed to convert the `output_tokens` of the metadata to u64.".to_string())?;
 
     Ok(TokenInfo {
         input_tokens,

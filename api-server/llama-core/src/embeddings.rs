@@ -20,10 +20,7 @@ pub async fn embeddings(
         "Fail to get the underlying value of `GRAPH`.",
     )))?;
     let mut graph = graph.lock().map_err(|e| {
-        LlamaCoreError::Operation(format!(
-            "Fail to acquire the lock of `GRAPH`. {}",
-            e.to_string()
-        ))
+        LlamaCoreError::Operation(format!("Fail to acquire the lock of `GRAPH`. {}", e))
     })?;
 
     // compute embeddings
@@ -33,7 +30,7 @@ pub async fn embeddings(
         // set input
         let tensor_data = input.as_bytes().to_vec();
         graph
-            .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
+            .set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data)
             .map_err(|e| LlamaCoreError::Backend(BackendError::SetInput(e.to_string())))?;
 
         match graph.compute() {
@@ -44,7 +41,7 @@ pub async fn embeddings(
                     graph.get_output(0, &mut output_buffer).map_err(|e| {
                         LlamaCoreError::Operation(format!(
                             "Fail to get output tensor: {msg}",
-                            msg = e.to_string()
+                            msg = e
                         ))
                     })?;
                 output_size = std::cmp::min(MAX_BUFFER_SIZE_EMBEDDING, output_size);
@@ -53,7 +50,7 @@ pub async fn embeddings(
                 let output = std::str::from_utf8(&output_buffer[..output_size]).map_err(|e| {
                     LlamaCoreError::Operation(format!(
                         "Failed to decode the buffer of the inference result to a utf-8 string. {}",
-                        e.to_string()
+                        e
                     ))
                 })?;
 
@@ -61,7 +58,7 @@ pub async fn embeddings(
                 let embedding = serde_json::from_str::<Embedding>(output).map_err(|e| {
                     LlamaCoreError::Operation(format!(
                         "Failed to deserialize embedding data. {}",
-                        e.to_string()
+                        e
                     ))
                 })?;
 
@@ -77,7 +74,7 @@ pub async fn embeddings(
                 let token_info = get_token_info(&graph).map_err(|e| {
                     LlamaCoreError::Operation(format!(
                         "Failed to get the number of prompt and completion tokens. {}",
-                        e.to_string()
+                        e
                     ))
                 })?;
 
@@ -104,6 +101,8 @@ pub async fn embeddings(
 }
 
 fn update_metadata() -> Result<(), LlamaCoreError> {
+    let mut should_update = false;
+
     let mut metadata = match METADATA.get() {
         Some(metadata) => metadata.clone(),
         None => {
@@ -113,46 +112,54 @@ fn update_metadata() -> Result<(), LlamaCoreError> {
         }
     };
 
-    // enable `embedding` option
-    metadata.embeddings = true;
+    // check if the `embedding` option is enabled
+    if !metadata.embeddings {
+        metadata.embeddings = true;
 
-    // update metadata
-    let config = match serde_json::to_string(&metadata) {
-        Ok(config) => config,
-        Err(e) => {
-            return Err(LlamaCoreError::Operation(format!(
-                "Fail to serialize metadata to a JSON string. {}",
-                e.to_string()
+        if !should_update {
+            should_update = true;
+        }
+    }
+
+    if should_update {
+        // update metadata
+        let config = match serde_json::to_string(&metadata) {
+            Ok(config) => config,
+            Err(e) => {
+                return Err(LlamaCoreError::Operation(format!(
+                    "Fail to serialize metadata to a JSON string. {}",
+                    e
+                )));
+            }
+        };
+
+        let graph = match GRAPH.get() {
+            Some(graph) => graph,
+            None => {
+                return Err(LlamaCoreError::Operation(String::from(
+                    "Fail to get the underlying value of `GRAPH`.",
+                )));
+            }
+        };
+        let mut graph = match graph.lock() {
+            Ok(graph) => graph,
+            Err(e) => {
+                return Err(LlamaCoreError::Operation(format!(
+                    "Fail to acquire the lock of `GRAPH`. {}",
+                    e
+                )));
+            }
+        };
+
+        // update metadata
+        if graph
+            .set_input(1, wasmedge_wasi_nn::TensorType::U8, &[1], config.as_bytes())
+            .is_err()
+        {
+            return Err(LlamaCoreError::Backend(BackendError::SetInput(
+                String::from("Fail to update metadata."),
             )));
         }
-    };
-
-    let graph = match GRAPH.get() {
-        Some(graph) => graph,
-        None => {
-            return Err(LlamaCoreError::Operation(String::from(
-                "Fail to get the underlying value of `GRAPH`.",
-            )));
-        }
-    };
-    let mut graph = match graph.lock() {
-        Ok(graph) => graph,
-        Err(e) => {
-            return Err(LlamaCoreError::Operation(format!(
-                "Fail to acquire the lock of `GRAPH`. {}",
-                e.to_string()
-            )));
-        }
-    };
-
-    // update metadata
-    if graph
-        .set_input(1, wasi_nn::TensorType::U8, &[1], config.as_bytes())
-        .is_err()
-    {
-        return Err(LlamaCoreError::Backend(BackendError::SetInput(
-            String::from("Fail to update metadata."),
-        )));
     }
 
     Ok(())

@@ -1,8 +1,8 @@
 use super::BuildChatPrompt;
 use crate::error::{PromptError, Result};
 use endpoints::chat::{
-    ChatCompletionAssistantMessage, ChatCompletionRequestMessage,
-    ChatCompletionUserMessage, ChatCompletionUserMessageContent, ContentPart,
+    ChatCompletionAssistantMessage, ChatCompletionRequestMessage, ChatCompletionUserMessage,
+    ChatCompletionUserMessageContent, ContentPart,
 };
 
 /// Generate prompts for the `BELLE-Llama2-13B-chat` model.
@@ -22,7 +22,7 @@ impl HumanAssistantChatPrompt {
                 for part in parts {
                     if let ContentPart::Text(text_content) = part {
                         content.push_str(text_content.text());
-                        content.push_str("\n");
+                        content.push('\n');
                     }
                 }
                 content
@@ -72,7 +72,7 @@ impl BuildChatPrompt for HumanAssistantChatPrompt {
         for message in messages {
             match message {
                 ChatCompletionRequestMessage::User(message) => {
-                    prompt = self.append_user_message(&prompt, &message);
+                    prompt = self.append_user_message(&prompt, message);
                 }
                 ChatCompletionRequestMessage::Assistant(message) => {
                     prompt = self.append_assistant_message(&prompt, message)?;

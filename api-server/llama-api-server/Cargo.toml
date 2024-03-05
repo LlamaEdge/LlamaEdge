@@ -1,6 +1,6 @@
 [package]
 name = "llama-api-server"
-version = "0.4.2"
+version = "0.4.3"
 edition = "2021"
 
 [dependencies]
@@ -18,4 +18,6 @@ clap = { version = "4.4.6", features = ["cargo"] }
 once_cell = "1.18"
 mime_guess = "2.0.4"
 futures-util = "0.3"
-llama-core = { path = "../llama-core", version = "^0.2" }
+llama-core = { path = "../llama-core", version = "^0.3" }
+url = "^2.5"
+anyhow = "1.0.80"

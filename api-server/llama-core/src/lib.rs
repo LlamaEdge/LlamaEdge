@@ -10,17 +10,19 @@ pub use error::LlamaCoreError;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
-use wasi_nn::{Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext, TensorType};
+use wasmedge_wasi_nn::{
+    Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext, TensorType,
+};
 
 use crate::error::BackendError;
 
-pub(crate) static MAX_BUFFER_SIZE: OnceCell<usize> = OnceCell::new();
 pub(crate) static CTX_SIZE: OnceCell<usize> = OnceCell::new();
 pub(crate) static GRAPH: OnceCell<Mutex<Graph>> = OnceCell::new();
 pub(crate) static METADATA: OnceCell<Metadata> = OnceCell::new();
 pub static UTF8_ENCODINGS: OnceCell<Mutex<Vec<u8>>> = OnceCell::new();
 
-pub(crate) const MAX_BUFFER_SIZE_EMBEDDING: usize = 4096 * 15 + 128;
+pub(crate) const MAX_BUFFER_SIZE: usize = 2usize.pow(14) * 15 + 128;
+pub(crate) const MAX_BUFFER_SIZE_EMBEDDING: usize = 2usize.pow(14) * 15 + 128;
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct Metadata {
@@ -87,9 +89,9 @@ impl Graph {
         let config = serde_json::to_string(&options).map_err(|e| e.to_string())?;
 
         // load the model
-        let graph = wasi_nn::GraphBuilder::new(
-            wasi_nn::GraphEncoding::Ggml,
-            wasi_nn::ExecutionTarget::AUTO,
+        let graph = wasmedge_wasi_nn::GraphBuilder::new(
+            wasmedge_wasi_nn::GraphEncoding::Ggml,
+            wasmedge_wasi_nn::ExecutionTarget::AUTO,
         )
         .config(config)
         .build_from_cache(model_alias.as_ref())
@@ -164,7 +166,7 @@ pub(crate) fn print_log_begin_separator(
     separator.push_str(ch.repeat(separator_len).as_str());
     separator.push_str(&title);
     separator.push_str(ch.repeat(separator_len).as_str());
-    separator.push_str("\n");
+    separator.push('\n');
     println!("{}", separator);
     total_len
 }
@@ -173,7 +175,7 @@ pub(crate) fn print_log_end_separator(ch: Option<&str>, len: Option<usize>) {
     let ch = ch.unwrap_or("-");
     let mut separator = "\n\n".to_string();
     separator.push_str(ch.repeat(len.unwrap_or(100)).as_str());
-    separator.push_str("\n");
+    separator.push('\n');
     println!("{}", separator);
 }
 
@@ -193,10 +195,10 @@ pub fn init_core_context(
     model_alias: impl AsRef<str>,
 ) -> Result<(), LlamaCoreError> {
     let graph = Graph::new(model_name.as_ref(), model_alias.as_ref(), metadata)
-        .map_err(|e| LlamaCoreError::InitContext(e))?;
+        .map_err(LlamaCoreError::InitContext)?;
 
     GRAPH.set(Mutex::new(graph)).map_err(|_| {
-        LlamaCoreError::InitContext(format!("The `GRAPH` has already been initialized"))
+        LlamaCoreError::InitContext("The `GRAPH` has already been initialized".to_string())
     })?;
 
     // set `CTX_SIZE`
@@ -207,19 +209,9 @@ pub fn init_core_context(
         ))
     })?;
 
-    // set `MAX_BUFFER_SIZE`
-    MAX_BUFFER_SIZE
-        .set(metadata.ctx_size as usize * 6)
-        .map_err(|e| {
-            LlamaCoreError::InitContext(format!(
-                "The `MAX_BUFFER_SIZE` has already been initialized: {}",
-                e
-            ))
-        })?;
-
     // set `METADATA`
     METADATA.set(metadata.clone()).map_err(|_| {
-        LlamaCoreError::InitContext(format!("The `METADATA` has already been initialized"))
+        LlamaCoreError::InitContext("The `METADATA` has already been initialized".to_string())
     })?;
 
     Ok(())
@@ -232,20 +224,19 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
     let graph = get_graph()?;
 
     // get the plugin metadata
-    let max_output_size = get_max_buffer_size()?;
-    let mut output_buffer = vec![0u8; max_output_size];
+    let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
     let mut output_size: usize = graph.get_output(1, &mut output_buffer).map_err(|e| {
         LlamaCoreError::Backend(BackendError::GetOutput(format!(
             "Fail to get plugin metadata. {msg}",
-            msg = e.to_string()
+            msg = e
         )))
     })?;
-    output_size = std::cmp::min(max_output_size, output_size);
+    output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
     let metadata: serde_json::Value = serde_json::from_slice(&output_buffer[..output_size])
         .map_err(|e| {
             LlamaCoreError::Operation(format!(
                 "Fail to deserialize the plugin metadata. {msg}",
-                msg = e.to_string()
+                msg = e
             ))
         })?;
 
@@ -276,24 +267,10 @@ pub(crate) fn get_graph() -> Result<std::sync::MutexGuard<'static, Graph>, Llama
     )))?;
 
     let graph = graph.lock().map_err(|e| {
-        LlamaCoreError::Operation(format!(
-            "Fail to acquire the lock of `GRAPH`. {}",
-            e.to_string()
-        ))
+        LlamaCoreError::Operation(format!("Fail to acquire the lock of `GRAPH`. {}", e))
     })?;
 
     Ok(graph)
-}
-
-pub(crate) fn get_max_buffer_size() -> Result<usize, LlamaCoreError> {
-    // Retrieve the output.
-    let max_buffer_size = MAX_BUFFER_SIZE
-        .get()
-        .ok_or(LlamaCoreError::Operation(String::from(
-            "Fail to get the underlying value of `MAX_BUFFER_SIZE`.",
-        )))?;
-
-    Ok(*max_buffer_size)
 }
 
 /// Version info of the `wasi-nn_ggml` plugin, including the build number and the commit id.

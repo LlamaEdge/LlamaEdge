@@ -14,7 +14,7 @@ impl VicunaChatPrompt {
         let content = message.content();
         match content.is_empty() {
             true => String::from("A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions."),
-            false => format!("{content}"),
+            false => content.to_string(),
         }
     }
 
@@ -32,7 +32,7 @@ impl VicunaChatPrompt {
                 for part in parts {
                     if let ContentPart::Text(text_content) = part {
                         content.push_str(text_content.text());
-                        content.push_str("\n");
+                        content.push('\n');
                     }
                 }
                 content
@@ -84,7 +84,7 @@ impl BuildChatPrompt for VicunaChatPrompt {
         // system prompt
         let system_prompt = match messages[0] {
             ChatCompletionRequestMessage::System(ref message) => {
-                self.create_system_prompt(&message)
+                self.create_system_prompt(message)
             }
             _ => String::from("A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions."),
         };
@@ -126,7 +126,7 @@ impl Vicuna11ChatPrompt {
                 for part in parts {
                     if let ContentPart::Text(text_content) = part {
                         content.push_str(text_content.text());
-                        content.push_str("\n");
+                        content.push('\n');
                     }
                 }
                 content
@@ -199,7 +199,7 @@ impl VicunaLlavaPrompt {
         let content = message.content();
         match content.is_empty() {
             true => String::from("You are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe."),
-            false => format!("{content}"),
+            false => content.to_string(),
         }
     }
 
@@ -232,7 +232,7 @@ impl VicunaLlavaPrompt {
                     match part {
                         ContentPart::Text(text_content) => {
                             content.push_str(text_content.text());
-                            content.push_str("\n");
+                            content.push('\n');
                         }
                         ContentPart::Image(_) => {
                             image_content = String::from("<image>");
@@ -289,7 +289,7 @@ impl BuildChatPrompt for VicunaLlavaPrompt {
         // system prompt
         let system_prompt = match messages[0] {
             ChatCompletionRequestMessage::System(ref message) => {
-                self.create_system_prompt(&message)
+                self.create_system_prompt(message)
             }
             _ => String::from("You are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe."),
         };
