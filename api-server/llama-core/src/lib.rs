@@ -10,7 +10,9 @@ pub use error::LlamaCoreError;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
-use wasi_nn::{Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext, TensorType};
+use wasmedge_wasi_nn::{
+    Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext, TensorType,
+};
 
 use crate::error::BackendError;
 
@@ -87,9 +89,9 @@ impl Graph {
         let config = serde_json::to_string(&options).map_err(|e| e.to_string())?;
 
         // load the model
-        let graph = wasi_nn::GraphBuilder::new(
-            wasi_nn::GraphEncoding::Ggml,
-            wasi_nn::ExecutionTarget::AUTO,
+        let graph = wasmedge_wasi_nn::GraphBuilder::new(
+            wasmedge_wasi_nn::GraphEncoding::Ggml,
+            wasmedge_wasi_nn::ExecutionTarget::AUTO,
         )
         .config(config)
         .build_from_cache(model_alias.as_ref())

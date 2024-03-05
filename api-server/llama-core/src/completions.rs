@@ -63,7 +63,7 @@ async fn infer(prompt: impl AsRef<str>) -> std::result::Result<Vec<u8>, LlamaCor
     // set input
     let tensor_data = prompt.as_ref().as_bytes().to_vec();
     graph
-        .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
+        .set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data)
         .map_err(|e| LlamaCoreError::Backend(BackendError::SetInput(e.to_string())))?;
 
     // execute the inference
