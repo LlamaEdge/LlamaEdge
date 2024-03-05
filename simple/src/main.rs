@@ -128,10 +128,12 @@ fn main() -> Result<(), String> {
     options.log_enable = log_enable;
 
     // load the model into wasi-nn
-    let graph =
-        wasi_nn::GraphBuilder::new(wasi_nn::GraphEncoding::Ggml, wasi_nn::ExecutionTarget::AUTO)
-            .build_from_cache(&model_name)
-            .expect("Failed to load the model");
+    let graph = wasmedge_wasi_nn::GraphBuilder::new(
+        wasmedge_wasi_nn::GraphEncoding::Ggml,
+        wasmedge_wasi_nn::ExecutionTarget::AUTO,
+    )
+    .build_from_cache(&model_name)
+    .expect("Failed to load the model");
 
     // initialize the execution context
     let mut context = graph
@@ -141,13 +143,18 @@ fn main() -> Result<(), String> {
     // set metadata
     let metadata = serde_json::to_string(&options).expect("Fail to serialize options");
     context
-        .set_input(1, wasi_nn::TensorType::U8, &[1], metadata.as_bytes())
+        .set_input(
+            1,
+            wasmedge_wasi_nn::TensorType::U8,
+            &[1],
+            metadata.as_bytes(),
+        )
         .expect("Fail to set metadata");
 
     // set input tensor
     let tensor_data = prompt.as_bytes().to_vec();
     context
-        .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
+        .set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data)
         .expect("Failed to set prompt as the input tensor");
 
     // execute the inference

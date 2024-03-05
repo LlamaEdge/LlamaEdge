@@ -4,7 +4,7 @@ version = "0.4.2"
 edition = "2021"
 
 [dependencies]
-wasi-nn = { git = "https://github.com/second-state/wasmedge-wasi-nn", branch = "ggml" }
+wasmedge-wasi-nn = "0.7.0"
 chat-prompts = { path = "../api-server/chat-prompts" }
 endpoints = { path = "../api-server/endpoints" }
 clap = { version = "4.4.6", features = ["cargo"] }
