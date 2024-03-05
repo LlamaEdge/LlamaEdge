@@ -354,9 +354,9 @@ fn main() -> Result<(), String> {
     }
 
     // load the model into wasi-nn
-    let graph = match wasi_nn::GraphBuilder::new(
-        wasi_nn::GraphEncoding::Ggml,
-        wasi_nn::ExecutionTarget::AUTO,
+    let graph = match wasmedge_wasi_nn::GraphBuilder::new(
+        wasmedge_wasi_nn::GraphEncoding::Ggml,
+        wasmedge_wasi_nn::ExecutionTarget::AUTO,
     )
     .config(metadata)
     .build_from_cache(model_name.as_ref())
@@ -772,7 +772,7 @@ fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> Str
 }
 
 fn stream_compute(
-    context: &mut wasi_nn::GraphExecutionContext,
+    context: &mut wasmedge_wasi_nn::GraphExecutionContext,
     stop: Option<&str>,
 ) -> Result<String, ChatError> {
     let mut output = String::new();
@@ -843,7 +843,9 @@ fn stream_compute(
 
                 output += &token;
             }
-            Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::EndOfSequence)) => {
+            Err(wasmedge_wasi_nn::Error::BackendError(
+                wasmedge_wasi_nn::BackendError::EndOfSequence,
+            )) => {
                 // Retrieve the output.
                 let max_output_size = *MAX_BUFFER_SIZE.get().ok_or(ChatError::Operation(
                     "Failed to get the underlying value of `MAX_BUFFER_SIZE`.".to_string(),
@@ -877,10 +879,14 @@ fn stream_compute(
                 output += &token;
                 break;
             }
-            Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::PromptTooLong)) => {
+            Err(wasmedge_wasi_nn::Error::BackendError(
+                wasmedge_wasi_nn::BackendError::PromptTooLong,
+            )) => {
                 return Err(ChatError::PromptTooLong);
             }
-            Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::ContextFull)) => {
+            Err(wasmedge_wasi_nn::Error::BackendError(
+                wasmedge_wasi_nn::BackendError::ContextFull,
+            )) => {
                 return Err(ChatError::ContextFull(output));
             }
             Err(err) => {
@@ -944,7 +950,7 @@ pub struct Metadata {
 fn build_prompt(
     template: &ChatPrompt,
     chat_request: &mut ChatCompletionRequest,
-    context: &mut wasi_nn::GraphExecutionContext,
+    context: &mut wasmedge_wasi_nn::GraphExecutionContext,
     max_prompt_tokens: u64,
 ) -> Result<String, String> {
     loop {
@@ -957,7 +963,7 @@ fn build_prompt(
         // read input tensor
         let tensor_data = prompt.trim().as_bytes().to_vec();
         if context
-            .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
+            .set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data)
             .is_err()
         {
             return Err(String::from("Fail to set input tensor"));
@@ -1022,7 +1028,7 @@ fn build_prompt(
     }
 }
 
-fn get_token_info(context: &wasi_nn::GraphExecutionContext) -> Result<TokenInfo, String> {
+fn get_token_info(context: &wasmedge_wasi_nn::GraphExecutionContext) -> Result<TokenInfo, String> {
     let max_output_size = *MAX_BUFFER_SIZE
         .get()
         .ok_or("Failed to get the underlying value of `MAX_BUFFER_SIZE`.".to_string())?;
