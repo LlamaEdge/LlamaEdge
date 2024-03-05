@@ -62,7 +62,7 @@ pub async fn chat_completions_stream(
     // set input
     let tensor_data = prompt.as_bytes().to_vec();
     if graph
-        .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
+        .set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data)
         .is_err()
     {
         return Err(LlamaCoreError::Operation(String::from(
@@ -241,7 +241,9 @@ pub async fn chat_completions_stream(
                     }
                 }
             }
-            Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::EndOfSequence)) => {
+            Err(wasmedge_wasi_nn::Error::BackendError(
+                wasmedge_wasi_nn::BackendError::EndOfSequence,
+            )) => {
                 match one_more_run_then_stop {
                     true => {
                         let created = SystemTime::now()
@@ -296,7 +298,9 @@ pub async fn chat_completions_stream(
                     }
                 }
             }
-            Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::ContextFull)) => {
+            Err(wasmedge_wasi_nn::Error::BackendError(
+                wasmedge_wasi_nn::BackendError::ContextFull,
+            )) => {
                 match one_more_run_then_stop {
                     true => {
                         let created = SystemTime::now()
@@ -351,7 +355,9 @@ pub async fn chat_completions_stream(
                     }
                 }
             }
-            Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::PromptTooLong)) => {
+            Err(wasmedge_wasi_nn::Error::BackendError(
+                wasmedge_wasi_nn::BackendError::PromptTooLong,
+            )) => {
                 match one_more_run_then_stop {
                     true => {
                         let created = SystemTime::now()
@@ -460,7 +466,7 @@ pub async fn chat_completions(
     // set input
     let tensor_data = prompt.as_bytes().to_vec();
     graph
-        .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
+        .set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data)
         .map_err(|e| LlamaCoreError::Backend(BackendError::SetInput(e.to_string())))?;
 
     match graph.compute() {
@@ -530,7 +536,7 @@ pub async fn chat_completions(
                 },
             })
         }
-        Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::ContextFull)) => {
+        Err(wasmedge_wasi_nn::Error::BackendError(wasmedge_wasi_nn::BackendError::ContextFull)) => {
             // Retrieve the output.
             let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
             let mut output_size = graph.get_output(0, &mut output_buffer).map_err(|e| {
@@ -595,7 +601,9 @@ pub async fn chat_completions(
                 },
             })
         }
-        Err(wasi_nn::Error::BackendError(wasi_nn::BackendError::PromptTooLong)) => {
+        Err(wasmedge_wasi_nn::Error::BackendError(
+            wasmedge_wasi_nn::BackendError::PromptTooLong,
+        )) => {
             println!("\n\n[WARNING] The prompt is too long. Please reduce the length of your input and try again.\n");
 
             // Retrieve the output.
@@ -825,7 +833,7 @@ async fn update_metadata(
 
         // update metadata
         if graph
-            .set_input(1, wasi_nn::TensorType::U8, &[1], config.as_bytes())
+            .set_input(1, wasmedge_wasi_nn::TensorType::U8, &[1], config.as_bytes())
             .is_err()
         {
             return Err(LlamaCoreError::Operation(String::from(
@@ -1038,7 +1046,7 @@ fn build_prompt(
         // read input tensor
         let tensor_data = prompt.trim().as_bytes().to_vec();
         if graph
-            .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
+            .set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data)
             .is_err()
         {
             return Err(String::from("Fail to set input tensor"));

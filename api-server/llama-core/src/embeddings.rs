@@ -30,7 +30,7 @@ pub async fn embeddings(
         // set input
         let tensor_data = input.as_bytes().to_vec();
         graph
-            .set_input(0, wasi_nn::TensorType::U8, &[1], &tensor_data)
+            .set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data)
             .map_err(|e| LlamaCoreError::Backend(BackendError::SetInput(e.to_string())))?;
 
         match graph.compute() {
@@ -153,7 +153,7 @@ fn update_metadata() -> Result<(), LlamaCoreError> {
 
         // update metadata
         if graph
-            .set_input(1, wasi_nn::TensorType::U8, &[1], config.as_bytes())
+            .set_input(1, wasmedge_wasi_nn::TensorType::U8, &[1], config.as_bytes())
             .is_err()
         {
             return Err(LlamaCoreError::Backend(BackendError::SetInput(
