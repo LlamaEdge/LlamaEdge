@@ -1,4 +1,4 @@
-use crate::{embeddings::embeddings, error::LlamaCoreError};
+use crate::{embeddings::embeddings, error::LlamaCoreError, METADATA};
 use endpoints::{
     embeddings::{EmbeddingObject, EmbeddingsResponse},
     rag::RagEmbeddingRequest,
@@ -25,6 +25,16 @@ pub async fn rag_doc_chunks_to_embeddings(
     let qdrant_url = rag_embedding_request.qdrant_url.as_str();
     let qdrant_collection_name = rag_embedding_request.qdrant_collection_name.as_str();
 
+    if let Some(metadata) = METADATA.get() {
+        if metadata.log_prompts {
+            println!("[+] Computing embeddings for document chunks...");
+
+            if let Ok(request_str) = serde_json::to_string_pretty(&embedding_request) {
+                println!("    * embedding request (json):\n\n{}", request_str);
+            }
+        }
+    }
+
     // compute embeddings for the document
     let response = embeddings(embedding_request).await?;
 
@@ -35,8 +45,22 @@ pub async fn rag_doc_chunks_to_embeddings(
     // create a Qdrant client
     let qdrant_client = qdrant::Qdrant::new_with_url(qdrant_url.to_string());
 
+    if let Some(metadata) = METADATA.get() {
+        if metadata.log_prompts {
+            println!("\n[+] Creating a Qdrant collection ...");
+            println!("    * Collection name: {}", qdrant_collection_name);
+            println!("    * Dimension: {}", dim);
+        }
+    }
+
     // create a collection
     qdrant_create_collection(&qdrant_client, qdrant_collection_name, dim).await?;
+
+    if let Some(metadata) = METADATA.get() {
+        if metadata.log_prompts {
+            println!("\n[+] Upserting points ...");
+        }
+    }
 
     // create and upsert points
     qdrant_persist_embeddings(&qdrant_client, qdrant_collection_name, embeddings, chunks).await?;
@@ -93,10 +117,6 @@ async fn qdrant_create_collection(
     collection_name: impl AsRef<str>,
     dim: usize,
 ) -> Result<(), LlamaCoreError> {
-    println!("\n[+] Creating a collection ...");
-    // let collection_name = "my_test";
-    println!("    * Collection name: {}", collection_name.as_ref());
-    println!("    * Dimension: {}", dim);
     if let Err(err) = qdrant_client
         .create_collection(collection_name.as_ref(), dim as u32)
         .await
@@ -114,7 +134,6 @@ async fn qdrant_persist_embeddings(
     embeddings: &[EmbeddingObject],
     chunks: &[String],
 ) -> Result<(), LlamaCoreError> {
-    println!("[+] Creating points to save embeddings ...");
     let mut points = Vec::<Point>::new();
     for embedding in embeddings {
         // convert the embedding to a vector
@@ -136,7 +155,7 @@ async fn qdrant_persist_embeddings(
     }
 
     // upsert points
-    println!("[+] Upserting points ...");
+
     if let Err(err) = qdrant_client
         .upsert_points(collection_name.as_ref(), points)
         .await
@@ -154,7 +173,7 @@ async fn qdrant_search_similar_points(
     query_vector: &[f32],
     limit: usize,
 ) -> Result<Vec<ScoredPoint>, String> {
-    println!("[+] Searching for similar points ...");
+    // println!("[+] Searching for similar points ...");
     let search_result = qdrant_client
         .search_points(
             collection_name.as_ref(),
