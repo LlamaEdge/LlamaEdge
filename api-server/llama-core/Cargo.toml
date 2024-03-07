@@ -2,6 +2,12 @@
 name = "llama-core"
 version = "0.3.0"
 edition = "2021"
+readme = "README.md"
+repository = "https://github.com/LlamaEdge/LlamaEdge"
+license = "Apache-2.0"
+documentation = "https://docs.rs/llama-core/"
+categories = ["data-structures"]
+description = "The core component of LlamaEdge"
 
 [dependencies]
 endpoints.workspace = true
