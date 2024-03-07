@@ -1,4 +1,8 @@
-use crate::{error, QDRANT_CONFIG};
+use crate::{
+    error,
+    utils::{print_log_begin_separator, print_log_end_separator},
+    QDRANT_CONFIG,
+};
 use chat_prompts::PromptTemplateType;
 use endpoints::{
     chat::{ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionUserMessageContent},
@@ -224,7 +228,7 @@ async fn chat_completions(
 /// Compute embeddings for document chunks and persist them in the specified Qdrant server.
 ///
 /// Note that the body of the request is deserialized to a `RagEmbeddingRequest` instance.
-pub(crate) async fn rag_doc_chunks_to_embeddings_handler(
+pub(crate) async fn _rag_doc_chunks_to_embeddings_handler(
     mut req: Request<Body>,
 ) -> Result<Response<Body>, hyper::Error> {
     // parse request
@@ -267,7 +271,12 @@ pub(crate) async fn rag_doc_chunks_to_embeddings_handler(
 /// Note tht the body of the request is deserialized to a `EmbeddingRequest` instance.
 pub(crate) async fn rag_doc_chunks_to_embeddings2_handler(
     mut req: Request<Body>,
+    log_prompts: bool,
 ) -> Result<Response<Body>, hyper::Error> {
+    if log_prompts {
+        print_log_begin_separator("RAG (Embeddings for chunks)", Some("*"), None);
+    }
+
     // parse request
     let body_bytes = to_bytes(req.body_mut()).await?;
     let embedding_request: EmbeddingRequest = match serde_json::from_slice(&body_bytes) {
@@ -291,36 +300,40 @@ pub(crate) async fn rag_doc_chunks_to_embeddings2_handler(
         qdrant_config.collection_name.clone(),
     );
 
-    match llama_core::rag::rag_doc_chunks_to_embeddings(&rag_embedding_request).await {
-        Ok(embedding_response) => {
-            // serialize embedding object
-            match serde_json::to_string(&embedding_response) {
-                Ok(s) => {
-                    // return response
-                    let result = Response::builder()
-                        .header("Access-Control-Allow-Origin", "*")
-                        .header("Access-Control-Allow-Methods", "*")
-                        .header("Access-Control-Allow-Headers", "*")
-                        .body(Body::from(s));
-                    match result {
-                        Ok(response) => Ok(response),
-                        Err(e) => error::internal_server_error(e.to_string()),
-                    }
-                }
-                Err(e) => error::internal_server_error(format!(
-                    "Fail to serialize embedding object. {}",
-                    e
-                )),
+    let embedding_response =
+        match llama_core::rag::rag_doc_chunks_to_embeddings(&rag_embedding_request).await {
+            Ok(embedding_response) => embedding_response,
+            Err(e) => return error::internal_server_error(e.to_string()),
+        };
+
+    if log_prompts {
+        print_log_begin_separator("RAG (Embeddings for chunks)", Some("*"), None);
+    }
+
+    // serialize embedding object
+    match serde_json::to_string(&embedding_response) {
+        Ok(s) => {
+            // return response
+            let result = Response::builder()
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "*")
+                .header("Access-Control-Allow-Headers", "*")
+                .body(Body::from(s));
+            match result {
+                Ok(response) => Ok(response),
+                Err(e) => error::internal_server_error(e.to_string()),
             }
         }
-        Err(e) => error::internal_server_error(e.to_string()),
+        Err(e) => {
+            error::internal_server_error(format!("Fail to serialize embedding object. {}", e))
+        }
     }
 }
 
 /// Query a user input and return a chat-completion response with the answer from the model.
 ///
 /// Note that the body of the request is deserialized to a `RagChatCompletionsRequest` instance.
-pub(crate) async fn rag_query_handler(
+pub(crate) async fn _rag_query_handler(
     mut req: Request<Body>,
     template_ty: PromptTemplateType,
     log_prompts: bool,
@@ -462,6 +475,10 @@ pub(crate) async fn rag_query2_handler(
     template_ty: PromptTemplateType,
     log_prompts: bool,
 ) -> Result<Response<Body>, hyper::Error> {
+    if log_prompts {
+        print_log_begin_separator("RAG (Query user input)", Some("*"), None);
+    }
+
     if req.method().eq(&hyper::http::Method::OPTIONS) {
         let result = Response::builder()
             .header("Access-Control-Allow-Origin", "*")
@@ -496,6 +513,10 @@ pub(crate) async fn rag_query2_handler(
         }
     };
 
+    if log_prompts {
+        println!("\n[+] Computing embeddings for user query ...");
+    }
+
     // * compute embeddings for user query
     let embedding_response = match chat_request.messages.is_empty() {
         true => return error::bad_request("Messages should not be empty"),
@@ -512,16 +533,29 @@ pub(crate) async fn rag_query2_handler(
                         }
                     };
 
+                    if log_prompts {
+                        println!("    * user query: {}\n", query_text);
+                    }
+
+                    // create a embedding request
+                    let embedding_request = EmbeddingRequest {
+                        model: chat_request
+                            .model
+                            .clone()
+                            .unwrap_or("dummy-embedding-model".to_string()),
+                        input: vec![query_text.clone()],
+                        encoding_format: None,
+                        user: chat_request.user.clone(),
+                    };
+
+                    if log_prompts {
+                        if let Ok(request_str) = serde_json::to_string_pretty(&embedding_request) {
+                            println!("    * embedding request (json):\n\n{}", request_str);
+                        }
+                    }
+
                     let rag_embedding_request = RagEmbeddingRequest {
-                        embedding_request: EmbeddingRequest {
-                            model: chat_request
-                                .model
-                                .clone()
-                                .unwrap_or("dummy-embedding-model".to_string()),
-                            input: vec![query_text.clone()],
-                            encoding_format: None,
-                            user: chat_request.user.clone(),
-                        },
+                        embedding_request,
                         qdrant_url: qdrant_config.url.clone(),
                         qdrant_collection_name: qdrant_config.collection_name.clone(),
                     };
@@ -543,6 +577,10 @@ pub(crate) async fn rag_query2_handler(
         None => return error::internal_server_error("No embeddings returned"),
     };
 
+    if log_prompts {
+        println!("\n[+] Retrieving context ...");
+    }
+
     // * retrieve context
     let scored_points = match llama_core::rag::rag_retrieve_context(
         query_embedding.as_slice(),
@@ -561,18 +599,21 @@ pub(crate) async fn rag_query2_handler(
     // update messages with retrieved context
     let mut context = String::new();
     for (idx, point) in scored_points.iter().enumerate() {
-        println!("    * Point {}: score: {}", idx, point.score);
+        if log_prompts {
+            println!("    * Point {}: score: {}", idx, point.score);
+        }
 
         if let Some(payload) = &point.payload {
             if let Some(source) = payload.get("source") {
-                println!("      Source: {}", source);
+                if log_prompts {
+                    println!("      Source: {}", source);
+                }
 
                 context.push_str(source.to_string().as_str());
                 context.push_str("\n\n");
             }
         }
     }
-    println!("\n\n");
 
     // prepare system message
     let content = format!("Use the following pieces of context to answer the user's question.\nIf you don't know the answer, just say that you don't know, don't try to make up an answer.\n----------------\n{}", context.trim_end());
@@ -591,9 +632,19 @@ pub(crate) async fn rag_query2_handler(
         }
     }
 
+    if log_prompts {
+        println!("\n[+] Answer the user query with the context info ...");
+    }
+
     // chat completion
-    match chat_request.stream {
+    let res = match chat_request.stream {
         Some(true) => chat_completions_stream(chat_request, template_ty, log_prompts).await,
         Some(false) | None => chat_completions(chat_request, template_ty, log_prompts).await,
+    };
+
+    if log_prompts {
+        print_log_end_separator(Some("*"), None);
     }
+
+    res
 }
