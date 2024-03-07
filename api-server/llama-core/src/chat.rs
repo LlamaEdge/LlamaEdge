@@ -1164,9 +1164,9 @@ pub(crate) struct TokenInfo {
 async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> {
     let image_url = image_url.as_ref();
     // println!("[DEBUG] image_url: {}", image_url);
-    let url = reqwest_wasi::Url::parse(image_url)
-        .map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
-    let response = reqwest_wasi::get(url)
+    let url =
+        reqwest::Url::parse(image_url).map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
+    let response = reqwest::get(url)
         .await
         .map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
 
