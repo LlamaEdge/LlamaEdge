@@ -195,6 +195,13 @@ async fn main() -> Result<(), ServerError> {
                 .default_value("3"),
         )
         .arg(
+            Arg::new("qdrant_score_threshold")
+                .long("qdrant-score-threshold")
+                .value_parser(clap::value_parser!(f32))
+                .help("Minimal score threshold for the search result")
+                .default_value("0.0"),
+        )
+        .arg(
             Arg::new("log_prompts")
                 .long("log-prompts")
                 .value_name("LOG_PROMPTS")
@@ -438,10 +445,19 @@ async fn main() -> Result<(), ServerError> {
             limit = qdrant_limit
         );
 
+        // qdrant score threshold
+        let qdrant_score_threshold =
+            matches
+                .get_one::<f32>("qdrant_score_threshold")
+                .ok_or(ServerError::ArgumentError(
+                    "Failed to parse the value of `qdrant_score_threshold` CLI option".to_owned(),
+                ))?;
+
         let qdrant_config = QdrantConfig {
             url: qdrant_url.to_owned(),
             collection_name: qdrant_collection_name.to_owned(),
             limit: *qdrant_limit,
+            score_threshold: *qdrant_score_threshold,
         };
 
         QDRANT_CONFIG
@@ -569,4 +585,5 @@ pub(crate) struct QdrantConfig {
     pub(crate) url: String,
     pub(crate) collection_name: String,
     pub(crate) limit: u64,
+    pub(crate) score_threshold: f32,
 }
