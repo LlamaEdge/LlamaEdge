@@ -11,7 +11,7 @@ pub(crate) async fn handle_llama_request(
 ) -> Result<Response<Body>, hyper::Error> {
     match req.uri().path() {
         "/v1/chat/completions" => match QDRANT_CONFIG.get() {
-            Some(_) => ggml::rag_query2_handler(req, template_ty, log_prompts).await,
+            Some(_) => ggml::rag_query_handler(req, template_ty, log_prompts).await,
             None => ggml::chat_completions_handler(req, template_ty, log_prompts).await,
         },
         "/v1/completions" => ggml::completions_handler(req).await,
@@ -20,8 +20,6 @@ pub(crate) async fn handle_llama_request(
             Some(_) => ggml::rag_doc_chunks_to_embeddings2_handler(req, log_prompts).await,
             None => ggml::embeddings_handler(req).await,
         },
-        // "/v1/rag/document" => ggml::rag_doc_chunks_to_embeddings_handler(req).await,
-        // "/v1/rag/query" => ggml::rag_query_handler(req, template_ty, log_prompts).await
         _ => error::invalid_endpoint(req.uri().path()),
     }
 }
