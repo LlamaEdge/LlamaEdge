@@ -95,6 +95,7 @@ pub async fn rag_retrieve_context(
     qdrant_url: impl AsRef<str>,
     qdrant_collection_name: impl AsRef<str>,
     limit: usize,
+    score_threshold: Option<f32>,
 ) -> Result<Vec<ScoredPoint>, LlamaCoreError> {
     // create a Qdrant client
     let qdrant_client = qdrant::Qdrant::new_with_url(qdrant_url.as_ref().to_string());
@@ -105,6 +106,7 @@ pub async fn rag_retrieve_context(
         qdrant_collection_name.as_ref(),
         query_embedding,
         limit,
+        score_threshold,
     )
     .await
     .map_err(LlamaCoreError::Operation)?;
@@ -172,6 +174,7 @@ async fn qdrant_search_similar_points(
     collection_name: impl AsRef<str>,
     query_vector: &[f32],
     limit: usize,
+    score_threshold: Option<f32>,
 ) -> Result<Vec<ScoredPoint>, String> {
     // println!("[+] Searching for similar points ...");
     let search_result = qdrant_client
@@ -179,6 +182,7 @@ async fn qdrant_search_similar_points(
             collection_name.as_ref(),
             query_vector.to_vec(),
             limit as u64,
+            score_threshold,
         )
         .await;
 
