@@ -1,6 +1,6 @@
 use crate::{
     error,
-    utils::{print_log_begin_separator, print_log_end_separator},
+    utils::{gen_chat_id, print_log_begin_separator, print_log_end_separator},
     Graph, Metadata, CTX_SIZE, GRAPH, MAX_BUFFER_SIZE, METADATA, UTF8_ENCODINGS,
 };
 use chat_prompts::{
@@ -150,48 +150,12 @@ pub async fn chat_completions_stream(
                             }
                         };
 
+                        // todo: to be removed
                         if let Some(stop) = &*reverse_prompt.clone() {
                             if output == *stop {
-                                let created = SystemTime::now()
-                                    .duration_since(std::time::UNIX_EPOCH)
-                                    .map_err(|e| {
-                                        LlamaCoreError::Operation(format!(
-                                            "Failed to get the current time. {}",
-                                            e
-                                        ))
-                                    })?;
-
-                                let chat_completion_chunk = ChatCompletionChunk {
-                                    id: "chatcmpl-123".to_string(),
-                                    object: "chat.completion.chunk".to_string(),
-                                    created: created.as_secs(),
-                                    model: model.clone(),
-                                    system_fingerprint: "fp_44709d6fcb".to_string(),
-                                    choices: vec![ChatCompletionChunkChoice {
-                                        index: 0,
-                                        delta: ChatCompletionChunkChoiceDelta {
-                                            role: Some(ChatCompletionRole::Assistant),
-                                            content: Some("data: [DONE]".to_string()),
-                                            function_call: None,
-                                            tool_calls: None,
-                                        },
-                                        logprobs: None,
-                                        finish_reason: Some(FinishReason::stop),
-                                    }],
-                                };
-
                                 one_more_run_then_stop = false;
 
-                                // serialize chat completion chunk
-                                let chunk =
-                                    serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                        LlamaCoreError::Operation(format!(
-                                            "Failed to serialize chat completion chunk. {}",
-                                            e
-                                        ))
-                                    })?;
-
-                                return Ok(chunk);
+                                return Ok("data: [DONE]\n\n".to_string());
                             }
                         }
 
@@ -205,7 +169,7 @@ pub async fn chat_completions_stream(
                             })?;
 
                         let chat_completion_chunk = ChatCompletionChunk {
-                            id: "chatcmpl-123".to_string(),
+                            id: gen_chat_id(),
                             object: "chat.completion.chunk".to_string(),
                             created: created.as_secs(),
                             model: model.clone(),
@@ -224,14 +188,15 @@ pub async fn chat_completions_stream(
                         };
 
                         // serialize chat completion chunk
-                        let chunk = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                            LlamaCoreError::Operation(format!(
-                                "Failed to serialize chat completion chunk. {}",
-                                e
-                            ))
-                        })?;
+                        let chunk_str =
+                            serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                                LlamaCoreError::Operation(format!(
+                                    "Failed to serialize chat completion chunk. {}",
+                                    e
+                                ))
+                            })?;
 
-                        Ok(chunk)
+                        Ok(format!("data: {}\n\n", chunk_str))
                     }
                     false => {
                         // clear context
@@ -250,45 +215,9 @@ pub async fn chat_completions_stream(
             )) => {
                 match one_more_run_then_stop {
                     true => {
-                        let created = SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .map_err(|e| {
-                                LlamaCoreError::Operation(format!(
-                                    "Failed to get the current time. {}",
-                                    e
-                                ))
-                            })?;
-
-                        let chat_completion_chunk = ChatCompletionChunk {
-                            id: "chatcmpl-123".to_string(),
-                            object: "chat.completion.chunk".to_string(),
-                            created: created.as_secs(),
-                            model: model.clone(),
-                            system_fingerprint: "fp_44709d6fcb".to_string(),
-                            choices: vec![ChatCompletionChunkChoice {
-                                index: 0,
-                                delta: ChatCompletionChunkChoiceDelta {
-                                    role: Some(ChatCompletionRole::Assistant),
-                                    content: Some("data: [DONE]".to_string()),
-                                    function_call: None,
-                                    tool_calls: None,
-                                },
-                                logprobs: None,
-                                finish_reason: Some(FinishReason::stop),
-                            }],
-                        };
-
                         one_more_run_then_stop = false;
 
-                        // serialize chat completion chunk
-                        let chunk = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                            LlamaCoreError::Operation(format!(
-                                "Failed to serialize chat completion chunk. {}",
-                                e
-                            ))
-                        })?;
-
-                        Ok(chunk)
+                        Ok("data: [DONE]\n\n".to_string())
                     }
                     false => {
                         // clear context
@@ -317,7 +246,7 @@ pub async fn chat_completions_stream(
                             })?;
 
                         let chat_completion_chunk = ChatCompletionChunk {
-                            id: "chatcmpl-123".to_string(),
+                            id: gen_chat_id(),
                             object: "chat.completion.chunk".to_string(),
                             created: created.as_secs(),
                             model: model.clone(),
@@ -338,14 +267,15 @@ pub async fn chat_completions_stream(
                         one_more_run_then_stop = false;
 
                         // serialize chat completion chunk
-                        let chunk = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                            LlamaCoreError::Operation(format!(
-                                "Failed to serialize chat completion chunk. {}",
-                                e
-                            ))
-                        })?;
+                        let chunk_str =
+                            serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                                LlamaCoreError::Operation(format!(
+                                    "Failed to serialize chat completion chunk. {}",
+                                    e
+                                ))
+                            })?;
 
-                        Ok(chunk)
+                        Ok(format!("data: {}\n\n", chunk_str))
                     }
                     false => {
                         // clear context
@@ -374,7 +304,7 @@ pub async fn chat_completions_stream(
                             })?;
 
                         let chat_completion_chunk = ChatCompletionChunk {
-                            id: "chatcmpl-123".to_string(),
+                            id: gen_chat_id(),
                             object: "chat.completion.chunk".to_string(),
                             created: created.as_secs(),
                             model: model.clone(),
@@ -395,14 +325,15 @@ pub async fn chat_completions_stream(
                         one_more_run_then_stop = false;
 
                         // serialize chat completion chunk
-                        let chunk = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                            LlamaCoreError::Operation(format!(
-                                "Failed to serialize chat completion chunk. {}",
-                                e
-                            ))
-                        })?;
+                        let chunk_str =
+                            serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                                LlamaCoreError::Operation(format!(
+                                    "Failed to serialize chat completion chunk. {}",
+                                    e
+                                ))
+                            })?;
 
-                        Ok(chunk)
+                        Ok(format!("data: {}\n\n", chunk_str))
                     }
                     false => {
                         // clear context
@@ -523,7 +454,7 @@ pub async fn chat_completions(
 
             // create ChatCompletionResponse
             Ok(ChatCompletionObject {
-                id: uuid::Uuid::new_v4().to_string(),
+                id: gen_chat_id(),
                 object: String::from("chat.completion"),
                 created: created.as_secs(),
                 model: chat_request.model.clone().unwrap_or_default(),
@@ -588,7 +519,7 @@ pub async fn chat_completions(
 
             // create ChatCompletionResponse
             Ok(ChatCompletionObject {
-                id: uuid::Uuid::new_v4().to_string(),
+                id: gen_chat_id(),
                 object: String::from("chat.completion"),
                 created: created.as_secs(),
                 model: chat_request.model.clone().unwrap_or_default(),
@@ -657,7 +588,7 @@ pub async fn chat_completions(
 
             // create ChatCompletionResponse
             Ok(ChatCompletionObject {
-                id: uuid::Uuid::new_v4().to_string(),
+                id: gen_chat_id(),
                 object: String::from("chat.completion"),
                 created: created.as_secs(),
                 model: chat_request.model.clone().unwrap_or_default(),
