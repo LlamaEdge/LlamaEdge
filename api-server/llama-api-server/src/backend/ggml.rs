@@ -179,6 +179,9 @@ async fn chat_completions_stream(
                 .header("Access-Control-Allow-Origin", "*")
                 .header("Access-Control-Allow-Methods", "*")
                 .header("Access-Control-Allow-Headers", "*")
+                .header("Content-Type", "text/event-stream")
+                .header("Cache-Control", "no-cache")
+                .header("Connection", "keep-alive")
                 .body(Body::wrap_stream(stream));
 
             match result {
