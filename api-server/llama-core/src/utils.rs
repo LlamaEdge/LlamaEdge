@@ -25,3 +25,7 @@ pub(crate) fn print_log_end_separator(ch: Option<&str>, len: Option<usize>) {
     separator.push_str("\n\n");
     println!("{}", separator);
 }
+
+pub(crate) fn gen_chat_id() -> String {
+    format!("chatcmpl-{}", uuid::Uuid::new_v4())
+}
