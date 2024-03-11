@@ -234,8 +234,14 @@ impl VicunaLlavaPrompt {
                             content.push_str(text_content.text());
                             content.push('\n');
                         }
-                        ContentPart::Image(_) => {
-                            image_content = String::from("<image>");
+                        ContentPart::Image(part) => {
+                            image_content = match part.image().is_url() {
+                                true => String::from("<image>"),
+                                false => {
+                                    let base64_str = part.image().url.as_str();
+                                    format!(r#"<img src="data:image/jpeg;base64,{}">"#, base64_str)
+                                }
+                            };
                         }
                     }
                 }
