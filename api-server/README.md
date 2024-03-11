@@ -237,7 +237,17 @@ The `-h` or `--help` option can list the available options of the `llama-api-ser
     -r, --reverse-prompt <REVERSE_PROMPT>
             Halt generation at PROMPT, return control.
     -p, --prompt-template <TEMPLATE>
-            Sets the prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, codellama-super-instruct, mistral-instruct, mistrallite, openchat, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, chatml, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, solar-instruct, gemma-instruct]
+          Sets the prompt template. [possible values: llama-2-chat, codellama-instruct, codellama-super-instruct, mistral-instruct, mistrallite, openchat, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, solar-instruct, gemma-instruct]
+        --llava-mmproj <LLAVA_MMPROJ>
+            Path to the multimodal projector file [default: ]
+        --qdrant-url <qdrant_url>
+            Sets the url of Qdrant REST Service (e.g., http://localhost:6333). Required for RAG. [default: ]
+        --qdrant-collection-name <qdrant_collection_name>
+            Sets the collection name of Qdrant. Required for RAG. [default: ]
+        --qdrant-limit <qdrant_limit>
+            Max number of retrieved result. [default: 3]
+        --qdrant-score-threshold <qdrant_score_threshold>
+            Minimal score threshold for the search result [default: 0.0]
         --log-prompts
             Print prompt strings to stdout
         --log-stat
