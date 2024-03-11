@@ -698,25 +698,19 @@ async fn update_metadata(
             for part in parts {
                 if let ContentPart::Image(image) = part {
                     let image = image.image();
-                    match image.is_url() {
-                        true => {
-                            // update metadata image
-                            let img = download_image(&image.url).await?;
 
-                            metadata.image = Some(img);
+                    if image.is_url() {
+                        // update metadata image
+                        let img = download_image(&image.url).await?;
 
-                            if !should_update {
-                                should_update = true;
-                            }
+                        metadata.image = Some(img);
 
-                            // todo: now only support a single image
-                            break;
+                        if !should_update {
+                            should_update = true;
                         }
-                        false => {
-                            return Err(LlamaCoreError::Operation(String::from(
-                                "Base64 image is not supported yet.",
-                            )));
-                        }
+
+                        // todo: now only support a single image
+                        break;
                     }
                 }
             }
