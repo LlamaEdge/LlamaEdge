@@ -178,13 +178,13 @@ async fn main() -> Result<(), ServerError> {
         .arg(
             Arg::new("qdrant_url")
                 .long("qdrant-url")
-                .help("Sets the url of Qdrant REST Service (e.g., http://localhost:6333)")
+                .help("Sets the url of Qdrant REST Service (e.g., http://localhost:6333). Required for RAG.")
                 .default_value(""),
         )
         .arg(
             Arg::new("qdrant_collection_name")
                 .long("qdrant-collection-name")
-                .help("Sets the collection name of Qdrant")
+                .help("Sets the collection name of Qdrant. Required for RAG.")
                 .default_value(""),
         )
         .arg(
