@@ -1,7 +1,13 @@
 [package]
 name = "llama-core"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
+readme = "README.md"
+repository = "https://github.com/LlamaEdge/LlamaEdge"
+license = "Apache-2.0"
+documentation = "https://docs.rs/llama-core/"
+categories = ["wasm", "science"]
+description = "The core component of LlamaEdge"
 
 [dependencies]
 endpoints.workspace = true
@@ -14,5 +20,5 @@ uuid = { version = "1.4", features = ["v4", "fast-rng", "macro-diagnostics"] }
 once_cell = "1.18"
 futures = { version = "0.3.6", default-features = false, features = ["async-await", "std"] }
 futures-util = "0.3"
-reqwest_wasi = { version = "0.11", features = ["json", "wasmedge-tls", "stream"] }
-qdrant_rest_client = { version = "0.0.2", features = ["wasmedge-tls"] }
+reqwest = { package = "reqwest_wasi", version = "0.11", features = ["json", "wasmedge-tls", "stream"] }
+qdrant_rest_client = { version = "0.0.3", features = ["wasmedge-tls"] }

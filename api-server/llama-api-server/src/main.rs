@@ -1,5 +1,6 @@
 mod backend;
 mod error;
+mod utils;
 
 use anyhow::Result;
 use chat_prompts::PromptTemplateType;
@@ -13,7 +14,7 @@ use hyper::{
 use llama_core::Metadata;
 use once_cell::sync::OnceCell;
 use std::{net::SocketAddr, path::PathBuf, str::FromStr};
-use url::Url;
+use utils::{is_valid_url, print_log_begin_separator, print_log_end_separator};
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -177,13 +178,13 @@ async fn main() -> Result<(), ServerError> {
         .arg(
             Arg::new("qdrant_url")
                 .long("qdrant-url")
-                .help("Sets the url of Qdrant REST Service (e.g., http://localhost:6333)")
+                .help("Sets the url of Qdrant REST Service (e.g., http://localhost:6333). Required for RAG.")
                 .default_value(""),
         )
         .arg(
             Arg::new("qdrant_collection_name")
                 .long("qdrant-collection-name")
-                .help("Sets the collection name of Qdrant")
+                .help("Sets the collection name of Qdrant. Required for RAG.")
                 .default_value(""),
         )
         .arg(
@@ -192,6 +193,13 @@ async fn main() -> Result<(), ServerError> {
                 .value_parser(clap::value_parser!(u64))
                 .help("Max number of retrieved result.")
                 .default_value("3"),
+        )
+        .arg(
+            Arg::new("qdrant_score_threshold")
+                .long("qdrant-score-threshold")
+                .value_parser(clap::value_parser!(f32))
+                .help("Minimal score threshold for the search result")
+                .default_value("0.0"),
         )
         .arg(
             Arg::new("log_prompts")
@@ -392,6 +400,7 @@ async fn main() -> Result<(), ServerError> {
     // log prompts
     let log_prompts = matches.get_flag("log_prompts");
     println!("[INFO] Log prompts: {enable}", enable = log_prompts);
+    options.log_prompts = log_prompts;
     let ref_log_prompts = std::sync::Arc::new(log_prompts);
 
     // qdrant url
@@ -436,10 +445,19 @@ async fn main() -> Result<(), ServerError> {
             limit = qdrant_limit
         );
 
+        // qdrant score threshold
+        let qdrant_score_threshold =
+            matches
+                .get_one::<f32>("qdrant_score_threshold")
+                .ok_or(ServerError::ArgumentError(
+                    "Failed to parse the value of `qdrant_score_threshold` CLI option".to_owned(),
+                ))?;
+
         let qdrant_config = QdrantConfig {
             url: qdrant_url.to_owned(),
             collection_name: qdrant_collection_name.to_owned(),
             limit: *qdrant_limit,
+            score_threshold: *qdrant_score_threshold,
         };
 
         QDRANT_CONFIG
@@ -562,40 +580,10 @@ fn static_response(path_str: &str, root: String) -> Response<Body> {
     }
 }
 
-pub(crate) fn print_log_begin_separator(
-    title: impl AsRef<str>,
-    ch: Option<&str>,
-    len: Option<usize>,
-) -> usize {
-    let title = format!(" [LOG: {}] ", title.as_ref());
-
-    let total_len: usize = len.unwrap_or(100);
-    let separator_len: usize = (total_len - title.len()) / 2;
-
-    let ch = ch.unwrap_or("-");
-    let mut separator = "\n\n".to_string();
-    separator.push_str(ch.repeat(separator_len).as_str());
-    separator.push_str(&title);
-    separator.push_str(ch.repeat(separator_len).as_str());
-    separator.push('\n');
-    println!("{}", separator);
-    total_len
-}
-
-pub(crate) fn print_log_end_separator(ch: Option<&str>, len: Option<usize>) {
-    let ch = ch.unwrap_or("-");
-    let mut separator = "\n\n".to_string();
-    separator.push_str(ch.repeat(len.unwrap_or(100)).as_str());
-    separator.push_str("\n\n");
-}
-
 #[derive(Debug, Clone)]
 pub(crate) struct QdrantConfig {
     pub(crate) url: String,
     pub(crate) collection_name: String,
     pub(crate) limit: u64,
-}
-
-fn is_valid_url(url: &str) -> bool {
-    Url::parse(url).is_ok()
+    pub(crate) score_threshold: f32,
 }
