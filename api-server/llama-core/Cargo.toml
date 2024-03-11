@@ -6,7 +6,7 @@ readme = "README.md"
 repository = "https://github.com/LlamaEdge/LlamaEdge"
 license = "Apache-2.0"
 documentation = "https://docs.rs/llama-core/"
-categories = ["data-structures"]
+categories = ["wasm", "science"]
 description = "The core component of LlamaEdge"
 
 [dependencies]
