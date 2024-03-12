@@ -13,3 +13,5 @@ description = "Chat prompt template"
 endpoints.workspace = true
 thiserror.workspace = true
 enum_dispatch = "0.3.12"
+image = "0.25.0"
+base64 = "=0.22.0"
