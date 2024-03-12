@@ -15,4 +15,6 @@ pub enum PromptError {
     UnknownRole(ChatCompletionRole),
     #[error("Unknown prompt template type: {0}")]
     UnknownPromptTemplateType(String),
+    #[error("Failed to build prompt. Reason: {0}")]
+    Operation(String),
 }
