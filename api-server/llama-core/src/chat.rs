@@ -1,7 +1,7 @@
 use crate::{
     error,
     utils::{print_log_begin_separator, print_log_end_separator},
-    Graph, CTX_SIZE, GRAPH, MAX_BUFFER_SIZE, METADATA, UTF8_ENCODINGS,
+    Graph, Metadata, CTX_SIZE, GRAPH, MAX_BUFFER_SIZE, METADATA, UTF8_ENCODINGS,
 };
 use chat_prompts::{
     chat::{
@@ -40,6 +40,9 @@ pub async fn chat_completions_stream(
     // create ChatPrompt instance from the template type
     let template = create_prompt_template(template_ty);
 
+    // update metadata
+    let mut metadata = update_metadata(chat_request).await?;
+
     // build prompt
     let (prompt, avaible_completion_tokens) = build_prompt(&template, chat_request)
         .map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
@@ -50,8 +53,8 @@ pub async fn chat_completions_stream(
         print_log_end_separator(Some("*"), None);
     }
 
-    // update metadata
-    update_metadata(chat_request, avaible_completion_tokens).await?;
+    // update metadata n_predict
+    update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
 
     let graph = GRAPH.get().ok_or(LlamaCoreError::Operation(String::from(
         "Fail to get the underlying value of `GRAPH`.",
@@ -443,6 +446,9 @@ pub async fn chat_completions(
     // create ChatPrompt instance from the template type
     let template = create_prompt_template(template_ty);
 
+    // update metadata
+    let mut metadata = update_metadata(chat_request).await?;
+
     // build prompt
     let (prompt, avaible_completion_tokens) = build_prompt(&template, chat_request)
         .map_err(|e| LlamaCoreError::Operation(format!("Failed to build prompt. {}", e)))?;
@@ -453,8 +459,8 @@ pub async fn chat_completions(
         print_log_end_separator(Some("*"), None);
     }
 
-    // update metadata
-    update_metadata(chat_request, avaible_completion_tokens).await?;
+    // update metadata n_predict
+    update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
 
     // get graph
     let graph = GRAPH.get().ok_or(LlamaCoreError::Operation(String::from(
@@ -677,10 +683,7 @@ pub async fn chat_completions(
     }
 }
 
-async fn update_metadata(
-    chat_request: &ChatCompletionRequest,
-    available_completion_tokens: u64,
-) -> Result<(), LlamaCoreError> {
+async fn update_metadata(chat_request: &ChatCompletionRequest) -> Result<Metadata, LlamaCoreError> {
     let mut should_update = false;
 
     let mut metadata = match METADATA.get() {
@@ -714,28 +717,6 @@ async fn update_metadata(
                     }
                 }
             }
-        }
-    }
-
-    // check if necessary to update n_predict with max_tokens
-    if let Some(max_tokens) = chat_request.max_tokens {
-        let max_completion_tokens = match available_completion_tokens < max_tokens {
-            true => available_completion_tokens,
-            false => max_tokens,
-        };
-
-        // update n_predict
-        metadata.n_predict = max_completion_tokens;
-
-        if !should_update {
-            should_update = true;
-        }
-    } else if metadata.n_predict > available_completion_tokens {
-        // update n_predict
-        metadata.n_predict = available_completion_tokens;
-
-        if !should_update {
-            should_update = true;
         }
     }
 
@@ -790,6 +771,79 @@ async fn update_metadata(
     // check if the `embedding` option is disabled
     if metadata.embeddings {
         metadata.embeddings = false;
+
+        if !should_update {
+            should_update = true;
+        }
+    }
+
+    if should_update {
+        // update metadata
+        let config = match serde_json::to_string(&metadata) {
+            Ok(config) => config,
+            Err(e) => {
+                return Err(LlamaCoreError::Operation(format!(
+                    "Fail to serialize metadata to a JSON string. {}",
+                    e
+                )));
+            }
+        };
+
+        let graph = match GRAPH.get() {
+            Some(graph) => graph,
+            None => {
+                return Err(LlamaCoreError::Operation(String::from(
+                    "Fail to get the underlying value of `GRAPH`.",
+                )));
+            }
+        };
+        let mut graph = match graph.lock() {
+            Ok(graph) => graph,
+            Err(e) => {
+                return Err(LlamaCoreError::Operation(format!(
+                    "Fail to acquire the lock of `GRAPH`. {}",
+                    e
+                )));
+            }
+        };
+
+        // update metadata
+        if graph
+            .set_input(1, wasmedge_wasi_nn::TensorType::U8, &[1], config.as_bytes())
+            .is_err()
+        {
+            return Err(LlamaCoreError::Operation(String::from(
+                "Fail to update metadata",
+            )));
+        }
+    }
+
+    Ok(metadata)
+}
+
+async fn update_n_predict(
+    chat_request: &ChatCompletionRequest,
+    metadata: &mut Metadata,
+    available_completion_tokens: u64,
+) -> Result<(), LlamaCoreError> {
+    let mut should_update = false;
+
+    // check if necessary to update n_predict with max_tokens
+    if let Some(max_tokens) = chat_request.max_tokens {
+        let max_completion_tokens = match available_completion_tokens < max_tokens {
+            true => available_completion_tokens,
+            false => max_tokens,
+        };
+
+        // update n_predict
+        metadata.n_predict = max_completion_tokens;
+
+        if !should_update {
+            should_update = true;
+        }
+    } else if metadata.n_predict > available_completion_tokens {
+        // update n_predict
+        metadata.n_predict = available_completion_tokens;
 
         if !should_update {
             should_update = true;
@@ -1040,12 +1094,9 @@ fn build_prompt(
 
         // read input tensor
         let tensor_data = prompt.trim().as_bytes().to_vec();
-        if graph
-            .set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data)
-            .is_err()
-        {
-            return Err(String::from("Fail to set input tensor"));
-        };
+        if let Err(e) = graph.set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data) {
+            return Err(format!("Fail to set prompt tensor data: {msg}", msg = e));
+        }
 
         // Retrieve the number of prompt tokens.
         let mut input_buffer = vec![0u8; MAX_BUFFER_SIZE];
@@ -1158,7 +1209,6 @@ pub(crate) struct TokenInfo {
 /// Downloads an image from the given URL and returns the file name.
 async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> {
     let image_url = image_url.as_ref();
-    // println!("[DEBUG] image_url: {}", image_url);
     let url =
         reqwest::Url::parse(image_url).map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
     let response = reqwest::get(url)
