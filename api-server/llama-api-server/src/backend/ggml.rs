@@ -3,7 +3,7 @@ use crate::{
     utils::{print_log_begin_separator, print_log_end_separator},
     QDRANT_CONFIG,
 };
-use chat_prompts::PromptTemplateType;
+use chat_prompts::{MergeRagContext, PromptTemplateType};
 use endpoints::{
     chat::{ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionUserMessageContent},
     completions::CompletionRequest,
@@ -489,21 +489,9 @@ pub(crate) async fn rag_query_handler(
         }
     }
 
-    // prepare system message
-    let content = format!("Use the following pieces of context to answer the user's question.\nIf you don't know the answer, just say that you don't know, don't try to make up an answer.\n----------------\n{}", context.trim_end());
-
-    // create system message
-    let system_message =
-        ChatCompletionRequestMessage::new_system_message(content, chat_request.user.clone());
-
-    // update or insert system message
-    match chat_request.messages[0] {
-        ChatCompletionRequestMessage::System(_) => {
-            chat_request.messages[0] = system_message;
-        }
-        _ => {
-            chat_request.messages.insert(0, system_message);
-        }
+    // insert rag context into chat request
+    if let Err(e) = RagPromptBuilder::build(&mut chat_request.messages, &[context]) {
+        return error::internal_server_error(e.to_string());
     }
 
     if log_prompts {
@@ -522,3 +510,7 @@ pub(crate) async fn rag_query_handler(
 
     res
 }
+
+#[derive(Debug, Default)]
+struct RagPromptBuilder;
+impl MergeRagContext for RagPromptBuilder {}
