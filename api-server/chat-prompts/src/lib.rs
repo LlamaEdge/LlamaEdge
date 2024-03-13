@@ -1,6 +1,7 @@
 pub mod chat;
 pub mod error;
 
+use endpoints::chat::ChatCompletionRequestMessage;
 use std::str::FromStr;
 
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
@@ -88,5 +89,44 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::CodeLlamaSuper => write!(f, "codellama-super-instruct"),
             PromptTemplateType::GemmaInstruct => write!(f, "gemma-instruct"),
         }
+    }
+}
+
+/// Trait for inserting RAG context into chat messages
+pub trait MergeRagContext: Send {
+    fn build(
+        messages: &mut Vec<endpoints::chat::ChatCompletionRequestMessage>,
+        context: &[String],
+    ) -> error::Result<()> {
+        if messages.is_empty() {
+            return Err(error::PromptError::NoMessages);
+        }
+
+        if context.is_empty() {
+            return Err(error::PromptError::Operation(
+                "No context provided.".to_string(),
+            ));
+        }
+
+        let context = context[0].trim_end();
+
+        // prepare system message
+        let content = format!("Use the following pieces of context to answer the user's question.\nIf you don't know the answer, just say that you don't know, don't try to make up an answer.\n----------------\n{}", context);
+
+        let name = messages[0].name().map(|s| s.clone());
+        // create system message
+        let system_message = ChatCompletionRequestMessage::new_system_message(content, name);
+
+        // update or insert system message
+        match messages[0] {
+            ChatCompletionRequestMessage::System(_) => {
+                messages[0] = system_message;
+            }
+            _ => {
+                messages.insert(0, system_message);
+            }
+        };
+
+        Ok(())
     }
 }
