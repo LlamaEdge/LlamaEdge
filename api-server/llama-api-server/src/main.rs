@@ -44,16 +44,18 @@ async fn main() -> Result<(), ServerError> {
                 .short('m')
                 .long("model-name")
                 .value_name("MODEL-NAME")
-                .help("Sets the model name")
-                .default_value("default"),
+                .value_delimiter(',')
+                .help("Sets single or multiple model names")
+                .default_value("default, embedding"),
         )
         .arg(
             Arg::new("model_alias")
                 .short('a')
                 .long("model-alias")
                 .value_name("MODEL-ALIAS")
-                .help("Sets the alias name of the model in WasmEdge runtime")
-                .default_value("default"),
+                .value_delimiter(',')
+                .help("Sets single or multiple alias names")
+                .default_value("default, embedding"),
         )
         .arg(
             Arg::new("ctx_size")
@@ -249,22 +251,32 @@ async fn main() -> Result<(), ServerError> {
         socket_addr = socket_addr
     );
 
-    // model name
-    let model_name = matches
-        .get_one::<String>("model_name")
+    // model names
+    let model_names: Vec<String> = matches
+        .get_many::<String>("model_name")
         .ok_or(ServerError::ArgumentError(
-            "Failed to parse the value of `model_name` CLI option".to_owned(),
-        ))?;
-    println!("[INFO] Model name: {name}", name = &model_name);
+            "Failed to parse the value of `--model-names` CLI option".to_owned(),
+        ))?
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
+    println!("[INFO] Model names: {names}", names = model_names.join(","));
+    let model_name = &model_names[0];
 
-    // model alias
-    let model_alias =
-        matches
-            .get_one::<String>("model_alias")
-            .ok_or(ServerError::ArgumentError(
-                "Failed to parse the value of `model_alias` CLI option".to_owned(),
-            ))?;
-    println!("[INFO] Model alias: {alias}", alias = &model_alias);
+    // model aliases
+    let model_aliases: Vec<String> = matches
+        .get_many::<String>("model_alias")
+        .ok_or(ServerError::ArgumentError(
+            "Failed to parse the value of `--model-alias` CLI option".to_owned(),
+        ))?
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
+    println!(
+        "[INFO] Model aliases: {aliases}",
+        aliases = model_aliases.join(",")
+    );
+    let model_alias = &model_aliases[0];
 
     // create an `Options` instance
     let mut options = Metadata::default();

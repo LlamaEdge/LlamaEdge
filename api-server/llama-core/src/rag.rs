@@ -1,4 +1,4 @@
-use crate::{embeddings::embeddings, error::LlamaCoreError, METADATA};
+use crate::{embeddings::embeddings, error::LlamaCoreError};
 use endpoints::{
     embeddings::{EmbeddingObject, EmbeddingsResponse},
     rag::RagEmbeddingRequest,
@@ -20,18 +20,17 @@ use qdrant::*;
 /// Name of the Qdrant collection if successful.
 pub async fn rag_doc_chunks_to_embeddings(
     rag_embedding_request: &RagEmbeddingRequest,
+    log_prompts: bool,
 ) -> Result<EmbeddingsResponse, LlamaCoreError> {
     let embedding_request = &rag_embedding_request.embedding_request;
     let qdrant_url = rag_embedding_request.qdrant_url.as_str();
     let qdrant_collection_name = rag_embedding_request.qdrant_collection_name.as_str();
 
-    if let Some(metadata) = METADATA.get() {
-        if metadata.log_prompts {
-            println!("[+] Computing embeddings for document chunks...");
+    if log_prompts {
+        println!("[+] Computing embeddings for document chunks...");
 
-            if let Ok(request_str) = serde_json::to_string_pretty(&embedding_request) {
-                println!("    * embedding request (json):\n\n{}", request_str);
-            }
+        if let Ok(request_str) = serde_json::to_string_pretty(&embedding_request) {
+            println!("    * embedding request (json):\n\n{}", request_str);
         }
     }
 
@@ -45,21 +44,17 @@ pub async fn rag_doc_chunks_to_embeddings(
     // create a Qdrant client
     let qdrant_client = qdrant::Qdrant::new_with_url(qdrant_url.to_string());
 
-    if let Some(metadata) = METADATA.get() {
-        if metadata.log_prompts {
-            println!("\n[+] Creating a Qdrant collection ...");
-            println!("    * Collection name: {}", qdrant_collection_name);
-            println!("    * Dimension: {}", dim);
-        }
+    if log_prompts {
+        println!("\n[+] Creating a Qdrant collection ...");
+        println!("    * Collection name: {}", qdrant_collection_name);
+        println!("    * Dimension: {}", dim);
     }
 
     // create a collection
     qdrant_create_collection(&qdrant_client, qdrant_collection_name, dim).await?;
 
-    if let Some(metadata) = METADATA.get() {
-        if metadata.log_prompts {
-            println!("\n[+] Upserting points ...");
-        }
+    if log_prompts {
+        println!("\n[+] Upserting points ...");
     }
 
     // create and upsert points

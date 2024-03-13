@@ -1,7 +1,7 @@
 use crate::{
     error,
     utils::{gen_chat_id, print_log_begin_separator, print_log_end_separator},
-    Graph, Metadata, CTX_SIZE, GRAPH, MAX_BUFFER_SIZE, METADATA, UTF8_ENCODINGS,
+    Graph, Metadata, CHAT_GRAPHS, MAX_BUFFER_SIZE, UTF8_ENCODINGS,
 };
 use chat_prompts::{
     chat::{
@@ -40,12 +40,15 @@ pub async fn chat_completions_stream(
     // create ChatPrompt instance from the template type
     let template = create_prompt_template(template_ty);
 
+    let model_name = chat_request.model.clone();
+
     // update metadata
     let mut metadata = update_metadata(chat_request).await?;
 
     // build prompt
-    let (prompt, avaible_completion_tokens) = build_prompt(&template, chat_request)
-        .map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
+    let (prompt, avaible_completion_tokens) =
+        build_prompt(model_name.as_ref(), &template, chat_request)
+            .map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
 
     if log_prompts {
         print_log_begin_separator("PROMPT", Some("*"), None);
@@ -56,310 +59,544 @@ pub async fn chat_completions_stream(
     // update metadata n_predict
     update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
 
-    let graph = GRAPH.get().ok_or(LlamaCoreError::Operation(String::from(
-        "Fail to get the underlying value of `GRAPH`.",
-    )))?;
-    let mut graph = graph.lock().map_err(|e| {
-        LlamaCoreError::Operation(format!("Fail to acquire the lock of `GRAPH`. {}", e))
-    })?;
-
-    // set input
-    let tensor_data = prompt.as_bytes().to_vec();
-    if graph
-        .set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data)
-        .is_err()
-    {
-        return Err(LlamaCoreError::Operation(String::from(
-            "Fail to set input tensor",
-        )));
-    };
-
-    let model = chat_request.model.clone().unwrap_or_default();
-
-    let stop = {
-        let metadata = METADATA
-            .get()
-            .ok_or(LlamaCoreError::Operation(String::from(
-                "Fail to get the underlying value of `METADATA`.",
-            )))?;
-        metadata.reverse_prompt.clone()
-    };
-    let ref_stop = std::sync::Arc::new(stop);
+    // set prompt
+    set_prompt(chat_request.model.as_ref(), &prompt)?;
 
     let mut one_more_run_then_stop = true;
     let stream = stream::repeat_with(move || {
-        let reverse_prompt = ref_stop.clone();
+        // get graph
+        match &model_name {
+            Some(model_name) => {
+                let chat_graphs =
+                    CHAT_GRAPHS
+                        .get()
+                        .ok_or(LlamaCoreError::Operation(String::from(
+                            "Fail to get the underlying value of `CHAT_GRAPHS`.",
+                        )))?;
+                let mut chat_graphs = chat_graphs.lock().map_err(|e| {
+                    LlamaCoreError::Operation(format!(
+                        "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
+                        e
+                    ))
+                })?;
+                match chat_graphs.get_mut(model_name) {
+                    Some(graph) => {
+                        // compute
+                        match graph.compute_single() {
+                            Ok(_) => {
+                                // Retrieve the output
+                                let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
+                                let mut output_size = graph
+                                    .get_output_single(0, &mut output_buffer)
+                                    .map_err(|e| {
+                                        LlamaCoreError::Backend(BackendError::GetOutputSingle(format!(
+                                            "Fail to get output tensor: {msg}",
+                                            msg = e
+                                        )))
+                                    })?;
+                                output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
 
-        let graph = GRAPH.get().ok_or(LlamaCoreError::Operation(String::from(
-            "Fail to get the underlying value of `GRAPH`.",
-        )))?;
-        let mut graph = graph.lock().map_err(|e| {
-            LlamaCoreError::Operation(format!("Fail to acquire the lock of `GRAPH`. {}", e))
-        })?;
+                                // decode the output buffer to a utf8 string
+                                let output = match String::from_utf8(output_buffer[..output_size].to_vec())
+                                {
+                                    Ok(token) => token,
+                                    Err(_) => {
+                                        let mutex = UTF8_ENCODINGS.get_or_init(|| Mutex::new(Vec::new()));
+                                        let mut cached_encodings = mutex.lock().map_err(|e| {
+                                            LlamaCoreError::Operation(format!(
+                                                "Fail to acquire the lock of `UTF8_ENCODINGS`. {}",
+                                                e
+                                            ))
+                                        })?;
 
-        // compute
-        match graph.compute_single() {
-            Ok(_) => {
-                match one_more_run_then_stop {
-                    true => {
-                        // Retrieve the output
-                        let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
-                        let mut output_size = graph
-                            .get_output_single(0, &mut output_buffer)
-                            .map_err(|e| {
-                                LlamaCoreError::Backend(BackendError::GetOutputSingle(format!(
-                                    "Fail to get output tensor: {msg}",
-                                    msg = e
-                                )))
-                            })?;
-                        output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
+                                        cached_encodings.extend_from_slice(&output_buffer[..output_size]);
 
-                        // decode the output buffer to a utf8 string
-                        let output = match String::from_utf8(output_buffer[..output_size].to_vec())
-                        {
-                            Ok(token) => token,
-                            Err(_) => {
-                                let mutex = UTF8_ENCODINGS.get_or_init(|| Mutex::new(Vec::new()));
-                                let mut cached_encodings = mutex.lock().map_err(|e| {
+                                        match String::from_utf8(cached_encodings.to_vec()) {
+                                            Ok(token) => {
+                                                // clear encodings
+                                                cached_encodings.clear();
+
+                                                token
+                                            }
+                                            Err(_) => {
+                                                // ! This is a temp check. In case, infinite cached encodings happen.
+                                                if cached_encodings.len() > 3 {
+                                                    return Err(LlamaCoreError::Operation(String::from(
+                                                        "The length of the invalid utf8 bytes exceed 3.",
+                                                    )));
+                                                }
+
+                                                String::new()
+                                            }
+                                        }
+                                    }
+                                };
+
+                                let created = SystemTime::now()
+                                    .duration_since(std::time::UNIX_EPOCH)
+                                    .map_err(|e| {
+                                        LlamaCoreError::Operation(format!(
+                                            "Failed to get the current time. {}",
+                                            e
+                                        ))
+                                    })?;
+
+                                let chat_completion_chunk = ChatCompletionChunk {
+                                    id: gen_chat_id(),
+                                    object: "chat.completion.chunk".to_string(),
+                                    created: created.as_secs(),
+                                    model: graph.name.clone(),
+                                    system_fingerprint: "fp_44709d6fcb".to_string(),
+                                    choices: vec![ChatCompletionChunkChoice {
+                                        index: 0,
+                                        delta: ChatCompletionChunkChoiceDelta {
+                                            role: Some(ChatCompletionRole::Assistant),
+                                            content: Some(output),
+                                            function_call: None,
+                                            tool_calls: None,
+                                        },
+                                        logprobs: None,
+                                        finish_reason: None,
+                                    }],
+                                };
+
+                                // serialize chat completion chunk
+                                let chunk_str =
+                                serde_json::to_string(&chat_completion_chunk).map_err(|e| {
                                     LlamaCoreError::Operation(format!(
-                                        "Fail to acquire the lock of `UTF8_ENCODINGS`. {}",
+                                        "Failed to serialize chat completion chunk. {}",
                                         e
                                     ))
                                 })?;
 
-                                cached_encodings.extend_from_slice(&output_buffer[..output_size]);
+                                Ok(format!("data: {}\n\n", chunk_str))
+                            }
+                            Err(wasmedge_wasi_nn::Error::BackendError(
+                                wasmedge_wasi_nn::BackendError::EndOfSequence,
+                            )) => {
+                                match one_more_run_then_stop {
+                                    true => {
+                                        one_more_run_then_stop = false;
 
-                                match String::from_utf8(cached_encodings.to_vec()) {
-                                    Ok(token) => {
-                                        // clear encodings
-                                        cached_encodings.clear();
-
-                                        token
+                                        Ok("data: [DONE]\n\n".to_string())
                                     }
-                                    Err(_) => {
-                                        // ! This is a temp check. In case, infinite cached encodings happen.
-                                        if cached_encodings.len() > 3 {
-                                            return Err(LlamaCoreError::Operation(String::from(
-                                                "The length of the invalid utf8 bytes exceed 3.",
+                                    false => {
+                                        // clear context
+                                        if let Err(e) = graph.finish_single() {
+                                            return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
+                                                e.to_string(),
                                             )));
                                         }
 
-                                        String::new()
+                                        Ok("[GGML] End of sequence".to_string())
                                     }
                                 }
                             }
-                        };
+                            Err(wasmedge_wasi_nn::Error::BackendError(
+                                wasmedge_wasi_nn::BackendError::ContextFull,
+                            )) => {
+                                match one_more_run_then_stop {
+                                    true => {
+                                        let created = SystemTime::now()
+                                            .duration_since(std::time::UNIX_EPOCH)
+                                            .map_err(|e| {
+                                                LlamaCoreError::Operation(format!(
+                                                    "Failed to get the current time. {}",
+                                                    e
+                                                ))
+                                            })?;
 
-                        // todo: to be removed
-                        if let Some(stop) = &*reverse_prompt.clone() {
-                            if output == *stop {
-                                one_more_run_then_stop = false;
+                                        let chat_completion_chunk = ChatCompletionChunk {
+                                            id: gen_chat_id(),
+                                            object: "chat.completion.chunk".to_string(),
+                                            created: created.as_secs(),
+                                            model: graph.name.clone(),
+                                            system_fingerprint: "fp_44709d6fcb".to_string(),
+                                            choices: vec![ChatCompletionChunkChoice {
+                                                index: 0,
+                                                delta: ChatCompletionChunkChoiceDelta {
+                                                    role: Some(ChatCompletionRole::Assistant),
+                                                    content: Some("<|WASMEDGE-GGML-CONTEXT-FULL|>".to_string()),
+                                                    function_call: None,
+                                                    tool_calls: None,
+                                                },
+                                                logprobs: None,
+                                                finish_reason: Some(FinishReason::length),
+                                            }],
+                                        };
 
-                                return Ok("data: [DONE]\n\n".to_string());
+                                        one_more_run_then_stop = false;
+
+                                        // serialize chat completion chunk
+                                        let chunk_str =
+                                            serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                                                LlamaCoreError::Operation(format!(
+                                                    "Failed to serialize chat completion chunk. {}",
+                                                    e
+                                                ))
+                                            })?;
+
+                                        Ok(format!("data: {}\n\n", chunk_str))
+                                    }
+                                    false => {
+                                        // clear context
+                                        if let Err(e) = graph.finish_single() {
+                                            return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
+                                                e.to_string(),
+                                            )));
+                                        }
+
+                                        Ok("[GGML] End of sequence".to_string())
+                                    }
+                                }
+                            }
+                            Err(wasmedge_wasi_nn::Error::BackendError(
+                                wasmedge_wasi_nn::BackendError::PromptTooLong,
+                            )) => {
+                                match one_more_run_then_stop {
+                                    true => {
+                                        let created = SystemTime::now()
+                                            .duration_since(std::time::UNIX_EPOCH)
+                                            .map_err(|e| {
+                                                LlamaCoreError::Operation(format!(
+                                                    "Failed to get the current time. {}",
+                                                    e
+                                                ))
+                                            })?;
+
+                                        let chat_completion_chunk = ChatCompletionChunk {
+                                            id: gen_chat_id(),
+                                            object: "chat.completion.chunk".to_string(),
+                                            created: created.as_secs(),
+                                            model: graph.name.clone(),
+                                            system_fingerprint: "fp_44709d6fcb".to_string(),
+                                            choices: vec![ChatCompletionChunkChoice {
+                                                index: 0,
+                                                delta: ChatCompletionChunkChoiceDelta {
+                                                    role: Some(ChatCompletionRole::Assistant),
+                                                    content: None,
+                                                    function_call: None,
+                                                    tool_calls: None,
+                                                },
+                                                logprobs: None,
+                                                finish_reason: Some(FinishReason::length),
+                                            }],
+                                        };
+
+                                        one_more_run_then_stop = false;
+
+                                        // serialize chat completion chunk
+                                        let chunk_str =
+                                        serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                                            LlamaCoreError::Operation(format!(
+                                                "Failed to serialize chat completion chunk. {}",
+                                                e
+                                            ))
+                                        })?;
+
+                                        Ok(format!("data: {}\n\n", chunk_str))
+                                    }
+                                    false => {
+                                        // clear context
+                                        if let Err(e) = graph.finish_single() {
+                                            return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
+                                                e.to_string(),
+                                            )));
+                                        }
+
+                                        Ok("[GGML] End of sequence".to_string())
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                // clear context
+                                if let Err(e) = graph.finish_single() {
+                                    println!("Error: {:?}", &e);
+                                    return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
+                                        e.to_string(),
+                                    )));
+                                }
+
+                                println!("Error: {:?}", &e);
+                                Err(LlamaCoreError::Backend(BackendError::ComputeSingle(
+                                    e.to_string(),
+                                )))
                             }
                         }
-
-                        let created = SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .map_err(|e| {
-                                LlamaCoreError::Operation(format!(
-                                    "Failed to get the current time. {}",
-                                    e
-                                ))
-                            })?;
-
-                        let chat_completion_chunk = ChatCompletionChunk {
-                            id: gen_chat_id(),
-                            object: "chat.completion.chunk".to_string(),
-                            created: created.as_secs(),
-                            model: model.clone(),
-                            system_fingerprint: "fp_44709d6fcb".to_string(),
-                            choices: vec![ChatCompletionChunkChoice {
-                                index: 0,
-                                delta: ChatCompletionChunkChoiceDelta {
-                                    role: Some(ChatCompletionRole::Assistant),
-                                    content: Some(output),
-                                    function_call: None,
-                                    tool_calls: None,
-                                },
-                                logprobs: None,
-                                finish_reason: None,
-                            }],
-                        };
-
-                        // serialize chat completion chunk
-                        let chunk_str =
-                            serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                LlamaCoreError::Operation(format!(
-                                    "Failed to serialize chat completion chunk. {}",
-                                    e
-                                ))
-                            })?;
-
-                        Ok(format!("data: {}\n\n", chunk_str))
                     }
-                    false => {
-                        // clear context
-                        if let Err(e) = graph.finish_single() {
-                            return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
-                                e.to_string(),
-                            )));
-                        }
-
-                        Ok("[GGML] End of sequence".to_string())
+                    None => {
+                        return Err(LlamaCoreError::Operation(format!(
+                            "The model `{}` does not exist in the chat graphs.",
+                            &model_name
+                        )))
                     }
                 }
             }
-            Err(wasmedge_wasi_nn::Error::BackendError(
-                wasmedge_wasi_nn::BackendError::EndOfSequence,
-            )) => {
-                match one_more_run_then_stop {
-                    true => {
-                        one_more_run_then_stop = false;
+            None => {
+                let chat_graphs =
+                    CHAT_GRAPHS
+                        .get()
+                        .ok_or(LlamaCoreError::Operation(String::from(
+                            "Fail to get the underlying value of `CHAT_GRAPHS`.",
+                        )))?;
+                let mut chat_graphs = chat_graphs.lock().map_err(|e| {
+                    LlamaCoreError::Operation(format!(
+                        "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
+                        e
+                    ))
+                })?;
 
-                        Ok("data: [DONE]\n\n".to_string())
-                    }
-                    false => {
-                        // clear context
-                        if let Err(e) = graph.finish_single() {
-                            return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
-                                e.to_string(),
-                            )));
+                match chat_graphs.iter_mut().next() {
+                    Some((_, graph)) => {
+                        // compute
+                        match graph.compute_single() {
+                            Ok(_) => {
+                                // Retrieve the output
+                                let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
+                                let mut output_size = graph
+                                    .get_output_single(0, &mut output_buffer)
+                                    .map_err(|e| {
+                                        LlamaCoreError::Backend(BackendError::GetOutputSingle(format!(
+                                            "Fail to get output tensor: {msg}",
+                                            msg = e
+                                        )))
+                                    })?;
+                                output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
+
+                                // decode the output buffer to a utf8 string
+                                let output = match String::from_utf8(output_buffer[..output_size].to_vec())
+                                {
+                                    Ok(token) => token,
+                                    Err(_) => {
+                                        let mutex = UTF8_ENCODINGS.get_or_init(|| Mutex::new(Vec::new()));
+                                        let mut cached_encodings = mutex.lock().map_err(|e| {
+                                            LlamaCoreError::Operation(format!(
+                                                "Fail to acquire the lock of `UTF8_ENCODINGS`. {}",
+                                                e
+                                            ))
+                                        })?;
+
+                                        cached_encodings.extend_from_slice(&output_buffer[..output_size]);
+
+                                        match String::from_utf8(cached_encodings.to_vec()) {
+                                            Ok(token) => {
+                                                // clear encodings
+                                                cached_encodings.clear();
+
+                                                token
+                                            }
+                                            Err(_) => {
+                                                // ! This is a temp check. In case, infinite cached encodings happen.
+                                                if cached_encodings.len() > 3 {
+                                                    return Err(LlamaCoreError::Operation(String::from(
+                                                        "The length of the invalid utf8 bytes exceed 3.",
+                                                    )));
+                                                }
+
+                                                String::new()
+                                            }
+                                        }
+                                    }
+                                };
+
+                                let created = SystemTime::now()
+                                    .duration_since(std::time::UNIX_EPOCH)
+                                    .map_err(|e| {
+                                        LlamaCoreError::Operation(format!(
+                                            "Failed to get the current time. {}",
+                                            e
+                                        ))
+                                    })?;
+
+                                let chat_completion_chunk = ChatCompletionChunk {
+                                    id: gen_chat_id(),
+                                    object: "chat.completion.chunk".to_string(),
+                                    created: created.as_secs(),
+                                    model: graph.name.clone(),
+                                    system_fingerprint: "fp_44709d6fcb".to_string(),
+                                    choices: vec![ChatCompletionChunkChoice {
+                                        index: 0,
+                                        delta: ChatCompletionChunkChoiceDelta {
+                                            role: Some(ChatCompletionRole::Assistant),
+                                            content: Some(output),
+                                            function_call: None,
+                                            tool_calls: None,
+                                        },
+                                        logprobs: None,
+                                        finish_reason: None,
+                                    }],
+                                };
+
+                                // serialize chat completion chunk
+                                let chunk_str =
+                                serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                                    LlamaCoreError::Operation(format!(
+                                        "Failed to serialize chat completion chunk. {}",
+                                        e
+                                    ))
+                                })?;
+
+                                Ok(format!("data: {}\n\n", chunk_str))
+                            }
+                            Err(wasmedge_wasi_nn::Error::BackendError(
+                                wasmedge_wasi_nn::BackendError::EndOfSequence,
+                            )) => {
+                                match one_more_run_then_stop {
+                                    true => {
+                                        one_more_run_then_stop = false;
+
+                                        Ok("data: [DONE]\n\n".to_string())
+                                    }
+                                    false => {
+                                        // clear context
+                                        if let Err(e) = graph.finish_single() {
+                                            return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
+                                                e.to_string(),
+                                            )));
+                                        }
+
+                                        Ok("[GGML] End of sequence".to_string())
+                                    }
+                                }
+                            }
+                            Err(wasmedge_wasi_nn::Error::BackendError(
+                                wasmedge_wasi_nn::BackendError::ContextFull,
+                            )) => {
+                                match one_more_run_then_stop {
+                                    true => {
+                                        let created = SystemTime::now()
+                                            .duration_since(std::time::UNIX_EPOCH)
+                                            .map_err(|e| {
+                                                LlamaCoreError::Operation(format!(
+                                                    "Failed to get the current time. {}",
+                                                    e
+                                                ))
+                                            })?;
+
+                                        let chat_completion_chunk = ChatCompletionChunk {
+                                            id: gen_chat_id(),
+                                            object: "chat.completion.chunk".to_string(),
+                                            created: created.as_secs(),
+                                            model: graph.name.clone(),
+                                            system_fingerprint: "fp_44709d6fcb".to_string(),
+                                            choices: vec![ChatCompletionChunkChoice {
+                                                index: 0,
+                                                delta: ChatCompletionChunkChoiceDelta {
+                                                    role: Some(ChatCompletionRole::Assistant),
+                                                    content: Some("<|WASMEDGE-GGML-CONTEXT-FULL|>".to_string()),
+                                                    function_call: None,
+                                                    tool_calls: None,
+                                                },
+                                                logprobs: None,
+                                                finish_reason: Some(FinishReason::length),
+                                            }],
+                                        };
+
+                                        one_more_run_then_stop = false;
+
+                                        // serialize chat completion chunk
+                                        let chunk_str =
+                                            serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                                                LlamaCoreError::Operation(format!(
+                                                    "Failed to serialize chat completion chunk. {}",
+                                                    e
+                                                ))
+                                            })?;
+
+                                        Ok(format!("data: {}\n\n", chunk_str))
+                                    }
+                                    false => {
+                                        // clear context
+                                        if let Err(e) = graph.finish_single() {
+                                            return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
+                                                e.to_string(),
+                                            )));
+                                        }
+
+                                        Ok("[GGML] End of sequence".to_string())
+                                    }
+                                }
+                            }
+                            Err(wasmedge_wasi_nn::Error::BackendError(
+                                wasmedge_wasi_nn::BackendError::PromptTooLong,
+                            )) => {
+                                match one_more_run_then_stop {
+                                    true => {
+                                        let created = SystemTime::now()
+                                            .duration_since(std::time::UNIX_EPOCH)
+                                            .map_err(|e| {
+                                                LlamaCoreError::Operation(format!(
+                                                    "Failed to get the current time. {}",
+                                                    e
+                                                ))
+                                            })?;
+
+                                        let chat_completion_chunk = ChatCompletionChunk {
+                                            id: gen_chat_id(),
+                                            object: "chat.completion.chunk".to_string(),
+                                            created: created.as_secs(),
+                                            model: graph.name.clone(),
+                                            system_fingerprint: "fp_44709d6fcb".to_string(),
+                                            choices: vec![ChatCompletionChunkChoice {
+                                                index: 0,
+                                                delta: ChatCompletionChunkChoiceDelta {
+                                                    role: Some(ChatCompletionRole::Assistant),
+                                                    content: None,
+                                                    function_call: None,
+                                                    tool_calls: None,
+                                                },
+                                                logprobs: None,
+                                                finish_reason: Some(FinishReason::length),
+                                            }],
+                                        };
+
+                                        one_more_run_then_stop = false;
+
+                                        // serialize chat completion chunk
+                                        let chunk_str =
+                                        serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                                            LlamaCoreError::Operation(format!(
+                                                "Failed to serialize chat completion chunk. {}",
+                                                e
+                                            ))
+                                        })?;
+
+                                        Ok(format!("data: {}\n\n", chunk_str))
+                                    }
+                                    false => {
+                                        // clear context
+                                        if let Err(e) = graph.finish_single() {
+                                            return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
+                                                e.to_string(),
+                                            )));
+                                        }
+
+                                        Ok("[GGML] End of sequence".to_string())
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                // clear context
+                                if let Err(e) = graph.finish_single() {
+                                    println!("Error: {:?}", &e);
+                                    return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
+                                        e.to_string(),
+                                    )));
+                                }
+
+                                println!("Error: {:?}", &e);
+                                Err(LlamaCoreError::Backend(BackendError::ComputeSingle(
+                                    e.to_string(),
+                                )))
+                            }
                         }
-
-                        Ok("[GGML] End of sequence".to_string())
+                    }
+                    None => {
+                        return Err(LlamaCoreError::Operation(String::from(
+                            "There is no model available in the chat graphs.",
+                        )))
                     }
                 }
-            }
-            Err(wasmedge_wasi_nn::Error::BackendError(
-                wasmedge_wasi_nn::BackendError::ContextFull,
-            )) => {
-                match one_more_run_then_stop {
-                    true => {
-                        let created = SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .map_err(|e| {
-                                LlamaCoreError::Operation(format!(
-                                    "Failed to get the current time. {}",
-                                    e
-                                ))
-                            })?;
-
-                        let chat_completion_chunk = ChatCompletionChunk {
-                            id: gen_chat_id(),
-                            object: "chat.completion.chunk".to_string(),
-                            created: created.as_secs(),
-                            model: model.clone(),
-                            system_fingerprint: "fp_44709d6fcb".to_string(),
-                            choices: vec![ChatCompletionChunkChoice {
-                                index: 0,
-                                delta: ChatCompletionChunkChoiceDelta {
-                                    role: Some(ChatCompletionRole::Assistant),
-                                    content: Some("<|WASMEDGE-GGML-CONTEXT-FULL|>".to_string()),
-                                    function_call: None,
-                                    tool_calls: None,
-                                },
-                                logprobs: None,
-                                finish_reason: Some(FinishReason::length),
-                            }],
-                        };
-
-                        one_more_run_then_stop = false;
-
-                        // serialize chat completion chunk
-                        let chunk_str =
-                            serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                LlamaCoreError::Operation(format!(
-                                    "Failed to serialize chat completion chunk. {}",
-                                    e
-                                ))
-                            })?;
-
-                        Ok(format!("data: {}\n\n", chunk_str))
-                    }
-                    false => {
-                        // clear context
-                        if let Err(e) = graph.finish_single() {
-                            return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
-                                e.to_string(),
-                            )));
-                        }
-
-                        Ok("[GGML] End of sequence".to_string())
-                    }
-                }
-            }
-            Err(wasmedge_wasi_nn::Error::BackendError(
-                wasmedge_wasi_nn::BackendError::PromptTooLong,
-            )) => {
-                match one_more_run_then_stop {
-                    true => {
-                        let created = SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .map_err(|e| {
-                                LlamaCoreError::Operation(format!(
-                                    "Failed to get the current time. {}",
-                                    e
-                                ))
-                            })?;
-
-                        let chat_completion_chunk = ChatCompletionChunk {
-                            id: gen_chat_id(),
-                            object: "chat.completion.chunk".to_string(),
-                            created: created.as_secs(),
-                            model: model.clone(),
-                            system_fingerprint: "fp_44709d6fcb".to_string(),
-                            choices: vec![ChatCompletionChunkChoice {
-                                index: 0,
-                                delta: ChatCompletionChunkChoiceDelta {
-                                    role: Some(ChatCompletionRole::Assistant),
-                                    content: None,
-                                    function_call: None,
-                                    tool_calls: None,
-                                },
-                                logprobs: None,
-                                finish_reason: Some(FinishReason::length),
-                            }],
-                        };
-
-                        one_more_run_then_stop = false;
-
-                        // serialize chat completion chunk
-                        let chunk_str =
-                            serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                LlamaCoreError::Operation(format!(
-                                    "Failed to serialize chat completion chunk. {}",
-                                    e
-                                ))
-                            })?;
-
-                        Ok(format!("data: {}\n\n", chunk_str))
-                    }
-                    false => {
-                        // clear context
-                        if let Err(e) = graph.finish_single() {
-                            return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
-                                e.to_string(),
-                            )));
-                        }
-
-                        Ok("[GGML] End of sequence".to_string())
-                    }
-                }
-            }
-            Err(e) => {
-                // clear context
-                if let Err(e) = graph.finish_single() {
-                    println!("Error: {:?}", &e);
-                    return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
-                        e.to_string(),
-                    )));
-                }
-
-                println!("Error: {:?}", &e);
-                Err(LlamaCoreError::Backend(BackendError::ComputeSingle(
-                    e.to_string(),
-                )))
             }
         }
     })
@@ -377,12 +614,15 @@ pub async fn chat_completions(
     // create ChatPrompt instance from the template type
     let template = create_prompt_template(template_ty);
 
+    let model_name = chat_request.model.clone();
+
     // update metadata
     let mut metadata = update_metadata(chat_request).await?;
 
     // build prompt
-    let (prompt, avaible_completion_tokens) = build_prompt(&template, chat_request)
-        .map_err(|e| LlamaCoreError::Operation(format!("Failed to build prompt. {}", e)))?;
+    let (prompt, avaible_completion_tokens) =
+        build_prompt(model_name.as_ref(), &template, chat_request)
+            .map_err(|e| LlamaCoreError::Operation(format!("Failed to build prompt. {}", e)))?;
 
     if log_prompts {
         print_log_begin_separator("PROMPT", Some("*"), None);
@@ -393,20 +633,71 @@ pub async fn chat_completions(
     // update metadata n_predict
     update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
 
-    // get graph
-    let graph = GRAPH.get().ok_or(LlamaCoreError::Operation(String::from(
-        "Fail to get the underlying value of `GRAPH`.",
-    )))?;
-    let mut graph = graph.lock().map_err(|e| {
-        LlamaCoreError::Operation(format!("Fail to acquire the lock of `GRAPH`. {}", e))
-    })?;
+    // set prompt
+    set_prompt(model_name.as_ref(), &prompt)?;
 
-    // set input
-    let tensor_data = prompt.as_bytes().to_vec();
-    graph
-        .set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data)
-        .map_err(|e| LlamaCoreError::Backend(BackendError::SetInput(e.to_string())))?;
+    // compute
+    compute(model_name.as_ref(), template_ty, log_prompts)
+}
 
+fn compute(
+    model_name: Option<&String>,
+    template_ty: PromptTemplateType,
+    log_prompts: bool,
+) -> Result<ChatCompletionObject, LlamaCoreError> {
+    match model_name {
+        Some(model_name) => {
+            let chat_graphs = CHAT_GRAPHS
+                .get()
+                .ok_or(LlamaCoreError::Operation(String::from(
+                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
+                )))?;
+            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
+                LlamaCoreError::Operation(format!(
+                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
+                    e
+                ))
+            })?;
+            match chat_graphs.get_mut(model_name) {
+                Some(graph) => compute_by_graph(graph, template_ty, log_prompts),
+                None => {
+                    return Err(LlamaCoreError::Operation(format!(
+                        "The model `{}` does not exist in the chat graphs.",
+                        &model_name
+                    )))
+                }
+            }
+        }
+        None => {
+            let chat_graphs = CHAT_GRAPHS
+                .get()
+                .ok_or(LlamaCoreError::Operation(String::from(
+                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
+                )))?;
+            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
+                LlamaCoreError::Operation(format!(
+                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
+                    e
+                ))
+            })?;
+
+            match chat_graphs.iter_mut().next() {
+                Some((_, graph)) => compute_by_graph(graph, template_ty, log_prompts),
+                None => {
+                    return Err(LlamaCoreError::Operation(String::from(
+                        "There is no model available in the chat graphs.",
+                    )))
+                }
+            }
+        }
+    }
+}
+
+fn compute_by_graph(
+    graph: &mut Graph,
+    template_ty: PromptTemplateType,
+    log_prompts: bool,
+) -> Result<ChatCompletionObject, LlamaCoreError> {
     match graph.compute() {
         Ok(_) => {
             // Retrieve the output.
@@ -431,12 +722,7 @@ pub async fn chat_completions(
             })?;
 
             // retrieve the number of prompt and completion tokens
-            let token_info = get_token_info(&graph).map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Failed to get the number of prompt and completion tokens. {}",
-                    e
-                ))
-            })?;
+            let token_info = get_token_info_by_graph(&graph)?;
             if log_prompts {
                 print_log_begin_separator("PROMPT (Tokens)", Some("*"), None);
                 println!(
@@ -457,7 +743,7 @@ pub async fn chat_completions(
                 id: gen_chat_id(),
                 object: String::from("chat.completion"),
                 created: created.as_secs(),
-                model: chat_request.model.clone().unwrap_or_default(),
+                model: graph.name.clone(),
                 choices: vec![ChatCompletionObjectChoice {
                     index: 0,
                     message: ChatCompletionObjectMessage {
@@ -496,12 +782,7 @@ pub async fn chat_completions(
             })?;
 
             // retrieve the number of prompt and completion tokens
-            let token_info = get_token_info(&graph).map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Failed to get the number of prompt and completion tokens. {}",
-                    e
-                ))
-            })?;
+            let token_info = get_token_info_by_graph(&graph)?;
             if log_prompts {
                 print_log_begin_separator("PROMPT (Tokens)", Some("*"), None);
                 println!(
@@ -522,7 +803,7 @@ pub async fn chat_completions(
                 id: gen_chat_id(),
                 object: String::from("chat.completion"),
                 created: created.as_secs(),
-                model: chat_request.model.clone().unwrap_or_default(),
+                model: graph.name.clone(),
                 choices: vec![ChatCompletionObjectChoice {
                     index: 0,
                     message: ChatCompletionObjectMessage {
@@ -565,12 +846,7 @@ pub async fn chat_completions(
             })?;
 
             // retrieve the number of prompt and completion token
-            let token_info = get_token_info(&graph).map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Failed to get the number of prompt and completion tokens. {}",
-                    e
-                ))
-            })?;
+            let token_info = get_token_info_by_graph(&graph)?;
             if log_prompts {
                 print_log_begin_separator("PROMPT (Tokens)", Some("*"), None);
                 println!(
@@ -591,7 +867,7 @@ pub async fn chat_completions(
                 id: gen_chat_id(),
                 object: String::from("chat.completion"),
                 created: created.as_secs(),
-                model: chat_request.model.clone().unwrap_or_default(),
+                model: graph.name.clone(),
                 choices: vec![ChatCompletionObjectChoice {
                     index: 0,
                     message: ChatCompletionObjectMessage {
@@ -616,15 +892,7 @@ pub async fn chat_completions(
 
 async fn update_metadata(chat_request: &ChatCompletionRequest) -> Result<Metadata, LlamaCoreError> {
     let mut should_update = false;
-
-    let mut metadata = match METADATA.get() {
-        Some(metadata) => metadata.clone(),
-        None => {
-            return Err(LlamaCoreError::Operation(String::from(
-                "Fail to get the underlying value of `METADATA`.",
-            )));
-        }
-    };
+    let mut metadata = get_metadata(chat_request.model.as_ref())?;
 
     // check if necessary to update `image`
     if let Some(ChatCompletionRequestMessage::User(user_message)) = chat_request.messages.last() {
@@ -709,44 +977,8 @@ async fn update_metadata(chat_request: &ChatCompletionRequest) -> Result<Metadat
     }
 
     if should_update {
-        // update metadata
-        let config = match serde_json::to_string(&metadata) {
-            Ok(config) => config,
-            Err(e) => {
-                return Err(LlamaCoreError::Operation(format!(
-                    "Fail to serialize metadata to a JSON string. {}",
-                    e
-                )));
-            }
-        };
-
-        let graph = match GRAPH.get() {
-            Some(graph) => graph,
-            None => {
-                return Err(LlamaCoreError::Operation(String::from(
-                    "Fail to get the underlying value of `GRAPH`.",
-                )));
-            }
-        };
-        let mut graph = match graph.lock() {
-            Ok(graph) => graph,
-            Err(e) => {
-                return Err(LlamaCoreError::Operation(format!(
-                    "Fail to acquire the lock of `GRAPH`. {}",
-                    e
-                )));
-            }
-        };
-
-        // update metadata
-        if graph
-            .set_input(1, wasmedge_wasi_nn::TensorType::U8, &[1], config.as_bytes())
-            .is_err()
-        {
-            return Err(LlamaCoreError::Operation(String::from(
-                "Fail to update metadata",
-            )));
-        }
+        // update the target graph with the new metadata
+        set_metadata(chat_request.model.as_ref(), &metadata)?;
     }
 
     Ok(metadata)
@@ -989,51 +1221,35 @@ fn post_process(
 }
 
 fn build_prompt(
+    model_name: Option<&String>,
     template: &ChatPrompt,
     chat_request: &mut ChatCompletionRequest,
-) -> Result<(String, u64), String> {
-    let graph = match GRAPH.get() {
-        Some(graph) => graph,
-        None => {
-            return Err(String::from("Fail to get the underlying value of `GRAPH`."));
-        }
-    };
-    let mut graph = match graph.lock() {
-        Ok(graph) => graph,
-        Err(e) => {
-            return Err(format!("Fail to acquire the lock of `GRAPH`. {}", e));
-        }
-    };
+) -> Result<(String, u64), LlamaCoreError> {
+    let metadata = get_metadata(model_name)?;
+    let ctx_size = metadata.ctx_size as u64;
 
-    let ctx_size = match CTX_SIZE.get() {
-        Some(ctx_size) => *ctx_size as u64,
-        None => {
-            return Err(String::from(
-                "Fail to get the underlying value of `CTX_SIZE`.",
-            ));
-        }
-    };
-
+    // compute max prompt tokens
     let max_prompt_tokens = ctx_size * 4 / 5;
 
     loop {
         // build prompt
         let prompt = match template.build(&mut chat_request.messages) {
             Ok(prompt) => prompt,
-            Err(e) => return Err(format!("Fail to build chat prompts: {msg}", msg = e)),
+            Err(e) => {
+                return Err(LlamaCoreError::Operation(format!(
+                    "Fail to build chat prompts: {msg}",
+                    msg = e
+                )))
+            }
         };
 
-        // read input tensor
-        let tensor_data = prompt.trim().as_bytes().to_vec();
-        if let Err(e) = graph.set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data) {
-            return Err(format!("Fail to set prompt tensor data: {msg}", msg = e));
-        }
+        // set prompt
+        set_prompt(model_name, &prompt)?;
 
         // Retrieve the number of prompt tokens.
-        let token_info = get_token_info(&graph)?;
-        let prompt_tokens = token_info.prompt_tokens;
+        let token_info = get_token_info_new(model_name)?;
 
-        match prompt_tokens > max_prompt_tokens {
+        match token_info.prompt_tokens > max_prompt_tokens {
             true => {
                 match chat_request.messages[0].role() {
                     ChatCompletionRole::System => {
@@ -1078,32 +1294,42 @@ fn build_prompt(
     }
 }
 
-pub(crate) fn get_token_info(graph: &Graph) -> Result<TokenInfo, String> {
+pub(crate) fn get_token_info_by_graph(graph: &Graph) -> Result<TokenInfo, LlamaCoreError> {
     let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
     let mut output_size = match graph.get_output(1, &mut output_buffer) {
         Ok(size) => size,
         Err(e) => {
-            return Err(format!("Fail to get token info: {msg}", msg = e));
+            return Err(LlamaCoreError::Operation(format!(
+                "Fail to get token info: {msg}",
+                msg = e
+            )));
         }
     };
     output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
     let token_info: Value = match serde_json::from_slice(&output_buffer[..output_size]) {
         Ok(token_info) => token_info,
         Err(e) => {
-            return Err(format!("Fail to deserialize token info: {msg}", msg = e));
+            return Err(LlamaCoreError::Operation(format!(
+                "Fail to deserialize token info: {msg}",
+                msg = e
+            )));
         }
     };
 
     let prompt_tokens = match token_info["input_tokens"].as_u64() {
         Some(prompt_tokens) => prompt_tokens,
         None => {
-            return Err(String::from("Fail to convert `input_tokens` to u64."));
+            return Err(LlamaCoreError::Operation(String::from(
+                "Fail to convert `input_tokens` to u64.",
+            )));
         }
     };
     let completion_tokens = match token_info["output_tokens"].as_u64() {
         Some(completion_tokens) => completion_tokens,
         None => {
-            return Err(String::from("Fail to convert `output_tokens` to u64."));
+            return Err(LlamaCoreError::Operation(String::from(
+                "Fail to convert `output_tokens` to u64.",
+            )));
         }
     };
     Ok(TokenInfo {
@@ -1149,4 +1375,239 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
     }
 
     Ok(fname)
+}
+
+fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<(), LlamaCoreError> {
+    match model_name {
+        Some(model_name) => {
+            let chat_graphs = CHAT_GRAPHS
+                .get()
+                .ok_or(LlamaCoreError::Operation(String::from(
+                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
+                )))?;
+            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
+                LlamaCoreError::Operation(format!(
+                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
+                    e
+                ))
+            })?;
+            match chat_graphs.get_mut(model_name) {
+                Some(graph) => {
+                    let tensor_data = prompt.as_ref().as_bytes().to_vec();
+                    set_tensor_data_u8(graph, 0, &tensor_data)
+                }
+                None => {
+                    return Err(LlamaCoreError::Operation(format!(
+                        "The model `{}` does not exist in the chat graphs.",
+                        &model_name
+                    )))
+                }
+            }
+        }
+        None => {
+            let chat_graphs = CHAT_GRAPHS
+                .get()
+                .ok_or(LlamaCoreError::Operation(String::from(
+                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
+                )))?;
+            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
+                LlamaCoreError::Operation(format!(
+                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
+                    e
+                ))
+            })?;
+
+            match chat_graphs.iter_mut().next() {
+                Some((_, graph)) => {
+                    let tensor_data = prompt.as_ref().as_bytes().to_vec();
+                    set_tensor_data_u8(graph, 0, &tensor_data)
+                }
+                None => {
+                    return Err(LlamaCoreError::Operation(String::from(
+                        "There is no model available in the chat graphs.",
+                    )))
+                }
+            }
+        }
+    }
+}
+
+fn set_tensor_data_u8(
+    graph: &mut Graph,
+    idx: usize,
+    tensor_data: &[u8],
+) -> Result<(), LlamaCoreError> {
+    if graph
+        .set_input(idx, wasmedge_wasi_nn::TensorType::U8, &[1], tensor_data)
+        .is_err()
+    {
+        return Err(LlamaCoreError::Operation(String::from(
+            "Fail to set input tensor",
+        )));
+    };
+
+    Ok(())
+}
+
+fn get_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCoreError> {
+    match model_name {
+        Some(model_name) => {
+            let chat_graphs = CHAT_GRAPHS
+                .get()
+                .ok_or(LlamaCoreError::Operation(String::from(
+                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
+                )))?;
+            let chat_graphs = chat_graphs.lock().map_err(|e| {
+                LlamaCoreError::Operation(format!(
+                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
+                    e
+                ))
+            })?;
+            match chat_graphs.get(model_name) {
+                Some(graph) => Ok(graph.metadata.clone()),
+                None => {
+                    return Err(LlamaCoreError::Operation(format!(
+                        "The model `{}` does not exist in the chat graphs.",
+                        &model_name
+                    )))
+                }
+            }
+        }
+        None => {
+            let chat_graphs = CHAT_GRAPHS
+                .get()
+                .ok_or(LlamaCoreError::Operation(String::from(
+                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
+                )))?;
+            let chat_graphs = chat_graphs.lock().map_err(|e| {
+                LlamaCoreError::Operation(format!(
+                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
+                    e
+                ))
+            })?;
+
+            match chat_graphs.iter().next() {
+                Some((_, graph)) => Ok(graph.metadata.clone()),
+                None => {
+                    return Err(LlamaCoreError::Operation(String::from(
+                        "There is no model available in the chat graphs.",
+                    )))
+                }
+            }
+        }
+    }
+}
+
+fn set_metadata(model_name: Option<&String>, metadata: &Metadata) -> Result<(), LlamaCoreError> {
+    let config = match serde_json::to_string(metadata) {
+        Ok(config) => config,
+        Err(e) => {
+            return Err(LlamaCoreError::Operation(format!(
+                "Fail to serialize metadata to a JSON string. {}",
+                e
+            )));
+        }
+    };
+
+    match model_name {
+        Some(model_name) => {
+            let chat_graphs = CHAT_GRAPHS
+                .get()
+                .ok_or(LlamaCoreError::Operation(String::from(
+                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
+                )))?;
+            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
+                LlamaCoreError::Operation(format!(
+                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
+                    e
+                ))
+            })?;
+            match chat_graphs.get_mut(model_name) {
+                Some(graph) => {
+                    // update metadata
+                    set_tensor_data_u8(graph, 1, config.as_bytes())
+                }
+                None => {
+                    return Err(LlamaCoreError::Operation(format!(
+                        "The model `{}` does not exist in the chat graphs.",
+                        &model_name
+                    )))
+                }
+            }
+        }
+        None => {
+            let chat_graphs = CHAT_GRAPHS
+                .get()
+                .ok_or(LlamaCoreError::Operation(String::from(
+                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
+                )))?;
+            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
+                LlamaCoreError::Operation(format!(
+                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
+                    e
+                ))
+            })?;
+
+            match chat_graphs.iter_mut().next() {
+                Some((_, graph)) => {
+                    // update metadata
+                    set_tensor_data_u8(graph, 1, config.as_bytes())
+                }
+                None => {
+                    return Err(LlamaCoreError::Operation(String::from(
+                        "There is no model available in the chat graphs.",
+                    )))
+                }
+            }
+        }
+    }
+}
+
+fn get_token_info_new(model_name: Option<&String>) -> Result<TokenInfo, LlamaCoreError> {
+    match model_name {
+        Some(model_name) => {
+            let chat_graphs = CHAT_GRAPHS
+                .get()
+                .ok_or(LlamaCoreError::Operation(String::from(
+                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
+                )))?;
+            let chat_graphs = chat_graphs.lock().map_err(|e| {
+                LlamaCoreError::Operation(format!(
+                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
+                    e
+                ))
+            })?;
+            match chat_graphs.get(model_name) {
+                Some(graph) => get_token_info_by_graph(graph),
+                None => {
+                    return Err(LlamaCoreError::Operation(format!(
+                        "The model `{}` does not exist in the chat graphs.",
+                        &model_name
+                    )))
+                }
+            }
+        }
+        None => {
+            let chat_graphs = CHAT_GRAPHS
+                .get()
+                .ok_or(LlamaCoreError::Operation(String::from(
+                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
+                )))?;
+            let chat_graphs = chat_graphs.lock().map_err(|e| {
+                LlamaCoreError::Operation(format!(
+                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
+                    e
+                ))
+            })?;
+
+            match chat_graphs.iter().next() {
+                Some((_, graph)) => get_token_info_by_graph(graph),
+                None => {
+                    return Err(LlamaCoreError::Operation(String::from(
+                        "There is no model available in the chat graphs.",
+                    )))
+                }
+            }
+        }
+    }
 }
