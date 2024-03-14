@@ -233,6 +233,7 @@ async fn chat_completions(
 /// Note that the body of the request is deserialized to a `RagEmbeddingRequest` instance.
 pub(crate) async fn _rag_doc_chunks_to_embeddings_handler(
     mut req: Request<Body>,
+    log_prompts: bool,
 ) -> Result<Response<Body>, hyper::Error> {
     // parse request
     let body_bytes = to_bytes(req.body_mut()).await?;
@@ -243,7 +244,7 @@ pub(crate) async fn _rag_doc_chunks_to_embeddings_handler(
         }
     };
 
-    match llama_core::rag::rag_doc_chunks_to_embeddings(&rag_embedding_request).await {
+    match llama_core::rag::rag_doc_chunks_to_embeddings(&rag_embedding_request, log_prompts).await {
         Ok(embedding_response) => {
             // serialize embedding object
             match serde_json::to_string(&embedding_response) {
@@ -304,7 +305,9 @@ pub(crate) async fn rag_doc_chunks_to_embeddings2_handler(
     );
 
     let embedding_response =
-        match llama_core::rag::rag_doc_chunks_to_embeddings(&rag_embedding_request).await {
+        match llama_core::rag::rag_doc_chunks_to_embeddings(&rag_embedding_request, log_prompts)
+            .await
+        {
             Ok(embedding_response) => embedding_response,
             Err(e) => return error::internal_server_error(e.to_string()),
         };
