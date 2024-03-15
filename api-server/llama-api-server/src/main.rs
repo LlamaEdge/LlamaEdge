@@ -231,6 +231,9 @@ async fn main() -> Result<(), ServerError> {
         )
         .get_matches();
 
+    // print the version of the server
+    println!("[INFO] LlamaEdge version: {}", env!("CARGO_PKG_VERSION"),);
+
     // socket address
     let socket_addr =
         matches
