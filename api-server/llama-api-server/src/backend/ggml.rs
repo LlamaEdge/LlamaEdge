@@ -468,26 +468,55 @@ pub(crate) async fn rag_query_handler(
 
     if log_prompts && scored_points.is_empty() {
         println!(
-            "    * No point retrieved (score >= {})",
+            "    * No point retrieved (score < threshold {})",
             qdrant_config.score_threshold
         );
     }
 
-    // update messages with retrieved context
-    let mut context = String::new();
-    for (idx, point) in scored_points.iter().enumerate() {
-        if log_prompts {
-            println!("    * Point {}: score: {}", idx, point.score);
+    if !scored_points.is_empty() {
+        // update messages with retrieved context
+        let mut context = String::new();
+        for (idx, point) in scored_points.iter().enumerate() {
+            if log_prompts {
+                println!("    * Point {}: score: {}", idx, point.score);
+            }
+
+            if let Some(payload) = &point.payload {
+                if let Some(source) = payload.get("source") {
+                    if log_prompts {
+                        println!("      Source: {}", source);
+                    }
+
+                    context.push_str(source.to_string().as_str());
+                    context.push_str("\n\n");
+                }
+            }
         }
 
-        if let Some(payload) = &point.payload {
-            if let Some(source) = payload.get("source") {
-                if log_prompts {
-                    println!("      Source: {}", source);
-                }
+        // update or insert system message
+        match chat_request.messages[0] {
+            ChatCompletionRequestMessage::System(ref message) => {
+                // compose new system message content
+                let content = format!("{original_system_message}\nUse the following pieces of context to answer the user's question.\nIf you don't know the answer, just say that you don't know, don't try to make up an answer.\n----------------\n{context}", original_system_message=message.content().trim(), context=context.trim_end());
+                // create system message
+                let system_message = ChatCompletionRequestMessage::new_system_message(
+                    content,
+                    chat_request.user.clone(),
+                );
+                // replace the original system message
+                chat_request.messages[0] = system_message;
+            }
+            _ => {
+                // prepare system message
+                let content = format!("Use the following pieces of context to answer the user's question.\nIf you don't know the answer, just say that you don't know, don't try to make up an answer.\n----------------\n{}", context.trim_end());
 
-                context.push_str(source.to_string().as_str());
-                context.push_str("\n\n");
+                // create system message
+                let system_message = ChatCompletionRequestMessage::new_system_message(
+                    content,
+                    chat_request.user.clone(),
+                );
+                // insert system message
+                chat_request.messages.insert(0, system_message);
             }
         }
     }
@@ -498,7 +527,11 @@ pub(crate) async fn rag_query_handler(
     }
 
     if log_prompts {
-        println!("\n[+] Answer the user query with the context info ...");
+        if scored_points.is_empty() {
+            println!("\n[+] Answer the user query ...");
+        } else {
+            println!("\n[+] Answer the user query with the context info ...");
+        }
     }
 
     // chat completion
