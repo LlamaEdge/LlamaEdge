@@ -171,17 +171,18 @@ async fn qdrant_search_similar_points(
     limit: usize,
     score_threshold: Option<f32>,
 ) -> Result<Vec<ScoredPoint>, String> {
-    // println!("[+] Searching for similar points ...");
-    let search_result = qdrant_client
+    match qdrant_client
         .search_points(
             collection_name.as_ref(),
             query_vector.to_vec(),
             limit as u64,
             score_threshold,
         )
-        .await;
-
-    Ok(search_result)
+        .await
+    {
+        Ok(search_result) => Ok(search_result),
+        Err(err) => Err(err.to_string()),
+    }
 }
 
 /// Type alias for `qdrant::ScoredPoint`
