@@ -473,6 +473,10 @@ async fn main() -> Result<(), ServerError> {
                 .ok_or(ServerError::ArgumentError(
                     "Failed to parse the value of `qdrant_score_threshold` CLI option".to_owned(),
                 ))?;
+        println!(
+            "[INFO] Qdrant score threshold: {threshold}",
+            threshold = qdrant_score_threshold
+        );
 
         let qdrant_config = QdrantConfig {
             url: qdrant_url.to_owned(),
