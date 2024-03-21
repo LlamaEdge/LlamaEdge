@@ -20,6 +20,7 @@ pub(crate) async fn handle_llama_request(
             Some(_) => ggml::rag_doc_chunks_to_embeddings2_handler(req, log_prompts).await,
             None => ggml::embeddings_handler(req).await,
         },
+        "/v1/files" => ggml::files_handler(req).await,
         _ => error::invalid_endpoint(req.uri().path()),
     }
 }

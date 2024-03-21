@@ -8,10 +8,19 @@ use endpoints::{
     chat::{ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionUserMessageContent},
     completions::CompletionRequest,
     embeddings::EmbeddingRequest,
+    files::FileObject,
     rag::RagEmbeddingRequest,
 };
 use futures_util::TryStreamExt;
-use hyper::{body::to_bytes, Body, Request, Response};
+use hyper::{body::to_bytes, Body, Method, Request, Response};
+use multipart::server::{Multipart, ReadEntry, ReadEntryResult};
+use multipart_2021 as multipart;
+use std::{
+    fs::{self, File},
+    io::{Cursor, Read, Write},
+    path::Path,
+    time::SystemTime,
+};
 
 /// List all models available.
 pub(crate) async fn models_handler() -> Result<Response<Body>, hyper::Error> {
@@ -523,3 +532,116 @@ pub(crate) async fn rag_query_handler(
 #[derive(Debug, Default)]
 struct RagPromptBuilder;
 impl MergeRagContext for RagPromptBuilder {}
+
+pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+    if req.method() == &Method::POST {
+        let boundary = "boundary=";
+
+        let boundary = req.headers().get("content-type").and_then(|ct| {
+            let ct = ct.to_str().ok()?;
+            let idx = ct.find(boundary)?;
+            Some(ct[idx + boundary.len()..].to_string())
+        });
+
+        let req_body = req.into_body();
+        let body_bytes = to_bytes(req_body).await?;
+        let cursor = Cursor::new(body_bytes.to_vec());
+
+        let mut multipart = Multipart::with_body(cursor, boundary.unwrap());
+
+        let mut file_object: Option<FileObject> = None;
+        while let ReadEntryResult::Entry(mut field) = multipart.read_entry_mut() {
+            if &*field.headers.name == "file" {
+                let filename = match field.headers.filename {
+                    Some(filename) => filename,
+                    None => {
+                        return error::internal_server_error(
+                            "Failed to upload the target file. The filename is not provided.",
+                        );
+                    }
+                };
+
+                let mut buffer = Vec::new();
+                let size_in_bytes = match field.data.read_to_end(&mut buffer) {
+                    Ok(size_in_bytes) => size_in_bytes,
+                    Err(e) => {
+                        return error::internal_server_error(format!(
+                            "Failed to read the target file. {}",
+                            e
+                        ));
+                    }
+                };
+
+                // create a unique file id
+                let id = format!("file_{}", uuid::Uuid::new_v4());
+
+                // save the file
+                let path = Path::new("archives");
+                if !path.exists() {
+                    fs::create_dir(path).unwrap();
+                }
+                let file_path = path.join(&id);
+                if !file_path.exists() {
+                    fs::create_dir(&file_path).unwrap();
+                }
+                let mut file = File::create(file_path.join(&filename)).unwrap();
+                file.write_all(&buffer[..]).unwrap();
+
+                let created_at = match SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+                    Ok(n) => n.as_secs(),
+                    Err(_) => {
+                        return error::internal_server_error("Failed to get the current time.")
+                    }
+                };
+
+                // create a file object
+                file_object = Some(FileObject {
+                    id,
+                    bytes: size_in_bytes as u64,
+                    created_at,
+                    filename,
+                    object: "file".to_string(),
+                    purpose: "assistants".to_string(),
+                });
+
+                break;
+            }
+        }
+
+        match file_object {
+            Some(fo) => {
+                // serialize chat completion object
+                let s = match serde_json::to_string(&fo) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        return error::internal_server_error(format!(
+                            "Fail to serialize file object. {}",
+                            e
+                        ));
+                    }
+                };
+
+                // return response
+                let result = Response::builder()
+                    .header("Access-Control-Allow-Origin", "*")
+                    .header("Access-Control-Allow-Methods", "*")
+                    .header("Access-Control-Allow-Headers", "*")
+                    .body(Body::from(s));
+
+                match result {
+                    Ok(response) => Ok(response),
+                    Err(e) => error::internal_server_error(e.to_string()),
+                }
+            }
+            None => {
+                return error::internal_server_error(
+                    "Failed to upload the target file. Not found the target file.",
+                );
+            }
+        }
+    } else if req.method() == &Method::GET {
+        error::internal_server_error("Not implemented for listing files.")
+    } else {
+        error::internal_server_error("Invalid HTTP Method.")
+    }
+}
