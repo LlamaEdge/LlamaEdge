@@ -4,6 +4,8 @@ use endpoints::{
     rag::RagEmbeddingRequest,
 };
 use qdrant::*;
+use text_splitter::TextSplitter;
+use tiktoken_rs::cl100k_base;
 
 /// Convert document chunks to embeddings.
 ///
@@ -187,3 +189,29 @@ async fn qdrant_search_similar_points(
 
 /// Type alias for `qdrant::ScoredPoint`
 pub type ScoredPoint = qdrant::ScoredPoint;
+
+/// Chunk a text into chunks
+///
+/// # Arguments
+///
+/// * `text` - A reference to a text.
+///
+/// # Returns
+///
+/// A vector of strings.
+///
+/// # Errors
+///
+/// Returns an error if the operation fails.
+pub fn chunk_text(text: impl AsRef<str>) -> Result<Vec<String>, LlamaCoreError> {
+    let tokenizer = cl100k_base().map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
+    let max_tokens = 100;
+    let splitter = TextSplitter::new(tokenizer).with_trim_chunks(true);
+
+    let chunks = splitter
+        .chunks(text.as_ref(), max_tokens)
+        .map(|s| s.to_string())
+        .collect::<Vec<_>>();
+
+    Ok(chunks)
+}
