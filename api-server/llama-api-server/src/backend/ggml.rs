@@ -9,7 +9,7 @@ use endpoints::{
     completions::CompletionRequest,
     embeddings::EmbeddingRequest,
     files::FileObject,
-    rag::RagEmbeddingRequest,
+    rag::{ChunksRequest, ChunksResponse, RagEmbeddingRequest},
 };
 use futures_util::TryStreamExt;
 use hyper::{body::to_bytes, Body, Method, Request, Response};
@@ -643,5 +643,89 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, 
         error::internal_server_error("Not implemented for listing files.")
     } else {
         error::internal_server_error("Invalid HTTP Method.")
+    }
+}
+
+pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+    // parse request
+    let body_bytes = to_bytes(req.body_mut()).await?;
+    let chunks_request: ChunksRequest = match serde_json::from_slice(&body_bytes) {
+        Ok(chunks_request) => chunks_request,
+        Err(e) => {
+            return error::bad_request(format!("Fail to parse chunks request: {msg}", msg = e));
+        }
+    };
+
+    // check if the archives directory exists
+    let path = Path::new("archives");
+    if !path.exists() {
+        return error::internal_server_error("The `archives` directory does not exist.");
+    }
+
+    // check if the archive id exists
+    let archive_path = path.join(&chunks_request.id);
+    if !archive_path.exists() {
+        let message = format!("Not found archive id: {}", &chunks_request.id);
+        return error::internal_server_error(&message);
+    }
+
+    // check if the file exists
+    let file_path = archive_path.join(&chunks_request.filename);
+    if !file_path.exists() {
+        let message = format!(
+            "Not found file: {} in archive id: {}",
+            &chunks_request.filename, &chunks_request.id
+        );
+        return error::internal_server_error(&message);
+    }
+
+    // open the file
+    let mut file = match File::open(file_path) {
+        Ok(file) => file,
+        Err(e) => {
+            return error::internal_server_error(format!(
+                "Failed to open `{}`. {}",
+                &chunks_request.filename, e
+            ));
+        }
+    };
+    // read the file
+    let mut contents = String::new();
+    if let Err(e) = file.read_to_string(&mut contents) {
+        return error::internal_server_error(format!(
+            "Failed to read `{}`. {}",
+            &chunks_request.filename, e
+        ));
+    }
+
+    match llama_core::rag::chunk_text(&contents) {
+        Ok(chunks) => {
+            let chunks_response = ChunksResponse {
+                id: chunks_request.id,
+                filename: chunks_request.filename,
+                chunks,
+            };
+
+            // serialize embedding object
+            match serde_json::to_string(&chunks_response) {
+                Ok(s) => {
+                    // return response
+                    let result = Response::builder()
+                        .header("Access-Control-Allow-Origin", "*")
+                        .header("Access-Control-Allow-Methods", "*")
+                        .header("Access-Control-Allow-Headers", "*")
+                        .body(Body::from(s));
+                    match result {
+                        Ok(response) => Ok(response),
+                        Err(e) => error::internal_server_error(e.to_string()),
+                    }
+                }
+                Err(e) => error::internal_server_error(format!(
+                    "Fail to serialize chunks response. {}",
+                    e
+                )),
+            }
+        }
+        Err(e) => error::internal_server_error(e.to_string()),
     }
 }
