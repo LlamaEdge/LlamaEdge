@@ -563,9 +563,9 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, 
                     }
                 };
 
-                if !filename.ends_with(".txt") {
+                if !(filename.ends_with(".txt") || filename.ends_with(".md")) {
                     return error::internal_server_error(
-                        "Failed to upload the target file. Only '*.txt' files are not supported.",
+                        "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported.",
                     );
                 }
 
