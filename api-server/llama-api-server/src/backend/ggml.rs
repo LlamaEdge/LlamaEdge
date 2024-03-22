@@ -563,7 +563,9 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, 
                     }
                 };
 
-                if !(filename.ends_with(".txt") || filename.ends_with(".md")) {
+                if !((&filename).to_lowercase().ends_with(".txt")
+                    || (&filename).to_lowercase().ends_with(".md"))
+                {
                     return error::internal_server_error(
                         "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported.",
                     );
@@ -592,7 +594,15 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, 
                 if !file_path.exists() {
                     fs::create_dir(&file_path).unwrap();
                 }
-                let mut file = File::create(file_path.join(&filename)).unwrap();
+                let mut file = match File::create(file_path.join(&filename)) {
+                    Ok(file) => file,
+                    Err(e) => {
+                        return error::internal_server_error(format!(
+                            "Failed to create archive document {}. {}",
+                            &filename, e
+                        ));
+                    }
+                };
                 file.write_all(&buffer[..]).unwrap();
 
                 let created_at = match SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
@@ -687,8 +697,19 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Result<Response<Bo
         return error::internal_server_error(&message);
     }
 
+    // get the extension of the archived file
+    let extension = match file_path.extension().and_then(std::ffi::OsStr::to_str) {
+        Some(extension) => extension,
+        None => {
+            return error::internal_server_error(format!(
+                "Failed to get the extension of the archived `{}`.",
+                &chunks_request.filename
+            ));
+        }
+    };
+
     // open the file
-    let mut file = match File::open(file_path) {
+    let mut file = match File::open(&file_path) {
         Ok(file) => file,
         Err(e) => {
             return error::internal_server_error(format!(
@@ -697,6 +718,7 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Result<Response<Bo
             ));
         }
     };
+
     // read the file
     let mut contents = String::new();
     if let Err(e) = file.read_to_string(&mut contents) {
@@ -706,7 +728,7 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Result<Response<Bo
         ));
     }
 
-    match llama_core::rag::chunk_text(&contents) {
+    match llama_core::rag::chunk_text(&contents, extension) {
         Ok(chunks) => {
             let chunks_response = ChunksResponse {
                 id: chunks_request.id,
