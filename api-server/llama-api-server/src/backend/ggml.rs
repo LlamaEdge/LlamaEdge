@@ -470,8 +470,10 @@ pub(crate) async fn rag_query_handler(
     .await
     {
         Ok(search_result) => search_result,
-        Err(e) => {
-            return error::internal_server_error(e.to_string());
+        Err(_e) => {
+            // todo: improve the error handling
+            Vec::new()
+            // return error::internal_server_error(e.to_string());
         }
     };
 
