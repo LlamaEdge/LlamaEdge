@@ -25,5 +25,5 @@ reqwest = { package = "reqwest_wasi", version = "0.11", features = ["json", "was
 qdrant_rest_client = { git = "https://github.com/second-state/qdrant-rest-client.git", branch = "debug-search-points", features = [
     "wasmedge-tls",
 ] }
-text-splitter = { version = "^0.7", features = ["tiktoken-rs"] }
+text-splitter = { version = "^0.7", features = ["tiktoken-rs", "markdown"] }
 tiktoken-rs = "^0.5"

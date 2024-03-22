@@ -4,7 +4,7 @@ use endpoints::{
     rag::RagEmbeddingRequest,
 };
 use qdrant::*;
-use text_splitter::TextSplitter;
+use text_splitter::{MarkdownSplitter, TextSplitter};
 use tiktoken_rs::cl100k_base;
 
 /// Convert document chunks to embeddings.
@@ -203,15 +203,51 @@ pub type ScoredPoint = qdrant::ScoredPoint;
 /// # Errors
 ///
 /// Returns an error if the operation fails.
-pub fn chunk_text(text: impl AsRef<str>) -> Result<Vec<String>, LlamaCoreError> {
-    let tokenizer = cl100k_base().map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
-    let max_tokens = 100;
-    let splitter = TextSplitter::new(tokenizer).with_trim_chunks(true);
+pub fn chunk_text(
+    text: impl AsRef<str>,
+    extension: impl AsRef<str>,
+) -> Result<Vec<String>, LlamaCoreError> {
+    if extension.as_ref().to_lowercase().as_str() != "txt"
+        && extension.as_ref().to_lowercase().as_str() != "md"
+    {
+        return Err(LlamaCoreError::Operation(
+            "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported.".to_string(),
+        ));
+    }
 
-    let chunks = splitter
-        .chunks(text.as_ref(), max_tokens)
-        .map(|s| s.to_string())
-        .collect::<Vec<_>>();
+    match extension.as_ref().to_lowercase().as_str() {
+        "txt" => {
+            let tokenizer = cl100k_base().map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
+            let max_tokens = 384;
+            let splitter = TextSplitter::new(tokenizer).with_trim_chunks(true);
 
-    Ok(chunks)
+            let chunks = splitter
+                .chunks(text.as_ref(), max_tokens)
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>();
+
+            Ok(chunks)
+        },
+        "md" => {
+            // Maximum number of characters in a chunk. Can also use a range.
+            let max_characters = 380;
+
+            // Default implementation uses character count for chunk size.
+            // Can also use all of the same tokenizer implementations as `TextSplitter`.
+            let splitter = MarkdownSplitter::default()
+                // Optionally can also have the splitter trim whitespace for you
+                .with_trim_chunks(true);
+
+            let chunks = splitter.chunks(text.as_ref(), max_characters).map(|s| s.to_string())
+            .collect::<Vec<_>>();
+
+            // ! debug
+            println!("[DEBUG] len of chunks of md: {}", chunks.len());
+
+            Ok(chunks)
+        },
+        _ => Err(LlamaCoreError::Operation(
+            "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported.".to_string(),
+        )),
+    }
 }
