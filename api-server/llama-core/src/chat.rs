@@ -1099,26 +1099,8 @@ fn build_prompt(
         }
 
         // Retrieve the number of prompt tokens.
-        let mut input_buffer = vec![0u8; MAX_BUFFER_SIZE];
-        let mut input_size = match graph.get_output(1, &mut input_buffer) {
-            Ok(size) => size,
-            Err(e) => {
-                return Err(format!("Fail to get token info: {msg}", msg = e));
-            }
-        };
-        input_size = std::cmp::min(MAX_BUFFER_SIZE, input_size);
-        let token_info: Value = match serde_json::from_slice(&input_buffer[..input_size]) {
-            Ok(token_info) => token_info,
-            Err(e) => {
-                return Err(format!("Fail to deserialize token info: {msg}", msg = e));
-            }
-        };
-        let prompt_tokens = match token_info["input_tokens"].as_u64() {
-            Some(prompt_tokens) => prompt_tokens,
-            None => {
-                return Err(String::from("Fail to get `input_tokens`."));
-            }
-        };
+        let token_info = get_token_info(&graph)?;
+        let prompt_tokens = token_info.prompt_tokens;
 
         match prompt_tokens > max_prompt_tokens {
             true => {
