@@ -563,6 +563,12 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, 
                     }
                 };
 
+                if !filename.ends_with(".txt") {
+                    return error::internal_server_error(
+                        "Failed to upload the target file. Only '*.txt' files are not supported.",
+                    );
+                }
+
                 let mut buffer = Vec::new();
                 let size_in_bytes = match field.data.read_to_end(&mut buffer) {
                     Ok(size_in_bytes) => size_in_bytes,
