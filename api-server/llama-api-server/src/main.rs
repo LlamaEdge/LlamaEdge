@@ -258,7 +258,6 @@ async fn main() -> Result<(), ServerError> {
         .ok_or(ServerError::ArgumentError(
             "Failed to parse the value of `--model-names` CLI option".to_owned(),
         ))?
-        .into_iter()
         .map(|s| s.to_string())
         .collect();
     println!("[INFO] Model names: {names}", names = model_names.join(","));
@@ -269,7 +268,6 @@ async fn main() -> Result<(), ServerError> {
         .ok_or(ServerError::ArgumentError(
             "Failed to parse the value of `--model-alias` CLI option".to_owned(),
         ))?
-        .into_iter()
         .map(|s| s.to_string())
         .collect();
     println!(
@@ -286,7 +284,6 @@ async fn main() -> Result<(), ServerError> {
         .ok_or(ServerError::ArgumentError(
             "Failed to parse the value of `ctx_size` CLI option".to_owned(),
         ))?
-        .into_iter()
         .map(|n| n.to_owned())
         .collect::<Vec<u64>>();
     let ctx_sizes_str: String = ctx_sizes
