@@ -1014,44 +1014,8 @@ async fn update_n_predict(
     }
 
     if should_update {
-        // update metadata
-        let config = match serde_json::to_string(&metadata) {
-            Ok(config) => config,
-            Err(e) => {
-                return Err(LlamaCoreError::Operation(format!(
-                    "Fail to serialize metadata to a JSON string. {}",
-                    e
-                )));
-            }
-        };
-
-        let graph = match GRAPH.get() {
-            Some(graph) => graph,
-            None => {
-                return Err(LlamaCoreError::Operation(String::from(
-                    "Fail to get the underlying value of `GRAPH`.",
-                )));
-            }
-        };
-        let mut graph = match graph.lock() {
-            Ok(graph) => graph,
-            Err(e) => {
-                return Err(LlamaCoreError::Operation(format!(
-                    "Fail to acquire the lock of `GRAPH`. {}",
-                    e
-                )));
-            }
-        };
-
-        // update metadata
-        if graph
-            .set_input(1, wasmedge_wasi_nn::TensorType::U8, &[1], config.as_bytes())
-            .is_err()
-        {
-            return Err(LlamaCoreError::Operation(String::from(
-                "Fail to update metadata",
-            )));
-        }
+        // update the target graph with the new metadata
+        set_metadata(chat_request.model.as_ref(), &metadata)?;
     }
 
     Ok(())
