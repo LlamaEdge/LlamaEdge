@@ -70,12 +70,10 @@ fn infer(
             })?;
             match chat_graphs.get_mut(model_name) {
                 Some(graph) => infer_by_graph(graph, prompt),
-                None => {
-                    return Err(LlamaCoreError::Operation(format!(
-                        "The model `{}` does not exist in the chat graphs.",
-                        &model_name
-                    )))
-                }
+                None => Err(LlamaCoreError::Operation(format!(
+                    "The model `{}` does not exist in the chat graphs.",
+                    &model_name
+                ))),
             }
         }
         None => {
@@ -93,11 +91,9 @@ fn infer(
 
             match chat_graphs.iter_mut().next() {
                 Some((_, graph)) => infer_by_graph(graph, prompt),
-                None => {
-                    return Err(LlamaCoreError::Operation(String::from(
-                        "There is no model available in the chat graphs.",
-                    )))
-                }
+                None => Err(LlamaCoreError::Operation(String::from(
+                    "There is no model available in the chat graphs.",
+                ))),
             }
         }
     }

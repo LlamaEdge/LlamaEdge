@@ -156,7 +156,7 @@ fn compute_embeddings(
                 embeddings.push(embedding_object);
 
                 // retrieve the number of prompt and completion tokens
-                let token_info = get_token_info_by_graph(&graph)?;
+                let token_info = get_token_info_by_graph(graph)?;
 
                 usage.prompt_tokens += token_info.prompt_tokens;
                 usage.completion_tokens += token_info.completion_tokens;

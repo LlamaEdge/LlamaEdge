@@ -325,7 +325,7 @@ pub async fn chat_completions_stream(
                         }
                     }
                     None => {
-                        return Err(LlamaCoreError::Operation(format!(
+                        Err(LlamaCoreError::Operation(format!(
                             "The model `{}` does not exist in the chat graphs.",
                             &model_name
                         )))
@@ -592,7 +592,7 @@ pub async fn chat_completions_stream(
                         }
                     }
                     None => {
-                        return Err(LlamaCoreError::Operation(String::from(
+                        Err(LlamaCoreError::Operation(String::from(
                             "There is no model available in the chat graphs.",
                         )))
                     }
@@ -660,12 +660,10 @@ fn compute(
             })?;
             match chat_graphs.get_mut(model_name) {
                 Some(graph) => compute_by_graph(graph, template_ty, log_prompts),
-                None => {
-                    return Err(LlamaCoreError::Operation(format!(
-                        "The model `{}` does not exist in the chat graphs.",
-                        &model_name
-                    )))
-                }
+                None => Err(LlamaCoreError::Operation(format!(
+                    "The model `{}` does not exist in the chat graphs.",
+                    &model_name
+                ))),
             }
         }
         None => {
@@ -683,11 +681,9 @@ fn compute(
 
             match chat_graphs.iter_mut().next() {
                 Some((_, graph)) => compute_by_graph(graph, template_ty, log_prompts),
-                None => {
-                    return Err(LlamaCoreError::Operation(String::from(
-                        "There is no model available in the chat graphs.",
-                    )))
-                }
+                None => Err(LlamaCoreError::Operation(String::from(
+                    "There is no model available in the chat graphs.",
+                ))),
             }
         }
     }
@@ -722,7 +718,7 @@ fn compute_by_graph(
             })?;
 
             // retrieve the number of prompt and completion tokens
-            let token_info = get_token_info_by_graph(&graph)?;
+            let token_info = get_token_info_by_graph(graph)?;
             if log_prompts {
                 print_log_begin_separator("PROMPT (Tokens)", Some("*"), None);
                 println!(
@@ -782,7 +778,7 @@ fn compute_by_graph(
             })?;
 
             // retrieve the number of prompt and completion tokens
-            let token_info = get_token_info_by_graph(&graph)?;
+            let token_info = get_token_info_by_graph(graph)?;
             if log_prompts {
                 print_log_begin_separator("PROMPT (Tokens)", Some("*"), None);
                 println!(
@@ -846,7 +842,7 @@ fn compute_by_graph(
             })?;
 
             // retrieve the number of prompt and completion token
-            let token_info = get_token_info_by_graph(&graph)?;
+            let token_info = get_token_info_by_graph(graph)?;
             if log_prompts {
                 print_log_begin_separator("PROMPT (Tokens)", Some("*"), None);
                 println!(
@@ -1015,7 +1011,7 @@ async fn update_n_predict(
 
     if should_update {
         // update the target graph with the new metadata
-        set_metadata(chat_request.model.as_ref(), &metadata)?;
+        set_metadata(chat_request.model.as_ref(), metadata)?;
     }
 
     Ok(())
@@ -1360,12 +1356,10 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
                     let tensor_data = prompt.as_ref().as_bytes().to_vec();
                     set_tensor_data_u8(graph, 0, &tensor_data)
                 }
-                None => {
-                    return Err(LlamaCoreError::Operation(format!(
-                        "The model `{}` does not exist in the chat graphs.",
-                        &model_name
-                    )))
-                }
+                None => Err(LlamaCoreError::Operation(format!(
+                    "The model `{}` does not exist in the chat graphs.",
+                    &model_name
+                ))),
             }
         }
         None => {
@@ -1386,11 +1380,9 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
                     let tensor_data = prompt.as_ref().as_bytes().to_vec();
                     set_tensor_data_u8(graph, 0, &tensor_data)
                 }
-                None => {
-                    return Err(LlamaCoreError::Operation(String::from(
-                        "There is no model available in the chat graphs.",
-                    )))
-                }
+                None => Err(LlamaCoreError::Operation(String::from(
+                    "There is no model available in the chat graphs.",
+                ))),
             }
         }
     }
@@ -1429,12 +1421,10 @@ fn get_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCoreError>
             })?;
             match chat_graphs.get(model_name) {
                 Some(graph) => Ok(graph.metadata.clone()),
-                None => {
-                    return Err(LlamaCoreError::Operation(format!(
-                        "The model `{}` does not exist in the chat graphs.",
-                        &model_name
-                    )))
-                }
+                None => Err(LlamaCoreError::Operation(format!(
+                    "The model `{}` does not exist in the chat graphs.",
+                    &model_name
+                ))),
             }
         }
         None => {
@@ -1452,11 +1442,9 @@ fn get_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCoreError>
 
             match chat_graphs.iter().next() {
                 Some((_, graph)) => Ok(graph.metadata.clone()),
-                None => {
-                    return Err(LlamaCoreError::Operation(String::from(
-                        "There is no model available in the chat graphs.",
-                    )))
-                }
+                None => Err(LlamaCoreError::Operation(String::from(
+                    "There is no model available in the chat graphs.",
+                ))),
             }
         }
     }
@@ -1491,12 +1479,10 @@ fn set_metadata(model_name: Option<&String>, metadata: &Metadata) -> Result<(), 
                     // update metadata
                     set_tensor_data_u8(graph, 1, config.as_bytes())
                 }
-                None => {
-                    return Err(LlamaCoreError::Operation(format!(
-                        "The model `{}` does not exist in the chat graphs.",
-                        &model_name
-                    )))
-                }
+                None => Err(LlamaCoreError::Operation(format!(
+                    "The model `{}` does not exist in the chat graphs.",
+                    &model_name
+                ))),
             }
         }
         None => {
@@ -1517,11 +1503,9 @@ fn set_metadata(model_name: Option<&String>, metadata: &Metadata) -> Result<(), 
                     // update metadata
                     set_tensor_data_u8(graph, 1, config.as_bytes())
                 }
-                None => {
-                    return Err(LlamaCoreError::Operation(String::from(
-                        "There is no model available in the chat graphs.",
-                    )))
-                }
+                None => Err(LlamaCoreError::Operation(String::from(
+                    "There is no model available in the chat graphs.",
+                ))),
             }
         }
     }
@@ -1543,12 +1527,10 @@ fn get_token_info_new(model_name: Option<&String>) -> Result<TokenInfo, LlamaCor
             })?;
             match chat_graphs.get(model_name) {
                 Some(graph) => get_token_info_by_graph(graph),
-                None => {
-                    return Err(LlamaCoreError::Operation(format!(
-                        "The model `{}` does not exist in the chat graphs.",
-                        &model_name
-                    )))
-                }
+                None => Err(LlamaCoreError::Operation(format!(
+                    "The model `{}` does not exist in the chat graphs.",
+                    &model_name
+                ))),
             }
         }
         None => {
@@ -1566,11 +1548,9 @@ fn get_token_info_new(model_name: Option<&String>) -> Result<TokenInfo, LlamaCor
 
             match chat_graphs.iter().next() {
                 Some((_, graph)) => get_token_info_by_graph(graph),
-                None => {
-                    return Err(LlamaCoreError::Operation(String::from(
-                        "There is no model available in the chat graphs.",
-                    )))
-                }
+                None => Err(LlamaCoreError::Operation(String::from(
+                    "There is no model available in the chat graphs.",
+                ))),
             }
         }
     }
