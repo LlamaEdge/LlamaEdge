@@ -113,7 +113,7 @@ pub trait MergeRagContext: Send {
         // prepare system message
         let content = format!("Use the following pieces of context to answer the user's question.\nIf you don't know the answer, just say that you don't know, don't try to make up an answer.\n----------------\n{}", context);
 
-        let name = messages[0].name().map(|s| s.clone());
+        let name = messages[0].name().cloned();
         // create system message
         let system_message = ChatCompletionRequestMessage::new_system_message(content, name);
 
