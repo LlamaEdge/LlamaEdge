@@ -493,37 +493,10 @@ pub(crate) async fn rag_query_handler(
             }
         }
 
-        // update or insert system message
-        match chat_request.messages[0] {
-            ChatCompletionRequestMessage::System(ref message) => {
-                // compose new system message content
-                let content = format!("{original_system_message}\nUse the following pieces of context to answer the user's question.\nIf you don't know the answer, just say that you don't know, don't try to make up an answer.\n----------------\n{context}", original_system_message=message.content().trim(), context=context.trim_end());
-                // create system message
-                let system_message = ChatCompletionRequestMessage::new_system_message(
-                    content,
-                    chat_request.user.clone(),
-                );
-                // replace the original system message
-                chat_request.messages[0] = system_message;
-            }
-            _ => {
-                // prepare system message
-                let content = format!("Use the following pieces of context to answer the user's question.\nIf you don't know the answer, just say that you don't know, don't try to make up an answer.\n----------------\n{}", context.trim_end());
-
-                // create system message
-                let system_message = ChatCompletionRequestMessage::new_system_message(
-                    content,
-                    chat_request.user.clone(),
-                );
-                // insert system message
-                chat_request.messages.insert(0, system_message);
-            }
+        // insert rag context into chat request
+        if let Err(e) = RagPromptBuilder::build(&mut chat_request.messages, &[context]) {
+            return error::internal_server_error(e.to_string());
         }
-    }
-
-    // insert rag context into chat request
-    if let Err(e) = RagPromptBuilder::build(&mut chat_request.messages, &[context]) {
-        return error::internal_server_error(e.to_string());
     }
 
     if log_prompts {
