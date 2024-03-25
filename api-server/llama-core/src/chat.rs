@@ -1,7 +1,7 @@
 use crate::{
     error,
-    utils::{print_log_begin_separator, print_log_end_separator},
-    Graph, CTX_SIZE, GRAPH, MAX_BUFFER_SIZE, METADATA, UTF8_ENCODINGS,
+    utils::{gen_chat_id, print_log_begin_separator, print_log_end_separator},
+    Graph, Metadata, CTX_SIZE, GRAPH, MAX_BUFFER_SIZE, METADATA, UTF8_ENCODINGS,
 };
 use chat_prompts::{
     chat::{
@@ -40,6 +40,9 @@ pub async fn chat_completions_stream(
     // create ChatPrompt instance from the template type
     let template = create_prompt_template(template_ty);
 
+    // update metadata
+    let mut metadata = update_metadata(chat_request).await?;
+
     // build prompt
     let (prompt, avaible_completion_tokens) = build_prompt(&template, chat_request)
         .map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
@@ -50,8 +53,8 @@ pub async fn chat_completions_stream(
         print_log_end_separator(Some("*"), None);
     }
 
-    // update metadata
-    update_metadata(chat_request, avaible_completion_tokens).await?;
+    // update metadata n_predict
+    update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
 
     let graph = GRAPH.get().ok_or(LlamaCoreError::Operation(String::from(
         "Fail to get the underlying value of `GRAPH`.",
@@ -147,48 +150,12 @@ pub async fn chat_completions_stream(
                             }
                         };
 
+                        // todo: to be removed
                         if let Some(stop) = &*reverse_prompt.clone() {
                             if output == *stop {
-                                let created = SystemTime::now()
-                                    .duration_since(std::time::UNIX_EPOCH)
-                                    .map_err(|e| {
-                                        LlamaCoreError::Operation(format!(
-                                            "Failed to get the current time. {}",
-                                            e
-                                        ))
-                                    })?;
-
-                                let chat_completion_chunk = ChatCompletionChunk {
-                                    id: "chatcmpl-123".to_string(),
-                                    object: "chat.completion.chunk".to_string(),
-                                    created: created.as_secs(),
-                                    model: model.clone(),
-                                    system_fingerprint: "fp_44709d6fcb".to_string(),
-                                    choices: vec![ChatCompletionChunkChoice {
-                                        index: 0,
-                                        delta: ChatCompletionChunkChoiceDelta {
-                                            role: Some(ChatCompletionRole::Assistant),
-                                            content: Some("data: [DONE]".to_string()),
-                                            function_call: None,
-                                            tool_calls: None,
-                                        },
-                                        logprobs: None,
-                                        finish_reason: Some(FinishReason::stop),
-                                    }],
-                                };
-
                                 one_more_run_then_stop = false;
 
-                                // serialize chat completion chunk
-                                let chunk =
-                                    serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                        LlamaCoreError::Operation(format!(
-                                            "Failed to serialize chat completion chunk. {}",
-                                            e
-                                        ))
-                                    })?;
-
-                                return Ok(chunk);
+                                return Ok("data: [DONE]\n\n".to_string());
                             }
                         }
 
@@ -202,7 +169,7 @@ pub async fn chat_completions_stream(
                             })?;
 
                         let chat_completion_chunk = ChatCompletionChunk {
-                            id: "chatcmpl-123".to_string(),
+                            id: gen_chat_id(),
                             object: "chat.completion.chunk".to_string(),
                             created: created.as_secs(),
                             model: model.clone(),
@@ -221,14 +188,15 @@ pub async fn chat_completions_stream(
                         };
 
                         // serialize chat completion chunk
-                        let chunk = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                            LlamaCoreError::Operation(format!(
-                                "Failed to serialize chat completion chunk. {}",
-                                e
-                            ))
-                        })?;
+                        let chunk_str =
+                            serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                                LlamaCoreError::Operation(format!(
+                                    "Failed to serialize chat completion chunk. {}",
+                                    e
+                                ))
+                            })?;
 
-                        Ok(chunk)
+                        Ok(format!("data: {}\n\n", chunk_str))
                     }
                     false => {
                         // clear context
@@ -247,45 +215,9 @@ pub async fn chat_completions_stream(
             )) => {
                 match one_more_run_then_stop {
                     true => {
-                        let created = SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .map_err(|e| {
-                                LlamaCoreError::Operation(format!(
-                                    "Failed to get the current time. {}",
-                                    e
-                                ))
-                            })?;
-
-                        let chat_completion_chunk = ChatCompletionChunk {
-                            id: "chatcmpl-123".to_string(),
-                            object: "chat.completion.chunk".to_string(),
-                            created: created.as_secs(),
-                            model: model.clone(),
-                            system_fingerprint: "fp_44709d6fcb".to_string(),
-                            choices: vec![ChatCompletionChunkChoice {
-                                index: 0,
-                                delta: ChatCompletionChunkChoiceDelta {
-                                    role: Some(ChatCompletionRole::Assistant),
-                                    content: Some("data: [DONE]".to_string()),
-                                    function_call: None,
-                                    tool_calls: None,
-                                },
-                                logprobs: None,
-                                finish_reason: Some(FinishReason::stop),
-                            }],
-                        };
-
                         one_more_run_then_stop = false;
 
-                        // serialize chat completion chunk
-                        let chunk = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                            LlamaCoreError::Operation(format!(
-                                "Failed to serialize chat completion chunk. {}",
-                                e
-                            ))
-                        })?;
-
-                        Ok(chunk)
+                        Ok("data: [DONE]\n\n".to_string())
                     }
                     false => {
                         // clear context
@@ -314,7 +246,7 @@ pub async fn chat_completions_stream(
                             })?;
 
                         let chat_completion_chunk = ChatCompletionChunk {
-                            id: "chatcmpl-123".to_string(),
+                            id: gen_chat_id(),
                             object: "chat.completion.chunk".to_string(),
                             created: created.as_secs(),
                             model: model.clone(),
@@ -335,14 +267,15 @@ pub async fn chat_completions_stream(
                         one_more_run_then_stop = false;
 
                         // serialize chat completion chunk
-                        let chunk = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                            LlamaCoreError::Operation(format!(
-                                "Failed to serialize chat completion chunk. {}",
-                                e
-                            ))
-                        })?;
+                        let chunk_str =
+                            serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                                LlamaCoreError::Operation(format!(
+                                    "Failed to serialize chat completion chunk. {}",
+                                    e
+                                ))
+                            })?;
 
-                        Ok(chunk)
+                        Ok(format!("data: {}\n\n", chunk_str))
                     }
                     false => {
                         // clear context
@@ -371,7 +304,7 @@ pub async fn chat_completions_stream(
                             })?;
 
                         let chat_completion_chunk = ChatCompletionChunk {
-                            id: "chatcmpl-123".to_string(),
+                            id: gen_chat_id(),
                             object: "chat.completion.chunk".to_string(),
                             created: created.as_secs(),
                             model: model.clone(),
@@ -392,14 +325,15 @@ pub async fn chat_completions_stream(
                         one_more_run_then_stop = false;
 
                         // serialize chat completion chunk
-                        let chunk = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                            LlamaCoreError::Operation(format!(
-                                "Failed to serialize chat completion chunk. {}",
-                                e
-                            ))
-                        })?;
+                        let chunk_str =
+                            serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                                LlamaCoreError::Operation(format!(
+                                    "Failed to serialize chat completion chunk. {}",
+                                    e
+                                ))
+                            })?;
 
-                        Ok(chunk)
+                        Ok(format!("data: {}\n\n", chunk_str))
                     }
                     false => {
                         // clear context
@@ -443,6 +377,9 @@ pub async fn chat_completions(
     // create ChatPrompt instance from the template type
     let template = create_prompt_template(template_ty);
 
+    // update metadata
+    let mut metadata = update_metadata(chat_request).await?;
+
     // build prompt
     let (prompt, avaible_completion_tokens) = build_prompt(&template, chat_request)
         .map_err(|e| LlamaCoreError::Operation(format!("Failed to build prompt. {}", e)))?;
@@ -453,8 +390,8 @@ pub async fn chat_completions(
         print_log_end_separator(Some("*"), None);
     }
 
-    // update metadata
-    update_metadata(chat_request, avaible_completion_tokens).await?;
+    // update metadata n_predict
+    update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
 
     // get graph
     let graph = GRAPH.get().ok_or(LlamaCoreError::Operation(String::from(
@@ -517,7 +454,7 @@ pub async fn chat_completions(
 
             // create ChatCompletionResponse
             Ok(ChatCompletionObject {
-                id: uuid::Uuid::new_v4().to_string(),
+                id: gen_chat_id(),
                 object: String::from("chat.completion"),
                 created: created.as_secs(),
                 model: chat_request.model.clone().unwrap_or_default(),
@@ -582,7 +519,7 @@ pub async fn chat_completions(
 
             // create ChatCompletionResponse
             Ok(ChatCompletionObject {
-                id: uuid::Uuid::new_v4().to_string(),
+                id: gen_chat_id(),
                 object: String::from("chat.completion"),
                 created: created.as_secs(),
                 model: chat_request.model.clone().unwrap_or_default(),
@@ -651,7 +588,7 @@ pub async fn chat_completions(
 
             // create ChatCompletionResponse
             Ok(ChatCompletionObject {
-                id: uuid::Uuid::new_v4().to_string(),
+                id: gen_chat_id(),
                 object: String::from("chat.completion"),
                 created: created.as_secs(),
                 model: chat_request.model.clone().unwrap_or_default(),
@@ -677,10 +614,7 @@ pub async fn chat_completions(
     }
 }
 
-async fn update_metadata(
-    chat_request: &ChatCompletionRequest,
-    available_completion_tokens: u64,
-) -> Result<(), LlamaCoreError> {
+async fn update_metadata(chat_request: &ChatCompletionRequest) -> Result<Metadata, LlamaCoreError> {
     let mut should_update = false;
 
     let mut metadata = match METADATA.get() {
@@ -698,50 +632,22 @@ async fn update_metadata(
             for part in parts {
                 if let ContentPart::Image(image) = part {
                     let image = image.image();
-                    match image.is_url() {
-                        true => {
-                            // update metadata image
-                            let img = download_image(&image.url).await?;
 
-                            metadata.image = Some(img);
+                    if image.is_url() {
+                        // update metadata image
+                        let img = download_image(&image.url).await?;
 
-                            if !should_update {
-                                should_update = true;
-                            }
+                        metadata.image = Some(img);
 
-                            // todo: now only support a single image
-                            break;
+                        if !should_update {
+                            should_update = true;
                         }
-                        false => {
-                            return Err(LlamaCoreError::Operation(String::from(
-                                "Base64 image is not supported yet.",
-                            )));
-                        }
+
+                        // todo: now only support a single image
+                        break;
                     }
                 }
             }
-        }
-    }
-
-    // check if necessary to update n_predict with max_tokens
-    if let Some(max_tokens) = chat_request.max_tokens {
-        let max_completion_tokens = match available_completion_tokens < max_tokens {
-            true => available_completion_tokens,
-            false => max_tokens,
-        };
-
-        // update n_predict
-        metadata.n_predict = max_completion_tokens;
-
-        if !should_update {
-            should_update = true;
-        }
-    } else if metadata.n_predict > available_completion_tokens {
-        // update n_predict
-        metadata.n_predict = available_completion_tokens;
-
-        if !should_update {
-            should_update = true;
         }
     }
 
@@ -796,6 +702,79 @@ async fn update_metadata(
     // check if the `embedding` option is disabled
     if metadata.embeddings {
         metadata.embeddings = false;
+
+        if !should_update {
+            should_update = true;
+        }
+    }
+
+    if should_update {
+        // update metadata
+        let config = match serde_json::to_string(&metadata) {
+            Ok(config) => config,
+            Err(e) => {
+                return Err(LlamaCoreError::Operation(format!(
+                    "Fail to serialize metadata to a JSON string. {}",
+                    e
+                )));
+            }
+        };
+
+        let graph = match GRAPH.get() {
+            Some(graph) => graph,
+            None => {
+                return Err(LlamaCoreError::Operation(String::from(
+                    "Fail to get the underlying value of `GRAPH`.",
+                )));
+            }
+        };
+        let mut graph = match graph.lock() {
+            Ok(graph) => graph,
+            Err(e) => {
+                return Err(LlamaCoreError::Operation(format!(
+                    "Fail to acquire the lock of `GRAPH`. {}",
+                    e
+                )));
+            }
+        };
+
+        // update metadata
+        if graph
+            .set_input(1, wasmedge_wasi_nn::TensorType::U8, &[1], config.as_bytes())
+            .is_err()
+        {
+            return Err(LlamaCoreError::Operation(String::from(
+                "Fail to update metadata",
+            )));
+        }
+    }
+
+    Ok(metadata)
+}
+
+async fn update_n_predict(
+    chat_request: &ChatCompletionRequest,
+    metadata: &mut Metadata,
+    available_completion_tokens: u64,
+) -> Result<(), LlamaCoreError> {
+    let mut should_update = false;
+
+    // check if necessary to update n_predict with max_tokens
+    if let Some(max_tokens) = chat_request.max_tokens {
+        let max_completion_tokens = match available_completion_tokens < max_tokens {
+            true => available_completion_tokens,
+            false => max_tokens,
+        };
+
+        // update n_predict
+        metadata.n_predict = max_completion_tokens;
+
+        if !should_update {
+            should_update = true;
+        }
+    } else if metadata.n_predict > available_completion_tokens {
+        // update n_predict
+        metadata.n_predict = available_completion_tokens;
 
         if !should_update {
             should_update = true;
@@ -1046,34 +1025,13 @@ fn build_prompt(
 
         // read input tensor
         let tensor_data = prompt.trim().as_bytes().to_vec();
-        if graph
-            .set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data)
-            .is_err()
-        {
-            return Err(String::from("Fail to set input tensor"));
-        };
+        if let Err(e) = graph.set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data) {
+            return Err(format!("Fail to set prompt tensor data: {msg}", msg = e));
+        }
 
         // Retrieve the number of prompt tokens.
-        let mut input_buffer = vec![0u8; MAX_BUFFER_SIZE];
-        let mut input_size = match graph.get_output(1, &mut input_buffer) {
-            Ok(size) => size,
-            Err(e) => {
-                return Err(format!("Fail to get token info: {msg}", msg = e));
-            }
-        };
-        input_size = std::cmp::min(MAX_BUFFER_SIZE, input_size);
-        let token_info: Value = match serde_json::from_slice(&input_buffer[..input_size]) {
-            Ok(token_info) => token_info,
-            Err(e) => {
-                return Err(format!("Fail to deserialize token info: {msg}", msg = e));
-            }
-        };
-        let prompt_tokens = match token_info["input_tokens"].as_u64() {
-            Some(prompt_tokens) => prompt_tokens,
-            None => {
-                return Err(String::from("Fail to get `input_tokens`."));
-            }
-        };
+        let token_info = get_token_info(&graph)?;
+        let prompt_tokens = token_info.prompt_tokens;
 
         match prompt_tokens > max_prompt_tokens {
             true => {
@@ -1164,7 +1122,6 @@ pub(crate) struct TokenInfo {
 /// Downloads an image from the given URL and returns the file name.
 async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> {
     let image_url = image_url.as_ref();
-    // println!("[DEBUG] image_url: {}", image_url);
     let url =
         reqwest::Url::parse(image_url).map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
     let response = reqwest::get(url)
