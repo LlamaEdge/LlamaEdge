@@ -110,19 +110,29 @@ pub trait MergeRagContext: Send {
 
         let context = context[0].trim_end();
 
-        // prepare system message
-        let content = format!("Use the following pieces of context to answer the user's question.\nIf you don't know the answer, just say that you don't know, don't try to make up an answer.\n----------------\n{}", context);
-
-        let name = messages[0].name().cloned();
-        // create system message
-        let system_message = ChatCompletionRequestMessage::new_system_message(content, name);
-
         // update or insert system message
         match messages[0] {
-            ChatCompletionRequestMessage::System(_) => {
+            ChatCompletionRequestMessage::System(ref message) => {
+                // compose new system message content
+                let content = format!("{original_system_message}\nUse the following pieces of context to answer the user's question.\nIf you don't know the answer, just say that you don't know, don't try to make up an answer.\n----------------\n{context}", original_system_message=message.content().trim(), context=context.trim_end());
+                // create system message
+                let system_message = ChatCompletionRequestMessage::new_system_message(
+                    content,
+                    messages[0].name().cloned(),
+                );
+                // replace the original system message
                 messages[0] = system_message;
             }
             _ => {
+                // prepare system message
+                let content = format!("Use the following pieces of context to answer the user's question.\nIf you don't know the answer, just say that you don't know, don't try to make up an answer.\n----------------\n{}", context.trim_end());
+
+                // create system message
+                let system_message = ChatCompletionRequestMessage::new_system_message(
+                    content,
+                    messages[0].name().cloned(),
+                );
+                // insert system message
                 messages.insert(0, system_message);
             }
         };
