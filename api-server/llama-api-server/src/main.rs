@@ -46,7 +46,7 @@ async fn main() -> Result<(), ServerError> {
                 .value_name("MODEL-NAME")
                 .value_delimiter(',')
                 .help("Sets single or multiple model names")
-                .default_value("default,embedding"),
+                .default_value("default"),
         )
         .arg(
             Arg::new("model_alias")
@@ -54,7 +54,7 @@ async fn main() -> Result<(), ServerError> {
                 .long("model-alias")
                 .value_name("MODEL-ALIAS")
                 .value_delimiter(',')
-                .help("Sets single or multiple alias names")
+                .help("Sets model aliases")
                 .default_value("default,embedding"),
         )
         .arg(
@@ -65,7 +65,7 @@ async fn main() -> Result<(), ServerError> {
                 .value_delimiter(',')
                 .value_parser(clap::value_parser!(u64))
                 .help("Sets the prompt context size")
-                .default_value("512,2048"),
+                .default_value("512"),
         )
         .arg(
             Arg::new("n_predict")
@@ -260,6 +260,11 @@ async fn main() -> Result<(), ServerError> {
         ))?
         .map(|s| s.to_string())
         .collect();
+    if model_names.len() > 2 {
+        return Err(ServerError::ArgumentError(
+            "LlamaEdge API Server supports two models at most. You specified more than two model names.".to_owned(),
+        ));
+    }
     println!("[INFO] Model names: {names}", names = model_names.join(","));
 
     // model aliases
@@ -270,6 +275,11 @@ async fn main() -> Result<(), ServerError> {
         ))?
         .map(|s| s.to_string())
         .collect();
+    if model_aliases.len() > 2 {
+        return Err(ServerError::ArgumentError(
+            "LlamaEdge API Server supports two models at most. You specified more than two model aliaes.".to_owned(),
+        ));
+    }
     println!(
         "[INFO] Model aliases: {aliases}",
         aliases = model_aliases.join(",")
@@ -286,6 +296,16 @@ async fn main() -> Result<(), ServerError> {
         ))?
         .map(|n| n.to_owned())
         .collect::<Vec<u64>>();
+    if ctx_sizes.len() > 2 {
+        return Err(ServerError::ArgumentError(
+            "LlamaEdge API Server supports two models at most. You specified more than two context sizes.".to_owned(),
+        ));
+    }
+    if model_names.len() != ctx_sizes.len() {
+        return Err(ServerError::ArgumentError(
+            format!("You specified {} model names, but {} context sizes. They should be set the same number of arguments", model_names.len(), ctx_sizes.len())
+        ));
+    }
     let ctx_sizes_str: String = ctx_sizes
         .iter()
         .map(|n| n.to_string())
@@ -512,53 +532,87 @@ async fn main() -> Result<(), ServerError> {
 
     // * initialize the core context
     {
-        let mut chat_models = vec![];
-        let mut embedding_models = vec![];
-        for (i, model_alias) in model_aliases.iter().enumerate() {
-            let model_alias = model_alias.trim();
-            match model_alias {
-                "default" => {
-                    let model_name = model_names
-                        .get(i)
-                        .expect("Failed to get the model name")
-                        .trim();
-                    let ctx_size = ctx_sizes.get(i).expect("Failed to get the context size");
-                    let mut metadata = options.clone();
-                    metadata.ctx_size = *ctx_size;
+        match model_names.len() {
+            1 => {
+                // specify chat model
+                let model_alias = model_aliases
+                    .first()
+                    .expect("Failed to get the model alias")
+                    .trim();
+                let model_name = model_names
+                    .first()
+                    .expect("Failed to get the model name")
+                    .trim();
+                let ctx_size = ctx_sizes.first().expect("Failed to get the context size");
+                let mut metadata = options.clone();
+                metadata.ctx_size = *ctx_size;
 
-                    chat_models.push(ModelInfo {
-                        model_name: model_name.to_string(),
-                        model_alias: model_alias.to_string(),
-                        metadata,
-                    });
-                }
-                "embedding" => {
-                    let model_name = model_names
-                        .get(i)
-                        .expect("Failed to get the model name")
-                        .trim();
-                    let ctx_size = ctx_sizes.get(i).expect("Failed to get the context size");
-                    let mut metadata = options.clone();
-                    metadata.ctx_size = *ctx_size;
+                let chat_models = vec![ModelInfo {
+                    model_name: model_name.to_string(),
+                    model_alias: model_alias.to_string(),
+                    metadata,
+                }];
 
-                    embedding_models.push(ModelInfo {
-                        model_name: model_name.to_string(),
-                        model_alias: model_alias.to_string(),
-                        metadata,
-                    });
-                }
-                _ => {
-                    return Err(ServerError::Operation(format!(
-                        "The model alias `{}` is not supported.",
-                        model_alias
-                    )))
-                }
+                // initialize the core context
+                llama_core::init_core_context(&chat_models, None).map_err(|e| {
+                    ServerError::Operation(format!("Failed to initialize the core context. {}", e))
+                })?;
+            }
+            2 => {
+                // specify chat model
+                let model_alias = model_aliases
+                    .first()
+                    .expect("Failed to get the model alias")
+                    .trim();
+                let model_name = model_names
+                    .first()
+                    .expect("Failed to get the model name")
+                    .trim();
+                let ctx_size = ctx_sizes.first().expect("Failed to get the context size");
+                let mut metadata = options.clone();
+                metadata.ctx_size = *ctx_size;
+
+                let chat_models = vec![ModelInfo {
+                    model_name: model_name.to_string(),
+                    model_alias: model_alias.to_string(),
+                    metadata,
+                }];
+
+                // specify embedding model
+                let model_alias = model_aliases
+                    .get(1)
+                    .expect("Failed to get the model alias")
+                    .trim();
+                let model_name = model_names
+                    .get(1)
+                    .expect("Failed to get the model name")
+                    .trim();
+                let ctx_size = ctx_sizes.get(1).expect("Failed to get the context size");
+                let mut metadata = options.clone();
+                metadata.ctx_size = *ctx_size;
+
+                let embedding_models = vec![ModelInfo {
+                    model_name: model_name.to_string(),
+                    model_alias: model_alias.to_string(),
+                    metadata,
+                }];
+
+                // initialize the core context
+                llama_core::init_core_context(&chat_models, Some(&embedding_models)).map_err(
+                    |e| {
+                        ServerError::Operation(format!(
+                            "Failed to initialize the core context. {}",
+                            e
+                        ))
+                    },
+                )?;
+            }
+            _ => {
+                return Err(ServerError::Operation(
+                    "One or two model names should be specified.".to_owned(),
+                ))
             }
         }
-
-        llama_core::init_core_context(&chat_models, Some(&embedding_models)).map_err(|e| {
-            ServerError::Operation(format!("Failed to initialize the core context. {}", e))
-        })?;
 
         // get the plugin version info
         let plugin_info =
