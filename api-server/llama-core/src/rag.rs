@@ -199,6 +199,8 @@ pub type ScoredPoint = qdrant::ScoredPoint;
 ///
 /// * `text` - A reference to a text.
 ///
+/// * `ty` - Type of the text, `txt` for text content or `md` for markdown content.
+///
 /// # Returns
 ///
 /// A vector of strings.
@@ -208,11 +210,9 @@ pub type ScoredPoint = qdrant::ScoredPoint;
 /// Returns an error if the operation fails.
 pub fn chunk_text(
     text: impl AsRef<str>,
-    extension: impl AsRef<str>,
+    ty: impl AsRef<str>,
 ) -> Result<Vec<String>, LlamaCoreError> {
-    if extension.as_ref().to_lowercase().as_str() != "txt"
-        && extension.as_ref().to_lowercase().as_str() != "md"
-    {
+    if ty.as_ref().to_lowercase().as_str() != "txt" && ty.as_ref().to_lowercase().as_str() != "md" {
         return Err(LlamaCoreError::Operation(
             "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported.".to_string(),
         ));
@@ -221,7 +221,7 @@ pub fn chunk_text(
     // set the maximum number of tokens, which is determined by the embedding model's context size
     let max_tokens = dimension(None)?;
 
-    match extension.as_ref().to_lowercase().as_str() {
+    match ty.as_ref().to_lowercase().as_str() {
         "txt" => {
             let tokenizer = cl100k_base().map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
             let splitter = TextSplitter::new(tokenizer).with_trim_chunks(true);
@@ -234,17 +234,13 @@ pub fn chunk_text(
             Ok(chunks)
         },
         "md" => {
-            // Maximum number of characters in a chunk. Can also use a range.
-            let max_characters = max_tokens as usize;
+            let tokenizer = cl100k_base().map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
+            let splitter = MarkdownSplitter::new(tokenizer).with_trim_chunks(true);
 
-            // Default implementation uses character count for chunk size.
-            // Can also use all of the same tokenizer implementations as `TextSplitter`.
-            let splitter = MarkdownSplitter::default()
-                // Optionally can also have the splitter trim whitespace for you
-                .with_trim_chunks(true);
-
-            let chunks = splitter.chunks(text.as_ref(), max_characters).map(|s| s.to_string())
-            .collect::<Vec<_>>();
+            let chunks = splitter
+                .chunks(text.as_ref(), max_tokens as usize - 135)
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>();
 
             Ok(chunks)
         },
