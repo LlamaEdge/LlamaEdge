@@ -1,7 +1,4 @@
-use crate::{
-    embeddings::{dimension, embeddings},
-    error::LlamaCoreError,
-};
+use crate::{embeddings::embeddings, error::LlamaCoreError};
 use endpoints::{
     embeddings::{EmbeddingObject, EmbeddingsResponse},
     rag::RagEmbeddingRequest,
