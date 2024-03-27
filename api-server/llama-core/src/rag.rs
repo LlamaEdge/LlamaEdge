@@ -218,29 +218,31 @@ pub fn chunk_text(
         ));
     }
 
-    // set the maximum number of tokens, which is determined by the embedding model's context size
-    let max_tokens = dimension(None)?;
-
     match ty.as_ref().to_lowercase().as_str() {
         "txt" => {
             let tokenizer = cl100k_base().map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
+            let max_tokens = 384;
             let splitter = TextSplitter::new(tokenizer).with_trim_chunks(true);
 
             let chunks = splitter
-                .chunks(text.as_ref(), max_tokens as usize)
+                .chunks(text.as_ref(), max_tokens)
                 .map(|s| s.to_string())
                 .collect::<Vec<_>>();
 
             Ok(chunks)
         },
         "md" => {
-            let tokenizer = cl100k_base().map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
-            let splitter = MarkdownSplitter::new(tokenizer).with_trim_chunks(true);
+            // Maximum number of characters in a chunk. Can also use a range.
+            let max_characters = 380;
 
-            let chunks = splitter
-                .chunks(text.as_ref(), max_tokens as usize - 135)
-                .map(|s| s.to_string())
-                .collect::<Vec<_>>();
+            // Default implementation uses character count for chunk size.
+            // Can also use all of the same tokenizer implementations as `TextSplitter`.
+            let splitter = MarkdownSplitter::default()
+                // Optionally can also have the splitter trim whitespace for you
+                .with_trim_chunks(true);
+
+            let chunks = splitter.chunks(text.as_ref(), max_characters).map(|s| s.to_string())
+            .collect::<Vec<_>>();
 
             Ok(chunks)
         },
