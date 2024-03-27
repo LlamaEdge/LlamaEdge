@@ -105,7 +105,6 @@ fn update_metadata(graph: &mut Graph) -> Result<(), LlamaCoreError> {
 
 fn compute_embeddings(
     graph: &mut Graph,
-    // embedding_request: &EmbeddingRequest,
     input: &[String],
 ) -> Result<(Vec<EmbeddingObject>, Usage), LlamaCoreError> {
     // compute embeddings
@@ -171,6 +170,62 @@ fn compute_embeddings(
     }
 
     Ok((embeddings, usage))
+}
+
+/// Get the dimension of the embedding model.
+///
+/// # Arguments
+///
+/// * `name` - The name of the embedding model. If `None`, the dimension of the first model will be returned.
+///
+/// # Returns
+///
+/// The dimension of the embedding model.
+///
+/// # Errors
+///
+/// * The model does not exist in the embedding graphs.
+/// * No embedding model is available.
+pub fn dimension(name: Option<&str>) -> Result<u64, LlamaCoreError> {
+    let embedding_graphs =
+        EMBEDDING_GRAPHS
+            .get()
+            .ok_or(LlamaCoreError::Operation(String::from(
+                "Fail to get the underlying value of `EMBEDDING_GRAPHS`.",
+            )))?;
+
+    let embedding_graphs = embedding_graphs.lock().map_err(|e| {
+        LlamaCoreError::Operation(format!(
+            "Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}",
+            e
+        ))
+    })?;
+
+    match name {
+        Some(model_name) => match embedding_graphs.get(model_name) {
+            Some(graph) => Ok(graph.metadata.ctx_size),
+            None => Err(LlamaCoreError::Operation(format!(
+                "The model `{}` does not exist in the embedding graphs.",
+                model_name
+            ))),
+        },
+        None => {
+            if !embedding_graphs.is_empty() {
+                let graph = embedding_graphs
+                    .values()
+                    .next()
+                    .ok_or(LlamaCoreError::Operation(String::from(
+                        "Fail to get the underlying value of `EMBEDDING_GRAPHS`.",
+                    )))?;
+
+                Ok(graph.metadata.ctx_size)
+            } else {
+                Err(LlamaCoreError::Operation(String::from(
+                    "No embedding model is available.",
+                )))
+            }
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
