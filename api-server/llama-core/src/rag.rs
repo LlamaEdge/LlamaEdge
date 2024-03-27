@@ -1,4 +1,7 @@
-use crate::{embeddings::embeddings, error::LlamaCoreError};
+use crate::{
+    embeddings::{dimension, embeddings},
+    error::LlamaCoreError,
+};
 use endpoints::{
     embeddings::{EmbeddingObject, EmbeddingsResponse},
     rag::RagEmbeddingRequest,
@@ -215,14 +218,16 @@ pub fn chunk_text(
         ));
     }
 
+    // set the maximum number of tokens, which is determined by the embedding model's context size
+    let max_tokens = dimension(None)?;
+
     match extension.as_ref().to_lowercase().as_str() {
         "txt" => {
             let tokenizer = cl100k_base().map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
-            let max_tokens = 384;
             let splitter = TextSplitter::new(tokenizer).with_trim_chunks(true);
 
             let chunks = splitter
-                .chunks(text.as_ref(), max_tokens)
+                .chunks(text.as_ref(), max_tokens as usize)
                 .map(|s| s.to_string())
                 .collect::<Vec<_>>();
 
@@ -230,7 +235,7 @@ pub fn chunk_text(
         },
         "md" => {
             // Maximum number of characters in a chunk. Can also use a range.
-            let max_characters = 380;
+            let max_characters = max_tokens as usize;
 
             // Default implementation uses character count for chunk size.
             // Can also use all of the same tokenizer implementations as `TextSplitter`.
@@ -240,9 +245,6 @@ pub fn chunk_text(
 
             let chunks = splitter.chunks(text.as_ref(), max_characters).map(|s| s.to_string())
             .collect::<Vec<_>>();
-
-            // ! debug
-            println!("[DEBUG] len of chunks of md: {}", chunks.len());
 
             Ok(chunks)
         },
