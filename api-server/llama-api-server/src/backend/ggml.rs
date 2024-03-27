@@ -536,7 +536,7 @@ struct RagPromptBuilder;
 impl MergeRagContext for RagPromptBuilder {}
 
 pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
-    if req.method() == &Method::POST {
+    if req.method() == Method::POST {
         let boundary = "boundary=";
 
         let boundary = req.headers().get("content-type").and_then(|ct| {
@@ -563,8 +563,8 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, 
                     }
                 };
 
-                if !((&filename).to_lowercase().ends_with(".txt")
-                    || (&filename).to_lowercase().ends_with(".md"))
+                if !((filename).to_lowercase().ends_with(".txt")
+                    || (filename).to_lowercase().ends_with(".md"))
                 {
                     return error::internal_server_error(
                         "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported.",
@@ -651,13 +651,11 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, 
                     Err(e) => error::internal_server_error(e.to_string()),
                 }
             }
-            None => {
-                return error::internal_server_error(
-                    "Failed to upload the target file. Not found the target file.",
-                );
-            }
+            None => error::internal_server_error(
+                "Failed to upload the target file. Not found the target file.",
+            ),
         }
-    } else if req.method() == &Method::GET {
+    } else if req.method() == Method::GET {
         error::internal_server_error("Not implemented for listing files.")
     } else {
         error::internal_server_error("Invalid HTTP Method.")
@@ -684,7 +682,7 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Result<Response<Bo
     let archive_path = path.join(&chunks_request.id);
     if !archive_path.exists() {
         let message = format!("Not found archive id: {}", &chunks_request.id);
-        return error::internal_server_error(&message);
+        return error::internal_server_error(message);
     }
 
     // check if the file exists
@@ -694,7 +692,7 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Result<Response<Bo
             "Not found file: {} in archive id: {}",
             &chunks_request.filename, &chunks_request.id
         );
-        return error::internal_server_error(&message);
+        return error::internal_server_error(message);
     }
 
     // get the extension of the archived file
