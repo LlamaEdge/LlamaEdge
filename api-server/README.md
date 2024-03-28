@@ -90,7 +90,7 @@ The command above starts the API server on the default socket address. Besides, 
 
 ### Test the API server via terminal
 
-- List models
+- List models with the `/v1/models` endpoint
 
     `llama-api-server` provides a POST API `/v1/models` to list currently available models. You can use `curl` to test it on a new terminal:
 
@@ -114,7 +114,7 @@ The command above starts the API server on the default socket address. Besides, 
     }
     ```
 
-- Chat completions
+- Chat completions with the `/v1/chat/completions` endpoint
 
     Ask a question using OpenAI's JSON message format.
 
@@ -148,7 +148,111 @@ The command above starts the API server on the default socket address. Besides, 
     }
     ```
 
-- Completions
+- Upload a text or markdown file with the `/v1/files` endpoint
+
+    In RAG applications, uploading files is a necessary step. The following command upload a text file [paris.txt](https://huggingface.co/datasets/gaianet/paris/raw/main/paris.txt) to the API server via the `/v1/files` endpoint:
+
+    ```bash
+    curl -X POST http://127.0.0.1:8080/v1/files -F "file=@paris.txt"
+    ```
+
+    If the command is successful, you should see the similar output as below in your terminal:
+
+    ```bash
+    {
+        "id": "file_4bc24593-2a57-4646-af16-028855e7802e",
+        "bytes": 2161,
+        "created_at": 1711611801,
+        "filename": "paris.txt",
+        "object": "file",
+        "purpose": "assistants"
+    }
+    ```
+
+    The `id` and `filename` fields are important for the next step, for example, to segment the uploaded file to chunks for computing embeddings.
+
+- Chunk the uploaded file with the `/v1/chunks` endpoint
+
+    To segment the uploaded file to chunks for computing embeddings, use the `/v1/chunks` API. The following command sends the uploaded file ID and filename to the API server and gets the chunks:
+
+    ```bash
+    curl -X POST http://localhost:8080/v1/chunks \
+        -H 'accept:application/json' \
+        -H 'Content-Type: application/json' \
+        -d '{"file_id":"file_4bc24593-2a57-4646-af16-028855e7802e", "filename":"paris.txt"}'
+    ```
+
+    The following is an example return with the generated chunks:
+
+    ```json
+    {
+        "id": "file_4bc24593-2a57-4646-af16-028855e7802e",
+        "filename": "paris.txt",
+        "chunks": [
+            "Paris, city and capital of France, ..., for Paris has retained its importance as a centre for education and intellectual pursuits.",
+            "Paris’s site at a crossroads ..., drawing to itself much of the talent and vitality of the provinces."
+        ]
+    }
+    ```
+
+- Embedding with the `/v1/embeddings` endpoint
+
+    To compute embeddings for user query or file chunks, use the `/v1/embeddings` API. The following command sends a query to the API server and gets the embeddings as return:
+
+    ```bash
+    curl -X POST http://localhost:8080/v1/embeddings \
+        -H 'accept:application/json' \
+        -H 'Content-Type: application/json' \
+        -d '{"model": "e5-mistral-7b-instruct-Q5_K_M", "input":["Paris, city and capital of France, ..., for Paris has retained its importance as a centre for education and intellectual pursuits.", "Paris’s site at a crossroads ..., drawing to itself much of the talent and vitality of the provinces."]}'
+    ```
+
+    The embeddings returned are like below:
+
+    ```json
+    {
+        "object": "list",
+        "data": [
+            {
+                "index": 0,
+                "object": "embedding",
+                "embedding": [
+                    0.1428378969,
+                    -0.0447309874,
+                    0.007660218049,
+                    ...
+                    -0.0128974719,
+                    -0.03543198109,
+                    0.03974733502,
+                    0.00946635101,
+                    -0.01531364303
+                ]
+            },
+            {
+                "index": 1,
+                "object": "embedding",
+                "embedding": [
+                    0.0697753951,
+                    -0.0001159032545,
+                    0.02073983476,
+                    ...
+                    0.03565846011,
+                    -0.04550019652,
+                    0.02691745944,
+                    0.02498772368,
+                    -0.003226313973
+                ]
+            }
+        ],
+        "model": "e5-mistral-7b-instruct-Q5_K_M",
+        "usage": {
+            "prompt_tokens": 491,
+            "completion_tokens": 0,
+            "total_tokens": 491
+        }
+    }
+    ```
+
+<!-- - Completions
 
     To obtain the completion for a single prompt, use the `/v1/completions` API. The following command sends a prompt to the API server and gets the completion:
 
@@ -181,7 +285,7 @@ The command above starts the API server on the default socket address. Besides, 
             "total_tokens": 807
         }
     }
-    ```
+    ``` -->
 
 ## Add a web UI
 
