@@ -302,6 +302,15 @@ impl ChatCompletionRequestMessage {
             ChatCompletionRequestMessage::Assistant(message) => message.role(),
         }
     }
+
+    /// The name of the participant. Provides the model information to differentiate between participants of the same role.
+    pub fn name(&self) -> Option<&String> {
+        match self {
+            ChatCompletionRequestMessage::System(message) => message.name(),
+            ChatCompletionRequestMessage::User(message) => message.name(),
+            ChatCompletionRequestMessage::Assistant(message) => message.name(),
+        }
+    }
 }
 
 #[test]

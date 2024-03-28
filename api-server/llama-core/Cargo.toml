@@ -1,6 +1,6 @@
 [package]
 name = "llama-core"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 readme = "README.md"
 repository = "https://github.com/LlamaEdge/LlamaEdge"
@@ -16,9 +16,14 @@ wasmedge-wasi-nn = "0.7.0"
 thiserror.workspace = true
 serde.workspace = true
 serde_json = "1.0"
-uuid = { version = "1.7", features = ["v4", "fast-rng", "macro-diagnostics"] }
+uuid.workspace = true
 once_cell = "1.18"
 futures = { version = "0.3.6", default-features = false, features = ["async-await", "std"] }
 futures-util = "0.3"
 reqwest = { package = "reqwest_wasi", version = "0.11", features = ["json", "wasmedge-tls", "stream"] }
-qdrant_rest_client = { version = "0.0.3", features = ["wasmedge-tls"] }
+# qdrant_rest_client = { version = "0.0.3", features = ["wasmedge-tls"] }
+qdrant_rest_client = { git = "https://github.com/second-state/qdrant-rest-client.git", branch = "debug-search-points", features = [
+    "wasmedge-tls",
+] }
+text-splitter = { version = "^0.7", features = ["tiktoken-rs", "markdown"] }
+tiktoken-rs = "^0.5"

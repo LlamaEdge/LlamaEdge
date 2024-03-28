@@ -309,3 +309,16 @@ impl RagChatCompletionRequestBuilder {
         self.req
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChunksRequest {
+    pub id: String,
+    pub filename: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChunksResponse {
+    pub id: String,
+    pub filename: String,
+    pub chunks: Vec<String>,
+}

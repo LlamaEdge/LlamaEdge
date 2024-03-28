@@ -10,16 +10,17 @@ pub use error::LlamaCoreError;
 
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
-use std::sync::Mutex;
+use std::{collections::HashMap, sync::Mutex};
 use wasmedge_wasi_nn::{
     Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext, TensorType,
 };
 
 use crate::error::BackendError;
 
-pub(crate) static CTX_SIZE: OnceCell<usize> = OnceCell::new();
-pub(crate) static GRAPH: OnceCell<Mutex<Graph>> = OnceCell::new();
-pub(crate) static METADATA: OnceCell<Metadata> = OnceCell::new();
+// key: model_name, value: Graph
+pub(crate) static CHAT_GRAPHS: OnceCell<Mutex<HashMap<String, Graph>>> = OnceCell::new();
+// key: model_name, value: Graph
+pub(crate) static EMBEDDING_GRAPHS: OnceCell<Mutex<HashMap<String, Graph>>> = OnceCell::new();
 pub static UTF8_ENCODINGS: OnceCell<Mutex<Vec<u8>>> = OnceCell::new();
 
 pub(crate) const MAX_BUFFER_SIZE: usize = 2usize.pow(14) * 15 + 128;
@@ -81,6 +82,7 @@ pub struct Metadata {
 pub struct Graph {
     pub name: String,
     pub created: std::time::Duration,
+    pub metadata: Metadata,
     _graph: WasiNnGraph,
     context: GraphExecutionContext,
 }
@@ -88,9 +90,9 @@ impl Graph {
     pub fn new(
         model_name: impl Into<String>,
         model_alias: impl AsRef<str>,
-        options: &Metadata,
+        metadata: &Metadata,
     ) -> Result<Self, String> {
-        let config = serde_json::to_string(&options).map_err(|e| e.to_string())?;
+        let config = serde_json::to_string(&metadata).map_err(|e| e.to_string())?;
 
         // load the model
         let graph = wasmedge_wasi_nn::GraphBuilder::new(
@@ -111,6 +113,7 @@ impl Graph {
         Ok(Self {
             name: model_name.into(),
             created,
+            metadata: metadata.clone(),
             _graph: graph,
             context,
         })
@@ -166,29 +169,57 @@ impl Graph {
 /// * `model_alias` - The alias of the model
 ///
 pub fn init_core_context(
-    metadata: &Metadata,
-    model_name: impl AsRef<str>,
-    model_alias: impl AsRef<str>,
+    chat_models: &[ModelInfo],
+    embedding_models: Option<&[ModelInfo]>,
 ) -> Result<(), LlamaCoreError> {
-    let graph = Graph::new(model_name.as_ref(), model_alias.as_ref(), metadata)
-        .map_err(LlamaCoreError::InitContext)?;
+    // chat models
+    let mut chat_graphs = HashMap::new();
+    for chat_model in chat_models {
+        let graph = Graph::new(
+            &chat_model.model_name,
+            &chat_model.model_alias,
+            &chat_model.metadata,
+        )
+        .map_err(|e| {
+            LlamaCoreError::InitContext(format!(
+                "Failed to create a embedding graph. Reason: {}",
+                e
+            ))
+        })?;
 
-    GRAPH.set(Mutex::new(graph)).map_err(|_| {
-        LlamaCoreError::InitContext("The `GRAPH` has already been initialized".to_string())
+        chat_graphs.insert(chat_model.model_name.clone(), graph);
+    }
+    CHAT_GRAPHS.set(Mutex::new(chat_graphs)).map_err(|_| {
+        LlamaCoreError::InitContext("The `CHAT_GRAPHS` has already been initialized".to_string())
     })?;
 
-    // set `CTX_SIZE`
-    CTX_SIZE.set(metadata.ctx_size as usize).map_err(|e| {
-        LlamaCoreError::InitContext(format!(
-            "The `CTX_SIZE` has already been initialized: {}",
-            e
-        ))
-    })?;
+    // embedding models
+    if let Some(embedding_models) = embedding_models {
+        let mut embedding_graphs = HashMap::new();
+        for embedding_model in embedding_models {
+            let graph = Graph::new(
+                &embedding_model.model_name,
+                &embedding_model.model_alias,
+                &embedding_model.metadata,
+            )
+            .map_err(|e| {
+                LlamaCoreError::InitContext(format!(
+                    "Failed to create a embedding graph. Reason: {}",
+                    e
+                ))
+            })?;
 
-    // set `METADATA`
-    METADATA.set(metadata.clone()).map_err(|_| {
-        LlamaCoreError::InitContext("The `METADATA` has already been initialized".to_string())
-    })?;
+            embedding_graphs.insert(embedding_model.model_name.clone(), graph);
+        }
+
+        EMBEDDING_GRAPHS
+            .set(Mutex::new(embedding_graphs))
+            .map_err(|_| {
+                LlamaCoreError::InitContext(
+                    "The `EMBEDDING_GRAPHS` has already been initialized".to_string(),
+                )
+            })?;
+    }
 
     Ok(())
 }
@@ -197,7 +228,21 @@ pub fn init_core_context(
 ///
 /// Note that it is required to call `init_core_context` before calling this function.
 pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
-    let graph = get_graph()?;
+    let chat_graphs = CHAT_GRAPHS
+        .get()
+        .ok_or(LlamaCoreError::Operation(String::from(
+            "Fail to get the underlying value of `CHAT_GRAPHS`.",
+        )))?;
+    let chat_graphs = chat_graphs.lock().map_err(|e| {
+        LlamaCoreError::Operation(format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e))
+    })?;
+
+    let graph = chat_graphs
+        .values()
+        .next()
+        .ok_or(LlamaCoreError::Operation(String::from(
+            "Fail to get the underlying value of `GRAPH`.",
+        )))?;
 
     // get the plugin metadata
     let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
@@ -237,20 +282,16 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
     })
 }
 
-pub(crate) fn get_graph() -> Result<std::sync::MutexGuard<'static, Graph>, LlamaCoreError> {
-    let graph = GRAPH.get().ok_or(LlamaCoreError::Operation(String::from(
-        "Fail to get the underlying value of `GRAPH`.",
-    )))?;
-
-    let graph = graph.lock().map_err(|e| {
-        LlamaCoreError::Operation(format!("Fail to acquire the lock of `GRAPH`. {}", e))
-    })?;
-
-    Ok(graph)
-}
-
 /// Version info of the `wasi-nn_ggml` plugin, including the build number and the commit id.
+#[derive(Debug, Clone)]
 pub struct PluginInfo {
     pub build_number: u64,
     pub commit_id: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ModelInfo {
+    pub model_name: String,
+    pub model_alias: String,
+    pub metadata: Metadata,
 }
