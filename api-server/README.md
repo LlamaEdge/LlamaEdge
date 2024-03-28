@@ -12,6 +12,11 @@ An OpenAI-compatible web API allows the model to work with a large ecosystem of 
   - [Get model](#get-model)
   - [Run LlamaEdge API server](#run-llamaedge-api-server)
   - [Endpoints](#endpoints)
+    - [`/v1/models` endpoint for model list](#v1models-endpoint-for-model-list)
+    - [`/v1/chat/completions` endpoint for chat completions](#v1chatcompletions-endpoint-for-chat-completions)
+    - [`/v1/files` endpoint for uploading text and markdown files](#v1files-endpoint-for-uploading-text-and-markdown-files)
+    - [`/v1/chunks` endpoint for segmenting files to chunks](#v1chunks-endpoint-for-segmenting-files-to-chunks)
+    - [`/v1/embeddings` endpoint for computing embeddings](#v1embeddings-endpoint-for-computing-embeddings)
   - [Add a web UI](#add-a-web-ui)
   - [CLI options for the API server](#cli-options-for-the-api-server)
   - [Optional: Build the `llama-chat` wasm app yourself](#optional-build-the-llama-chat-wasm-app-yourself)
@@ -90,7 +95,7 @@ The command above starts the API server on the default socket address. Besides, 
 
 ## Endpoints
 
-- `/v1/models` endpoint for model list
+### `/v1/models` endpoint for model list
 
     `llama-api-server` provides a POST API `/v1/models` to list currently available models. You can use `curl` to test it on a new terminal:
 
@@ -114,7 +119,7 @@ The command above starts the API server on the default socket address. Besides, 
     }
     ```
 
-- `/v1/chat/completions` endpoint for chat completions
+### `/v1/chat/completions` endpoint for chat completions
 
     Ask a question using OpenAI's JSON message format.
 
@@ -148,7 +153,7 @@ The command above starts the API server on the default socket address. Besides, 
     }
     ```
 
-- `/v1/files` endpoint for uploading text and markdown files
+### `/v1/files` endpoint for uploading text and markdown files
 
     In RAG applications, uploading files is a necessary step. The following command upload a text file [paris.txt](https://huggingface.co/datasets/gaianet/paris/raw/main/paris.txt) to the API server via the `/v1/files` endpoint:
 
@@ -171,7 +176,7 @@ The command above starts the API server on the default socket address. Besides, 
 
     The `id` and `filename` fields are important for the next step, for example, to segment the uploaded file to chunks for computing embeddings.
 
-- `/v1/chunks` endpoint for segmenting files to chunks
+### `/v1/chunks` endpoint for segmenting files to chunks
 
     To segment the uploaded file to chunks for computing embeddings, use the `/v1/chunks` API. The following command sends the uploaded file ID and filename to the API server and gets the chunks:
 
@@ -195,7 +200,7 @@ The command above starts the API server on the default socket address. Besides, 
     }
     ```
 
-- `/v1/embeddings` endpoint for computing embeddings
+### `/v1/embeddings` endpoint for computing embeddings
 
     To compute embeddings for user query or file chunks, use the `/v1/embeddings` API. The following command sends a query to the API server and gets the embeddings as return:
 
