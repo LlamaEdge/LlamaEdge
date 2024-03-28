@@ -10,8 +10,8 @@ An OpenAI-compatible web API allows the model to work with a large ecosystem of 
   - [Dependencies](#dependencies)
   - [Get the llama-api-server.wasm app](#get-the-llama-api-serverwasm-app)
   - [Get model](#get-model)
-  - [Run the API server via curl](#run-the-api-server-via-curl)
-    - [Test the API server via terminal](#test-the-api-server-via-terminal)
+  - [Run LlamaEdge API server](#run-llamaedge-api-server)
+  - [Endpoints](#endpoints)
   - [Add a web UI](#add-a-web-ui)
   - [CLI options for the API server](#cli-options-for-the-api-server)
   - [Optional: Build the `llama-chat` wasm app yourself](#optional-build-the-llama-chat-wasm-app-yourself)
@@ -73,7 +73,7 @@ curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-a
 
 Cilck [here](../models.md) to see the model download link and commadns to run the API server and test the API server.
 
-## Run the API server via curl
+## Run LlamaEdge API server
 
 Run the API server with the following command:
 
@@ -88,9 +88,9 @@ The command above starts the API server on the default socket address. Besides, 
 - The `--nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf` option specifies the Llama model to be used by the API server. The pattern of the argument is `<name>:<encoding>:<target>:<model path>`. Here, the model used is `llama-2-7b-chat.Q5_K_M.gguf`; and we give it an alias `default` as its name in the runtime environment. You can change the model name here if you're not using llama2-7b-chat
 - The `-p llama-2-chat` is the prompt template for the model.
 
-### Test the API server via terminal
+## Endpoints
 
-- List models with the `/v1/models` endpoint
+- `/v1/models` endpoint for model list
 
     `llama-api-server` provides a POST API `/v1/models` to list currently available models. You can use `curl` to test it on a new terminal:
 
@@ -114,7 +114,7 @@ The command above starts the API server on the default socket address. Besides, 
     }
     ```
 
-- Chat completions with the `/v1/chat/completions` endpoint
+- `/v1/chat/completions` endpoint for chat completions
 
     Ask a question using OpenAI's JSON message format.
 
@@ -148,7 +148,7 @@ The command above starts the API server on the default socket address. Besides, 
     }
     ```
 
-- Upload a text or markdown file with the `/v1/files` endpoint
+- `/v1/files` endpoint for uploading text and markdown files
 
     In RAG applications, uploading files is a necessary step. The following command upload a text file [paris.txt](https://huggingface.co/datasets/gaianet/paris/raw/main/paris.txt) to the API server via the `/v1/files` endpoint:
 
@@ -171,7 +171,7 @@ The command above starts the API server on the default socket address. Besides, 
 
     The `id` and `filename` fields are important for the next step, for example, to segment the uploaded file to chunks for computing embeddings.
 
-- Chunk the uploaded file with the `/v1/chunks` endpoint
+- `/v1/chunks` endpoint for segmenting files to chunks
 
     To segment the uploaded file to chunks for computing embeddings, use the `/v1/chunks` API. The following command sends the uploaded file ID and filename to the API server and gets the chunks:
 
@@ -195,7 +195,7 @@ The command above starts the API server on the default socket address. Besides, 
     }
     ```
 
-- Embedding with the `/v1/embeddings` endpoint
+- `/v1/embeddings` endpoint for computing embeddings
 
     To compute embeddings for user query or file chunks, use the `/v1/embeddings` API. The following command sends a query to the API server and gets the embeddings as return:
 
@@ -311,15 +311,15 @@ The `-h` or `--help` option can list the available options of the `llama-api-ser
   ```console
   ~/llama-utils/api-server$ wasmedge llama-api-server.wasm -h
 
-  Usage: llama-api-server.wasm [OPTIONS]
+  Usage: llama-api-server.wasm [OPTIONS] --prompt-template <TEMPLATE>
 
-  Options:
+    Options:
     -s, --socket-addr <IP:PORT>
             Sets the socket address [default: 0.0.0.0:8080]
     -m, --model-name <MODEL-NAME>
-            Sets the model name [default: default]
+            Sets single or multiple model names [default: default]
     -a, --model-alias <MODEL-ALIAS>
-            Sets the alias name of the model in WasmEdge runtime [default: default]
+            Sets model aliases [default: default,embedding]
     -c, --ctx-size <CTX_SIZE>
             Sets the prompt context size [default: 512]
     -n, --n-predict <N_PRDICT>
@@ -329,19 +329,19 @@ The `-h` or `--help` option can list the available options of the `llama-api-ser
     -b, --batch-size <BATCH_SIZE>
             Batch size for prompt processing [default: 512]
         --temp <TEMP>
-          Temperature for sampling [default: 0.8]
+            Temperature for sampling [default: 1.0]
         --top-p <TOP_P>
-          An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. 1.0 = disabled [default: 0.9]
+            An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. 1.0 = disabled [default: 1.0]
         --repeat-penalty <REPEAT_PENALTY>
-          Penalize repeat sequence of tokens [default: 1.1]
+            Penalize repeat sequence of tokens [default: 1.1]
         --presence-penalty <PRESENCE_PENALTY>
-          Repeat alpha presence penalty. 0.0 = disabled [default: 0.0]
-        -frequency-penalty <FREQUENCY_PENALTY>
-          Repeat alpha frequency penalty. 0.0 = disabled [default: 0.0]
+            Repeat alpha presence penalty. 0.0 = disabled [default: 0.0]
+        --frequency-penalty <FREQUENCY_PENALTY>
+            Repeat alpha frequency penalty. 0.0 = disabled [default: 0.0]
     -r, --reverse-prompt <REVERSE_PROMPT>
             Halt generation at PROMPT, return control.
     -p, --prompt-template <TEMPLATE>
-          Sets the prompt template. [possible values: llama-2-chat, codellama-instruct, codellama-super-instruct, mistral-instruct, mistrallite, openchat, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, solar-instruct, gemma-instruct]
+            Sets the prompt template. [possible values: llama-2-chat, codellama-instruct, codellama-super-instruct, mistral-instruct, mistrallite, openchat, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, solar-instruct, gemma-instruct]
         --llava-mmproj <LLAVA_MMPROJ>
             Path to the multimodal projector file [default: ]
         --qdrant-url <qdrant_url>
@@ -363,7 +363,7 @@ The `-h` or `--help` option can list the available options of the `llama-api-ser
     -h, --help
             Print help
     -V, --version
-          Print version
+            Print version
   ```
 
   Please guarantee that the port is not occupied by other processes. If the port specified is available on your machine and the command is successful, you should see the following output in the terminal:
