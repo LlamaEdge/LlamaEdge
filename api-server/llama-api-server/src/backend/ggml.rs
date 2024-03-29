@@ -3,15 +3,24 @@ use crate::{
     utils::{print_log_begin_separator, print_log_end_separator},
     QDRANT_CONFIG,
 };
-use chat_prompts::PromptTemplateType;
+use chat_prompts::{MergeRagContext, PromptTemplateType};
 use endpoints::{
     chat::{ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionUserMessageContent},
     completions::CompletionRequest,
     embeddings::EmbeddingRequest,
-    rag::RagEmbeddingRequest,
+    files::FileObject,
+    rag::{ChunksRequest, ChunksResponse, RagEmbeddingRequest},
 };
 use futures_util::TryStreamExt;
-use hyper::{body::to_bytes, Body, Request, Response};
+use hyper::{body::to_bytes, Body, Method, Request, Response};
+use multipart::server::{Multipart, ReadEntry, ReadEntryResult};
+use multipart_2021 as multipart;
+use std::{
+    fs::{self, File},
+    io::{Cursor, Read, Write},
+    path::Path,
+    time::SystemTime,
+};
 
 /// List all models available.
 pub(crate) async fn models_handler() -> Result<Response<Body>, hyper::Error> {
@@ -233,6 +242,7 @@ async fn chat_completions(
 /// Note that the body of the request is deserialized to a `RagEmbeddingRequest` instance.
 pub(crate) async fn _rag_doc_chunks_to_embeddings_handler(
     mut req: Request<Body>,
+    log_prompts: bool,
 ) -> Result<Response<Body>, hyper::Error> {
     // parse request
     let body_bytes = to_bytes(req.body_mut()).await?;
@@ -243,7 +253,7 @@ pub(crate) async fn _rag_doc_chunks_to_embeddings_handler(
         }
     };
 
-    match llama_core::rag::rag_doc_chunks_to_embeddings(&rag_embedding_request).await {
+    match llama_core::rag::rag_doc_chunks_to_embeddings(&rag_embedding_request, log_prompts).await {
         Ok(embedding_response) => {
             // serialize embedding object
             match serde_json::to_string(&embedding_response) {
@@ -304,7 +314,9 @@ pub(crate) async fn rag_doc_chunks_to_embeddings2_handler(
     );
 
     let embedding_response =
-        match llama_core::rag::rag_doc_chunks_to_embeddings(&rag_embedding_request).await {
+        match llama_core::rag::rag_doc_chunks_to_embeddings(&rag_embedding_request, log_prompts)
+            .await
+        {
             Ok(embedding_response) => embedding_response,
             Err(e) => return error::internal_server_error(e.to_string()),
         };
@@ -458,56 +470,52 @@ pub(crate) async fn rag_query_handler(
     .await
     {
         Ok(search_result) => search_result,
-        Err(e) => {
-            return error::internal_server_error(e.to_string());
+        Err(_e) => {
+            // todo: improve the error handling
+            Vec::new()
+            // return error::internal_server_error(e.to_string());
         }
     };
 
     if log_prompts && scored_points.is_empty() {
         println!(
-            "    * No point retrieved (score >= {})",
+            "    * No point retrieved (score < threshold {})",
             qdrant_config.score_threshold
         );
     }
 
-    // update messages with retrieved context
-    let mut context = String::new();
-    for (idx, point) in scored_points.iter().enumerate() {
-        if log_prompts {
-            println!("    * Point {}: score: {}", idx, point.score);
-        }
+    if !scored_points.is_empty() {
+        // update messages with retrieved context
+        let mut context = String::new();
+        for (idx, point) in scored_points.iter().enumerate() {
+            if log_prompts {
+                println!("    * Point {}: score: {}", idx, point.score);
+            }
 
-        if let Some(payload) = &point.payload {
-            if let Some(source) = payload.get("source") {
-                if log_prompts {
-                    println!("      Source: {}", source);
+            if let Some(payload) = &point.payload {
+                if let Some(source) = payload.get("source") {
+                    if log_prompts {
+                        println!("      Source: {}", source);
+                    }
+
+                    context.push_str(source.to_string().as_str());
+                    context.push_str("\n\n");
                 }
-
-                context.push_str(source.to_string().as_str());
-                context.push_str("\n\n");
             }
         }
-    }
 
-    // prepare system message
-    let content = format!("Use the following pieces of context to answer the user's question.\nIf you don't know the answer, just say that you don't know, don't try to make up an answer.\n----------------\n{}", context.trim_end());
-
-    // create system message
-    let system_message =
-        ChatCompletionRequestMessage::new_system_message(content, chat_request.user.clone());
-
-    // update or insert system message
-    match chat_request.messages[0] {
-        ChatCompletionRequestMessage::System(_) => {
-            chat_request.messages[0] = system_message;
-        }
-        _ => {
-            chat_request.messages.insert(0, system_message);
+        // insert rag context into chat request
+        if let Err(e) = RagPromptBuilder::build(&mut chat_request.messages, &[context]) {
+            return error::internal_server_error(e.to_string());
         }
     }
 
     if log_prompts {
-        println!("\n[+] Answer the user query with the context info ...");
+        if scored_points.is_empty() {
+            println!("\n[+] Answer the user query ...");
+        } else {
+            println!("\n[+] Answer the user query with the context info ...");
+        }
     }
 
     // chat completion
@@ -521,4 +529,231 @@ pub(crate) async fn rag_query_handler(
     }
 
     res
+}
+
+#[derive(Debug, Default)]
+struct RagPromptBuilder;
+impl MergeRagContext for RagPromptBuilder {}
+
+pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+    if req.method() == Method::POST {
+        let boundary = "boundary=";
+
+        let boundary = req.headers().get("content-type").and_then(|ct| {
+            let ct = ct.to_str().ok()?;
+            let idx = ct.find(boundary)?;
+            Some(ct[idx + boundary.len()..].to_string())
+        });
+
+        let req_body = req.into_body();
+        let body_bytes = to_bytes(req_body).await?;
+        let cursor = Cursor::new(body_bytes.to_vec());
+
+        let mut multipart = Multipart::with_body(cursor, boundary.unwrap());
+
+        let mut file_object: Option<FileObject> = None;
+        while let ReadEntryResult::Entry(mut field) = multipart.read_entry_mut() {
+            if &*field.headers.name == "file" {
+                let filename = match field.headers.filename {
+                    Some(filename) => filename,
+                    None => {
+                        return error::internal_server_error(
+                            "Failed to upload the target file. The filename is not provided.",
+                        );
+                    }
+                };
+
+                if !((filename).to_lowercase().ends_with(".txt")
+                    || (filename).to_lowercase().ends_with(".md"))
+                {
+                    return error::internal_server_error(
+                        "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported.",
+                    );
+                }
+
+                let mut buffer = Vec::new();
+                let size_in_bytes = match field.data.read_to_end(&mut buffer) {
+                    Ok(size_in_bytes) => size_in_bytes,
+                    Err(e) => {
+                        return error::internal_server_error(format!(
+                            "Failed to read the target file. {}",
+                            e
+                        ));
+                    }
+                };
+
+                // create a unique file id
+                let id = format!("file_{}", uuid::Uuid::new_v4());
+
+                // save the file
+                let path = Path::new("archives");
+                if !path.exists() {
+                    fs::create_dir(path).unwrap();
+                }
+                let file_path = path.join(&id);
+                if !file_path.exists() {
+                    fs::create_dir(&file_path).unwrap();
+                }
+                let mut file = match File::create(file_path.join(&filename)) {
+                    Ok(file) => file,
+                    Err(e) => {
+                        return error::internal_server_error(format!(
+                            "Failed to create archive document {}. {}",
+                            &filename, e
+                        ));
+                    }
+                };
+                file.write_all(&buffer[..]).unwrap();
+
+                let created_at = match SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+                    Ok(n) => n.as_secs(),
+                    Err(_) => {
+                        return error::internal_server_error("Failed to get the current time.")
+                    }
+                };
+
+                // create a file object
+                file_object = Some(FileObject {
+                    id,
+                    bytes: size_in_bytes as u64,
+                    created_at,
+                    filename,
+                    object: "file".to_string(),
+                    purpose: "assistants".to_string(),
+                });
+
+                break;
+            }
+        }
+
+        match file_object {
+            Some(fo) => {
+                // serialize chat completion object
+                let s = match serde_json::to_string(&fo) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        return error::internal_server_error(format!(
+                            "Fail to serialize file object. {}",
+                            e
+                        ));
+                    }
+                };
+
+                // return response
+                let result = Response::builder()
+                    .header("Access-Control-Allow-Origin", "*")
+                    .header("Access-Control-Allow-Methods", "*")
+                    .header("Access-Control-Allow-Headers", "*")
+                    .body(Body::from(s));
+
+                match result {
+                    Ok(response) => Ok(response),
+                    Err(e) => error::internal_server_error(e.to_string()),
+                }
+            }
+            None => error::internal_server_error(
+                "Failed to upload the target file. Not found the target file.",
+            ),
+        }
+    } else if req.method() == Method::GET {
+        error::internal_server_error("Not implemented for listing files.")
+    } else {
+        error::internal_server_error("Invalid HTTP Method.")
+    }
+}
+
+pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+    // parse request
+    let body_bytes = to_bytes(req.body_mut()).await?;
+    let chunks_request: ChunksRequest = match serde_json::from_slice(&body_bytes) {
+        Ok(chunks_request) => chunks_request,
+        Err(e) => {
+            return error::bad_request(format!("Fail to parse chunks request: {msg}", msg = e));
+        }
+    };
+
+    // check if the archives directory exists
+    let path = Path::new("archives");
+    if !path.exists() {
+        return error::internal_server_error("The `archives` directory does not exist.");
+    }
+
+    // check if the archive id exists
+    let archive_path = path.join(&chunks_request.id);
+    if !archive_path.exists() {
+        let message = format!("Not found archive id: {}", &chunks_request.id);
+        return error::internal_server_error(message);
+    }
+
+    // check if the file exists
+    let file_path = archive_path.join(&chunks_request.filename);
+    if !file_path.exists() {
+        let message = format!(
+            "Not found file: {} in archive id: {}",
+            &chunks_request.filename, &chunks_request.id
+        );
+        return error::internal_server_error(message);
+    }
+
+    // get the extension of the archived file
+    let extension = match file_path.extension().and_then(std::ffi::OsStr::to_str) {
+        Some(extension) => extension,
+        None => {
+            return error::internal_server_error(format!(
+                "Failed to get the extension of the archived `{}`.",
+                &chunks_request.filename
+            ));
+        }
+    };
+
+    // open the file
+    let mut file = match File::open(&file_path) {
+        Ok(file) => file,
+        Err(e) => {
+            return error::internal_server_error(format!(
+                "Failed to open `{}`. {}",
+                &chunks_request.filename, e
+            ));
+        }
+    };
+
+    // read the file
+    let mut contents = String::new();
+    if let Err(e) = file.read_to_string(&mut contents) {
+        return error::internal_server_error(format!(
+            "Failed to read `{}`. {}",
+            &chunks_request.filename, e
+        ));
+    }
+
+    match llama_core::rag::chunk_text(&contents, extension) {
+        Ok(chunks) => {
+            let chunks_response = ChunksResponse {
+                id: chunks_request.id,
+                filename: chunks_request.filename,
+                chunks,
+            };
+
+            // serialize embedding object
+            match serde_json::to_string(&chunks_response) {
+                Ok(s) => {
+                    // return response
+                    let result = Response::builder()
+                        .header("Access-Control-Allow-Origin", "*")
+                        .header("Access-Control-Allow-Methods", "*")
+                        .header("Access-Control-Allow-Headers", "*")
+                        .body(Body::from(s));
+                    match result {
+                        Ok(response) => Ok(response),
+                        Err(e) => error::internal_server_error(e.to_string()),
+                    }
+                }
+                Err(e) => error::internal_server_error(format!(
+                    "Fail to serialize chunks response. {}",
+                    e
+                )),
+            }
+        }
+        Err(e) => error::internal_server_error(e.to_string()),
+    }
 }

@@ -11,7 +11,7 @@ use hyper::{
     service::{make_service_fn, service_fn},
     Body, Request, Response, Server, StatusCode,
 };
-use llama_core::Metadata;
+use llama_core::{Metadata, ModelInfo};
 use once_cell::sync::OnceCell;
 use std::{net::SocketAddr, path::PathBuf, str::FromStr};
 use utils::{is_valid_url, print_log_begin_separator, print_log_end_separator};
@@ -44,7 +44,8 @@ async fn main() -> Result<(), ServerError> {
                 .short('m')
                 .long("model-name")
                 .value_name("MODEL-NAME")
-                .help("Sets the model name")
+                .value_delimiter(',')
+                .help("Sets single or multiple model names")
                 .default_value("default"),
         )
         .arg(
@@ -52,15 +53,17 @@ async fn main() -> Result<(), ServerError> {
                 .short('a')
                 .long("model-alias")
                 .value_name("MODEL-ALIAS")
-                .help("Sets the alias name of the model in WasmEdge runtime")
-                .default_value("default"),
+                .value_delimiter(',')
+                .help("Sets model aliases")
+                .default_value("default,embedding"),
         )
         .arg(
             Arg::new("ctx_size")
                 .short('c')
                 .long("ctx-size")
-                .value_parser(clap::value_parser!(u64))
                 .value_name("CTX_SIZE")
+                .value_delimiter(',')
+                .value_parser(clap::value_parser!(u64))
                 .help("Sets the prompt context size")
                 .default_value("512"),
         )
@@ -249,34 +252,66 @@ async fn main() -> Result<(), ServerError> {
         socket_addr = socket_addr
     );
 
-    // model name
-    let model_name = matches
-        .get_one::<String>("model_name")
+    // model names
+    let model_names: Vec<String> = matches
+        .get_many::<String>("model_name")
         .ok_or(ServerError::ArgumentError(
-            "Failed to parse the value of `model_name` CLI option".to_owned(),
-        ))?;
-    println!("[INFO] Model name: {name}", name = &model_name);
+            "Failed to parse the value of `--model-names` CLI option".to_owned(),
+        ))?
+        .map(|s| s.to_string())
+        .collect();
+    if model_names.len() > 2 {
+        return Err(ServerError::ArgumentError(
+            "LlamaEdge API Server supports two models at most. You specified more than two model names.".to_owned(),
+        ));
+    }
+    println!("[INFO] Model names: {names}", names = model_names.join(","));
 
-    // model alias
-    let model_alias =
-        matches
-            .get_one::<String>("model_alias")
-            .ok_or(ServerError::ArgumentError(
-                "Failed to parse the value of `model_alias` CLI option".to_owned(),
-            ))?;
-    println!("[INFO] Model alias: {alias}", alias = &model_alias);
+    // model aliases
+    let model_aliases: Vec<String> = matches
+        .get_many::<String>("model_alias")
+        .ok_or(ServerError::ArgumentError(
+            "Failed to parse the value of `--model-alias` CLI option".to_owned(),
+        ))?
+        .map(|s| s.to_string())
+        .collect();
+    if model_aliases.len() > 2 {
+        return Err(ServerError::ArgumentError(
+            "LlamaEdge API Server supports two models at most. You specified more than two model aliaes.".to_owned(),
+        ));
+    }
+    println!(
+        "[INFO] Model aliases: {aliases}",
+        aliases = model_aliases.join(",")
+    );
 
     // create an `Options` instance
     let mut options = Metadata::default();
 
-    // prompt context size
-    let ctx_size = matches
-        .get_one::<u64>("ctx_size")
+    // context sizes
+    let ctx_sizes = matches
+        .get_many::<u64>("ctx_size")
         .ok_or(ServerError::ArgumentError(
             "Failed to parse the value of `ctx_size` CLI option".to_owned(),
-        ))?;
-    println!("[INFO] Prompt context size: {size}", size = ctx_size);
-    options.ctx_size = *ctx_size;
+        ))?
+        .map(|n| n.to_owned())
+        .collect::<Vec<u64>>();
+    if ctx_sizes.len() > 2 {
+        return Err(ServerError::ArgumentError(
+            "LlamaEdge API Server supports two models at most. You specified more than two context sizes.".to_owned(),
+        ));
+    }
+    if model_names.len() != ctx_sizes.len() {
+        return Err(ServerError::ArgumentError(
+            format!("You specified {} model names, but {} context sizes. They should be set the same number of arguments", model_names.len(), ctx_sizes.len())
+        ));
+    }
+    let ctx_sizes_str: String = ctx_sizes
+        .iter()
+        .map(|n| n.to_string())
+        .collect::<Vec<String>>()
+        .join(",");
+    println!("[INFO] context sizes: {ctx_sizes_str}");
 
     // number of tokens to predict
     let n_predict = matches
@@ -455,6 +490,10 @@ async fn main() -> Result<(), ServerError> {
                 .ok_or(ServerError::ArgumentError(
                     "Failed to parse the value of `qdrant_score_threshold` CLI option".to_owned(),
                 ))?;
+        println!(
+            "[INFO] Qdrant score threshold: {threshold}",
+            threshold = qdrant_score_threshold
+        );
 
         let qdrant_config = QdrantConfig {
             url: qdrant_url.to_owned(),
@@ -492,18 +531,98 @@ async fn main() -> Result<(), ServerError> {
     }
 
     // * initialize the core context
-    llama_core::init_core_context(&options, model_name, model_alias).map_err(|e| {
-        ServerError::Operation(format!("Failed to initialize the core context. {}", e))
-    })?;
+    {
+        match model_names.len() {
+            1 => {
+                // specify chat model
+                let model_alias = model_aliases
+                    .first()
+                    .expect("Failed to get the model alias")
+                    .trim();
+                let model_name = model_names
+                    .first()
+                    .expect("Failed to get the model name")
+                    .trim();
+                let ctx_size = ctx_sizes.first().expect("Failed to get the context size");
+                let mut metadata = options.clone();
+                metadata.ctx_size = *ctx_size;
 
-    // get the plugin version info
-    let plugin_info =
-        llama_core::get_plugin_info().map_err(|e| ServerError::Operation(e.to_string()))?;
-    println!(
-        "[INFO] Plugin version: b{build_number} (commit {commit_id})",
-        build_number = plugin_info.build_number,
-        commit_id = plugin_info.commit_id,
-    );
+                let chat_models = vec![ModelInfo {
+                    model_name: model_name.to_string(),
+                    model_alias: model_alias.to_string(),
+                    metadata,
+                }];
+
+                // initialize the core context
+                llama_core::init_core_context(&chat_models, None).map_err(|e| {
+                    ServerError::Operation(format!("Failed to initialize the core context. {}", e))
+                })?;
+            }
+            2 => {
+                // specify chat model
+                let model_alias = model_aliases
+                    .first()
+                    .expect("Failed to get the model alias")
+                    .trim();
+                let model_name = model_names
+                    .first()
+                    .expect("Failed to get the model name")
+                    .trim();
+                let ctx_size = ctx_sizes.first().expect("Failed to get the context size");
+                let mut metadata = options.clone();
+                metadata.ctx_size = *ctx_size;
+
+                let chat_models = vec![ModelInfo {
+                    model_name: model_name.to_string(),
+                    model_alias: model_alias.to_string(),
+                    metadata,
+                }];
+
+                // specify embedding model
+                let model_alias = model_aliases
+                    .get(1)
+                    .expect("Failed to get the model alias")
+                    .trim();
+                let model_name = model_names
+                    .get(1)
+                    .expect("Failed to get the model name")
+                    .trim();
+                let ctx_size = ctx_sizes.get(1).expect("Failed to get the context size");
+                let mut metadata = options.clone();
+                metadata.ctx_size = *ctx_size;
+
+                let embedding_models = vec![ModelInfo {
+                    model_name: model_name.to_string(),
+                    model_alias: model_alias.to_string(),
+                    metadata,
+                }];
+
+                // initialize the core context
+                llama_core::init_core_context(&chat_models, Some(&embedding_models)).map_err(
+                    |e| {
+                        ServerError::Operation(format!(
+                            "Failed to initialize the core context. {}",
+                            e
+                        ))
+                    },
+                )?;
+            }
+            _ => {
+                return Err(ServerError::Operation(
+                    "One or two model names should be specified.".to_owned(),
+                ))
+            }
+        }
+
+        // get the plugin version info
+        let plugin_info =
+            llama_core::get_plugin_info().map_err(|e| ServerError::Operation(e.to_string()))?;
+        println!(
+            "[INFO] Plugin version: b{build_number} (commit {commit_id})",
+            build_number = plugin_info.build_number,
+            commit_id = plugin_info.commit_id,
+        );
+    }
 
     if log_stat || log_all {
         print_log_end_separator(Some("*"), None);
