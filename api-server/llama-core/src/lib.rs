@@ -4,7 +4,7 @@ pub mod embeddings;
 pub mod error;
 pub mod models;
 pub mod rag;
-pub(crate) mod utils;
+pub mod utils;
 
 pub use error::LlamaCoreError;
 
