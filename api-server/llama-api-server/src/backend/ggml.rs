@@ -415,12 +415,15 @@ pub(crate) async fn rag_query_handler(
                         println!("    * user query: {}\n", query_text);
                     }
 
+                    // get the available embedding models
+                    let embedding_model_names = match llama_core::utils::embedding_model_names() {
+                        Ok(model_names) => model_names,
+                        Err(e) => return error::internal_server_error(e.to_string()),
+                    };
+
                     // create a embedding request
                     let embedding_request = EmbeddingRequest {
-                        model: chat_request
-                            .model
-                            .clone()
-                            .unwrap_or("dummy-embedding-model".to_string()),
+                        model: embedding_model_names[0].clone(),
                         input: vec![query_text.clone()],
                         encoding_format: None,
                         user: chat_request.user.clone(),
