@@ -20,10 +20,12 @@ uuid.workspace = true
 once_cell = "1.18"
 futures = { version = "0.3.6", default-features = false, features = ["async-await", "std"] }
 futures-util = "0.3"
-reqwest = { package = "reqwest_wasi", version = "0.11", features = ["json", "wasmedge-tls", "stream"] }
-# qdrant_rest_client = { version = "0.0.3", features = ["wasmedge-tls"] }
-qdrant_rest_client = { git = "https://github.com/second-state/qdrant-rest-client.git", branch = "debug-search-points", features = [
-    "wasmedge-tls",
-] }
+reqwest = { package = "reqwest_wasi", version = "0.11", features = ["json", "stream"] }
+# qdrant_rest_client = { version = "0.0.3", default-features = false}
+qdrant_rest_client = { version = "0.0.4", git = "https://github.com/second-state/qdrant-rest-client.git", branch = "main", default-features = false }
 text-splitter = { version = "^0.7", features = ["tiktoken-rs", "markdown"] }
 tiktoken-rs = "^0.5"
+
+[features]
+default = ["https"]
+https = ["reqwest/wasmedge-tls", "qdrant_rest_client/wasmedge-tls"]
