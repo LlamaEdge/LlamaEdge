@@ -40,12 +40,19 @@ jobs:
           cargo build --target wasm32-wasi --release
           cp ./target/wasm32-wasi/release/llama-chat.wasm ../llama-chat.wasm
 
-      - name: Build api-server
+      - name: Build api-server without https feature
         id: build_api_server
         run: |
           cd api-server
           cargo build --target wasm32-wasi --release
           cp ./target/wasm32-wasi/release/llama-api-server.wasm ../llama-api-server.wasm
+
+      - name: Build api-server with https feature
+        id: build_api_server_w_https
+        run: |
+          cd api-server
+          cargo build --target wasm32-wasi --release --features https
+          cp ./target/wasm32-wasi/release/llama-api-server.wasm ../llama-api-server-full.wasm
 
       - name: Calculate checksum
         id: checksum
@@ -72,6 +79,7 @@ jobs:
           prerelease: true
           files: |
             llama-api-server.wasm
+            llama-api-server-full.wasm
             llama-chat.wasm
             llama-simple.wasm
             SHA256SUM

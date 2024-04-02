@@ -184,7 +184,7 @@ The command above starts the API server on the default socket address. Besides, 
     curl -X POST http://localhost:8080/v1/chunks \
         -H 'accept:application/json' \
         -H 'Content-Type: application/json' \
-        -d '{"file_id":"file_4bc24593-2a57-4646-af16-028855e7802e", "filename":"paris.txt"}'
+        -d '{"id":"file_4bc24593-2a57-4646-af16-028855e7802e", "filename":"paris.txt"}'
     ```
 
     The following is an example return with the generated chunks:
