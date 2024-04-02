@@ -31,7 +31,7 @@ Install the latest WasmEdge with plugins:
 
 ```console
 # install WasmEdge-0.13.4 with wasi-nn-ggml plugin
-curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml
+curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml wasmedge_rustls
 
 # Assuming you use zsh (the default shell on macOS), run the following command to activate the environment
 source $HOME/.zshenv
@@ -46,7 +46,7 @@ source $HOME/.zshenv
 apt update && apt install -y libopenblas-dev
 
 # install WasmEdge-0.13.4 with wasi-nn-ggml plugin
-curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml
+curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml wasmedge_rustls
 
 # Assuming you use bash (the default shell on Ubuntu), run the following command to activate the environment
 source $HOME/.bashrc
@@ -58,7 +58,7 @@ source $HOME/.bashrc
 
 ```console
 # install WasmEdge-0.13.4 with wasi-nn-ggml plugin
-curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml
+curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml wasmedge_rustls
 
 # Assuming you use bash (the default shell on Ubuntu), run the following command to activate the environment
 source $HOME/.bashrc
