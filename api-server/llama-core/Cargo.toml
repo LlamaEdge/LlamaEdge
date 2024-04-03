@@ -26,5 +26,6 @@ text-splitter = { version = "^0.7", features = ["tiktoken-rs", "markdown"] }
 tiktoken-rs = "^0.5"
 
 [features]
-default = ["https"]
+default = []
+full = ["https"]
 https = ["reqwest/wasmedge-tls", "qdrant_rest_client/wasmedge-tls"]
