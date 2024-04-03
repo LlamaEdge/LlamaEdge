@@ -40,18 +40,20 @@ jobs:
           cargo build --target wasm32-wasi --release
           cp ./target/wasm32-wasi/release/llama-chat.wasm ../llama-chat.wasm
 
-      - name: Build api-server without https feature
+      - name: Build api-server
         id: build_api_server
         run: |
           cd api-server
+          cargo clean
           cargo build --target wasm32-wasi --release
           cp ./target/wasm32-wasi/release/llama-api-server.wasm ../llama-api-server.wasm
 
-      - name: Build api-server with https feature
-        id: build_api_server_w_https
+      - name: Build api-server-full
+        id: build_api_server_full
         run: |
           cd api-server
-          cargo build --target wasm32-wasi --release --features https
+          cargo clean
+          cargo build --target wasm32-wasi --release --features full
           cp ./target/wasm32-wasi/release/llama-api-server.wasm ../llama-api-server-full.wasm
 
       - name: Calculate checksum
