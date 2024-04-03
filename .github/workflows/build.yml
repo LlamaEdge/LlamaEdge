@@ -74,10 +74,10 @@ jobs:
           cargo +nightly clippy --target wasm32-wasi -- -D warnings
           cargo build --target wasm32-wasi --release
 
-      - name: Build api-server
-        id: build_api_server_w_https
+      - name: Build api-server-full
+        id: build_api_server_full
         run: |
           cd api-server
           cargo +nightly fmt --all -- --check
-          cargo +nightly clippy --target wasm32-wasi -- -D warnings
-          cargo build --target wasm32-wasi --release --features https
+          cargo +nightly clippy --target wasm32-wasi --features full -- -D warnings
+          cargo build --target wasm32-wasi --release --features full
