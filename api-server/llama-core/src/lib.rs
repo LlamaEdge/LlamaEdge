@@ -26,7 +26,7 @@ pub static UTF8_ENCODINGS: OnceCell<Mutex<Vec<u8>>> = OnceCell::new();
 pub(crate) const MAX_BUFFER_SIZE: usize = 2usize.pow(14) * 15 + 128;
 pub(crate) const MAX_BUFFER_SIZE_EMBEDDING: usize = 2usize.pow(14) * 15 + 128;
 
-#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Metadata {
     // * Plugin parameters (used by this plugin):
     #[serde(rename = "enable-log")]
@@ -76,6 +76,27 @@ pub struct Metadata {
     pub presence_penalty: f64,
     #[serde(rename = "frequency-penalty")]
     pub frequency_penalty: f64,
+}
+impl Default for Metadata {
+    fn default() -> Self {
+        Self {
+            log_enable: false,
+            log_prompts: false,
+            embeddings: false,
+            n_predict: 1024,
+            reverse_prompt: None,
+            mmproj: None,
+            image: None,
+            n_gpu_layers: 100,
+            ctx_size: 512,
+            batch_size: 512,
+            temperature: 1.0,
+            top_p: 1.0,
+            repeat_penalty: 1.1,
+            presence_penalty: 0.0,
+            frequency_penalty: 0.0,
+        }
+    }
 }
 
 #[derive(Debug)]
