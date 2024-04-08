@@ -1,32 +1,56 @@
 pub mod chat;
 pub mod error;
 
+use clap::ValueEnum;
 use endpoints::chat::ChatCompletionRequestMessage;
+use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-#[derive(Clone, Debug, Copy, PartialEq, Eq)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
 pub enum PromptTemplateType {
+    #[value(name = "llama-2-chat")]
     Llama2Chat,
+    #[value(name = "mistral-instruct")]
     MistralInstruct,
+    #[value(name = "mistrallite")]
     MistralLite,
+    #[value(name = "openchat")]
     OpenChat,
+    #[value(name = "codellama-instruct")]
     CodeLlama,
+    #[value(name = "codellama-super-instruct")]
     CodeLlamaSuper,
+    #[value(name = "human-assistant")]
     HumanAssistant,
+    #[value(name = "vicuna-1.0-chat")]
     VicunaChat,
+    #[value(name = "vicuna-1.1-chat")]
     Vicuna11Chat,
+    #[value(name = "vicuna-llava")]
     VicunaLlava,
+    #[value(name = "chatml")]
     ChatML,
+    #[value(name = "baichuan-2")]
     Baichuan2,
+    #[value(name = "wizard-coder")]
     WizardCoder,
+    #[value(name = "zephyr")]
     Zephyr,
+    #[value(name = "stablelm-zephyr")]
     StableLMZephyr,
+    #[value(name = "intel-neural")]
     IntelNeural,
+    #[value(name = "deepseek-chat")]
     DeepseekChat,
+    #[value(name = "deepseek-coder")]
     DeepseekCoder,
+    #[value(name = "solar-instruct")]
     SolarInstruct,
+    #[value(name = "phi-2-chat")]
     Phi2Chat,
+    #[value(name = "phi-2-instruct")]
     Phi2Instruct,
+    #[value(name = "gemma-instruct")]
     GemmaInstruct,
 }
 impl FromStr for PromptTemplateType {
