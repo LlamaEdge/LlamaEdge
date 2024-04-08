@@ -8,14 +8,14 @@ pub mod utils;
 
 pub use error::LlamaCoreError;
 
+use crate::error::BackendError;
+use chat_prompts::PromptTemplateType;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Mutex};
 use wasmedge_wasi_nn::{
     Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext, TensorType,
 };
-
-use crate::error::BackendError;
 
 // key: model_name, value: Graph
 pub(crate) static CHAT_GRAPHS: OnceCell<Mutex<HashMap<String, Graph>>> = OnceCell::new();
@@ -28,12 +28,22 @@ pub(crate) const MAX_BUFFER_SIZE_EMBEDDING: usize = 2usize.pow(14) * 15 + 128;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Metadata {
-    // * Plugin parameters (used by this plugin):
-    #[serde(rename = "enable-log")]
-    pub log_enable: bool,
+    // this field not defined for the beckend plugin
+    #[serde(skip_serializing)]
+    pub model_name: String,
+    // this field not defined for the beckend plugin
+    #[serde(skip_serializing)]
+    pub model_alias: String,
     // this field not defined for the beckend plugin
     #[serde(skip_serializing)]
     pub log_prompts: bool,
+    // this field not defined for the beckend plugin
+    #[serde(skip_serializing)]
+    pub prompt_template: PromptTemplateType,
+
+    // * Plugin parameters (used by this plugin):
+    #[serde(rename = "enable-log")]
+    pub log_enable: bool,
     // #[serde(rename = "enable-debug-log")]
     // pub debug_log: bool,
     // #[serde(rename = "stream-stdout")]
@@ -80,8 +90,11 @@ pub struct Metadata {
 impl Default for Metadata {
     fn default() -> Self {
         Self {
-            log_enable: false,
+            model_name: String::new(),
+            model_alias: String::new(),
             log_prompts: false,
+            prompt_template: PromptTemplateType::Llama2Chat,
+            log_enable: false,
             embeddings: false,
             n_predict: 1024,
             reverse_prompt: None,
@@ -96,6 +109,116 @@ impl Default for Metadata {
             presence_penalty: 0.0,
             frequency_penalty: 0.0,
         }
+    }
+}
+
+/// Builder for the `Metadata` struct
+#[derive(Debug)]
+pub struct MetadataBuilder {
+    metadata: Metadata,
+}
+impl MetadataBuilder {
+    pub fn new<S: Into<String>>(model_name: S, model_alias: S, pt: PromptTemplateType) -> Self {
+        let mut metadata = Metadata::default();
+        metadata.model_name = model_name.into();
+        metadata.model_alias = model_alias.into();
+        metadata.prompt_template = pt;
+
+        Self { metadata }
+    }
+
+    pub fn with_model_name(mut self, name: impl Into<String>) -> Self {
+        self.metadata.model_name = name.into();
+        self
+    }
+
+    pub fn with_model_alias(mut self, alias: impl Into<String>) -> Self {
+        self.metadata.model_alias = alias.into();
+        self
+    }
+
+    pub fn with_prompt_template(mut self, template: PromptTemplateType) -> Self {
+        self.metadata.prompt_template = template;
+        self
+    }
+
+    pub fn enable_plugin_log(mut self, enable: bool) -> Self {
+        self.metadata.log_enable = enable;
+        self
+    }
+
+    pub fn enable_prompts_log(mut self, enable: bool) -> Self {
+        self.metadata.log_prompts = enable;
+        self
+    }
+
+    pub fn enable_embeddings(mut self, enable: bool) -> Self {
+        self.metadata.embeddings = enable;
+        self
+    }
+
+    pub fn with_n_predict(mut self, n: u64) -> Self {
+        self.metadata.n_predict = n;
+        self
+    }
+
+    pub fn with_reverse_prompt(mut self, prompt: Option<String>) -> Self {
+        self.metadata.reverse_prompt = prompt;
+        self
+    }
+
+    pub fn with_mmproj(mut self, path: Option<String>) -> Self {
+        self.metadata.mmproj = path;
+        self
+    }
+
+    pub fn with_image(mut self, path: impl Into<String>) -> Self {
+        self.metadata.image = Some(path.into());
+        self
+    }
+
+    pub fn with_n_gpu_layers(mut self, n: u64) -> Self {
+        self.metadata.n_gpu_layers = n;
+        self
+    }
+
+    pub fn with_ctx_size(mut self, size: u64) -> Self {
+        self.metadata.ctx_size = size;
+        self
+    }
+
+    pub fn with_batch_size(mut self, size: u64) -> Self {
+        self.metadata.batch_size = size;
+        self
+    }
+
+    pub fn with_temperature(mut self, temp: f64) -> Self {
+        self.metadata.temperature = temp;
+        self
+    }
+
+    pub fn with_top_p(mut self, top_p: f64) -> Self {
+        self.metadata.top_p = top_p;
+        self
+    }
+
+    pub fn with_repeat_penalty(mut self, penalty: f64) -> Self {
+        self.metadata.repeat_penalty = penalty;
+        self
+    }
+
+    pub fn with_presence_penalty(mut self, penalty: f64) -> Self {
+        self.metadata.presence_penalty = penalty;
+        self
+    }
+
+    pub fn with_frequency_penalty(mut self, penalty: f64) -> Self {
+        self.metadata.frequency_penalty = penalty;
+        self
+    }
+
+    pub fn build(self) -> Metadata {
+        self.metadata
     }
 }
 
@@ -308,6 +431,15 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
 pub struct PluginInfo {
     pub build_number: u64,
     pub commit_id: String,
+}
+impl std::fmt::Display for PluginInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "wasinn-ggml plugin: b{}(commit {})",
+            self.build_number, self.commit_id
+        )
+    }
 }
 
 #[derive(Debug, Clone)]
