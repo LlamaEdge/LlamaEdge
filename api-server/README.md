@@ -100,7 +100,7 @@ The command above starts the API server on the default socket address. Besides, 
 
 - The `--nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf` option specifies the Llama model to be used by the API server. The pattern of the argument is `<name>:<encoding>:<target>:<model path>`. Here, the model used is `llama-2-7b-chat.Q5_K_M.gguf`; and we give it an alias `default` as its name in the runtime environment. You can change the model name here if you're not using llama2-7b-chat
 - The `--prompt-template llama-2-chat` is the prompt template for the model.
-- The `--model-name llama-2-7b-chat` specifies the model name. You can use it in the chat request.
+- The `--model-name llama-2-7b-chat` specifies the model name. It is used in the chat request.
 
 ## Endpoints
 
