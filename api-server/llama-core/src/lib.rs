@@ -327,10 +327,7 @@ pub fn init_core_context(
             &chat_model.metadata,
         )
         .map_err(|e| {
-            LlamaCoreError::InitContext(format!(
-                "Failed to create a embedding graph. Reason: {}",
-                e
-            ))
+            LlamaCoreError::InitContext(format!("Failed to create a chat graph. Reason: {}", e))
         })?;
 
         chat_graphs.insert(chat_model.model_name.clone(), graph);
