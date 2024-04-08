@@ -186,7 +186,8 @@ async fn main() -> Result<(), ServerError> {
     let server = Server::bind(&addr).serve(new_service);
 
     log(format!(
-        "[INFO] LlamaEdge HTTP listening on {}",
+        "[INFO] LlamaEdge API server listening on http://{}:{}",
+        addr.ip(),
         addr.port()
     ));
 
