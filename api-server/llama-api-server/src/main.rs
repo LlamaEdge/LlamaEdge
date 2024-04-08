@@ -84,13 +84,13 @@ struct Cli {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), ServerError> {
+    let cli = Cli::parse();
+
     // log the version of the server
     log(format!(
         "\n[INFO] LlamaEdge version: {}",
         env!("CARGO_PKG_VERSION")
     ));
-
-    let cli = Cli::parse();
 
     // log the cli options
     log(format!("[INFO] Model name: {}", &cli.model_name));
