@@ -119,10 +119,12 @@ pub struct MetadataBuilder {
 }
 impl MetadataBuilder {
     pub fn new<S: Into<String>>(model_name: S, model_alias: S, pt: PromptTemplateType) -> Self {
-        let mut metadata = Metadata::default();
-        metadata.model_name = model_name.into();
-        metadata.model_alias = model_alias.into();
-        metadata.prompt_template = pt;
+        let metadata = Metadata {
+            model_name: model_name.into(),
+            model_alias: model_alias.into(),
+            prompt_template: pt,
+            ..Default::default()
+        };
 
         Self { metadata }
     }
