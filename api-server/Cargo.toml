@@ -9,3 +9,4 @@ chat-prompts = { path = "chat-prompts", version = "^0.5" }
 llama-core = { path = "llama-core" }
 thiserror = "1"
 uuid = { version = "1.4", features = ["v4", "fast-rng", "macro-diagnostics"] }
+clap = { version = "4.4.6", features = ["cargo", "derive"] }
