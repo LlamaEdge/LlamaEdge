@@ -4,13 +4,7 @@ use crate::{
     Graph, Metadata, CHAT_GRAPHS, MAX_BUFFER_SIZE, UTF8_ENCODINGS,
 };
 use chat_prompts::{
-    chat::{
-        belle::HumanAssistantChatPrompt,
-        llama::{CodeLlamaInstructPrompt, CodeLlamaSuperInstructPrompt, Llama2ChatPrompt},
-        mistral::{MistralInstructPrompt, MistralLitePrompt},
-        openchat::OpenChatPrompt,
-        BuildChatPrompt, ChatPrompt,
-    },
+    chat::{BuildChatPrompt, ChatPrompt},
     PromptTemplateType,
 };
 use endpoints::{
@@ -34,23 +28,17 @@ use std::{sync::Mutex, time::SystemTime};
 /// Processes a chat-completion request and returns ChatCompletionChunk instances in stream.
 pub async fn chat_completions_stream(
     chat_request: &mut ChatCompletionRequest,
-    template_ty: PromptTemplateType,
-    log_prompts: bool,
 ) -> Result<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, LlamaCoreError> {
-    // create ChatPrompt instance from the template type
-    let template = create_prompt_template(template_ty);
-
     let model_name = chat_request.model.clone();
 
     // update metadata
     let mut metadata = update_metadata(chat_request).await?;
 
     // build prompt
-    let (prompt, avaible_completion_tokens) =
-        build_prompt(model_name.as_ref(), &template, chat_request)
-            .map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
+    let (prompt, avaible_completion_tokens) = build_prompt(model_name.as_ref(), chat_request)
+        .map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
 
-    if log_prompts {
+    if metadata.log_prompts {
         print_log_begin_separator("PROMPT", Some("*"), None);
         println!("\n{}", &prompt,);
         print_log_end_separator(Some("*"), None);
@@ -608,23 +596,17 @@ pub async fn chat_completions_stream(
 /// Processes a chat-completion request and returns a ChatCompletionObject instance.
 pub async fn chat_completions(
     chat_request: &mut ChatCompletionRequest,
-    template_ty: PromptTemplateType,
-    log_prompts: bool,
 ) -> Result<ChatCompletionObject, LlamaCoreError> {
-    // create ChatPrompt instance from the template type
-    let template = create_prompt_template(template_ty);
-
     let model_name = chat_request.model.clone();
 
     // update metadata
     let mut metadata = update_metadata(chat_request).await?;
 
     // build prompt
-    let (prompt, avaible_completion_tokens) =
-        build_prompt(model_name.as_ref(), &template, chat_request)
-            .map_err(|e| LlamaCoreError::Operation(format!("Failed to build prompt. {}", e)))?;
+    let (prompt, avaible_completion_tokens) = build_prompt(model_name.as_ref(), chat_request)
+        .map_err(|e| LlamaCoreError::Operation(format!("Failed to build prompt. {}", e)))?;
 
-    if log_prompts {
+    if metadata.log_prompts {
         print_log_begin_separator("PROMPT", Some("*"), None);
         println!("\n{}", &prompt,);
         print_log_end_separator(Some("*"), None);
@@ -637,14 +619,10 @@ pub async fn chat_completions(
     set_prompt(model_name.as_ref(), &prompt)?;
 
     // compute
-    compute(model_name.as_ref(), template_ty, log_prompts)
+    compute(model_name.as_ref())
 }
 
-fn compute(
-    model_name: Option<&String>,
-    template_ty: PromptTemplateType,
-    log_prompts: bool,
-) -> Result<ChatCompletionObject, LlamaCoreError> {
+fn compute(model_name: Option<&String>) -> Result<ChatCompletionObject, LlamaCoreError> {
     match model_name {
         Some(model_name) => {
             let chat_graphs = CHAT_GRAPHS
@@ -659,7 +637,7 @@ fn compute(
                 ))
             })?;
             match chat_graphs.get_mut(model_name) {
-                Some(graph) => compute_by_graph(graph, template_ty, log_prompts),
+                Some(graph) => compute_by_graph(graph),
                 None => Err(LlamaCoreError::Operation(format!(
                     "The model `{}` does not exist in the chat graphs.",
                     &model_name
@@ -680,7 +658,7 @@ fn compute(
             })?;
 
             match chat_graphs.iter_mut().next() {
-                Some((_, graph)) => compute_by_graph(graph, template_ty, log_prompts),
+                Some((_, graph)) => compute_by_graph(graph),
                 None => Err(LlamaCoreError::Operation(String::from(
                     "There is no model available in the chat graphs.",
                 ))),
@@ -689,11 +667,7 @@ fn compute(
     }
 }
 
-fn compute_by_graph(
-    graph: &mut Graph,
-    template_ty: PromptTemplateType,
-    log_prompts: bool,
-) -> Result<ChatCompletionObject, LlamaCoreError> {
+fn compute_by_graph(graph: &mut Graph) -> Result<ChatCompletionObject, LlamaCoreError> {
     match graph.compute() {
         Ok(_) => {
             // Retrieve the output.
@@ -713,13 +687,13 @@ fn compute_by_graph(
             })?;
 
             // post-process
-            let message = post_process(output, template_ty).map_err(|e| {
+            let message = post_process(output, &graph.metadata.prompt_template).map_err(|e| {
                 LlamaCoreError::Operation(format!("Failed to post-process the output. {}", e))
             })?;
 
             // retrieve the number of prompt and completion tokens
             let token_info = get_token_info_by_graph(graph)?;
-            if log_prompts {
+            if graph.metadata.log_prompts {
                 print_log_begin_separator("PROMPT (Tokens)", Some("*"), None);
                 println!(
                     "\nprompt tokens: {}, completion_tokens: {}",
@@ -773,13 +747,13 @@ fn compute_by_graph(
             })?;
 
             // post-process
-            let message = post_process(output, template_ty).map_err(|e| {
+            let message = post_process(output, &graph.metadata.prompt_template).map_err(|e| {
                 LlamaCoreError::Operation(format!("Failed to post-process the output. {}", e))
             })?;
 
             // retrieve the number of prompt and completion tokens
             let token_info = get_token_info_by_graph(graph)?;
-            if log_prompts {
+            if graph.metadata.log_prompts {
                 print_log_begin_separator("PROMPT (Tokens)", Some("*"), None);
                 println!(
                     "\nprompt tokens: {}, completion_tokens: {}",
@@ -837,13 +811,13 @@ fn compute_by_graph(
             })?;
 
             // post-process
-            let message = post_process(output, template_ty).map_err(|e| {
+            let message = post_process(output, &graph.metadata.prompt_template).map_err(|e| {
                 LlamaCoreError::Operation(format!("Failed to post-process the output. {}", e))
             })?;
 
             // retrieve the number of prompt and completion token
             let token_info = get_token_info_by_graph(graph)?;
-            if log_prompts {
+            if graph.metadata.log_prompts {
                 print_log_begin_separator("PROMPT (Tokens)", Some("*"), None);
                 println!(
                     "\nprompt tokens: {}, completion_tokens: {}",
@@ -1017,82 +991,17 @@ async fn update_n_predict(
     Ok(())
 }
 
-fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
-    match template_ty {
-        PromptTemplateType::Llama2Chat => ChatPrompt::Llama2ChatPrompt(Llama2ChatPrompt),
-        PromptTemplateType::MistralInstruct => {
-            ChatPrompt::MistralInstructPrompt(MistralInstructPrompt)
-        }
-        PromptTemplateType::MistralLite => ChatPrompt::MistralLitePrompt(MistralLitePrompt),
-        PromptTemplateType::OpenChat => ChatPrompt::OpenChatPrompt(OpenChatPrompt),
-        PromptTemplateType::CodeLlama => {
-            ChatPrompt::CodeLlamaInstructPrompt(CodeLlamaInstructPrompt)
-        }
-        PromptTemplateType::CodeLlamaSuper => {
-            ChatPrompt::CodeLlamaSuperInstructPrompt(CodeLlamaSuperInstructPrompt)
-        }
-        PromptTemplateType::HumanAssistant => {
-            ChatPrompt::HumanAssistantChatPrompt(HumanAssistantChatPrompt)
-        }
-        PromptTemplateType::VicunaChat => {
-            ChatPrompt::VicunaChatPrompt(chat_prompts::chat::vicuna::VicunaChatPrompt)
-        }
-        PromptTemplateType::Vicuna11Chat => {
-            ChatPrompt::Vicuna11ChatPrompt(chat_prompts::chat::vicuna::Vicuna11ChatPrompt)
-        }
-        PromptTemplateType::VicunaLlava => {
-            ChatPrompt::VicunaLlavaPrompt(chat_prompts::chat::vicuna::VicunaLlavaPrompt)
-        }
-        PromptTemplateType::ChatML => {
-            ChatPrompt::ChatMLPrompt(chat_prompts::chat::chatml::ChatMLPrompt)
-        }
-        PromptTemplateType::Baichuan2 => {
-            ChatPrompt::Baichuan2ChatPrompt(chat_prompts::chat::baichuan::Baichuan2ChatPrompt)
-        }
-        PromptTemplateType::WizardCoder => {
-            ChatPrompt::WizardCoderPrompt(chat_prompts::chat::wizard::WizardCoderPrompt)
-        }
-        PromptTemplateType::Zephyr => {
-            ChatPrompt::ZephyrChatPrompt(chat_prompts::chat::zephyr::ZephyrChatPrompt)
-        }
-        PromptTemplateType::StableLMZephyr => ChatPrompt::StableLMZephyrChatPrompt(
-            chat_prompts::chat::zephyr::StableLMZephyrChatPrompt,
-        ),
-        PromptTemplateType::IntelNeural => {
-            ChatPrompt::NeuralChatPrompt(chat_prompts::chat::intel::NeuralChatPrompt)
-        }
-        PromptTemplateType::DeepseekChat => {
-            ChatPrompt::DeepseekChatPrompt(chat_prompts::chat::deepseek::DeepseekChatPrompt)
-        }
-        PromptTemplateType::DeepseekCoder => {
-            ChatPrompt::DeepseekCoderPrompt(chat_prompts::chat::deepseek::DeepseekCoderPrompt)
-        }
-        PromptTemplateType::SolarInstruct => {
-            ChatPrompt::SolarInstructPrompt(chat_prompts::chat::solar::SolarInstructPrompt)
-        }
-        PromptTemplateType::Phi2Chat => {
-            ChatPrompt::Phi2ChatPrompt(chat_prompts::chat::phi::Phi2ChatPrompt)
-        }
-        PromptTemplateType::Phi2Instruct => {
-            ChatPrompt::Phi2InstructPrompt(chat_prompts::chat::phi::Phi2InstructPrompt)
-        }
-        PromptTemplateType::GemmaInstruct => {
-            ChatPrompt::GemmaInstructPrompt(chat_prompts::chat::gemma::GemmaInstructPrompt)
-        }
-    }
-}
-
 fn post_process(
     output: impl AsRef<str>,
-    template_ty: PromptTemplateType,
+    template_ty: &PromptTemplateType,
 ) -> Result<String, String> {
-    let output = if template_ty == PromptTemplateType::Baichuan2 {
+    let output = if *template_ty == PromptTemplateType::Baichuan2 {
         if output.as_ref().contains("用户:") {
             output.as_ref().trim_end_matches("用户:").trim().to_owned()
         } else {
             output.as_ref().trim().to_owned()
         }
-    } else if template_ty == PromptTemplateType::OpenChat {
+    } else if *template_ty == PromptTemplateType::OpenChat {
         if output.as_ref().contains("<|end_of_turn|>") {
             output
                 .as_ref()
@@ -1102,7 +1011,7 @@ fn post_process(
         } else {
             output.as_ref().trim().to_owned()
         }
-    } else if template_ty == PromptTemplateType::ChatML {
+    } else if *template_ty == PromptTemplateType::ChatML {
         if output.as_ref().contains("<|im_start|>") && output.as_ref().contains("<|im_end|>") {
             let idx_start = output.as_ref().find("<|im_start|>").unwrap();
             let idx_end = output.as_ref().find("<|im_end|>").unwrap();
@@ -1126,8 +1035,8 @@ fn post_process(
         } else {
             output.as_ref().trim().to_owned()
         }
-    } else if template_ty == PromptTemplateType::Zephyr
-        || template_ty == PromptTemplateType::MistralLite
+    } else if *template_ty == PromptTemplateType::Zephyr
+        || *template_ty == PromptTemplateType::MistralLite
     {
         if output.as_ref().contains("</s><") {
             output.as_ref().trim_end_matches("</s><").trim().to_owned()
@@ -1141,7 +1050,7 @@ fn post_process(
         } else {
             output.as_ref().trim().to_owned()
         }
-    } else if template_ty == PromptTemplateType::DeepseekChat {
+    } else if *template_ty == PromptTemplateType::DeepseekChat {
         if output.as_ref().contains("<|end_of_sentence|>") {
             output
                 .as_ref()
@@ -1153,13 +1062,13 @@ fn post_process(
         } else {
             output.as_ref().trim().to_owned()
         }
-    } else if template_ty == PromptTemplateType::HumanAssistant {
+    } else if *template_ty == PromptTemplateType::HumanAssistant {
         if output.as_ref().contains("Human:") {
             output.as_ref().trim_end_matches("Human:").trim().to_owned()
         } else {
             output.as_ref().trim().to_owned()
         }
-    } else if template_ty == PromptTemplateType::SolarInstruct {
+    } else if *template_ty == PromptTemplateType::SolarInstruct {
         let s = output.as_ref().trim();
 
         if s.starts_with("### Answer") {
@@ -1182,18 +1091,19 @@ fn post_process(
 
 fn build_prompt(
     model_name: Option<&String>,
-    template: &ChatPrompt,
+    // template: &ChatPrompt,
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<(String, u64), LlamaCoreError> {
     let metadata = get_metadata(model_name)?;
     let ctx_size = metadata.ctx_size as u64;
+    let chat_prompt = ChatPrompt::from(metadata.prompt_template.clone());
 
     // compute max prompt tokens
     let max_prompt_tokens = ctx_size * 4 / 5;
 
     loop {
         // build prompt
-        let prompt = match template.build(&mut chat_request.messages) {
+        let prompt = match chat_prompt.build(&mut chat_request.messages) {
             Ok(prompt) => prompt,
             Err(e) => {
                 return Err(LlamaCoreError::Operation(format!(
