@@ -1,12 +1,12 @@
-# Create an OpenAI compatible API server for your LLM
+# LlamaEdge API Server
 
-An OpenAI-compatible web API allows the model to work with a large ecosystem of LLM tools and agent frameworks such as flows.network, LangChain and LlamaIndex.
+LlamaEdge API server offers OpenAI-compatible REST APIs. It can accelerate developers to build LLM-driven applications, AI infrastructure, and etc. In addition, LlamaEdge is also friendly to AI frameworks, such as LangChain and LlamaIndex.
 
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 
 <!-- code_chunk_output -->
 
-- [Create an OpenAI compatible API server for your LLM](#create-an-openai-compatible-api-server-for-your-llm)
+- [LlamaEdge API Server](#llamaedge-api-server)
   - [Dependencies](#dependencies)
   - [Get LlamaEdge API server](#get-llamaedge-api-server)
   - [Get model](#get-model)
