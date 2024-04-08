@@ -1096,7 +1096,7 @@ fn build_prompt(
 ) -> Result<(String, u64), LlamaCoreError> {
     let metadata = get_metadata(model_name)?;
     let ctx_size = metadata.ctx_size as u64;
-    let chat_prompt = ChatPrompt::from(metadata.prompt_template.clone());
+    let chat_prompt = ChatPrompt::from(metadata.prompt_template);
 
     // compute max prompt tokens
     let max_prompt_tokens = ctx_size * 4 / 5;
