@@ -3,7 +3,9 @@
 use crate::{
     chat::get_token_info_by_graph,
     error::{BackendError, LlamaCoreError},
-    Graph, CHAT_GRAPHS, EMBEDDING_GRAPHS, MAX_BUFFER_SIZE_EMBEDDING,
+    utils::get_output_buffer,
+    Graph, CHAT_GRAPHS, EMBEDDING_GRAPHS,
+    OUTPUT_TENSOR,
 };
 use endpoints::{
     common::Usage,
@@ -129,18 +131,10 @@ fn compute_embeddings(
         match graph.compute() {
             Ok(_) => {
                 // Retrieve the output.
-                let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE_EMBEDDING];
-                let mut output_size: usize =
-                    graph.get_output(0, &mut output_buffer).map_err(|e| {
-                        LlamaCoreError::Operation(format!(
-                            "Fail to get output tensor: {msg}",
-                            msg = e
-                        ))
-                    })?;
-                output_size = std::cmp::min(MAX_BUFFER_SIZE_EMBEDDING, output_size);
+                let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
 
                 // convert inference result to string
-                let output = std::str::from_utf8(&output_buffer[..output_size]).map_err(|e| {
+                let output = std::str::from_utf8(&output_buffer[..]).map_err(|e| {
                     LlamaCoreError::Operation(format!(
                         "Failed to decode the buffer of the inference result to a utf-8 string. {}",
                         e

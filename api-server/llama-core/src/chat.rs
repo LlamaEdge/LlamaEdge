@@ -2,8 +2,8 @@
 
 use crate::{
     error,
-    utils::{gen_chat_id, print_log_begin_separator, print_log_end_separator},
-    Graph, Metadata, CACHED_UTF8_ENCODINGS, CHAT_GRAPHS, MAX_BUFFER_SIZE_CHAT,
+    utils::{gen_chat_id, get_output_buffer, print_log_begin_separator, print_log_end_separator},
+    Graph, Metadata, CACHED_UTF8_ENCODINGS, CHAT_GRAPHS, OUTPUT_TENSOR,
 };
 use chat_prompts::{
     chat::{BuildChatPrompt, ChatPrompt},
@@ -77,19 +77,10 @@ pub async fn chat_completions_stream(
                         match graph.compute_single() {
                             Ok(_) => {
                                 // Retrieve the output
-                                let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE_CHAT];
-                                let mut output_size = graph
-                                    .get_output_single(0, &mut output_buffer)
-                                    .map_err(|e| {
-                                        LlamaCoreError::Backend(BackendError::GetOutputSingle(format!(
-                                            "Fail to get output tensor: {msg}",
-                                            msg = e
-                                        )))
-                                    })?;
-                                output_size = std::cmp::min(MAX_BUFFER_SIZE_CHAT, output_size);
+                                let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
 
                                 // decode the output buffer to a utf8 string
-                                let output = match String::from_utf8(output_buffer[..output_size].to_vec())
+                                let output = match String::from_utf8(output_buffer.clone())
                                 {
                                     Ok(token) => token,
                                     Err(_) => {
@@ -101,7 +92,8 @@ pub async fn chat_completions_stream(
                                             ))
                                         })?;
 
-                                        cached_encodings.extend_from_slice(&output_buffer[..output_size]);
+                                        // cache the bytes for future decoding
+                                        cached_encodings.extend_from_slice(&output_buffer[..]);
 
                                         match String::from_utf8(cached_encodings.to_vec()) {
                                             Ok(token) => {
@@ -344,19 +336,9 @@ pub async fn chat_completions_stream(
                         match graph.compute_single() {
                             Ok(_) => {
                                 // Retrieve the output
-                                let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE_CHAT];
-                                let mut output_size = graph
-                                    .get_output_single(0, &mut output_buffer)
-                                    .map_err(|e| {
-                                        LlamaCoreError::Backend(BackendError::GetOutputSingle(format!(
-                                            "Fail to get output tensor: {msg}",
-                                            msg = e
-                                        )))
-                                    })?;
-                                output_size = std::cmp::min(MAX_BUFFER_SIZE_CHAT, output_size);
-
+                                let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
                                 // decode the output buffer to a utf8 string
-                                let output = match String::from_utf8(output_buffer[..output_size].to_vec())
+                                let output = match String::from_utf8(output_buffer.clone())
                                 {
                                     Ok(token) => token,
                                     Err(_) => {
@@ -368,7 +350,7 @@ pub async fn chat_completions_stream(
                                             ))
                                         })?;
 
-                                        cached_encodings.extend_from_slice(&output_buffer[..output_size]);
+                                        cached_encodings.extend_from_slice(&output_buffer[..]);
 
                                         match String::from_utf8(cached_encodings.to_vec()) {
                                             Ok(token) => {
@@ -675,15 +657,8 @@ fn compute_by_graph(graph: &mut Graph) -> Result<ChatCompletionObject, LlamaCore
     match graph.compute() {
         Ok(_) => {
             // Retrieve the output.
-            let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE_CHAT];
-            let mut output_size: usize = graph.get_output(0, &mut output_buffer).map_err(|e| {
-                LlamaCoreError::Operation(format!("Fail to get output tensor: {msg}", msg = e))
-            })?;
-
-            output_size = std::cmp::min(MAX_BUFFER_SIZE_CHAT, output_size);
-
-            // convert inference result to string
-            let output = std::str::from_utf8(&output_buffer[..output_size]).map_err(|e| {
+            let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
+            let output = std::str::from_utf8(&output_buffer[..]).map_err(|e| {
                 LlamaCoreError::Operation(format!(
                     "Failed to decode the buffer of the inference result to a utf-8 string. {}",
                     e
@@ -736,14 +711,8 @@ fn compute_by_graph(graph: &mut Graph) -> Result<ChatCompletionObject, LlamaCore
         }
         Err(wasmedge_wasi_nn::Error::BackendError(wasmedge_wasi_nn::BackendError::ContextFull)) => {
             // Retrieve the output.
-            let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE_CHAT];
-            let mut output_size = graph.get_output(0, &mut output_buffer).map_err(|e| {
-                LlamaCoreError::Operation(format!("Fail to get output tensor: {msg}", msg = e))
-            })?;
-            output_size = std::cmp::min(MAX_BUFFER_SIZE_CHAT, output_size);
-
-            // convert inference result to string
-            let output = std::str::from_utf8(&output_buffer[..output_size]).map_err(|e| {
+            let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
+            let output = std::str::from_utf8(&output_buffer[..]).map_err(|e| {
                 LlamaCoreError::Operation(format!(
                     "Failed to decode the buffer of the inference result to a utf-8 string. {}",
                     e
@@ -800,14 +769,8 @@ fn compute_by_graph(graph: &mut Graph) -> Result<ChatCompletionObject, LlamaCore
             println!("\n\n[WARNING] The prompt is too long. Please reduce the length of your input and try again.\n");
 
             // Retrieve the output.
-            let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE_CHAT];
-            let mut output_size = graph.get_output(0, &mut output_buffer).map_err(|e| {
-                LlamaCoreError::Operation(format!("Fail to get output tensor: {msg}", msg = e))
-            })?;
-            output_size = std::cmp::min(MAX_BUFFER_SIZE_CHAT, output_size);
-
-            // convert inference result to string
-            let output = std::str::from_utf8(&output_buffer[..output_size]).map_err(|e| {
+            let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
+            let output = std::str::from_utf8(&output_buffer[..]).map_err(|e| {
                 LlamaCoreError::Operation(format!(
                     "Failed to decode the buffer of the inference result to a utf-8 string. {}",
                     e
@@ -1170,18 +1133,8 @@ fn build_prompt(
 }
 
 pub(crate) fn get_token_info_by_graph(graph: &Graph) -> Result<TokenInfo, LlamaCoreError> {
-    let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE_CHAT];
-    let mut output_size = match graph.get_output(1, &mut output_buffer) {
-        Ok(size) => size,
-        Err(e) => {
-            return Err(LlamaCoreError::Operation(format!(
-                "Fail to get token info: {msg}",
-                msg = e
-            )));
-        }
-    };
-    output_size = std::cmp::min(MAX_BUFFER_SIZE_CHAT, output_size);
-    let token_info: Value = match serde_json::from_slice(&output_buffer[..output_size]) {
+    let output_buffer = get_output_buffer(graph, 1)?;
+    let token_info: Value = match serde_json::from_slice(&output_buffer[..]) {
         Ok(token_info) => token_info,
         Err(e) => {
             return Err(LlamaCoreError::Operation(format!(
