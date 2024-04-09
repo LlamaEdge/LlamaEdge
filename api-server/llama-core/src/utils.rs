@@ -92,7 +92,9 @@ pub(crate) fn get_output_buffer(graph: &Graph, index: usize) -> Result<Vec<u8>, 
         )))
     })?;
 
-    unsafe { output_buffer.set_len(output_size) }
+    unsafe {
+        output_buffer.set_len(output_size);
+    }
 
     Ok(output_buffer)
 }
@@ -113,7 +115,9 @@ pub(crate) fn get_output_buffer_single(
             )))
         })?;
 
-    unsafe { output_buffer.set_len(output_size) }
+    unsafe {
+        output_buffer.set_len(output_size);
+    }
 
     Ok(output_buffer)
 }
