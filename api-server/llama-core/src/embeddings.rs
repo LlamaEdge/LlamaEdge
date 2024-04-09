@@ -4,8 +4,7 @@ use crate::{
     chat::get_token_info_by_graph,
     error::{BackendError, LlamaCoreError},
     utils::get_output_buffer,
-    Graph, CHAT_GRAPHS, EMBEDDING_GRAPHS,
-    OUTPUT_TENSOR,
+    Graph, CHAT_GRAPHS, EMBEDDING_GRAPHS, OUTPUT_TENSOR,
 };
 use endpoints::{
     common::Usage,
