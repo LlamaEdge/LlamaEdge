@@ -15,6 +15,7 @@ LlamaEdge API server offers OpenAI-compatible REST APIs. It can accelerate devel
     - [`/v1/models` endpoint for model list](#v1models-endpoint-for-model-list)
     - [`/v1/chat/completions` endpoint for chat completions](#v1chatcompletions-endpoint-for-chat-completions)
     - [`/v1/files` endpoint for uploading text and markdown files](#v1files-endpoint-for-uploading-text-and-markdown-files)
+    - [`/v1/chunks` endpoint for segmenting files to chunks](#v1chunks-endpoint-for-segmenting-files-to-chunks)
     - [`/v1/embeddings` endpoint for computing embeddings](#v1embeddings-endpoint-for-computing-embeddings)
   - [Add a web UI](#add-a-web-ui)
   - [CLI options for the API server](#cli-options-for-the-api-server)
@@ -189,8 +190,6 @@ If the command is successful, you should see the similar output as below in your
 The `id` and `filename` fields are important for the next step, for example, to segment the uploaded file to chunks for computing embeddings.
 
 If you'd like to build a RAG chatbot, it's strongly recommended to visit [LlamaEdge-RAG API Server](https://github.com/LlamaEdge/rag-api-server).
-
-```markdown
 
 ### `/v1/chunks` endpoint for segmenting files to chunks
 
