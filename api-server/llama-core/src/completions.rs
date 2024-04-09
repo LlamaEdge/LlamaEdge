@@ -1,6 +1,8 @@
+//! Define APIs for completions.
+
 use crate::{
     error::{BackendError, LlamaCoreError},
-    Graph, CHAT_GRAPHS, MAX_BUFFER_SIZE,
+    Graph, CHAT_GRAPHS, MAX_BUFFER_SIZE_CHAT,
 };
 use endpoints::{
     common::{FinishReason, Usage},
@@ -116,11 +118,11 @@ fn infer_by_graph(
         .map_err(|e| LlamaCoreError::Backend(BackendError::Compute(e.to_string())))?;
 
     // Retrieve the output
-    let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
+    let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE_CHAT];
     let mut output_size = graph
         .get_output(0, &mut output_buffer)
         .map_err(|e| LlamaCoreError::Backend(BackendError::GetOutput(e.to_string())))?;
-    output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
+    output_size = std::cmp::min(MAX_BUFFER_SIZE_CHAT, output_size);
 
     Ok(output_buffer[..output_size].to_vec())
 }
