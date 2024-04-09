@@ -8,11 +8,11 @@ pub mod utils;
 
 pub use error::LlamaCoreError;
 
-use crate::error::BackendError;
 use chat_prompts::PromptTemplateType;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Mutex};
+use utils::get_output_buffer;
 use wasmedge_wasi_nn::{
     Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext, TensorType,
 };
@@ -24,8 +24,9 @@ pub(crate) static EMBEDDING_GRAPHS: OnceCell<Mutex<HashMap<String, Graph>>> = On
 // cache bytes for decoding utf8
 pub(crate) static CACHED_UTF8_ENCODINGS: OnceCell<Mutex<Vec<u8>>> = OnceCell::new();
 
-pub(crate) const MAX_BUFFER_SIZE_CHAT: usize = 2usize.pow(14) * 15 + 128;
-pub(crate) const MAX_BUFFER_SIZE_EMBEDDING: usize = 2usize.pow(14) * 15 + 128;
+pub(crate) const MAX_BUFFER_SIZE: usize = 2usize.pow(14) * 15 + 128;
+pub(crate) const OUTPUT_TENSOR: usize = 0;
+const PLUGIN_VERSION: usize = 1;
 
 /// Model metadata
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -415,21 +416,13 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
         )))?;
 
     // get the plugin metadata
-    let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE_CHAT];
-    let mut output_size: usize = graph.get_output(1, &mut output_buffer).map_err(|e| {
-        LlamaCoreError::Backend(BackendError::GetOutput(format!(
-            "Fail to get plugin metadata. {msg}",
+    let output_buffer = get_output_buffer(graph, PLUGIN_VERSION)?;
+    let metadata: serde_json::Value = serde_json::from_slice(&output_buffer[..]).map_err(|e| {
+        LlamaCoreError::Operation(format!(
+            "Fail to deserialize the plugin metadata. {msg}",
             msg = e
-        )))
+        ))
     })?;
-    output_size = std::cmp::min(MAX_BUFFER_SIZE_CHAT, output_size);
-    let metadata: serde_json::Value = serde_json::from_slice(&output_buffer[..output_size])
-        .map_err(|e| {
-            LlamaCoreError::Operation(format!(
-                "Fail to deserialize the plugin metadata. {msg}",
-                msg = e
-            ))
-        })?;
 
     // get build number of the plugin
     let plugin_build_number =
