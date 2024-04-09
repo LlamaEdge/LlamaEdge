@@ -1,3 +1,5 @@
+//! Define utility functions.
+
 use crate::{error::LlamaCoreError, CHAT_GRAPHS, EMBEDDING_GRAPHS};
 
 pub(crate) fn print_log_begin_separator(

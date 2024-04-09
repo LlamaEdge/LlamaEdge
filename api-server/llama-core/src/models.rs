@@ -1,3 +1,5 @@
+//! Define APIs for querying models.
+
 use crate::{error::LlamaCoreError, CHAT_GRAPHS, EMBEDDING_GRAPHS};
 use endpoints::models::{ListModelsResponse, Model};
 

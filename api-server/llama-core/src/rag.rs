@@ -1,3 +1,5 @@
+//! Define APIs for RAG operations.
+
 use crate::{embeddings::embeddings, error::LlamaCoreError};
 use endpoints::{
     embeddings::{EmbeddingObject, EmbeddingsResponse},
