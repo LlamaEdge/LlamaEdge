@@ -11,7 +11,7 @@ use hyper::{
     service::{make_service_fn, service_fn},
     Body, Request, Response, Server, StatusCode,
 };
-use llama_core::{MetadataBuilder, ModelInfo};
+use llama_core::MetadataBuilder;
 use std::{net::SocketAddr, path::PathBuf};
 use utils::log;
 
@@ -149,17 +149,13 @@ async fn main() -> Result<(), ServerError> {
         .with_frequency_penalty(cli.frequency_penalty)
         .with_reverse_prompt(cli.reverse_prompt)
         .with_mmproj(cli.llava_mmproj.clone())
+        .enable_embeddings(true)
         .enable_prompts_log(cli.log_prompts || cli.log_all)
         .enable_plugin_log(cli.log_stat || cli.log_all)
         .build();
 
     // initialize the core context
-    let chat_models = vec![ModelInfo {
-        model_name: metadata.model_name.clone(),
-        model_alias: metadata.model_alias.clone(),
-        metadata,
-    }];
-    llama_core::init_core_context(&chat_models, None).map_err(|e| {
+    llama_core::init_core_context(&[metadata]).map_err(|e| {
         ServerError::Operation(format!("Failed to initialize the core context. {}", e))
     })?;
 
