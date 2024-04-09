@@ -374,7 +374,7 @@ pub fn init_rag_core_context(
     }
     let mut embedding_graphs = HashMap::new();
     for metadata in metadata_for_embeddings {
-        let graph = Graph::new(&metadata).map_err(|e| {
+        let graph = Graph::new(metadata).map_err(|e| {
             LlamaCoreError::InitContext(format!(
                 "Failed to create a embedding graph. Reason: {}",
                 e
