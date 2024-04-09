@@ -1,18 +1,23 @@
+//! Define APIs for chat completion.
+
 use crate::{
     error,
     utils::{gen_chat_id, print_log_begin_separator, print_log_end_separator},
-    Graph, Metadata, CHAT_GRAPHS, MAX_BUFFER_SIZE, UTF8_ENCODINGS,
+    Graph, Metadata, CACHED_UTF8_ENCODINGS, CHAT_GRAPHS, MAX_BUFFER_SIZE_CHAT,
 };
 use chat_prompts::{
     chat::{BuildChatPrompt, ChatPrompt},
     PromptTemplateType,
 };
+#[cfg(feature = "https")]
+use endpoints::chat::{
+    ChatCompletionRequestMessage, ChatCompletionUserMessageContent, ContentPart,
+};
 use endpoints::{
     chat::{
         ChatCompletionChunk, ChatCompletionChunkChoice, ChatCompletionChunkChoiceDelta,
         ChatCompletionObject, ChatCompletionObjectChoice, ChatCompletionObjectMessage,
-        ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRole,
-        ChatCompletionUserMessageContent, ContentPart,
+        ChatCompletionRequest, ChatCompletionRole,
     },
     common::{FinishReason, Usage},
 };
@@ -21,7 +26,6 @@ use futures::{
     future,
     stream::{self, TryStreamExt},
 };
-
 use serde_json::Value;
 use std::{sync::Mutex, time::SystemTime};
 
@@ -73,7 +77,7 @@ pub async fn chat_completions_stream(
                         match graph.compute_single() {
                             Ok(_) => {
                                 // Retrieve the output
-                                let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
+                                let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE_CHAT];
                                 let mut output_size = graph
                                     .get_output_single(0, &mut output_buffer)
                                     .map_err(|e| {
@@ -82,14 +86,14 @@ pub async fn chat_completions_stream(
                                             msg = e
                                         )))
                                     })?;
-                                output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
+                                output_size = std::cmp::min(MAX_BUFFER_SIZE_CHAT, output_size);
 
                                 // decode the output buffer to a utf8 string
                                 let output = match String::from_utf8(output_buffer[..output_size].to_vec())
                                 {
                                     Ok(token) => token,
                                     Err(_) => {
-                                        let mutex = UTF8_ENCODINGS.get_or_init(|| Mutex::new(Vec::new()));
+                                        let mutex = CACHED_UTF8_ENCODINGS.get_or_init(|| Mutex::new(Vec::new()));
                                         let mut cached_encodings = mutex.lock().map_err(|e| {
                                             LlamaCoreError::Operation(format!(
                                                 "Fail to acquire the lock of `UTF8_ENCODINGS`. {}",
@@ -133,7 +137,7 @@ pub async fn chat_completions_stream(
                                     id: gen_chat_id(),
                                     object: "chat.completion.chunk".to_string(),
                                     created: created.as_secs(),
-                                    model: graph.name.clone(),
+                                    model: graph.name().to_owned(),
                                     system_fingerprint: "fp_44709d6fcb".to_string(),
                                     choices: vec![ChatCompletionChunkChoice {
                                         index: 0,
@@ -198,7 +202,7 @@ pub async fn chat_completions_stream(
                                             id: gen_chat_id(),
                                             object: "chat.completion.chunk".to_string(),
                                             created: created.as_secs(),
-                                            model: graph.name.clone(),
+                                            model: graph.name().to_owned(),
                                             system_fingerprint: "fp_44709d6fcb".to_string(),
                                             choices: vec![ChatCompletionChunkChoice {
                                                 index: 0,
@@ -256,7 +260,7 @@ pub async fn chat_completions_stream(
                                             id: gen_chat_id(),
                                             object: "chat.completion.chunk".to_string(),
                                             created: created.as_secs(),
-                                            model: graph.name.clone(),
+                                            model: graph.name().to_owned(),
                                             system_fingerprint: "fp_44709d6fcb".to_string(),
                                             choices: vec![ChatCompletionChunkChoice {
                                                 index: 0,
@@ -340,7 +344,7 @@ pub async fn chat_completions_stream(
                         match graph.compute_single() {
                             Ok(_) => {
                                 // Retrieve the output
-                                let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
+                                let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE_CHAT];
                                 let mut output_size = graph
                                     .get_output_single(0, &mut output_buffer)
                                     .map_err(|e| {
@@ -349,14 +353,14 @@ pub async fn chat_completions_stream(
                                             msg = e
                                         )))
                                     })?;
-                                output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
+                                output_size = std::cmp::min(MAX_BUFFER_SIZE_CHAT, output_size);
 
                                 // decode the output buffer to a utf8 string
                                 let output = match String::from_utf8(output_buffer[..output_size].to_vec())
                                 {
                                     Ok(token) => token,
                                     Err(_) => {
-                                        let mutex = UTF8_ENCODINGS.get_or_init(|| Mutex::new(Vec::new()));
+                                        let mutex = CACHED_UTF8_ENCODINGS.get_or_init(|| Mutex::new(Vec::new()));
                                         let mut cached_encodings = mutex.lock().map_err(|e| {
                                             LlamaCoreError::Operation(format!(
                                                 "Fail to acquire the lock of `UTF8_ENCODINGS`. {}",
@@ -400,7 +404,7 @@ pub async fn chat_completions_stream(
                                     id: gen_chat_id(),
                                     object: "chat.completion.chunk".to_string(),
                                     created: created.as_secs(),
-                                    model: graph.name.clone(),
+                                    model: graph.name().to_owned(),
                                     system_fingerprint: "fp_44709d6fcb".to_string(),
                                     choices: vec![ChatCompletionChunkChoice {
                                         index: 0,
@@ -465,7 +469,7 @@ pub async fn chat_completions_stream(
                                             id: gen_chat_id(),
                                             object: "chat.completion.chunk".to_string(),
                                             created: created.as_secs(),
-                                            model: graph.name.clone(),
+                                            model: graph.name().to_owned(),
                                             system_fingerprint: "fp_44709d6fcb".to_string(),
                                             choices: vec![ChatCompletionChunkChoice {
                                                 index: 0,
@@ -523,7 +527,7 @@ pub async fn chat_completions_stream(
                                             id: gen_chat_id(),
                                             object: "chat.completion.chunk".to_string(),
                                             created: created.as_secs(),
-                                            model: graph.name.clone(),
+                                            model: graph.name().to_owned(),
                                             system_fingerprint: "fp_44709d6fcb".to_string(),
                                             choices: vec![ChatCompletionChunkChoice {
                                                 index: 0,
@@ -671,12 +675,12 @@ fn compute_by_graph(graph: &mut Graph) -> Result<ChatCompletionObject, LlamaCore
     match graph.compute() {
         Ok(_) => {
             // Retrieve the output.
-            let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
+            let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE_CHAT];
             let mut output_size: usize = graph.get_output(0, &mut output_buffer).map_err(|e| {
                 LlamaCoreError::Operation(format!("Fail to get output tensor: {msg}", msg = e))
             })?;
 
-            output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
+            output_size = std::cmp::min(MAX_BUFFER_SIZE_CHAT, output_size);
 
             // convert inference result to string
             let output = std::str::from_utf8(&output_buffer[..output_size]).map_err(|e| {
@@ -713,7 +717,7 @@ fn compute_by_graph(graph: &mut Graph) -> Result<ChatCompletionObject, LlamaCore
                 id: gen_chat_id(),
                 object: String::from("chat.completion"),
                 created: created.as_secs(),
-                model: graph.name.clone(),
+                model: graph.name().to_owned(),
                 choices: vec![ChatCompletionObjectChoice {
                     index: 0,
                     message: ChatCompletionObjectMessage {
@@ -732,11 +736,11 @@ fn compute_by_graph(graph: &mut Graph) -> Result<ChatCompletionObject, LlamaCore
         }
         Err(wasmedge_wasi_nn::Error::BackendError(wasmedge_wasi_nn::BackendError::ContextFull)) => {
             // Retrieve the output.
-            let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
+            let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE_CHAT];
             let mut output_size = graph.get_output(0, &mut output_buffer).map_err(|e| {
                 LlamaCoreError::Operation(format!("Fail to get output tensor: {msg}", msg = e))
             })?;
-            output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
+            output_size = std::cmp::min(MAX_BUFFER_SIZE_CHAT, output_size);
 
             // convert inference result to string
             let output = std::str::from_utf8(&output_buffer[..output_size]).map_err(|e| {
@@ -773,7 +777,7 @@ fn compute_by_graph(graph: &mut Graph) -> Result<ChatCompletionObject, LlamaCore
                 id: gen_chat_id(),
                 object: String::from("chat.completion"),
                 created: created.as_secs(),
-                model: graph.name.clone(),
+                model: graph.name().to_owned(),
                 choices: vec![ChatCompletionObjectChoice {
                     index: 0,
                     message: ChatCompletionObjectMessage {
@@ -796,11 +800,11 @@ fn compute_by_graph(graph: &mut Graph) -> Result<ChatCompletionObject, LlamaCore
             println!("\n\n[WARNING] The prompt is too long. Please reduce the length of your input and try again.\n");
 
             // Retrieve the output.
-            let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
+            let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE_CHAT];
             let mut output_size = graph.get_output(0, &mut output_buffer).map_err(|e| {
                 LlamaCoreError::Operation(format!("Fail to get output tensor: {msg}", msg = e))
             })?;
-            output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
+            output_size = std::cmp::min(MAX_BUFFER_SIZE_CHAT, output_size);
 
             // convert inference result to string
             let output = std::str::from_utf8(&output_buffer[..output_size]).map_err(|e| {
@@ -837,7 +841,7 @@ fn compute_by_graph(graph: &mut Graph) -> Result<ChatCompletionObject, LlamaCore
                 id: gen_chat_id(),
                 object: String::from("chat.completion"),
                 created: created.as_secs(),
-                model: graph.name.clone(),
+                model: graph.name().to_owned(),
                 choices: vec![ChatCompletionObjectChoice {
                     index: 0,
                     message: ChatCompletionObjectMessage {
@@ -865,6 +869,7 @@ async fn update_metadata(chat_request: &ChatCompletionRequest) -> Result<Metadat
     let mut metadata = get_metadata(chat_request.model.as_ref())?;
 
     // check if necessary to update `image`
+    #[cfg(feature = "https")]
     if let Some(ChatCompletionRequestMessage::User(user_message)) = chat_request.messages.last() {
         if let ChatCompletionUserMessageContent::Parts(parts) = user_message.content() {
             for part in parts {
@@ -1165,7 +1170,7 @@ fn build_prompt(
 }
 
 pub(crate) fn get_token_info_by_graph(graph: &Graph) -> Result<TokenInfo, LlamaCoreError> {
-    let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
+    let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE_CHAT];
     let mut output_size = match graph.get_output(1, &mut output_buffer) {
         Ok(size) => size,
         Err(e) => {
@@ -1175,7 +1180,7 @@ pub(crate) fn get_token_info_by_graph(graph: &Graph) -> Result<TokenInfo, LlamaC
             )));
         }
     };
-    output_size = std::cmp::min(MAX_BUFFER_SIZE, output_size);
+    output_size = std::cmp::min(MAX_BUFFER_SIZE_CHAT, output_size);
     let token_info: Value = match serde_json::from_slice(&output_buffer[..output_size]) {
         Ok(token_info) => token_info,
         Err(e) => {
@@ -1216,6 +1221,7 @@ pub(crate) struct TokenInfo {
 }
 
 /// Downloads an image from the given URL and returns the file name.
+#[cfg(feature = "https")]
 async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> {
     let image_url = image_url.as_ref();
     let url =
