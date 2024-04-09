@@ -2,7 +2,10 @@
 
 use crate::{
     error,
-    utils::{gen_chat_id, get_output_buffer, print_log_begin_separator, print_log_end_separator},
+    utils::{
+        gen_chat_id, get_output_buffer, get_output_buffer_single, print_log_begin_separator,
+        print_log_end_separator,
+    },
     Graph, Metadata, CACHED_UTF8_ENCODINGS, CHAT_GRAPHS, OUTPUT_TENSOR,
 };
 use chat_prompts::{
@@ -77,7 +80,7 @@ pub async fn chat_completions_stream(
                         match graph.compute_single() {
                             Ok(_) => {
                                 // Retrieve the output
-                                let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
+                                let output_buffer = get_output_buffer_single(graph, OUTPUT_TENSOR)?;
 
                                 // decode the output buffer to a utf8 string
                                 let output = match String::from_utf8(output_buffer.clone())
@@ -336,7 +339,7 @@ pub async fn chat_completions_stream(
                         match graph.compute_single() {
                             Ok(_) => {
                                 // Retrieve the output
-                                let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
+                                let output_buffer = get_output_buffer_single(graph, OUTPUT_TENSOR)?;
                                 // decode the output buffer to a utf8 string
                                 let output = match String::from_utf8(output_buffer.clone())
                                 {
