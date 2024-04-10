@@ -31,7 +31,7 @@ impl GemmaInstructPrompt {
 
         match chat_history.as_ref().is_empty() {
             true => format!(
-                "<start_of_turn>user\n{user_message}<end_of_turn>\n<start_of_turn>model",
+                "<bos><start_of_turn>user\n{user_message}<end_of_turn>\n<start_of_turn>model",
                 user_message = content.trim(),
             ),
             false => format!(
