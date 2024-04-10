@@ -1,25 +1,24 @@
-# Create an OpenAI compatible API server for your LLM
+# LlamaEdge API Server
 
-An OpenAI-compatible web API allows the model to work with a large ecosystem of LLM tools and agent frameworks such as flows.network, LangChain and LlamaIndex.
+LlamaEdge API server offers OpenAI-compatible REST APIs. It can accelerate developers to build LLM-driven applications, AI infrastructure, and etc. In addition, LlamaEdge is also friendly to AI frameworks, such as LangChain and LlamaIndex.
 
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 
 <!-- code_chunk_output -->
 
-- [Create an OpenAI compatible API server for your LLM](#create-an-openai-compatible-api-server-for-your-llm)
+- [LlamaEdge API Server](#llamaedge-api-server)
   - [Dependencies](#dependencies)
-  - [Get the llama-api-server.wasm app](#get-the-llama-api-serverwasm-app)
+  - [Get LlamaEdge API server](#get-llamaedge-api-server)
   - [Get model](#get-model)
   - [Run LlamaEdge API server](#run-llamaedge-api-server)
   - [Endpoints](#endpoints)
-    - [`/v1/models` endpoint for model list](#v1models-endpoint-for-model-list)
-    - [`/v1/chat/completions` endpoint for chat completions](#v1chatcompletions-endpoint-for-chat-completions)
-    - [`/v1/files` endpoint for uploading text and markdown files](#v1files-endpoint-for-uploading-text-and-markdown-files)
-    - [`/v1/chunks` endpoint for segmenting files to chunks](#v1chunks-endpoint-for-segmenting-files-to-chunks)
-    - [`/v1/embeddings` endpoint for computing embeddings](#v1embeddings-endpoint-for-computing-embeddings)
+    - [`/v1/models` endpoint](#v1models-endpoint)
+    - [`/v1/chat/completions` endpoint](#v1chatcompletions-endpoint)
+    - [`/v1/files` endpoint](#v1files-endpoint)
+    - [`/v1/chunks` endpoint](#v1chunks-endpoint)
+    - [`/v1/embeddings` endpoint](#v1embeddings-endpoint)
   - [Add a web UI](#add-a-web-ui)
   - [CLI options for the API server](#cli-options-for-the-api-server)
-  - [Optional: Build the `llama-chat` wasm app yourself](#optional-build-the-llama-chat-wasm-app-yourself)
 
 <!-- /code_chunk_output -->
 
@@ -30,8 +29,8 @@ Install the latest WasmEdge with plugins:
 <details> <summary> For macOS (apple silicon) </summary>
 
 ```console
-# install WasmEdge-0.13.4 with wasi-nn-ggml plugin
-curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml wasmedge_rustls
+# install WasmEdge with wasi-nn-ggml plugin
+curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml
 
 # Assuming you use zsh (the default shell on macOS), run the following command to activate the environment
 source $HOME/.zshenv
@@ -45,8 +44,8 @@ source $HOME/.zshenv
 # install libopenblas-dev
 apt update && apt install -y libopenblas-dev
 
-# install WasmEdge-0.13.4 with wasi-nn-ggml plugin
-curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml wasmedge_rustls
+# install WasmEdge with wasi-nn-ggml plugin
+curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml
 
 # Assuming you use bash (the default shell on Ubuntu), run the following command to activate the environment
 source $HOME/.bashrc
@@ -57,8 +56,8 @@ source $HOME/.bashrc
 <details> <summary> For General Linux </summary>
 
 ```console
-# install WasmEdge-0.13.4 with wasi-nn-ggml plugin
-curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml wasmedge_rustls
+# install WasmEdge with wasi-nn-ggml plugin
+curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugin wasi_nn-ggml
 
 # Assuming you use bash (the default shell on Ubuntu), run the following command to activate the environment
 source $HOME/.bashrc
@@ -66,24 +65,34 @@ source $HOME/.bashrc
 
 </details>
 
-## Get the llama-api-server.wasm app
+## Get LlamaEdge API server
 
-Download the api server app
+- Download LlamaEdge API server with the support for `HTTP` scheme only:
 
-```console
-curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
-```
+  ```console
+  curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+  ```
+
+- Download LlamaEdge API server with the support for `HTTP` and `WebSocket` schemes:
+
+  ```console
+  curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server-full.wasm
+  ```
 
 ## Get model
 
-Cilck [here](../models.md) to see the model download link and commadns to run the API server and test the API server.
+[huggingface.co/second-state](https://huggingface.co/second-state?search_models=GGUF) maintains a group of GGUF models for different usages. In addition, you can also pick a GGUF model from the [https://huggingface.co/models?sort=trending&search=gguf](https://huggingface.co/models?sort=trending&search=gguf).
 
 ## Run LlamaEdge API server
 
 Run the API server with the following command:
 
 ```bash
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf llama-api-server.wasm -p llama-2-chat
+wasmedge --dir .:. \
+    --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf \
+    llama-api-server.wasm \
+    --prompt-template llama-2-chat \
+    --model-name llama-2-7b-chat
 ```
 
 The command above starts the API server on the default socket address. Besides, there are also some other options specified in the command:
@@ -91,171 +100,251 @@ The command above starts the API server on the default socket address. Besides, 
 - The `--dir .:.` option specifies the current directory as the root directory of the WASI file system.
 
 - The `--nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf` option specifies the Llama model to be used by the API server. The pattern of the argument is `<name>:<encoding>:<target>:<model path>`. Here, the model used is `llama-2-7b-chat.Q5_K_M.gguf`; and we give it an alias `default` as its name in the runtime environment. You can change the model name here if you're not using llama2-7b-chat
-- The `-p llama-2-chat` is the prompt template for the model.
+- The `--prompt-template llama-2-chat` is the prompt template for the model.
+- The `--model-name llama-2-7b-chat` specifies the model name. It is used in the chat request.
 
 ## Endpoints
 
-### `/v1/models` endpoint for model list
+### `/v1/models` endpoint
 
-    `llama-api-server` provides a POST API `/v1/models` to list currently available models. You can use `curl` to test it on a new terminal:
+`/v1/models` endpoint is used to list models running on LlamaEdge API server.
 
-    ```bash
-    curl -X POST http://localhost:8080/v1/models -H 'accept:application/json'
-    ```
+<details> <summary> Example </summary>
 
-    If the command is successful, you should see the similar output as below in your terminal:
+You can use `curl` to test it on a new terminal:
 
-    ```bash
-    {
-        "object":"list",
-        "data":[
-            {
-                "id":"llama-2-chat",
-                "created":1697084821,
-                "object":"model",
-                "owned_by":"Not specified"
-            }
-        ]
-    }
-    ```
+```bash
+curl -X POST http://localhost:8080/v1/models -H 'accept:application/json'
+```
 
-### `/v1/chat/completions` endpoint for chat completions
+If the command is successful, you should see the similar output as below in your terminal:
 
-    Ask a question using OpenAI's JSON message format.
-
-    ```bash
-    curl -X POST http://localhost:8080/v1/chat/completions -H 'accept:application/json' -H 'Content-Type: application/json' -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"llama-2-chat"}'
-    ```
-
-    Here is the response.
-
-    ```bash
-    {
-        "id":"",
-        "object":"chat.completion",
-        "created":1697092593,
-        "model":"llama-2-chat",
-        "choices":[
-            {
-                "index":0,
-                "message":{
-                    "role":"assistant",
-                    "content":"Robert Oppenheimer was an American theoretical physicist and director of the Manhattan Project, which developed the atomic bomb during World War II. He is widely regarded as one of the most important physicists of the 20th century and is known for his contributions to the development of quantum mechanics and the theory of the atomic nucleus. Oppenheimer was also a prominent figure in the post-war nuclear weapons debate, advocating for international control and regulation of nuclear weapons."
-                },
-                "finish_reason":"stop"
-            }
-        ],
-        "usage":{
-            "prompt_tokens":9,
-            "completion_tokens":12,
-            "total_tokens":21
+```json
+{
+    "object":"list",
+    "data":[
+        {
+            "id":"llama-2-7b-chat",
+            "created":1697084821,
+            "object":"model",
+            "owned_by":"Not specified"
         }
-    }
-    ```
+    ]
+}
+```
 
-### `/v1/files` endpoint for uploading text and markdown files
+</details>
 
-    In RAG applications, uploading files is a necessary step. The following command upload a text file [paris.txt](https://huggingface.co/datasets/gaianet/paris/raw/main/paris.txt) to the API server via the `/v1/files` endpoint:
+### `/v1/chat/completions` endpoint
 
-    ```bash
-    curl -X POST http://127.0.0.1:8080/v1/files -F "file=@paris.txt"
-    ```
+`/v1/chat/completions` endpoint is used for multi-turn conversations between human users and LLM models.
 
-    If the command is successful, you should see the similar output as below in your terminal:
+<details> <summary> Example </summary>
 
-    ```bash
-    {
-        "id": "file_4bc24593-2a57-4646-af16-028855e7802e",
-        "bytes": 2161,
-        "created_at": 1711611801,
-        "filename": "paris.txt",
-        "object": "file",
-        "purpose": "assistants"
-    }
-    ```
+The following command sends a chat request with a user's question to the LLM model named `llama-2-7b-chat`:
 
-    The `id` and `filename` fields are important for the next step, for example, to segment the uploaded file to chunks for computing embeddings.
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+    -H 'accept:application/json' \
+    -H 'Content-Type: application/json' \
+    -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"llama-2-7b-chat"}'
+```
 
-### `/v1/chunks` endpoint for segmenting files to chunks
+Here is the response from LlamaEdge API server:
 
-    To segment the uploaded file to chunks for computing embeddings, use the `/v1/chunks` API. The following command sends the uploaded file ID and filename to the API server and gets the chunks:
-
-    ```bash
-    curl -X POST http://localhost:8080/v1/chunks \
-        -H 'accept:application/json' \
-        -H 'Content-Type: application/json' \
-        -d '{"id":"file_4bc24593-2a57-4646-af16-028855e7802e", "filename":"paris.txt"}'
-    ```
-
-    The following is an example return with the generated chunks:
-
-    ```json
-    {
-        "id": "file_4bc24593-2a57-4646-af16-028855e7802e",
-        "filename": "paris.txt",
-        "chunks": [
-            "Paris, city and capital of France, ..., for Paris has retained its importance as a centre for education and intellectual pursuits.",
-            "Paris’s site at a crossroads ..., drawing to itself much of the talent and vitality of the provinces."
-        ]
-    }
-    ```
-
-### `/v1/embeddings` endpoint for computing embeddings
-
-    To compute embeddings for user query or file chunks, use the `/v1/embeddings` API. The following command sends a query to the API server and gets the embeddings as return:
-
-    ```bash
-    curl -X POST http://localhost:8080/v1/embeddings \
-        -H 'accept:application/json' \
-        -H 'Content-Type: application/json' \
-        -d '{"model": "e5-mistral-7b-instruct-Q5_K_M", "input":["Paris, city and capital of France, ..., for Paris has retained its importance as a centre for education and intellectual pursuits.", "Paris’s site at a crossroads ..., drawing to itself much of the talent and vitality of the provinces."]}'
-    ```
-
-    The embeddings returned are like below:
-
-    ```json
-    {
-        "object": "list",
-        "data": [
-            {
-                "index": 0,
-                "object": "embedding",
-                "embedding": [
-                    0.1428378969,
-                    -0.0447309874,
-                    0.007660218049,
-                    ...
-                    -0.0128974719,
-                    -0.03543198109,
-                    0.03974733502,
-                    0.00946635101,
-                    -0.01531364303
-                ]
+```json
+{
+    "id":"",
+    "object":"chat.completion",
+    "created":1697092593,
+    "model":"llama-2-7b-chat",
+    "choices":[
+        {
+            "index":0,
+            "message":{
+                "role":"assistant",
+                "content":"Robert Oppenheimer was an American theoretical physicist and director of the Manhattan Project, which developed the atomic bomb during World War II. He is widely regarded as one of the most important physicists of the 20th century and is known for his contributions to the development of quantum mechanics and the theory of the atomic nucleus. Oppenheimer was also a prominent figure in the post-war nuclear weapons debate, advocating for international control and regulation of nuclear weapons."
             },
-            {
-                "index": 1,
-                "object": "embedding",
-                "embedding": [
-                    0.0697753951,
-                    -0.0001159032545,
-                    0.02073983476,
-                    ...
-                    0.03565846011,
-                    -0.04550019652,
-                    0.02691745944,
-                    0.02498772368,
-                    -0.003226313973
-                ]
-            }
-        ],
-        "model": "e5-mistral-7b-instruct-Q5_K_M",
-        "usage": {
-            "prompt_tokens": 491,
-            "completion_tokens": 0,
-            "total_tokens": 491
+            "finish_reason":"stop"
         }
+    ],
+    "usage":{
+        "prompt_tokens":9,
+        "completion_tokens":12,
+        "total_tokens":21
     }
-    ```
+}
+```
+
+</details>
+
+### `/v1/files` endpoint
+
+`/v1/files` endpoint is used for uploading text and markdown files to LlamaEdge API server.
+
+<details> <summary> Example </summary>
+
+The following command upload a text file [paris.txt](https://huggingface.co/datasets/gaianet/paris/raw/main/paris.txt) to the API server via the `/v1/files` endpoint:
+
+```bash
+curl -X POST http://127.0.0.1:8080/v1/files -F "file=@paris.txt"
+```
+
+If the command is successful, you should see the similar output as below in your terminal:
+
+```bash
+{
+    "id": "file_4bc24593-2a57-4646-af16-028855e7802e",
+    "bytes": 2161,
+    "created_at": 1711611801,
+    "filename": "paris.txt",
+    "object": "file",
+    "purpose": "assistants"
+}
+```
+
+The `id` and `filename` fields are important for the next step, for example, to segment the uploaded file to chunks for computing embeddings.
+
+If you'd like to build a RAG chatbot, it's strongly recommended to visit [LlamaEdge-RAG API Server](https://github.com/LlamaEdge/rag-api-server).
+
+</details>
+
+### `/v1/chunks` endpoint
+
+To segment the uploaded file to chunks for computing embeddings, use the `/v1/chunks` API.
+
+<details> <summary> Example </summary>
+
+The following command sends the uploaded file ID and filename to the API server and gets the chunks:
+
+```bash
+curl -X POST http://localhost:8080/v1/chunks \
+    -H 'accept:application/json' \
+    -H 'Content-Type: application/json' \
+    -d '{"id":"file_4bc24593-2a57-4646-af16-028855e7802e", "filename":"paris.txt", "chunk_capacity":100}'
+```
+
+The following is an example return with the generated chunks:
+
+```json
+{
+    "id": "file_4bc24593-2a57-4646-af16-028855e7802e",
+    "filename": "paris.txt",
+    "chunks": [
+        "Paris, city and capital of France, ... and far beyond both banks of the Seine.",
+        "Paris occupies a central position in the rich agricultural region ... metropolitan area, 890 square miles (2,300 square km).",
+        "Pop. (2020 est.) city, 2,145,906; (2020 est.) urban agglomeration, 10,858,874.",
+        "For centuries Paris has been one of the world’s ..., for Paris has retained its importance as a centre for education and intellectual pursuits.",
+        "Paris’s site at a crossroads of both water and land routes ... The Frankish king Clovis I had taken Paris from the Gauls by 494 CE and later made his capital there.",
+        "Under Hugh Capet (ruled 987–996) and the Capetian dynasty ..., drawing to itself much of the talent and vitality of the provinces."
+    ]
+}
+```
+
+If you'd like to build a RAG chatbot, it's strongly recommended to visit [LlamaEdge-RAG API Server](https://github.com/LlamaEdge/rag-api-server).
+
+</details>
+
+### `/v1/embeddings` endpoint
+
+To compute embeddings for user query or file chunks, use the `/v1/embeddings` API.
+
+<details> <summary> Example </summary>
+
+The following command sends a query to the API server and gets the embeddings as return:
+
+```bash
+curl -X POST http://localhost:8080/v1/embeddings \
+    -H 'accept:application/json' \
+    -H 'Content-Type: application/json' \
+    -d '{"model": "e5-mistral-7b-instruct-Q5_K_M", "input":["Paris, city and capital of France, ... and far beyond both banks of the Seine.","Paris occupies a central position in the rich agricultural region ... metropolitan area, 890 square miles (2,300 square km).","Pop. (2020 est.) city, 2,145,906; (2020 est.) urban agglomeration, 10,858,874.","For centuries Paris has been one of the world’s ..., for Paris has retained its importance as a centre for education and intellectual pursuits.","Paris’s site at a crossroads of both water and land routes ... The Frankish king Clovis I had taken Paris from the Gauls by 494 CE and later made his capital there.","Under Hugh Capet (ruled 987–996) and the Capetian dynasty ..., drawing to itself much of the talent and vitality of the provinces."]}'
+```
+
+The embeddings returned are like below:
+
+```json
+{
+    "object": "list",
+    "data": [
+        {
+            "index": 0,
+            "object": "embedding",
+            "embedding": [
+                0.1477311701,
+                -0.00002238310481,
+                ...,
+                0.01931835897,
+                -0.02496444248
+            ]
+        },
+        {
+            "index": 1,
+            "object": "embedding",
+            "embedding": [
+                0.1766036302,
+                -0.009940749966,
+                ...,
+                0.0156990625,
+                -0.02616829611
+            ]
+        },
+        {
+            "index": 2,
+            "object": "embedding",
+            "embedding": [
+                0.04604972154,
+                -0.07207781076,
+                ...,
+                0.00005568400593,
+                0.04646552354
+            ]
+        },
+        {
+            "index": 3,
+            "object": "embedding",
+            "embedding": [
+                0.1065238863,
+                -0.04788689688,
+                ...,
+                0.0301867798,
+                0.0275206212
+            ]
+        },
+        {
+            "index": 4,
+            "object": "embedding",
+            "embedding": [
+                0.05383823439,
+                0.03193736449,
+                ...,
+                0.01904040016,
+                -0.02546775527
+            ]
+        },
+        {
+            "index": 5,
+            "object": "embedding",
+            "embedding": [
+                0.05341234431,
+                0.005945806392,
+                ...,
+                0.06845153868,
+                0.02127391472
+            ]
+        }
+    ],
+    "model": "all-MiniLM-L6-v2-ggml-model-f16",
+    "usage": {
+        "prompt_tokens": 495,
+        "completion_tokens": 0,
+        "total_tokens": 495
+    }
+}
+```
+
+If you'd like to build a RAG chatbot, it's strongly recommended to visit [LlamaEdge-RAG API Server](https://github.com/LlamaEdge/rag-api-server).
+
+</details>
 
 <!-- - Completions
 
@@ -307,84 +396,66 @@ After that, you can use the same command line to create the API server
 wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf llama-api-server.wasm -p llama-2-chat
 ```
 
-Then, you will be asked to open http://127.0.0.1:8080 from your browser.
+Then, you will be asked to open `http://127.0.0.1:8080` from your browser.
 
 ## CLI options for the API server
 
 The `-h` or `--help` option can list the available options of the `llama-api-server` wasm app:
 
-  ```console
-  ~/llama-utils/api-server$ wasmedge llama-api-server.wasm -h
-
-  Usage: llama-api-server.wasm [OPTIONS] --prompt-template <TEMPLATE>
-
-    Options:
-    -s, --socket-addr <IP:PORT>
-            Sets the socket address [default: 0.0.0.0:8080]
-    -m, --model-name <MODEL-NAME>
-            Sets single or multiple model names [default: default]
-    -a, --model-alias <MODEL-ALIAS>
-            Sets model aliases [default: default,embedding]
-    -c, --ctx-size <CTX_SIZE>
-            Sets the prompt context size [default: 512]
-    -n, --n-predict <N_PRDICT>
-            Number of tokens to predict [default: 1024]
-    -g, --n-gpu-layers <N_GPU_LAYERS>
-            Number of layers to run on the GPU [default: 100]
-    -b, --batch-size <BATCH_SIZE>
-            Batch size for prompt processing [default: 512]
-        --temp <TEMP>
-            Temperature for sampling [default: 1.0]
-        --top-p <TOP_P>
-            An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. 1.0 = disabled [default: 1.0]
-        --repeat-penalty <REPEAT_PENALTY>
-            Penalize repeat sequence of tokens [default: 1.1]
-        --presence-penalty <PRESENCE_PENALTY>
-            Repeat alpha presence penalty. 0.0 = disabled [default: 0.0]
-        --frequency-penalty <FREQUENCY_PENALTY>
-            Repeat alpha frequency penalty. 0.0 = disabled [default: 0.0]
-    -r, --reverse-prompt <REVERSE_PROMPT>
-            Halt generation at PROMPT, return control.
-    -p, --prompt-template <TEMPLATE>
-            Sets the prompt template. [possible values: llama-2-chat, codellama-instruct, codellama-super-instruct, mistral-instruct, mistrallite, openchat, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, solar-instruct, gemma-instruct]
-        --llava-mmproj <LLAVA_MMPROJ>
-            Path to the multimodal projector file [default: ]
-        --qdrant-url <qdrant_url>
-            Sets the url of Qdrant REST Service (e.g., http://localhost:6333). Required for RAG. [default: ]
-        --qdrant-collection-name <qdrant_collection_name>
-            Sets the collection name of Qdrant. Required for RAG. [default: ]
-        --qdrant-limit <qdrant_limit>
-            Max number of retrieved result. [default: 3]
-        --qdrant-score-threshold <qdrant_score_threshold>
-            Minimal score threshold for the search result [default: 0.0]
-        --log-prompts
-            Print prompt strings to stdout
-        --log-stat
-            Print statistics to stdout
-        --log-all
-            Print all log information to stdout
-        --web-ui <WEB_UI>
-            Root path for the Web UI files [default: chatbot-ui]
-    -h, --help
-            Print help
-    -V, --version
-            Print version
-  ```
-
-  Please guarantee that the port is not occupied by other processes. If the port specified is available on your machine and the command is successful, you should see the following output in the terminal:
-
-  ```console
-  Listening on http://0.0.0.0:8080
-  ```
-
-  If the Web UI is ready, you can navigate to `http://127.0.0.1:8080` to open the chatbot, it will interact with the API of your server.
-
-## Optional: Build the `llama-chat` wasm app yourself
-
-Run the following command:
-
 ```console
-cargo build --target wasm32-wasi --release
+$ wasmedge llama-api-server.wasm -h
+
+Usage: llama-api-server.wasm [OPTIONS] --prompt-template <PROMPT_TEMPLATE>
+
+Options:
+  -m, --model-name <MODEL_NAME>
+          Model name [default: default]
+  -a, --model-alias <MODEL_ALIAS>
+          Model alias [default: default]
+  -c, --ctx-size <CTX_SIZE>
+          Context size [default: 512]
+  -p, --prompt-template <PROMPT_TEMPLATE>
+          Sets the prompt template [possible values: llama-2-chat, mistral-instruct, mistrallite, openchat, codellama-instruct, codellama-super-instruct, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, solar-instruct, phi-2-chat, phi-2-instruct, gemma-instruct]
+  -r, --reverse-prompt <REVERSE_PROMPT>
+          Halt generation at PROMPT, return control
+  -n, --n-predict <N_PREDICT>
+          Number of tokens to predict [default: 1024]
+  -g, --n-gpu-layers <N_GPU_LAYERS>
+          Number of layers to run on the GPU [default: 100]
+  -b, --batch-size <BATCH_SIZE>
+          Batch size for prompt processing [default: 512]
+      --temp <TEMP>
+          Temperature for sampling [default: 1.0]
+      --top-p <TOP_P>
+          An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. 1.0 = disabled [default: 1.0]
+      --repeat-penalty <REPEAT_PENALTY>
+          Penalize repeat sequence of tokens [default: 1.1]
+      --presence-penalty <PRESENCE_PENALTY>
+          Repeat alpha presence penalty. 0.0 = disabled [default: 0.0]
+      --frequency-penalty <FREQUENCY_PENALTY>
+          Repeat alpha frequency penalty. 0.0 = disabled [default: 0.0]
+      --llava-mmproj <LLAVA_MMPROJ>
+          Path to the multimodal projector file
+      --log-prompts
+          Print prompt strings to stdout
+      --log-stat
+          Print statistics to stdout
+      --log-all
+          Print all log information to stdout
+      --socket-addr <SOCKET_ADDR>
+          Socket address of LlamaEdge API Server instance [default: 0.0.0.0:8080]
+      --web-ui <WEB_UI>
+          Root path for the Web UI files [default: chatbot-ui]
+  -h, --help
+          Print help
+  -V, --version
+          Print version
 ```
 
-The `llama-api-server.wasm` will be generated in the `target/wasm32-wasi/release` folder.
+Please guarantee that the port is not occupied by other processes. If the port specified is available on your machine and the command is successful, you should see the following output in the terminal:
+
+```console
+[INFO] LlamaEdge HTTP listening on 8080
+```
+
+If the Web UI is ready, you can navigate to `http://127.0.0.1:8080` to open the chatbot, it will interact with the API of your server.

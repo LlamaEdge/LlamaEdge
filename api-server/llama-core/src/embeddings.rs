@@ -1,7 +1,10 @@
+//! Define APIs for computing embeddings.
+
 use crate::{
     chat::get_token_info_by_graph,
     error::{BackendError, LlamaCoreError},
-    Graph, EMBEDDING_GRAPHS, MAX_BUFFER_SIZE_EMBEDDING,
+    utils::get_output_buffer,
+    Graph, CHAT_GRAPHS, EMBEDDING_GRAPHS, OUTPUT_TENSOR,
 };
 use endpoints::{
     common::Usage,
@@ -9,17 +12,33 @@ use endpoints::{
 };
 use serde::{Deserialize, Serialize};
 
+/// Compute embeddings for the given input.
+///
+/// # Argument
+///
+/// * `embedding_request` - The embedding request.
+///
+/// # Returns
+///
+/// The embeddings response.
 pub async fn embeddings(
     embedding_request: &EmbeddingRequest,
 ) -> Result<EmbeddingsResponse, LlamaCoreError> {
     let model_name = &embedding_request.model;
 
-    let embedding_graphs =
-        EMBEDDING_GRAPHS
-            .get()
-            .ok_or(LlamaCoreError::Operation(String::from(
-                "Fail to get the underlying value of `EMBEDDING_GRAPHS`.",
-            )))?;
+    // For general embedding scenario, the embedding model is the same as the chat model.
+    // For RAG scenario, the embedding model is different from the chat model.
+    let embedding_graphs = match EMBEDDING_GRAPHS.get() {
+        Some(embedding_graphs) => embedding_graphs,
+        None => match CHAT_GRAPHS.get() {
+            Some(chat_graphs) => chat_graphs,
+            None => {
+                return Err(LlamaCoreError::Operation(String::from(
+                    "No embedding model is available.",
+                )));
+            }
+        },
+    };
 
     let mut embedding_graphs = embedding_graphs.lock().map_err(|e| {
         LlamaCoreError::Operation(format!(
@@ -31,19 +50,10 @@ pub async fn embeddings(
     let graph = match embedding_graphs.get_mut(model_name) {
         Some(graph) => graph,
         None => {
-            if !embedding_graphs.is_empty() {
-                embedding_graphs
-                    .values_mut()
-                    .next()
-                    .ok_or(LlamaCoreError::Operation(String::from(
-                        "Fail to get the underlying value of `EMBEDDING_GRAPHS`.",
-                    )))?
-            } else {
-                return Err(LlamaCoreError::Operation(format!(
-                    "The model `{}` does not exist in the embedding graphs.",
-                    model_name
-                )));
-            }
+            return Err(LlamaCoreError::Operation(format!(
+                "The model `{}` does not exist in the embedding graphs.",
+                model_name
+            )))
         }
     };
 
@@ -120,18 +130,10 @@ fn compute_embeddings(
         match graph.compute() {
             Ok(_) => {
                 // Retrieve the output.
-                let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE_EMBEDDING];
-                let mut output_size: usize =
-                    graph.get_output(0, &mut output_buffer).map_err(|e| {
-                        LlamaCoreError::Operation(format!(
-                            "Fail to get output tensor: {msg}",
-                            msg = e
-                        ))
-                    })?;
-                output_size = std::cmp::min(MAX_BUFFER_SIZE_EMBEDDING, output_size);
+                let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
 
                 // convert inference result to string
-                let output = std::str::from_utf8(&output_buffer[..output_size]).map_err(|e| {
+                let output = std::str::from_utf8(&output_buffer[..]).map_err(|e| {
                     LlamaCoreError::Operation(format!(
                         "Failed to decode the buffer of the inference result to a utf-8 string. {}",
                         e

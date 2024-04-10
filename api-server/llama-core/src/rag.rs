@@ -1,3 +1,5 @@
+//! Define APIs for RAG operations.
+
 use crate::{embeddings::embeddings, error::LlamaCoreError};
 use endpoints::{
     embeddings::{EmbeddingObject, EmbeddingsResponse},
@@ -22,18 +24,14 @@ use tiktoken_rs::cl100k_base;
 /// Name of the Qdrant collection if successful.
 pub async fn rag_doc_chunks_to_embeddings(
     rag_embedding_request: &RagEmbeddingRequest,
-    log_prompts: bool,
 ) -> Result<EmbeddingsResponse, LlamaCoreError> {
     let embedding_request = &rag_embedding_request.embedding_request;
     let qdrant_url = rag_embedding_request.qdrant_url.as_str();
     let qdrant_collection_name = rag_embedding_request.qdrant_collection_name.as_str();
 
-    if log_prompts {
-        println!("[+] Computing embeddings for document chunks...");
-
-        if let Ok(request_str) = serde_json::to_string_pretty(&embedding_request) {
-            println!("    * embedding request (json):\n\n{}", request_str);
-        }
+    println!("[+] Computing embeddings for document chunks...");
+    if let Ok(request_str) = serde_json::to_string_pretty(&embedding_request) {
+        println!("    * embedding request (json):\n\n{}", request_str);
     }
 
     // compute embeddings for the document
@@ -46,18 +44,14 @@ pub async fn rag_doc_chunks_to_embeddings(
     // create a Qdrant client
     let qdrant_client = qdrant::Qdrant::new_with_url(qdrant_url.to_string());
 
-    if log_prompts {
-        println!("\n[+] Creating a Qdrant collection ...");
-        println!("    * Collection name: {}", qdrant_collection_name);
-        println!("    * Dimension: {}", dim);
-    }
+    println!("\n[+] Creating a Qdrant collection ...");
+    println!("    * Collection name: {}", qdrant_collection_name);
+    println!("    * Dimension: {}", dim);
 
     // create a collection
     qdrant_create_collection(&qdrant_client, qdrant_collection_name, dim).await?;
 
-    if log_prompts {
-        println!("\n[+] Upserting points ...");
-    }
+    println!("\n[+] Upserting points ...");
 
     // create and upsert points
     qdrant_persist_embeddings(&qdrant_client, qdrant_collection_name, embeddings, chunks).await?;
@@ -190,13 +184,15 @@ async fn qdrant_search_similar_points(
 /// Type alias for `qdrant::ScoredPoint`
 pub type ScoredPoint = qdrant::ScoredPoint;
 
-/// Chunk a text into chunks
+/// Generate a list of chunks from a given text. Each chunk will be up to the `chunk_capacity`.
 ///
 /// # Arguments
 ///
 /// * `text` - A reference to a text.
 ///
 /// * `ty` - Type of the text, `txt` for text content or `md` for markdown content.
+///
+/// * `chunk_capacity` - The max tokens each chunk contains.
 ///
 /// # Returns
 ///
@@ -208,6 +204,7 @@ pub type ScoredPoint = qdrant::ScoredPoint;
 pub fn chunk_text(
     text: impl AsRef<str>,
     ty: impl AsRef<str>,
+    chunk_capacity: usize,
 ) -> Result<Vec<String>, LlamaCoreError> {
     if ty.as_ref().to_lowercase().as_str() != "txt" && ty.as_ref().to_lowercase().as_str() != "md" {
         return Err(LlamaCoreError::Operation(
@@ -217,29 +214,30 @@ pub fn chunk_text(
 
     match ty.as_ref().to_lowercase().as_str() {
         "txt" => {
+            println!("[CORE] chunking the text file ...");
+
             let tokenizer = cl100k_base().map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
-            let max_tokens = 384;
             let splitter = TextSplitter::new(tokenizer).with_trim_chunks(true);
 
             let chunks = splitter
-                .chunks(text.as_ref(), max_tokens)
+                .chunks(text.as_ref(), chunk_capacity)
                 .map(|s| s.to_string())
                 .collect::<Vec<_>>();
+
+            println!("       Number of chunks: {}", chunks.len());
 
             Ok(chunks)
         },
         "md" => {
-            // Maximum number of characters in a chunk. Can also use a range.
-            let max_characters = 380;
+            println!("[CORE] chunking the markdown file ...");
 
-            // Default implementation uses character count for chunk size.
-            // Can also use all of the same tokenizer implementations as `TextSplitter`.
-            let splitter = MarkdownSplitter::default()
-                // Optionally can also have the splitter trim whitespace for you
-                .with_trim_chunks(true);
+            let tokenizer = cl100k_base().map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
+            let splitter = MarkdownSplitter::new(tokenizer).with_trim_chunks(true);
 
-            let chunks = splitter.chunks(text.as_ref(), max_characters).map(|s| s.to_string())
+            let chunks = splitter.chunks(text.as_ref(), chunk_capacity).map(|s| s.to_string())
             .collect::<Vec<_>>();
+
+            println!("       Number of chunks: {}", chunks.len());
 
             Ok(chunks)
         },
