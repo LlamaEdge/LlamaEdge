@@ -12,11 +12,11 @@ LlamaEdge API server offers OpenAI-compatible REST APIs. It can accelerate devel
   - [Get model](#get-model)
   - [Run LlamaEdge API server](#run-llamaedge-api-server)
   - [Endpoints](#endpoints)
-    - [`/v1/models` endpoint for model list](#v1models-endpoint-for-model-list)
-    - [`/v1/chat/completions` endpoint for chat completions](#v1chatcompletions-endpoint-for-chat-completions)
-    - [`/v1/files` endpoint for uploading text and markdown files](#v1files-endpoint-for-uploading-text-and-markdown-files)
-    - [`/v1/chunks` endpoint for segmenting files to chunks](#v1chunks-endpoint-for-segmenting-files-to-chunks)
-    - [`/v1/embeddings` endpoint for computing embeddings](#v1embeddings-endpoint-for-computing-embeddings)
+    - [`/v1/models` endpoint](#v1models-endpoint)
+    - [`/v1/chat/completions` endpoint](#v1chatcompletions-endpoint)
+    - [`/v1/files` endpoint](#v1files-endpoint)
+    - [`/v1/chunks` endpoint](#v1chunks-endpoint)
+    - [`/v1/embeddings` endpoint](#v1embeddings-endpoint)
   - [Add a web UI](#add-a-web-ui)
   - [CLI options for the API server](#cli-options-for-the-api-server)
 
@@ -105,9 +105,13 @@ The command above starts the API server on the default socket address. Besides, 
 
 ## Endpoints
 
-### `/v1/models` endpoint for model list
+### `/v1/models` endpoint
 
-`llama-api-server` provides a POST API `/v1/models` to list currently available models. You can use `curl` to test it on a new terminal:
+`/v1/models` endpoint is used to list models running on LlamaEdge API server.
+
+<details> <summary> Example </summary>
+
+You can use `curl` to test it on a new terminal:
 
 ```bash
 curl -X POST http://localhost:8080/v1/models -H 'accept:application/json'
@@ -115,7 +119,7 @@ curl -X POST http://localhost:8080/v1/models -H 'accept:application/json'
 
 If the command is successful, you should see the similar output as below in your terminal:
 
-```bash
+```json
 {
     "object":"list",
     "data":[
@@ -129,9 +133,15 @@ If the command is successful, you should see the similar output as below in your
 }
 ```
 
-### `/v1/chat/completions` endpoint for chat completions
+</details>
 
-Ask a question using OpenAI's JSON message format.
+### `/v1/chat/completions` endpoint
+
+`/v1/chat/completions` endpoint is used for multi-turn conversations between human users and LLM models.
+
+<details> <summary> Example </summary>
+
+The following command sends a chat request with a user's question to the LLM model named `llama-2-7b-chat`:
 
 ```bash
 curl -X POST http://localhost:8080/v1/chat/completions \
@@ -140,9 +150,9 @@ curl -X POST http://localhost:8080/v1/chat/completions \
     -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"llama-2-7b-chat"}'
 ```
 
-Here is the response.
+Here is the response from LlamaEdge API server:
 
-```bash
+```json
 {
     "id":"",
     "object":"chat.completion",
@@ -166,7 +176,13 @@ Here is the response.
 }
 ```
 
-### `/v1/files` endpoint for uploading text and markdown files
+</details>
+
+### `/v1/files` endpoint
+
+`/v1/files` endpoint is used for uploading text and markdown files to LlamaEdge API server.
+
+<details> <summary> Example </summary>
 
 The following command upload a text file [paris.txt](https://huggingface.co/datasets/gaianet/paris/raw/main/paris.txt) to the API server via the `/v1/files` endpoint:
 
@@ -191,15 +207,21 @@ The `id` and `filename` fields are important for the next step, for example, to 
 
 If you'd like to build a RAG chatbot, it's strongly recommended to visit [LlamaEdge-RAG API Server](https://github.com/LlamaEdge/rag-api-server).
 
-### `/v1/chunks` endpoint for segmenting files to chunks
+</details>
 
-To segment the uploaded file to chunks for computing embeddings, use the `/v1/chunks` API. The following command sends the uploaded file ID and filename to the API server and gets the chunks:
+### `/v1/chunks` endpoint
+
+To segment the uploaded file to chunks for computing embeddings, use the `/v1/chunks` API.
+
+<details> <summary> Example </summary>
+
+The following command sends the uploaded file ID and filename to the API server and gets the chunks:
 
 ```bash
 curl -X POST http://localhost:8080/v1/chunks \
     -H 'accept:application/json' \
     -H 'Content-Type: application/json' \
-    -d '{"id":"file_4bc24593-2a57-4646-af16-028855e7802e", "filename":"paris.txt"}'
+    -d '{"id":"file_4bc24593-2a57-4646-af16-028855e7802e", "filename":"paris.txt", "chunk_capacity":100}'
 ```
 
 The following is an example return with the generated chunks:
@@ -209,23 +231,33 @@ The following is an example return with the generated chunks:
     "id": "file_4bc24593-2a57-4646-af16-028855e7802e",
     "filename": "paris.txt",
     "chunks": [
-        "Paris, city and capital of France, ..., for Paris has retained its importance as a centre for education and intellectual pursuits.",
-        "Paris’s site at a crossroads ..., drawing to itself much of the talent and vitality of the provinces."
+        "Paris, city and capital of France, ... and far beyond both banks of the Seine.",
+        "Paris occupies a central position in the rich agricultural region ... metropolitan area, 890 square miles (2,300 square km).",
+        "Pop. (2020 est.) city, 2,145,906; (2020 est.) urban agglomeration, 10,858,874.",
+        "For centuries Paris has been one of the world’s ..., for Paris has retained its importance as a centre for education and intellectual pursuits.",
+        "Paris’s site at a crossroads of both water and land routes ... The Frankish king Clovis I had taken Paris from the Gauls by 494 CE and later made his capital there.",
+        "Under Hugh Capet (ruled 987–996) and the Capetian dynasty ..., drawing to itself much of the talent and vitality of the provinces."
     ]
 }
 ```
 
 If you'd like to build a RAG chatbot, it's strongly recommended to visit [LlamaEdge-RAG API Server](https://github.com/LlamaEdge/rag-api-server).
 
-### `/v1/embeddings` endpoint for computing embeddings
+</details>
 
-To compute embeddings for user query or file chunks, use the `/v1/embeddings` API. The following command sends a query to the API server and gets the embeddings as return:
+### `/v1/embeddings` endpoint
+
+To compute embeddings for user query or file chunks, use the `/v1/embeddings` API.
+
+<details> <summary> Example </summary>
+
+The following command sends a query to the API server and gets the embeddings as return:
 
 ```bash
 curl -X POST http://localhost:8080/v1/embeddings \
     -H 'accept:application/json' \
     -H 'Content-Type: application/json' \
-    -d '{"model": "e5-mistral-7b-instruct-Q5_K_M", "input":["Paris, city and capital of France, ..., for Paris has retained its importance as a centre for education and intellectual pursuits.", "Paris’s site at a crossroads ..., drawing to itself much of the talent and vitality of the provinces."]}'
+    -d '{"model": "e5-mistral-7b-instruct-Q5_K_M", "input":["Paris, city and capital of France, ... and far beyond both banks of the Seine.","Paris occupies a central position in the rich agricultural region ... metropolitan area, 890 square miles (2,300 square km).","Pop. (2020 est.) city, 2,145,906; (2020 est.) urban agglomeration, 10,858,874.","For centuries Paris has been one of the world’s ..., for Paris has retained its importance as a centre for education and intellectual pursuits.","Paris’s site at a crossroads of both water and land routes ... The Frankish king Clovis I had taken Paris from the Gauls by 494 CE and later made his capital there.","Under Hugh Capet (ruled 987–996) and the Capetian dynasty ..., drawing to itself much of the talent and vitality of the provinces."]}'
 ```
 
 The embeddings returned are like below:
@@ -238,43 +270,81 @@ The embeddings returned are like below:
             "index": 0,
             "object": "embedding",
             "embedding": [
-                0.1428378969,
-                -0.0447309874,
-                0.007660218049,
-                ...
-                -0.0128974719,
-                -0.03543198109,
-                0.03974733502,
-                0.00946635101,
-                -0.01531364303
+                0.1477311701,
+                -0.00002238310481,
+                ...,
+                0.01931835897,
+                -0.02496444248
             ]
         },
         {
             "index": 1,
             "object": "embedding",
             "embedding": [
-                0.0697753951,
-                -0.0001159032545,
-                0.02073983476,
-                ...
-                0.03565846011,
-                -0.04550019652,
-                0.02691745944,
-                0.02498772368,
-                -0.003226313973
+                0.1766036302,
+                -0.009940749966,
+                ...,
+                0.0156990625,
+                -0.02616829611
+            ]
+        },
+        {
+            "index": 2,
+            "object": "embedding",
+            "embedding": [
+                0.04604972154,
+                -0.07207781076,
+                ...,
+                0.00005568400593,
+                0.04646552354
+            ]
+        },
+        {
+            "index": 3,
+            "object": "embedding",
+            "embedding": [
+                0.1065238863,
+                -0.04788689688,
+                ...,
+                0.0301867798,
+                0.0275206212
+            ]
+        },
+        {
+            "index": 4,
+            "object": "embedding",
+            "embedding": [
+                0.05383823439,
+                0.03193736449,
+                ...,
+                0.01904040016,
+                -0.02546775527
+            ]
+        },
+        {
+            "index": 5,
+            "object": "embedding",
+            "embedding": [
+                0.05341234431,
+                0.005945806392,
+                ...,
+                0.06845153868,
+                0.02127391472
             ]
         }
     ],
-    "model": "e5-mistral-7b-instruct-Q5_K_M",
+    "model": "all-MiniLM-L6-v2-ggml-model-f16",
     "usage": {
-        "prompt_tokens": 491,
+        "prompt_tokens": 495,
         "completion_tokens": 0,
-        "total_tokens": 491
+        "total_tokens": 495
     }
 }
 ```
 
 If you'd like to build a RAG chatbot, it's strongly recommended to visit [LlamaEdge-RAG API Server](https://github.com/LlamaEdge/rag-api-server).
+
+</details>
 
 <!-- - Completions
 
