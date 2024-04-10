@@ -6,6 +6,7 @@ pub mod gemma;
 pub mod intel;
 pub mod llama;
 pub mod mistral;
+pub mod octopus;
 pub mod openchat;
 pub mod phi;
 pub mod solar;
@@ -23,6 +24,7 @@ use gemma::*;
 use intel::*;
 use llama::*;
 use mistral::*;
+use octopus::*;
 use openchat::*;
 use phi::*;
 use solar::*;
@@ -61,6 +63,7 @@ pub enum ChatPrompt {
     Phi2ChatPrompt,
     Phi2InstructPrompt,
     GemmaInstructPrompt,
+    OctopusPrompt,
 }
 impl From<PromptTemplateType> for ChatPrompt {
     fn from(ty: PromptTemplateType) -> Self {
@@ -103,6 +106,7 @@ impl From<PromptTemplateType> for ChatPrompt {
             PromptTemplateType::GemmaInstruct => {
                 ChatPrompt::GemmaInstructPrompt(GemmaInstructPrompt)
             }
+            PromptTemplateType::Octopus => ChatPrompt::OctopusPrompt(OctopusPrompt),
         }
     }
 }
