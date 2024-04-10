@@ -52,6 +52,8 @@ pub enum PromptTemplateType {
     Phi2Instruct,
     #[value(name = "gemma-instruct")]
     GemmaInstruct,
+    #[value(name = "octopus")]
+    Octopus,
 }
 impl FromStr for PromptTemplateType {
     type Err = error::PromptError;
@@ -81,6 +83,7 @@ impl FromStr for PromptTemplateType {
             "phi-2-chat" => Ok(PromptTemplateType::Phi2Chat),
             "phi-2-instruct" => Ok(PromptTemplateType::Phi2Instruct),
             "gemma-instruct" => Ok(PromptTemplateType::GemmaInstruct),
+            "octopus" => Ok(PromptTemplateType::Octopus),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
                 template.to_string(),
             )),
@@ -112,6 +115,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::Phi2Instruct => write!(f, "phi-2-instruct"),
             PromptTemplateType::CodeLlamaSuper => write!(f, "codellama-super-instruct"),
             PromptTemplateType::GemmaInstruct => write!(f, "gemma-instruct"),
+            PromptTemplateType::Octopus => write!(f, "octopus"),
         }
     }
 }
