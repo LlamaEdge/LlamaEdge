@@ -415,7 +415,7 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Result<Response<Bo
         ));
     }
 
-    match llama_core::rag::chunk_text(&contents, extension) {
+    match llama_core::rag::chunk_text(&contents, extension, chunks_request.chunk_capacity) {
         Ok(chunks) => {
             let chunks_response = ChunksResponse {
                 id: chunks_request.id,
