@@ -689,6 +689,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         PromptTemplateType::GemmaInstruct => {
             ChatPrompt::GemmaInstructPrompt(chat_prompts::chat::gemma::GemmaInstructPrompt)
         }
+        PromptTemplateType::Octopus => {
+            ChatPrompt::OctopusPrompt(chat_prompts::chat::octopus::OctopusPrompt)
+        }
     }
 }
 
