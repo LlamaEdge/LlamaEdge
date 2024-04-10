@@ -314,6 +314,7 @@ impl RagChatCompletionRequestBuilder {
 pub struct ChunksRequest {
     pub id: String,
     pub filename: String,
+    pub chunk_capacity: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
