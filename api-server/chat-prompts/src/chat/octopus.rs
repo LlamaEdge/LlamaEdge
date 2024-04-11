@@ -14,9 +14,7 @@ impl OctopusPrompt {
         let content = message.content();
         match content.is_empty() {
             true => String::from("Below is the query from the users, please call the correct function and generate the parameters to call the function."),
-            false =>format!(
-                "{content}"
-            )
+            false => content.to_string(),
         }
     }
 
