@@ -1,18 +1,28 @@
 use super::BuildChatPrompt;
 use crate::error::{PromptError, Result};
 use endpoints::chat::{
-    ChatCompletionAssistantMessage, ChatCompletionRequestMessage, ChatCompletionUserMessage,
-    ChatCompletionUserMessageContent, ContentPart,
+    ChatCompletionAssistantMessage, ChatCompletionRequestMessage, ChatCompletionSystemMessage,
+    ChatCompletionUserMessage, ChatCompletionUserMessageContent, ContentPart,
 };
 
-/// Generate prompts for the `gemma-7b-it` model.
+/// Generate prompts for the `Llama-2-chat` model.
 #[derive(Debug, Default, Clone)]
-pub struct GemmaInstructPrompt;
-impl GemmaInstructPrompt {
+pub struct OctopusPrompt;
+impl OctopusPrompt {
+    /// Create a system prompt from a chat completion request message.
+    fn create_system_prompt(&self, message: &ChatCompletionSystemMessage) -> String {
+        let content = message.content();
+        match content.is_empty() {
+            true => String::from("Below is the query from the users, please call the correct function and generate the parameters to call the function."),
+            false => content.to_string(),
+        }
+    }
+
     /// Create a user prompt from a chat completion request message.
     fn append_user_message(
         &self,
         chat_history: impl AsRef<str>,
+        system_prompt: impl AsRef<str>,
         message: &ChatCompletionUserMessage,
     ) -> String {
         let content = match message.content() {
@@ -31,11 +41,12 @@ impl GemmaInstructPrompt {
 
         match chat_history.as_ref().is_empty() {
             true => format!(
-                "<bos><start_of_turn>user\n{user_message}<end_of_turn>\n<start_of_turn>model",
+                "{system_prompt}\n\nQuery: {user_message}",
+                system_prompt = system_prompt.as_ref().trim(),
                 user_message = content.trim(),
             ),
             false => format!(
-                "{chat_history}\n<start_of_turn>user\n{user_message}<end_of_turn>\n<start_of_turn>model",
+                "{chat_history}\n\nQuery: {user_message}",
                 chat_history = chat_history.as_ref().trim(),
                 user_message = content.trim(),
             ),
@@ -58,24 +69,32 @@ impl GemmaInstructPrompt {
         };
 
         Ok(format!(
-            "{chat_history}\n{assistant_message}<end_of_turn>model",
+            "{chat_history} \n\nResponse: {assistant_message}",
             chat_history = chat_history.as_ref().trim(),
             assistant_message = content.trim(),
         ))
     }
 }
-impl BuildChatPrompt for GemmaInstructPrompt {
+impl BuildChatPrompt for OctopusPrompt {
     fn build(&self, messages: &mut Vec<ChatCompletionRequestMessage>) -> Result<String> {
         if messages.is_empty() {
             return Err(crate::error::PromptError::NoMessages);
         }
+
+        // system prompt
+        let system_prompt = match messages[0] {
+            ChatCompletionRequestMessage::System(ref message) => {
+                self.create_system_prompt(message)
+            }
+            _ => String::from("Below is the query from the users, please call the correct function and generate the parameters to call the function."),
+        };
 
         // append user/assistant messages
         let mut prompt = String::new();
         for message in messages {
             match message {
                 ChatCompletionRequestMessage::User(message) => {
-                    prompt = self.append_user_message(&prompt, message);
+                    prompt = self.append_user_message(&prompt, &system_prompt, message);
                 }
                 ChatCompletionRequestMessage::Assistant(message) => {
                     prompt = self.append_assistant_message(&prompt, message)?;
@@ -83,6 +102,8 @@ impl BuildChatPrompt for GemmaInstructPrompt {
                 ChatCompletionRequestMessage::System(_) => continue,
             }
         }
+
+        prompt.push_str(" \n\nResponse:");
 
         Ok(prompt)
     }
