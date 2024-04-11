@@ -1,5 +1,8 @@
 use crate::{
-    chat::{ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRequestSampling},
+    chat::{
+        ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRequestSampling,
+        ChatResponseFormat, ToolChoice,
+    },
     embeddings::EmbeddingRequest,
 };
 use serde::{Deserialize, Serialize};
@@ -149,6 +152,11 @@ pub struct RagChatCompletionsRequest {
     /// A unique identifier representing your end-user.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user: Option<String>,
+    /// Format that the model must output
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_format: Option<ChatResponseFormat>,
+    /// Controls which (if any) function is called by the model.
+    pub tool_choice: ToolChoice,
 }
 impl RagChatCompletionsRequest {
     pub fn as_chat_completions_request(&self) -> ChatCompletionRequest {
@@ -167,6 +175,8 @@ impl RagChatCompletionsRequest {
             user: self.user.clone(),
             functions: None,
             function_call: None,
+            response_format: self.response_format.clone(),
+            tool_choice: self.tool_choice.clone(),
         }
     }
 
@@ -194,6 +204,8 @@ impl RagChatCompletionsRequest {
             frequency_penalty: chat_completions_request.frequency_penalty,
             logit_bias: chat_completions_request.logit_bias,
             user: chat_completions_request.user,
+            response_format: chat_completions_request.response_format,
+            tool_choice: chat_completions_request.tool_choice,
         }
     }
 }
@@ -237,6 +249,8 @@ impl RagChatCompletionRequestBuilder {
                 frequency_penalty: None,
                 logit_bias: None,
                 user: None,
+                response_format: None,
+                tool_choice: ToolChoice::None,
             },
         }
     }

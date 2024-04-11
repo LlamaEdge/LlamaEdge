@@ -1,3 +1,5 @@
+//! Define types for chat completion.
+
 use crate::common::{FinishReason, Usage};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -33,6 +35,8 @@ impl ChatCompletionRequestBuilder {
                 user: None,
                 functions: None,
                 function_call: None,
+                response_format: None,
+                tool_choice: ToolChoice::None,
             },
         }
     }
@@ -111,6 +115,18 @@ impl ChatCompletionRequestBuilder {
         self
     }
 
+    /// Sets the response format.
+    pub fn with_reponse_format(mut self, response_format: ChatResponseFormat) -> Self {
+        self.req.response_format = Some(response_format);
+        self
+    }
+
+    /// Sets the tool choice.
+    pub fn with_tool_choice(mut self, tool_choice: ToolChoice) -> Self {
+        self.req.tool_choice = tool_choice;
+        self
+    }
+
     pub fn build(self) -> ChatCompletionRequest {
         self.req
     }
@@ -179,6 +195,12 @@ pub struct ChatCompletionRequest {
     /// Controls how the model responds to function calls. "none" means the model does not call a function, and responds to the end-user. "auto" means the model can pick between an end-user or calling a function. Specifying a particular function via `{"name":\ "my_function"}` forces the model to call that function. "none" is the default when no functions are present. "auto" is the default if functions are present.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub function_call: Option<String>,
+
+    /// Format that the model must output
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_format: Option<ChatResponseFormat>,
+    /// Controls which (if any) function is called by the model.
+    pub tool_choice: ToolChoice,
 }
 
 #[test]
@@ -206,11 +228,13 @@ fn test_chat_serialize_chat_request() {
             .with_max_tokens(100)
             .with_presence_penalty(0.5)
             .with_frequency_penalty(0.5)
+            .with_reponse_format(ChatResponseFormat::default())
+            .with_tool_choice(ToolChoice::Auto)
             .build();
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto"}"#
         );
     }
 
@@ -236,9 +260,88 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}]}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"tool_choice":"none"}"#
         );
     }
+}
+
+/// An object specifying the format that the model must output.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ChatResponseFormat {
+    /// Must be one of `text`` or `json_object`. Defaults to `text`.
+    #[serde(rename = "type")]
+    ty: String,
+}
+impl Default for ChatResponseFormat {
+    fn default() -> Self {
+        Self {
+            ty: "text".to_string(),
+        }
+    }
+}
+
+#[test]
+fn test_chat_serialize_response_format() {
+    let response_format = ChatResponseFormat {
+        ty: "text".to_string(),
+    };
+    let json = serde_json::to_string(&response_format).unwrap();
+    assert_eq!(json, r#"{"type":"text"}"#);
+
+    let response_format = ChatResponseFormat {
+        ty: "json_object".to_string(),
+    };
+    let json = serde_json::to_string(&response_format).unwrap();
+    assert_eq!(json, r#"{"type":"json_object"}"#);
+}
+
+/// Controls which (if any) function is called by the model. Defaults to `None`.
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub enum ToolChoice {
+    /// The model will not call a function and instead generates a message.
+    #[serde(rename = "none")]
+    None,
+    /// The model can pick between generating a message or calling a function.
+    #[serde(rename = "auto")]
+    Auto,
+    // Function(String),
+}
+impl Default for ToolChoice {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Function {
+    /// The name of the function to be called. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64.
+    name: String,
+    /// A description of what the function does, used by the model to choose when and how to call the function.
+    description: Option<String>,
+    // The parameters the functions accepts, described as a JSON Schema object.
+    // parameters: Option<
+}
+
+#[test]
+fn test_chat_serialize_tool_choice() {
+    let tool_choice = ToolChoice::None;
+    let json = serde_json::to_string(&tool_choice).unwrap();
+    assert_eq!(json, r#""none""#);
+
+    let tool_choice = ToolChoice::Auto;
+    let json = serde_json::to_string(&tool_choice).unwrap();
+    assert_eq!(json, r#""auto""#);
+}
+
+#[test]
+fn test_chat_deserialize_tool_choice() {
+    let json = r#""none""#;
+    let tool_choice: ToolChoice = serde_json::from_str(json).unwrap();
+    assert_eq!(tool_choice, ToolChoice::None);
+
+    let json = r#""auto""#;
+    let tool_choice: ToolChoice = serde_json::from_str(json).unwrap();
+    assert_eq!(tool_choice, ToolChoice::Auto);
 }
 
 /// Message for comprising the conversation.
