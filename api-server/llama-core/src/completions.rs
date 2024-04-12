@@ -2,7 +2,10 @@
 
 use crate::{
     error::{BackendError, LlamaCoreError},
-    utils::get_output_buffer,
+    utils::{
+        get_output_buffer, get_token_info_by_graph, print_log_begin_separator,
+        print_log_end_separator,
+    },
     Graph, CHAT_GRAPHS, OUTPUT_TENSOR,
 };
 use endpoints::{
@@ -11,53 +14,17 @@ use endpoints::{
 };
 use std::time::SystemTime;
 
+/// Given a prompt, the model will return one or more predicted completions along with the probabilities of alternative tokens at each position.
 pub async fn completions(request: &CompletionRequest) -> Result<CompletionObject, LlamaCoreError> {
     let prompt = request.prompt.join(" ");
 
-    // ! todo: a temp solution of computing the number of tokens in prompt
-    let prompt_tokens = prompt.split_whitespace().count() as u64;
-
-    let buffer = infer(prompt.trim(), request.model.as_ref())?;
-
-    // convert inference result to string
-    let model_answer = String::from_utf8(buffer.clone()).map_err(|e| {
-        LlamaCoreError::Operation(format!(
-            "Failed to decode the buffer of the inference result to a utf-8 string. {}",
-            e
-        ))
-    })?;
-    let answer = model_answer.trim();
-
-    // ! todo: a temp solution of computing the number of tokens in answer
-    let completion_tokens = answer.split_whitespace().count() as u64;
-
-    let created = SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_err(|e| LlamaCoreError::Operation(format!("Failed to get the current time. {}", e)))?;
-
-    Ok(CompletionObject {
-        id: uuid::Uuid::new_v4().to_string(),
-        object: String::from("text_completion"),
-        created: created.as_secs(),
-        model: request.model.clone().unwrap_or_default(),
-        choices: vec![CompletionChoice {
-            index: 0,
-            text: String::from(answer),
-            finish_reason: FinishReason::stop,
-            logprobs: None,
-        }],
-        usage: Usage {
-            prompt_tokens,
-            completion_tokens,
-            total_tokens: prompt_tokens + completion_tokens,
-        },
-    })
+    compute(prompt.trim(), request.model.as_ref())
 }
 
-fn infer(
+fn compute(
     prompt: impl AsRef<str>,
     model_name: Option<&String>,
-) -> std::result::Result<Vec<u8>, LlamaCoreError> {
+) -> std::result::Result<CompletionObject, LlamaCoreError> {
     match model_name {
         Some(model_name) => {
             let chat_graphs = CHAT_GRAPHS
@@ -72,7 +39,7 @@ fn infer(
                 ))
             })?;
             match chat_graphs.get_mut(model_name) {
-                Some(graph) => infer_by_graph(graph, prompt),
+                Some(graph) => compute_by_graph(graph, prompt),
                 None => Err(LlamaCoreError::Operation(format!(
                     "The model `{}` does not exist in the chat graphs.",
                     &model_name
@@ -93,7 +60,7 @@ fn infer(
             })?;
 
             match chat_graphs.iter_mut().next() {
-                Some((_, graph)) => infer_by_graph(graph, prompt),
+                Some((_, graph)) => compute_by_graph(graph, prompt),
                 None => Err(LlamaCoreError::Operation(String::from(
                     "There is no model available in the chat graphs.",
                 ))),
@@ -103,10 +70,10 @@ fn infer(
 }
 
 /// Runs inference on the model with the given name and returns the output.
-fn infer_by_graph(
+fn compute_by_graph(
     graph: &mut Graph,
     prompt: impl AsRef<str>,
-) -> std::result::Result<Vec<u8>, LlamaCoreError> {
+) -> std::result::Result<CompletionObject, LlamaCoreError> {
     // check if the `embedding` model is disabled or not
     if graph.metadata.embeddings {
         graph.metadata.embeddings = false;
@@ -125,5 +92,47 @@ fn infer_by_graph(
         .map_err(|e| LlamaCoreError::Backend(BackendError::Compute(e.to_string())))?;
 
     // Retrieve the output
-    get_output_buffer(graph, OUTPUT_TENSOR)
+    let buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
+
+    // convert inference result to string
+    let model_answer = String::from_utf8(buffer).map_err(|e| {
+        LlamaCoreError::Operation(format!(
+            "Failed to decode the buffer of the inference result to a utf-8 string. {}",
+            e
+        ))
+    })?;
+    let answer = model_answer.trim();
+
+    // retrieve the number of prompt and completion tokens
+    let token_info = get_token_info_by_graph(graph)?;
+    if graph.metadata.log_prompts {
+        print_log_begin_separator("PROMPT (Tokens)", Some("*"), None);
+        println!(
+            "\nprompt tokens: {}, completion_tokens: {}",
+            token_info.prompt_tokens, token_info.completion_tokens
+        );
+        print_log_end_separator(Some("*"), None);
+    }
+
+    let created = SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|e| LlamaCoreError::Operation(format!("Failed to get the current time. {}", e)))?;
+
+    Ok(CompletionObject {
+        id: uuid::Uuid::new_v4().to_string(),
+        object: String::from("text_completion"),
+        created: created.as_secs(),
+        model: graph.name().to_string(),
+        choices: vec![CompletionChoice {
+            index: 0,
+            text: String::from(answer),
+            finish_reason: FinishReason::stop,
+            logprobs: None,
+        }],
+        usage: Usage {
+            prompt_tokens: token_info.prompt_tokens,
+            completion_tokens: token_info.completion_tokens,
+            total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
+        },
+    })
 }
