@@ -65,6 +65,10 @@ pub async fn embeddings(
     // compute embeddings
     let (data, usage) = compute_embeddings(graph, &embedding_request.input)?;
 
+    if graph.metadata.log_prompts || graph.metadata.log_enable {
+        println!("[+] Embeddings computed successfully.\n");
+    }
+
     let embedding_reponse = EmbeddingsResponse {
         object: String::from("list"),
         data,
@@ -79,6 +83,9 @@ fn compute_embeddings(
     graph: &mut Graph,
     input: &[String],
 ) -> Result<(Vec<EmbeddingObject>, Usage), LlamaCoreError> {
+    if graph.metadata.log_prompts || graph.metadata.log_enable {
+        println!("[+] Computing embeddings for {} chunks ...", input.len());
+    }
     // compute embeddings
     let mut embeddings: Vec<EmbeddingObject> = Vec::new();
     let mut usage = Usage::default();
@@ -124,6 +131,14 @@ fn compute_embeddings(
                 usage.prompt_tokens += token_info.prompt_tokens;
                 usage.completion_tokens += token_info.completion_tokens;
                 usage.total_tokens = usage.prompt_tokens + usage.completion_tokens;
+
+                if graph.metadata.log_prompts || graph.metadata.log_enable {
+                    println!(
+                        "    * chunk {} done! (prompt tokens: {})",
+                        idx + 1,
+                        token_info.prompt_tokens,
+                    );
+                }
             }
             Err(e) => {
                 return Err(LlamaCoreError::Backend(BackendError::Compute(
