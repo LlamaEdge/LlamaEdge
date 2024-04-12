@@ -1,9 +1,8 @@
 //! Define APIs for computing embeddings.
 
 use crate::{
-    chat::get_token_info_by_graph,
     error::{BackendError, LlamaCoreError},
-    utils::get_output_buffer,
+    utils::{get_output_buffer, get_token_info_by_graph},
     Graph, CHAT_GRAPHS, EMBEDDING_GRAPHS, OUTPUT_TENSOR,
 };
 use endpoints::{
@@ -57,11 +56,18 @@ pub async fn embeddings(
         }
     };
 
-    // update metadata to enable the `embedding` option
-    update_metadata(graph)?;
+    // check if the `embedding` option of metadata is enabled
+    if !graph.metadata.embeddings {
+        graph.metadata.embeddings = true;
+        graph.update_metadata()?;
+    }
 
     // compute embeddings
     let (data, usage) = compute_embeddings(graph, &embedding_request.input)?;
+
+    if graph.metadata.log_prompts || graph.metadata.log_enable {
+        println!("[+] Embeddings computed successfully.\n");
+    }
 
     let embedding_reponse = EmbeddingsResponse {
         object: String::from("list"),
@@ -73,50 +79,13 @@ pub async fn embeddings(
     Ok(embedding_reponse)
 }
 
-fn update_metadata(graph: &mut Graph) -> Result<(), LlamaCoreError> {
-    let mut should_update = false;
-
-    let mut metadata = graph.metadata.clone();
-
-    // check if the `embedding` option is enabled
-    if !metadata.embeddings {
-        metadata.embeddings = true;
-
-        if !should_update {
-            should_update = true;
-        }
-    }
-
-    if should_update {
-        // update metadata
-        let config = match serde_json::to_string(&metadata) {
-            Ok(config) => config,
-            Err(e) => {
-                return Err(LlamaCoreError::Operation(format!(
-                    "Fail to serialize metadata to a JSON string. {}",
-                    e
-                )));
-            }
-        };
-
-        // update metadata
-        if graph
-            .set_input(1, wasmedge_wasi_nn::TensorType::U8, &[1], config.as_bytes())
-            .is_err()
-        {
-            return Err(LlamaCoreError::Backend(BackendError::SetInput(
-                String::from("Fail to update metadata."),
-            )));
-        }
-    }
-
-    Ok(())
-}
-
 fn compute_embeddings(
     graph: &mut Graph,
     input: &[String],
 ) -> Result<(Vec<EmbeddingObject>, Usage), LlamaCoreError> {
+    if graph.metadata.log_prompts || graph.metadata.log_enable {
+        println!("[+] Computing embeddings for {} chunks ...", input.len());
+    }
     // compute embeddings
     let mut embeddings: Vec<EmbeddingObject> = Vec::new();
     let mut usage = Usage::default();
@@ -162,6 +131,14 @@ fn compute_embeddings(
                 usage.prompt_tokens += token_info.prompt_tokens;
                 usage.completion_tokens += token_info.completion_tokens;
                 usage.total_tokens = usage.prompt_tokens + usage.completion_tokens;
+
+                if graph.metadata.log_prompts || graph.metadata.log_enable {
+                    println!(
+                        "    * chunk {} done! (prompt tokens: {})",
+                        idx + 1,
+                        token_info.prompt_tokens,
+                    );
+                }
             }
             Err(e) => {
                 return Err(LlamaCoreError::Backend(BackendError::Compute(

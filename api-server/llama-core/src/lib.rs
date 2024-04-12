@@ -12,7 +12,7 @@ use chat_prompts::PromptTemplateType;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Mutex};
-use utils::get_output_buffer;
+use utils::{get_output_buffer, set_tensor_data_u8};
 use wasmedge_wasi_nn::{
     Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext, TensorType,
 };
@@ -274,6 +274,21 @@ impl Graph {
         &self.metadata.model_alias
     }
 
+    /// Update metadata
+    pub fn update_metadata(&mut self) -> Result<(), LlamaCoreError> {
+        // update metadata
+        let config = match serde_json::to_string(&self.metadata) {
+            Ok(config) => config,
+            Err(e) => {
+                return Err(LlamaCoreError::Operation(format!(
+                    "Fail to serialize metadata to a JSON string. {}",
+                    e
+                )));
+            }
+        };
+        set_tensor_data_u8(self, 1, config.as_bytes())
+    }
+
     /// Set input uses the data, not only [u8](https://doc.rust-lang.org/nightly/std/primitive.u8.html), but also [f32](https://doc.rust-lang.org/nightly/std/primitive.f32.html), [i32](https://doc.rust-lang.org/nightly/std/primitive.i32.html), etc.
     pub fn set_input<T: Sized>(
         &mut self,
@@ -331,7 +346,7 @@ pub fn init_core_context(metadata_for_models: &[Metadata]) -> Result<(), LlamaCo
     let mut chat_graphs = HashMap::new();
     for metadata in metadata_for_models {
         let graph = Graph::new(metadata).map_err(|e| {
-            LlamaCoreError::InitContext(format!("Failed to create a chat graph. Reason: {}", e))
+            LlamaCoreError::InitContext(format!("Failed to create a chat graph. {}", e))
         })?;
 
         chat_graphs.insert(graph.name().to_string(), graph);
@@ -358,7 +373,7 @@ pub fn init_rag_core_context(
     let mut chat_graphs = HashMap::new();
     for metadata in metadata_for_chats {
         let graph = Graph::new(metadata).map_err(|e| {
-            LlamaCoreError::InitContext(format!("Failed to create a chat graph. Reason: {}", e))
+            LlamaCoreError::InitContext(format!("Failed to create a chat graph. {}", e))
         })?;
 
         chat_graphs.insert(graph.name().to_string(), graph);

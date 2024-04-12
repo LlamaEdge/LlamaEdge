@@ -17,6 +17,7 @@ LlamaEdge API server offers OpenAI-compatible REST APIs. It can accelerate devel
     - [`/v1/files` endpoint](#v1files-endpoint)
     - [`/v1/chunks` endpoint](#v1chunks-endpoint)
     - [`/v1/embeddings` endpoint](#v1embeddings-endpoint)
+    - [`/v1/completions` endpoint](#v1completions-endpoint)
   - [Add a web UI](#add-a-web-ui)
   - [CLI options for the API server](#cli-options-for-the-api-server)
 
@@ -346,40 +347,46 @@ If you'd like to build a RAG chatbot, it's strongly recommended to visit [LlamaE
 
 </details>
 
-<!-- - Completions
+### `/v1/completions` endpoint
 
-    To obtain the completion for a single prompt, use the `/v1/completions` API. The following command sends a prompt to the API server and gets the completion:
+To obtain the completion for a single prompt, use the `/v1/completions` API.
 
-    ```bash
-    curl -X POST http://50.112.58.64:8080/v1/completions \
-        -H 'accept:application/json' \
-        -H 'Content-Type: application/json' \
-        -d '{"prompt":["Long long ago, "], "model":"tinyllama"}'
-    ```
+<details> <summary> Example </summary>
 
-    The response looks like below:
+The following command sends a prompt to the API server and gets the completion:
 
-    ```json
-    {
-        "id": "b68bfc92-8b23-4435-bbe1-492e11c973a3",
-        "choices": [
-            {
-                "finish_reason": "stop",
-                "index": 0,
-                "logprobs": null,
-                "text": "in a galaxy far, far away, a group of Jedi Knights lived and trained to defend the peace and security of the galaxy. They were the last hope for peace and justice in a world where the dark side of the force was rife with corruption and injustice. The Knights were a select few, and their training and abilities were the envy of the galaxy. They were the chosen ones. They were the ones who would bring peace and justice to the galaxy. ..."
-            }
-        ],
-        "created": 1702046592,
-        "model": "tinyllama",
-        "object": "text_completion",
-        "usage": {
-            "prompt_tokens": 3,
-            "completion_tokens": 804,
-            "total_tokens": 807
+```bash
+curl -X POST http://localhost:8080/v1/completions \
+    -H 'accept:application/json' \
+    -H 'Content-Type: application/json' \
+    -d '{"prompt":["Long long ago, "], "model":"tinyllama"}'
+```
+
+The response looks like below:
+
+```json
+{
+    "id": "b68bfc92-8b23-4435-bbe1-492e11c973a3",
+    "choices": [
+        {
+            "finish_reason": "stop",
+            "index": 0,
+            "logprobs": null,
+            "text": "in a galaxy far, far away, a group of Jedi Knights lived and trained to defend the peace and security of the galaxy. They were the last hope for peace and justice in a world where the dark side of the force was rife with corruption and injustice. The Knights were a select few, and their training and abilities were the envy of the galaxy. They were the chosen ones. They were the ones who would bring peace and justice to the galaxy. ..."
         }
+    ],
+    "created": 1702046592,
+    "model": "tinyllama",
+    "object": "text_completion",
+    "usage": {
+        "prompt_tokens": 3,
+        "completion_tokens": 804,
+        "total_tokens": 807
     }
-    ``` -->
+}
+```
+
+</details>
 
 ## Add a web UI
 

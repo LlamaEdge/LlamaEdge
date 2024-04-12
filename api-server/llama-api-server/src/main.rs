@@ -149,15 +149,13 @@ async fn main() -> Result<(), ServerError> {
         .with_frequency_penalty(cli.frequency_penalty)
         .with_reverse_prompt(cli.reverse_prompt)
         .with_mmproj(cli.llava_mmproj.clone())
-        .enable_embeddings(true)
         .enable_prompts_log(cli.log_prompts || cli.log_all)
         .enable_plugin_log(cli.log_stat || cli.log_all)
         .build();
 
     // initialize the core context
-    llama_core::init_core_context(&[metadata]).map_err(|e| {
-        ServerError::Operation(format!("Failed to initialize the core context. {}", e))
-    })?;
+    llama_core::init_core_context(&[metadata])
+        .map_err(|e| ServerError::Operation(format!("{}", e)))?;
 
     // get the plugin version info
     let plugin_info =
