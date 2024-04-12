@@ -57,8 +57,11 @@ pub async fn embeddings(
         }
     };
 
-    // update metadata to enable the `embedding` option
-    update_metadata(graph)?;
+    // check if the `embedding` option of metadata is enabled
+    if !graph.metadata.embeddings {
+        graph.metadata.embeddings = true;
+        graph.update_metadata()?;
+    }
 
     // compute embeddings
     let (data, usage) = compute_embeddings(graph, &embedding_request.input)?;
