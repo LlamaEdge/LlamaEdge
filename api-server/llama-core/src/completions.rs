@@ -107,6 +107,12 @@ fn infer_by_graph(
     graph: &mut Graph,
     prompt: impl AsRef<str>,
 ) -> std::result::Result<Vec<u8>, LlamaCoreError> {
+    // check if the `embedding` model is disabled or not
+    if graph.metadata.embeddings {
+        graph.metadata.embeddings = false;
+        graph.update_metadata()?;
+    }
+
     // set input
     let tensor_data = prompt.as_ref().as_bytes().to_vec();
     graph
