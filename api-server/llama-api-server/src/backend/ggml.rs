@@ -124,7 +124,7 @@ pub(crate) async fn completions_handler(
             match result {
                 Ok(response) => Ok(response),
                 Err(e) => {
-                    println!("[*] Error: {}", e.to_string());
+                    println!("[*] Error: {}", e);
                     error::internal_server_error(e.to_string())
                 }
             }
