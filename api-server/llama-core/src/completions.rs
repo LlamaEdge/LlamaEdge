@@ -2,10 +2,7 @@
 
 use crate::{
     error::{BackendError, LlamaCoreError},
-    utils::{
-        get_output_buffer, get_token_info_by_graph, print_log_begin_separator,
-        print_log_end_separator,
-    },
+    utils::{get_output_buffer, get_token_info_by_graph},
     Graph, CHAT_GRAPHS, OUTPUT_TENSOR,
 };
 use endpoints::{
