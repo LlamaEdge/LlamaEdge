@@ -12,7 +12,7 @@ use chat_prompts::PromptTemplateType;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Mutex};
-use utils::get_output_buffer;
+use utils::{get_output_buffer, set_tensor_data_u8};
 use wasmedge_wasi_nn::{
     Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext, TensorType,
 };
@@ -272,6 +272,21 @@ impl Graph {
     /// Get the alias of the model
     pub fn alias(&self) -> &str {
         &self.metadata.model_alias
+    }
+
+    /// Update metadata
+    pub fn update_metadata(&mut self) -> Result<(), LlamaCoreError> {
+        // update metadata
+        let config = match serde_json::to_string(&self.metadata) {
+            Ok(config) => config,
+            Err(e) => {
+                return Err(LlamaCoreError::Operation(format!(
+                    "Fail to serialize metadata to a JSON string. {}",
+                    e
+                )));
+            }
+        };
+        set_tensor_data_u8(self, 1, config.as_bytes())
     }
 
     /// Set input uses the data, not only [u8](https://doc.rust-lang.org/nightly/std/primitive.u8.html), but also [f32](https://doc.rust-lang.org/nightly/std/primitive.f32.html), [i32](https://doc.rust-lang.org/nightly/std/primitive.i32.html), etc.
