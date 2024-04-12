@@ -5,6 +5,7 @@ use crate::{
     utils::{
         gen_chat_id, get_output_buffer, get_output_buffer_single, get_token_info_by_graph,
         get_token_info_by_graph_name, print_log_begin_separator, print_log_end_separator,
+        set_tensor_data_u8,
     },
     Graph, Metadata, CACHED_UTF8_ENCODINGS, CHAT_GRAPHS, OUTPUT_TENSOR,
 };
@@ -1218,22 +1219,22 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
     }
 }
 
-fn set_tensor_data_u8(
-    graph: &mut Graph,
-    idx: usize,
-    tensor_data: &[u8],
-) -> Result<(), LlamaCoreError> {
-    if graph
-        .set_input(idx, wasmedge_wasi_nn::TensorType::U8, &[1], tensor_data)
-        .is_err()
-    {
-        return Err(LlamaCoreError::Operation(String::from(
-            "Fail to set input tensor",
-        )));
-    };
+// fn set_tensor_data_u8(
+//     graph: &mut Graph,
+//     idx: usize,
+//     tensor_data: &[u8],
+// ) -> Result<(), LlamaCoreError> {
+//     if graph
+//         .set_input(idx, wasmedge_wasi_nn::TensorType::U8, &[1], tensor_data)
+//         .is_err()
+//     {
+//         return Err(LlamaCoreError::Operation(String::from(
+//             "Fail to set input tensor",
+//         )));
+//     };
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 fn get_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCoreError> {
     match model_name {
