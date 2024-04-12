@@ -1,9 +1,8 @@
 //! Define APIs for computing embeddings.
 
 use crate::{
-    chat::get_token_info_by_graph,
     error::{BackendError, LlamaCoreError},
-    utils::get_output_buffer,
+    utils::{get_output_buffer, get_token_info_by_graph},
     Graph, CHAT_GRAPHS, EMBEDDING_GRAPHS, OUTPUT_TENSOR,
 };
 use endpoints::{
@@ -74,46 +73,6 @@ pub async fn embeddings(
     };
 
     Ok(embedding_reponse)
-}
-
-fn update_metadata(graph: &mut Graph) -> Result<(), LlamaCoreError> {
-    let mut should_update = false;
-
-    let mut metadata = graph.metadata.clone();
-
-    // check if the `embedding` option is enabled
-    if !metadata.embeddings {
-        metadata.embeddings = true;
-
-        if !should_update {
-            should_update = true;
-        }
-    }
-
-    if should_update {
-        // update metadata
-        let config = match serde_json::to_string(&metadata) {
-            Ok(config) => config,
-            Err(e) => {
-                return Err(LlamaCoreError::Operation(format!(
-                    "Fail to serialize metadata to a JSON string. {}",
-                    e
-                )));
-            }
-        };
-
-        // update metadata
-        if graph
-            .set_input(1, wasmedge_wasi_nn::TensorType::U8, &[1], config.as_bytes())
-            .is_err()
-        {
-            return Err(LlamaCoreError::Backend(BackendError::SetInput(
-                String::from("Fail to update metadata."),
-            )));
-        }
-    }
-
-    Ok(())
 }
 
 fn compute_embeddings(
