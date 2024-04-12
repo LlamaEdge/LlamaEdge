@@ -121,3 +121,20 @@ pub(crate) fn get_output_buffer_single(
 
     Ok(output_buffer)
 }
+
+pub(crate) fn set_tensor_data_u8(
+    graph: &mut Graph,
+    idx: usize,
+    tensor_data: &[u8],
+) -> Result<(), LlamaCoreError> {
+    if graph
+        .set_input(idx, wasmedge_wasi_nn::TensorType::U8, &[1], tensor_data)
+        .is_err()
+    {
+        return Err(LlamaCoreError::Operation(String::from(
+            "Fail to set input tensor",
+        )));
+    };
+
+    Ok(())
+}
