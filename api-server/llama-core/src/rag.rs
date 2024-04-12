@@ -214,7 +214,7 @@ pub fn chunk_text(
 
     match ty.as_ref().to_lowercase().as_str() {
         "txt" => {
-            println!("[CORE] chunking the text file ...");
+            println!("[+] Chunking the text file ...");
 
             let tokenizer = cl100k_base().map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
             let splitter = TextSplitter::new(tokenizer).with_trim_chunks(true);
@@ -224,12 +224,12 @@ pub fn chunk_text(
                 .map(|s| s.to_string())
                 .collect::<Vec<_>>();
 
-            println!("       Number of chunks: {}", chunks.len());
+            println!("    * Number of chunks: {}", chunks.len());
 
             Ok(chunks)
         },
         "md" => {
-            println!("[CORE] chunking the markdown file ...");
+            println!("[+] Chunking the markdown file ...");
 
             let tokenizer = cl100k_base().map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
             let splitter = MarkdownSplitter::new(tokenizer).with_trim_chunks(true);
@@ -237,7 +237,7 @@ pub fn chunk_text(
             let chunks = splitter.chunks(text.as_ref(), chunk_capacity).map(|s| s.to_string())
             .collect::<Vec<_>>();
 
-            println!("       Number of chunks: {}", chunks.len());
+            println!("    * Number of chunks: {}", chunks.len());
 
             Ok(chunks)
         },
