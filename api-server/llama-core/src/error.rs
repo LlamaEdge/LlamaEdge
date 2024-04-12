@@ -9,7 +9,7 @@ pub enum LlamaCoreError {
     #[error("{0}")]
     Operation(String),
     /// Errors in Context initialization.
-    #[error("Failed to initialize RAG context. {0}")]
+    #[error("Failed to initialize computation context. Reason: {0}")]
     InitContext(String),
     /// Errors thrown by the wasi-nn-ggml plugin and runtime.
     #[error("{0}")]

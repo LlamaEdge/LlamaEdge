@@ -346,7 +346,7 @@ pub fn init_core_context(metadata_for_models: &[Metadata]) -> Result<(), LlamaCo
     let mut chat_graphs = HashMap::new();
     for metadata in metadata_for_models {
         let graph = Graph::new(metadata).map_err(|e| {
-            LlamaCoreError::InitContext(format!("Failed to create a chat graph. Reason: {}", e))
+            LlamaCoreError::InitContext(format!("Failed to create a chat graph. {}", e))
         })?;
 
         chat_graphs.insert(graph.name().to_string(), graph);
@@ -373,7 +373,7 @@ pub fn init_rag_core_context(
     let mut chat_graphs = HashMap::new();
     for metadata in metadata_for_chats {
         let graph = Graph::new(metadata).map_err(|e| {
-            LlamaCoreError::InitContext(format!("Failed to create a chat graph. Reason: {}", e))
+            LlamaCoreError::InitContext(format!("Failed to create a chat graph. {}", e))
         })?;
 
         chat_graphs.insert(graph.name().to_string(), graph);
