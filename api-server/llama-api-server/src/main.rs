@@ -154,9 +154,8 @@ async fn main() -> Result<(), ServerError> {
         .build();
 
     // initialize the core context
-    llama_core::init_core_context(&[metadata]).map_err(|e| {
-        ServerError::Operation(format!("Failed to initialize the core context. {}", e))
-    })?;
+    llama_core::init_core_context(&[metadata])
+        .map_err(|e| ServerError::Operation(format!("{}", e)))?;
 
     // get the plugin version info
     let plugin_info =
