@@ -4,6 +4,7 @@ use crate::{
     error::{BackendError, LlamaCoreError},
     Graph, CHAT_GRAPHS, EMBEDDING_GRAPHS, MAX_BUFFER_SIZE,
 };
+use serde_json::Value;
 
 pub(crate) fn print_log_begin_separator(
     title: impl AsRef<str>,
@@ -137,4 +138,94 @@ pub(crate) fn set_tensor_data_u8(
     };
 
     Ok(())
+}
+
+/// Get the token information from the graph.
+pub(crate) fn get_token_info_by_graph(graph: &Graph) -> Result<TokenInfo, LlamaCoreError> {
+    let output_buffer = get_output_buffer(graph, 1)?;
+    let token_info: Value = match serde_json::from_slice(&output_buffer[..]) {
+        Ok(token_info) => token_info,
+        Err(e) => {
+            return Err(LlamaCoreError::Operation(format!(
+                "Fail to deserialize token info: {msg}",
+                msg = e
+            )));
+        }
+    };
+
+    let prompt_tokens = match token_info["input_tokens"].as_u64() {
+        Some(prompt_tokens) => prompt_tokens,
+        None => {
+            return Err(LlamaCoreError::Operation(String::from(
+                "Fail to convert `input_tokens` to u64.",
+            )));
+        }
+    };
+    let completion_tokens = match token_info["output_tokens"].as_u64() {
+        Some(completion_tokens) => completion_tokens,
+        None => {
+            return Err(LlamaCoreError::Operation(String::from(
+                "Fail to convert `output_tokens` to u64.",
+            )));
+        }
+    };
+    Ok(TokenInfo {
+        prompt_tokens,
+        completion_tokens,
+    })
+}
+
+/// Get the token information from the graph by the model name.
+pub(crate) fn get_token_info_by_graph_name(
+    name: Option<&String>,
+) -> Result<TokenInfo, LlamaCoreError> {
+    match name {
+        Some(model_name) => {
+            let chat_graphs = CHAT_GRAPHS
+                .get()
+                .ok_or(LlamaCoreError::Operation(String::from(
+                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
+                )))?;
+            let chat_graphs = chat_graphs.lock().map_err(|e| {
+                LlamaCoreError::Operation(format!(
+                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
+                    e
+                ))
+            })?;
+            match chat_graphs.get(model_name) {
+                Some(graph) => get_token_info_by_graph(graph),
+                None => Err(LlamaCoreError::Operation(format!(
+                    "The model `{}` does not exist in the chat graphs.",
+                    &model_name
+                ))),
+            }
+        }
+        None => {
+            let chat_graphs = CHAT_GRAPHS
+                .get()
+                .ok_or(LlamaCoreError::Operation(String::from(
+                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
+                )))?;
+            let chat_graphs = chat_graphs.lock().map_err(|e| {
+                LlamaCoreError::Operation(format!(
+                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
+                    e
+                ))
+            })?;
+
+            match chat_graphs.iter().next() {
+                Some((_, graph)) => get_token_info_by_graph(graph),
+                None => Err(LlamaCoreError::Operation(String::from(
+                    "There is no model available in the chat graphs.",
+                ))),
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+
+pub(crate) struct TokenInfo {
+    pub(crate) prompt_tokens: u64,
+    pub(crate) completion_tokens: u64,
 }
