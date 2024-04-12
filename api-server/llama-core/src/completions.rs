@@ -80,12 +80,18 @@ fn compute_by_graph(
         graph.update_metadata()?;
     }
 
+    if graph.metadata.log_prompts || graph.metadata.log_enable {
+        println!("[+] Setting prompt tensor ...");
+    }
     // set input
     let tensor_data = prompt.as_ref().as_bytes().to_vec();
     graph
         .set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data)
         .map_err(|e| LlamaCoreError::Backend(BackendError::SetInput(e.to_string())))?;
 
+    if graph.metadata.log_prompts || graph.metadata.log_enable {
+        println!("[+] Generating completion tokens ...");
+    }
     // execute the inference
     graph
         .compute()
@@ -106,18 +112,19 @@ fn compute_by_graph(
     // retrieve the number of prompt and completion tokens
     let token_info = get_token_info_by_graph(graph)?;
     if graph.metadata.log_prompts {
-        print_log_begin_separator("PROMPT (Tokens)", Some("*"), None);
         println!(
-            "\nprompt tokens: {}, completion_tokens: {}",
+            "    * prompt tokens: {}, completion_tokens: {}",
             token_info.prompt_tokens, token_info.completion_tokens
         );
-        print_log_end_separator(Some("*"), None);
     }
 
     let created = SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_err(|e| LlamaCoreError::Operation(format!("Failed to get the current time. {}", e)))?;
 
+    if graph.metadata.log_prompts || graph.metadata.log_enable {
+        println!("[+] Completions generated successfully.\n");
+    }
     Ok(CompletionObject {
         id: uuid::Uuid::new_v4().to_string(),
         object: String::from("text_completion"),
