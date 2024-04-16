@@ -193,7 +193,7 @@ impl BuildChatPrompt for Vicuna11ChatPrompt {
     }
 }
 
-/// Vicuna-1.0 Prompt Template
+/// Vicuna-llava Prompt Template
 #[derive(Debug, Default, Clone)]
 pub struct VicunaLlavaPrompt;
 impl VicunaLlavaPrompt {

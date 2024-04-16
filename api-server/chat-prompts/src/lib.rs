@@ -34,6 +34,8 @@ pub enum PromptTemplateType {
     Baichuan2,
     #[value(name = "wizard-coder")]
     WizardCoder,
+    #[value(name = "wizard-2-chat")]
+    Wizard2Chat,
     #[value(name = "zephyr")]
     Zephyr,
     #[value(name = "stablelm-zephyr")]
@@ -74,6 +76,7 @@ impl FromStr for PromptTemplateType {
             "openchat" => Ok(PromptTemplateType::OpenChat),
             "baichuan-2" => Ok(PromptTemplateType::Baichuan2),
             "wizard-coder" => Ok(PromptTemplateType::WizardCoder),
+            "wizard-2-chat" => Ok(PromptTemplateType::Wizard2Chat),
             "zephyr" => Ok(PromptTemplateType::Zephyr),
             "stablelm-zephyr" => Ok(PromptTemplateType::StableLMZephyr),
             "intel-neural" => Ok(PromptTemplateType::IntelNeural),
@@ -105,6 +108,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::ChatML => write!(f, "chatml"),
             PromptTemplateType::Baichuan2 => write!(f, "baichuan-2"),
             PromptTemplateType::WizardCoder => write!(f, "wizard-coder"),
+            PromptTemplateType::Wizard2Chat => write!(f, "wizard-2-chat"),
             PromptTemplateType::Zephyr => write!(f, "zephyr"),
             PromptTemplateType::StableLMZephyr => write!(f, "stablelm-zephyr"),
             PromptTemplateType::IntelNeural => write!(f, "intel-neural"),

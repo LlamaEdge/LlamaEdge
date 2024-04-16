@@ -54,6 +54,7 @@ pub enum ChatPrompt {
     ChatMLPrompt,
     Baichuan2ChatPrompt,
     WizardCoderPrompt,
+    Wizard2ChatPrompt,
     ZephyrChatPrompt,
     StableLMZephyrChatPrompt,
     NeuralChatPrompt,
@@ -89,6 +90,7 @@ impl From<PromptTemplateType> for ChatPrompt {
             PromptTemplateType::ChatML => ChatPrompt::ChatMLPrompt(ChatMLPrompt),
             PromptTemplateType::Baichuan2 => ChatPrompt::Baichuan2ChatPrompt(Baichuan2ChatPrompt),
             PromptTemplateType::WizardCoder => ChatPrompt::WizardCoderPrompt(WizardCoderPrompt),
+            PromptTemplateType::Wizard2Chat => ChatPrompt::Wizard2ChatPrompt(Wizard2ChatPrompt),
             PromptTemplateType::Zephyr => ChatPrompt::ZephyrChatPrompt(ZephyrChatPrompt),
             PromptTemplateType::StableLMZephyr => {
                 ChatPrompt::StableLMZephyrChatPrompt(StableLMZephyrChatPrompt)
