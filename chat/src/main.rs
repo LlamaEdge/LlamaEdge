@@ -137,6 +137,7 @@ fn main() -> Result<(), String> {
                     "chatml",
                     "baichuan-2",
                     "wizard-coder",
+                    "wizard-2-chat",
                     "zephyr",
                     "stablelm-zephyr",
                     "intel-neural",
@@ -661,6 +662,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
         }
         PromptTemplateType::WizardCoder => {
             ChatPrompt::WizardCoderPrompt(chat_prompts::chat::wizard::WizardCoderPrompt)
+        }
+        PromptTemplateType::Wizard2Chat => {
+            ChatPrompt::Wizard2ChatPrompt(chat_prompts::chat::wizard::Wizard2ChatPrompt)
         }
         PromptTemplateType::Zephyr => {
             ChatPrompt::ZephyrChatPrompt(chat_prompts::chat::zephyr::ZephyrChatPrompt)
