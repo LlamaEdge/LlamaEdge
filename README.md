@@ -18,10 +18,10 @@ It will download and start the Gemma-2b model automatically. Open http://127.0.0
 #2: Specify a model using `--model model_name`
 
 ```
-bash <(curl -sSfL 'https://raw.githubusercontent.com/LlamaEdge/LlamaEdge/main/run-llm.sh') --model llama-2-7b-chat
+bash <(curl -sSfL 'https://raw.githubusercontent.com/LlamaEdge/LlamaEdge/main/run-llm.sh') --model llama-3-8b-instruct
 ```
 
-The script will start an API server with a chatbot UI based on your choice. Open http://127.0.0.1:8080 in your browser and start chatting right away!
+The script will start an API server for the Llama3 8b model with a chatbot UI based on your choice. Open http://127.0.0.1:8080 in your browser and start chatting right away!
 
 To explore all the available models, please use the following command line
 
