@@ -126,6 +126,7 @@ fn main() -> Result<(), String> {
                 .long("prompt-template")
                 .value_parser([
                     "llama-2-chat",
+                    "llama-3-chat",
                     "codellama-instruct",
                     "codellama-super-instruct",
                     "mistral-instruct",
@@ -625,6 +626,9 @@ fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
     match template_ty {
         PromptTemplateType::Llama2Chat => {
             ChatPrompt::Llama2ChatPrompt(chat_prompts::chat::llama::Llama2ChatPrompt)
+        }
+        PromptTemplateType::Llama3Chat => {
+            ChatPrompt::Llama3ChatPrompt(chat_prompts::chat::llama::Llama3ChatPrompt)
         }
         PromptTemplateType::MistralInstruct => {
             ChatPrompt::MistralInstructPrompt(chat_prompts::chat::mistral::MistralInstructPrompt)
