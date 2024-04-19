@@ -10,6 +10,8 @@ use std::str::FromStr;
 pub enum PromptTemplateType {
     #[value(name = "llama-2-chat")]
     Llama2Chat,
+    #[value(name = "llama-3-chat")]
+    Llama3Chat,
     #[value(name = "mistral-instruct")]
     MistralInstruct,
     #[value(name = "mistrallite")]
@@ -61,6 +63,7 @@ impl FromStr for PromptTemplateType {
     fn from_str(template: &str) -> std::result::Result<Self, Self::Err> {
         match template {
             "llama-2-chat" => Ok(PromptTemplateType::Llama2Chat),
+            "llama-3-chat" => Ok(PromptTemplateType::Llama3Chat),
             "mistral-instruct" => Ok(PromptTemplateType::MistralInstruct),
             "mistrallite" => Ok(PromptTemplateType::MistralLite),
             "codellama-instruct" => Ok(PromptTemplateType::CodeLlama),
@@ -94,6 +97,7 @@ impl std::fmt::Display for PromptTemplateType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             PromptTemplateType::Llama2Chat => write!(f, "llama-2-chat"),
+            PromptTemplateType::Llama3Chat => write!(f, "llama-3-chat"),
             PromptTemplateType::MistralInstruct => write!(f, "mistral-instruct"),
             PromptTemplateType::MistralLite => write!(f, "mistrallite"),
             PromptTemplateType::OpenChat => write!(f, "openchat"),
