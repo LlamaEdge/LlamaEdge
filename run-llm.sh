@@ -146,6 +146,7 @@ ss_models=(
 # prompt types
 prompt_types=(
     "gemma-instruct"
+    "llama-3-chat"
     "llama-2-chat"
     "chatml"
     "openchat"
