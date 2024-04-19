@@ -124,7 +124,7 @@ impl std::fmt::Display for PromptTemplateType {
     }
 }
 
-/// Trait for inserting RAG context into chat messages
+/// Trait for merging RAG context into chat messages
 pub trait MergeRagContext: Send {
     fn build(
         messages: &mut Vec<endpoints::chat::ChatCompletionRequestMessage>,
