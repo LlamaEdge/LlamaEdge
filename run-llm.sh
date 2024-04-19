@@ -110,6 +110,7 @@ done
 
 ss_urls=(
     "https://huggingface.co/second-state/Gemma-2b-it-GGUF/resolve/main/gemma-2b-it-Q5_K_M.gguf"
+    "https://huggingface.co/second-state/Llama-3-8B-Instruct-GGUF/resolve/main/Meta-Llama-3-8B-Instruct.Q5_K_M.gguf"
     "https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolve/main/Llama-2-7b-chat-hf-Q5_K_M.gguf"
     "https://huggingface.co/second-state/stablelm-2-zephyr-1.6b-GGUF/resolve/main/stablelm-2-zephyr-1_6b-Q5_K_M.gguf"
     "https://huggingface.co/second-state/OpenChat-3.5-0106-GGUF/resolve/main/openchat-3.5-0106-Q5_K_M.gguf"
@@ -127,6 +128,7 @@ ss_urls=(
 # sample models
 ss_models=(
     "gemma-2b-it"
+    "llama-3-8b-instruct"
     "llama-2-7b-chat"
     "stablelm-2-zephyr-1.6b"
     "openchat-3.5-0106"
