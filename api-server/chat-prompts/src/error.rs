@@ -11,6 +11,8 @@ pub enum PromptError {
     NoUserMessage,
     #[error("No content in the assistant message when the `tool_calls` is not specified.")]
     NoAssistantMessage,
+    #[error("Bad messages. {0}")]
+    BadMessages(String),
     #[error("Unknown chat completion role: {0:?}")]
     UnknownRole(ChatCompletionRole),
     #[error("Unknown prompt template type: {0}")]
