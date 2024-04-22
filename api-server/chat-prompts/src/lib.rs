@@ -57,6 +57,36 @@ pub enum PromptTemplateType {
     #[value(name = "octopus")]
     Octopus,
 }
+impl PromptTemplateType {
+    pub fn has_system_prompt(&self) -> bool {
+        match self {
+            PromptTemplateType::Llama2Chat
+            | PromptTemplateType::Llama3Chat
+            | PromptTemplateType::CodeLlama
+            | PromptTemplateType::CodeLlamaSuper
+            | PromptTemplateType::VicunaChat
+            | PromptTemplateType::VicunaLlava
+            | PromptTemplateType::ChatML
+            | PromptTemplateType::Baichuan2
+            | PromptTemplateType::WizardCoder
+            | PromptTemplateType::Zephyr
+            | PromptTemplateType::IntelNeural
+            | PromptTemplateType::DeepseekCoder
+            | PromptTemplateType::Octopus => true,
+            PromptTemplateType::MistralInstruct
+            | PromptTemplateType::MistralLite
+            | PromptTemplateType::HumanAssistant
+            | PromptTemplateType::DeepseekChat
+            | PromptTemplateType::GemmaInstruct
+            | PromptTemplateType::OpenChat
+            | PromptTemplateType::Phi2Chat
+            | PromptTemplateType::Phi2Instruct
+            | PromptTemplateType::SolarInstruct
+            | PromptTemplateType::Vicuna11Chat
+            | PromptTemplateType::StableLMZephyr => false,
+        }
+    }
+}
 impl FromStr for PromptTemplateType {
     type Err = error::PromptError;
 
