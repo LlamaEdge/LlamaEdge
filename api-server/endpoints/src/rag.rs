@@ -1,5 +1,8 @@
 use crate::{
-    chat::{ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRequestSampling},
+    chat::{
+        ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRequestSampling,
+        ChatResponseFormat, Tool, ToolChoice,
+    },
     embeddings::EmbeddingRequest,
 };
 use serde::{Deserialize, Serialize};
@@ -149,6 +152,15 @@ pub struct RagChatCompletionsRequest {
     /// A unique identifier representing your end-user.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user: Option<String>,
+    /// Format that the model must output
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_format: Option<ChatResponseFormat>,
+    /// A list of tools the model may call.
+    ///
+    /// Currently, only functions are supported as a tool. Use this to provide a list of functions the model may generate JSON inputs for.
+    pub tools: Option<Vec<Tool>>,
+    /// Controls which (if any) function is called by the model.
+    pub tool_choice: Option<ToolChoice>,
 }
 impl RagChatCompletionsRequest {
     pub fn as_chat_completions_request(&self) -> ChatCompletionRequest {
@@ -167,6 +179,9 @@ impl RagChatCompletionsRequest {
             user: self.user.clone(),
             functions: None,
             function_call: None,
+            response_format: self.response_format.clone(),
+            tool_choice: self.tool_choice.clone(),
+            tools: self.tools.clone(),
         }
     }
 
@@ -194,6 +209,9 @@ impl RagChatCompletionsRequest {
             frequency_penalty: chat_completions_request.frequency_penalty,
             logit_bias: chat_completions_request.logit_bias,
             user: chat_completions_request.user,
+            response_format: chat_completions_request.response_format,
+            tool_choice: chat_completions_request.tool_choice,
+            tools: chat_completions_request.tools,
         }
     }
 }
@@ -237,6 +255,9 @@ impl RagChatCompletionRequestBuilder {
                 frequency_penalty: None,
                 logit_bias: None,
                 user: None,
+                response_format: None,
+                tool_choice: None,
+                tools: None,
             },
         }
     }

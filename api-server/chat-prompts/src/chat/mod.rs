@@ -32,6 +32,7 @@ use vicuna::*;
 use wizard::*;
 use zephyr::*;
 
+/// Trait for building prompts for chat completions.
 #[enum_dispatch::enum_dispatch]
 pub trait BuildChatPrompt: Send {
     fn build(&self, messages: &mut Vec<ChatCompletionRequestMessage>) -> Result<String>;
@@ -63,6 +64,8 @@ pub enum ChatPrompt {
     SolarInstructPrompt,
     Phi2ChatPrompt,
     Phi2InstructPrompt,
+    Phi3ChatPrompt,
+    Phi3InstructPrompt,
     GemmaInstructPrompt,
     OctopusPrompt,
 }
@@ -105,6 +108,8 @@ impl From<PromptTemplateType> for ChatPrompt {
             }
             PromptTemplateType::Phi2Chat => ChatPrompt::Phi2ChatPrompt(Phi2ChatPrompt),
             PromptTemplateType::Phi2Instruct => ChatPrompt::Phi2InstructPrompt(Phi2InstructPrompt),
+            PromptTemplateType::Phi3Chat => ChatPrompt::Phi3ChatPrompt(Phi3ChatPrompt),
+            PromptTemplateType::Phi3Instruct => ChatPrompt::Phi3InstructPrompt(Phi3InstructPrompt),
             PromptTemplateType::GemmaInstruct => {
                 ChatPrompt::GemmaInstructPrompt(GemmaInstructPrompt)
             }

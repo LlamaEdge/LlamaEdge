@@ -1,4 +1,7 @@
+//! Define types for chat completion.
+
 use crate::common::{FinishReason, Usage};
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -33,6 +36,9 @@ impl ChatCompletionRequestBuilder {
                 user: None,
                 functions: None,
                 function_call: None,
+                response_format: None,
+                tool_choice: None,
+                tools: None,
             },
         }
     }
@@ -111,6 +117,24 @@ impl ChatCompletionRequestBuilder {
         self
     }
 
+    /// Sets response format.
+    pub fn with_reponse_format(mut self, response_format: ChatResponseFormat) -> Self {
+        self.req.response_format = Some(response_format);
+        self
+    }
+
+    /// Sets tools
+    pub fn with_tools(mut self, tools: Vec<Tool>) -> Self {
+        self.req.tools = Some(tools);
+        self
+    }
+
+    /// Sets tool choice.
+    pub fn with_tool_choice(mut self, tool_choice: ToolChoice) -> Self {
+        self.req.tool_choice = Some(tool_choice);
+        self
+    }
+
     pub fn build(self) -> ChatCompletionRequest {
         self.req
     }
@@ -179,6 +203,18 @@ pub struct ChatCompletionRequest {
     /// Controls how the model responds to function calls. "none" means the model does not call a function, and responds to the end-user. "auto" means the model can pick between an end-user or calling a function. Specifying a particular function via `{"name":\ "my_function"}` forces the model to call that function. "none" is the default when no functions are present. "auto" is the default if functions are present.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub function_call: Option<String>,
+
+    /// Format that the model must output
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_format: Option<ChatResponseFormat>,
+    /// A list of tools the model may call.
+    ///
+    /// Currently, only functions are supported as a tool. Use this to provide a list of functions the model may generate JSON inputs for.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tools: Option<Vec<Tool>>,
+    /// Controls which (if any) function is called by the model.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_choice: Option<ToolChoice>,
 }
 
 #[test]
@@ -206,11 +242,13 @@ fn test_chat_serialize_chat_request() {
             .with_max_tokens(100)
             .with_presence_penalty(0.5)
             .with_frequency_penalty(0.5)
+            .with_reponse_format(ChatResponseFormat::default())
+            .with_tool_choice(ToolChoice::Auto)
             .build();
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto"}"#
         );
     }
 
@@ -232,13 +270,583 @@ fn test_chat_serialize_chat_request() {
             ChatCompletionRequestMessage::new_user_message(user_message_content, None);
         messages.push(user_message);
 
-        let request = ChatCompletionRequestBuilder::new("model-id", messages).build();
+        let request = ChatCompletionRequestBuilder::new("model-id", messages)
+            .with_tool_choice(ToolChoice::None)
+            .build();
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}]}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"tool_choice":"none"}"#
         );
     }
+
+    {
+        let mut messages = Vec::new();
+        let system_message = ChatCompletionRequestMessage::System(
+            ChatCompletionSystemMessage::new("Hello, world!", None),
+        );
+        messages.push(system_message);
+        let user_message = ChatCompletionRequestMessage::User(ChatCompletionUserMessage::new(
+            ChatCompletionUserMessageContent::Text("Hello, world!".to_string()),
+            None,
+        ));
+        messages.push(user_message);
+        let assistant_message = ChatCompletionRequestMessage::Assistant(
+            ChatCompletionAssistantMessage::new(Some("Hello, world!".to_string()), None, None),
+        );
+        messages.push(assistant_message);
+
+        let params = ToolFunctionParameters {
+            schema_type: JSONSchemaType::Object,
+            properties: Some(
+                vec![
+                    (
+                        "location".to_string(),
+                        Box::new(JSONSchemaDefine {
+                            schema_type: Some(JSONSchemaType::String),
+                            description: Some(
+                                "The city and state, e.g. San Francisco, CA".to_string(),
+                            ),
+                            enum_values: None,
+                            properties: None,
+                            required: None,
+                            items: None,
+                        }),
+                    ),
+                    (
+                        "unit".to_string(),
+                        Box::new(JSONSchemaDefine {
+                            schema_type: Some(JSONSchemaType::String),
+                            description: None,
+                            enum_values: Some(vec![
+                                "celsius".to_string(),
+                                "fahrenheit".to_string(),
+                            ]),
+                            properties: None,
+                            required: None,
+                            items: None,
+                        }),
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+            ),
+            required: Some(vec!["location".to_string()]),
+        };
+
+        let tool = Tool {
+            ty: "function".to_string(),
+            function: ToolFunction {
+                name: "my_function".to_string(),
+                description: None,
+                parameters: Some(params),
+            },
+        };
+
+        let request = ChatCompletionRequestBuilder::new("model-id", messages)
+            .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
+            .with_n_choices(3)
+            .with_stream(true)
+            .with_stop(vec!["stop1".to_string(), "stop2".to_string()])
+            .with_max_tokens(100)
+            .with_presence_penalty(0.5)
+            .with_frequency_penalty(0.5)
+            .with_reponse_format(ChatResponseFormat::default())
+            .with_tools(vec![tool])
+            .with_tool_choice(ToolChoice::Tool(ToolChoiceTool {
+                ty: "function".to_string(),
+                function: ToolChoiceToolFunction {
+                    name: "my_function".to_string(),
+                },
+            }))
+            .build();
+        let json = serde_json::to_string(&request).unwrap();
+        assert_eq!(
+            json,
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#
+        );
+    }
+}
+
+#[test]
+fn test_chat_deserialize_chat_request() {
+    {
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"}}"#;
+        let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(request.model, Some("model-id".to_string()));
+        assert_eq!(request.messages.len(), 3);
+        assert_eq!(request.temperature, Some(0.8));
+        assert_eq!(request.top_p, Some(1.0));
+        assert_eq!(request.n_choice, Some(3));
+        assert_eq!(request.stream, Some(true));
+        assert_eq!(
+            request.stop,
+            Some(vec!["stop1".to_string(), "stop2".to_string()])
+        );
+        assert_eq!(request.max_tokens, Some(100));
+        assert_eq!(request.presence_penalty, Some(0.5));
+        assert_eq!(request.frequency_penalty, Some(0.5));
+        assert_eq!(request.tool_choice, None);
+    }
+
+    {
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto"}"#;
+        let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(request.model, Some("model-id".to_string()));
+        assert_eq!(request.messages.len(), 3);
+        assert_eq!(request.temperature, Some(0.8));
+        assert_eq!(request.top_p, Some(1.0));
+        assert_eq!(request.n_choice, Some(3));
+        assert_eq!(request.stream, Some(true));
+        assert_eq!(
+            request.stop,
+            Some(vec!["stop1".to_string(), "stop2".to_string()])
+        );
+        assert_eq!(request.max_tokens, Some(100));
+        assert_eq!(request.presence_penalty, Some(0.5));
+        assert_eq!(request.frequency_penalty, Some(0.5));
+        assert_eq!(request.tool_choice, Some(ToolChoice::Auto));
+    }
+
+    {
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#;
+        let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(request.model, Some("model-id".to_string()));
+        assert_eq!(request.messages.len(), 3);
+        assert_eq!(request.temperature, Some(0.8));
+        assert_eq!(request.top_p, Some(1.0));
+        assert_eq!(request.n_choice, Some(3));
+        assert_eq!(request.stream, Some(true));
+        assert_eq!(
+            request.stop,
+            Some(vec!["stop1".to_string(), "stop2".to_string()])
+        );
+        assert_eq!(request.max_tokens, Some(100));
+        assert_eq!(request.presence_penalty, Some(0.5));
+        assert_eq!(request.frequency_penalty, Some(0.5));
+        assert_eq!(
+            request.tool_choice,
+            Some(ToolChoice::Tool(ToolChoiceTool {
+                ty: "function".to_string(),
+                function: ToolChoiceToolFunction {
+                    name: "my_function".to_string(),
+                },
+            }))
+        );
+    }
+
+    {
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#;
+
+        let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
+        let tools = request.tools.unwrap();
+        let tool = &tools[0];
+        assert_eq!(tool.ty, "function");
+        assert_eq!(tool.function.name, "my_function");
+        assert!(tool.function.description.is_none());
+        assert!(tool.function.parameters.is_some());
+        let params = tool.function.parameters.as_ref().unwrap();
+        assert_eq!(params.schema_type, JSONSchemaType::Object);
+        let properties = params.properties.as_ref().unwrap();
+        assert_eq!(properties.len(), 2);
+        assert!(properties.contains_key("unit"));
+        assert!(properties.contains_key("location"));
+        let unit = properties.get("unit").unwrap();
+        assert_eq!(unit.schema_type, Some(JSONSchemaType::String));
+        assert_eq!(
+            unit.enum_values,
+            Some(vec!["celsius".to_string(), "fahrenheit".to_string()])
+        );
+        let location = properties.get("location").unwrap();
+        assert_eq!(location.schema_type, Some(JSONSchemaType::String));
+        assert_eq!(
+            location.description,
+            Some("The city and state, e.g. San Francisco, CA".to_string())
+        );
+        let required = params.required.as_ref().unwrap();
+        assert_eq!(required.len(), 1);
+        assert_eq!(required[0], "location");
+    }
+}
+
+/// An object specifying the format that the model must output.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ChatResponseFormat {
+    /// Must be one of `text`` or `json_object`. Defaults to `text`.
+    #[serde(rename = "type")]
+    ty: String,
+}
+impl Default for ChatResponseFormat {
+    fn default() -> Self {
+        Self {
+            ty: "text".to_string(),
+        }
+    }
+}
+
+#[test]
+fn test_chat_serialize_response_format() {
+    let response_format = ChatResponseFormat {
+        ty: "text".to_string(),
+    };
+    let json = serde_json::to_string(&response_format).unwrap();
+    assert_eq!(json, r#"{"type":"text"}"#);
+
+    let response_format = ChatResponseFormat {
+        ty: "json_object".to_string(),
+    };
+    let json = serde_json::to_string(&response_format).unwrap();
+    assert_eq!(json, r#"{"type":"json_object"}"#);
+}
+
+/// Controls which (if any) function is called by the model. Defaults to `None`.
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub enum ToolChoice {
+    /// The model will not call a function and instead generates a message.
+    #[serde(rename = "none")]
+    None,
+    /// The model can pick between generating a message or calling a function.
+    #[serde(rename = "auto")]
+    Auto,
+    /// Specifies a tool the model should use. Use to force the model to call a specific function.
+    #[serde(untagged)]
+    Tool(ToolChoiceTool),
+}
+impl Default for ToolChoice {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
+#[test]
+fn test_chat_serialize_tool_choice() {
+    let tool_choice = ToolChoice::None;
+    let json = serde_json::to_string(&tool_choice).unwrap();
+    assert_eq!(json, r#""none""#);
+
+    let tool_choice = ToolChoice::Auto;
+    let json = serde_json::to_string(&tool_choice).unwrap();
+    assert_eq!(json, r#""auto""#);
+
+    let tool_choice = ToolChoice::Tool(ToolChoiceTool {
+        ty: "function".to_string(),
+        function: ToolChoiceToolFunction {
+            name: "my_function".to_string(),
+        },
+    });
+    let json = serde_json::to_string(&tool_choice).unwrap();
+    assert_eq!(
+        json,
+        r#"{"type":"function","function":{"name":"my_function"}}"#
+    );
+}
+
+#[test]
+fn test_chat_deserialize_tool_choice() {
+    let json = r#""none""#;
+    let tool_choice: ToolChoice = serde_json::from_str(json).unwrap();
+    assert_eq!(tool_choice, ToolChoice::None);
+
+    let json = r#""auto""#;
+    let tool_choice: ToolChoice = serde_json::from_str(json).unwrap();
+    assert_eq!(tool_choice, ToolChoice::Auto);
+
+    let json = r#"{"type":"function","function":{"name":"my_function"}}"#;
+    let tool_choice: ToolChoice = serde_json::from_str(json).unwrap();
+    assert_eq!(
+        tool_choice,
+        ToolChoice::Tool(ToolChoiceTool {
+            ty: "function".to_string(),
+            function: ToolChoiceToolFunction {
+                name: "my_function".to_string(),
+            },
+        })
+    );
+}
+
+/// A tool the model should use.
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct ToolChoiceTool {
+    /// The type of the tool. Currently, only `function` is supported.
+    #[serde(rename = "type")]
+    pub ty: String,
+    /// The function the model calls.
+    pub function: ToolChoiceToolFunction,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct ToolChoiceToolFunction {
+    /// The name of the function to call.
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Tool {
+    /// The type of the tool. Currently, only `function` is supported.
+    #[serde(rename = "type")]
+    pub ty: String,
+    /// Function the model may generate JSON inputs for.
+    pub function: ToolFunction,
+}
+
+#[test]
+fn test_chat_serialize_tool() {
+    {
+        let tool = Tool {
+            ty: "function".to_string(),
+            function: ToolFunction {
+                name: "my_function".to_string(),
+                description: None,
+                parameters: None,
+            },
+        };
+        let json = serde_json::to_string(&tool).unwrap();
+        assert_eq!(
+            json,
+            r#"{"type":"function","function":{"name":"my_function"}}"#
+        );
+    }
+
+    {
+        let params = ToolFunctionParameters {
+            schema_type: JSONSchemaType::Object,
+            properties: Some(
+                vec![
+                    (
+                        "location".to_string(),
+                        Box::new(JSONSchemaDefine {
+                            schema_type: Some(JSONSchemaType::String),
+                            description: Some(
+                                "The city and state, e.g. San Francisco, CA".to_string(),
+                            ),
+                            enum_values: None,
+                            properties: None,
+                            required: None,
+                            items: None,
+                        }),
+                    ),
+                    (
+                        "unit".to_string(),
+                        Box::new(JSONSchemaDefine {
+                            schema_type: Some(JSONSchemaType::String),
+                            description: None,
+                            enum_values: Some(vec![
+                                "celsius".to_string(),
+                                "fahrenheit".to_string(),
+                            ]),
+                            properties: None,
+                            required: None,
+                            items: None,
+                        }),
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+            ),
+            required: Some(vec!["location".to_string()]),
+        };
+
+        let tool = Tool {
+            ty: "function".to_string(),
+            function: ToolFunction {
+                name: "my_function".to_string(),
+                description: None,
+                parameters: Some(params),
+            },
+        };
+        let json = serde_json::to_string(&tool).unwrap();
+        assert_eq!(
+            json,
+            r#"{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}"#
+        );
+    }
+}
+
+#[test]
+fn test_chat_deserialize_tool() {
+    let json = r#"{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}"#;
+    let tool: Tool = serde_json::from_str(json).unwrap();
+    assert_eq!(tool.ty, "function");
+    assert_eq!(tool.function.name, "my_function");
+    assert!(tool.function.description.is_none());
+    assert!(tool.function.parameters.is_some());
+    let params = tool.function.parameters.as_ref().unwrap();
+    assert_eq!(params.schema_type, JSONSchemaType::Object);
+    let properties = params.properties.as_ref().unwrap();
+    assert_eq!(properties.len(), 2);
+    assert!(properties.contains_key("unit"));
+    assert!(properties.contains_key("location"));
+    let unit = properties.get("unit").unwrap();
+    assert_eq!(unit.schema_type, Some(JSONSchemaType::String));
+    assert_eq!(
+        unit.enum_values,
+        Some(vec!["celsius".to_string(), "fahrenheit".to_string()])
+    );
+    let location = properties.get("location").unwrap();
+    assert_eq!(location.schema_type, Some(JSONSchemaType::String));
+    assert_eq!(
+        location.description,
+        Some("The city and state, e.g. San Francisco, CA".to_string())
+    );
+    let required = params.required.as_ref().unwrap();
+    assert_eq!(required.len(), 1);
+    assert_eq!(required[0], "location");
+}
+
+/// Function the model may generate JSON inputs for.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ToolFunction {
+    /// The name of the function to be called. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64.
+    pub name: String,
+    /// A description of what the function does, used by the model to choose when and how to call the function.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    // The parameters the functions accepts, described as a JSON Schema object.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parameters: Option<ToolFunctionParameters>,
+}
+
+#[test]
+fn test_chat_serialize_tool_function() {
+    let params = ToolFunctionParameters {
+        schema_type: JSONSchemaType::Object,
+        properties: Some(
+            vec![
+                (
+                    "location".to_string(),
+                    Box::new(JSONSchemaDefine {
+                        schema_type: Some(JSONSchemaType::String),
+                        description: Some("The city and state, e.g. San Francisco, CA".to_string()),
+                        enum_values: None,
+                        properties: None,
+                        required: None,
+                        items: None,
+                    }),
+                ),
+                (
+                    "unit".to_string(),
+                    Box::new(JSONSchemaDefine {
+                        schema_type: Some(JSONSchemaType::String),
+                        description: None,
+                        enum_values: Some(vec!["celsius".to_string(), "fahrenheit".to_string()]),
+                        properties: None,
+                        required: None,
+                        items: None,
+                    }),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        ),
+        required: Some(vec!["location".to_string()]),
+    };
+
+    let func = ToolFunction {
+        name: "my_function".to_string(),
+        description: Some("Get the current weather in a given location".to_string()),
+        parameters: Some(params),
+    };
+
+    let json = serde_json::to_string(&func).unwrap();
+    assert_eq!(
+        json,
+        r#"{"name":"my_function","description":"Get the current weather in a given location","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}"#
+    );
+}
+
+/// The parameters the functions accepts, described as a JSON Schema object. See the [guide](https://platform.openai.com/docs/guides/gpt/function-calling) for examples, and the [JSON Schema reference](https://json-schema.org/understanding-json-schema/) for documentation about the format.
+///
+/// To describe a function that accepts no parameters, provide the value `{"type": "object", "properties": {}}`.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ToolFunctionParameters {
+    #[serde(rename = "type")]
+    pub schema_type: JSONSchemaType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub properties: Option<IndexMap<String, Box<JSONSchemaDefine>>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub required: Option<Vec<String>>,
+}
+
+#[test]
+fn test_chat_serialize_tool_function_params() {
+    let params = ToolFunctionParameters {
+        schema_type: JSONSchemaType::Object,
+        properties: Some(
+            vec![
+                (
+                    "location".to_string(),
+                    Box::new(JSONSchemaDefine {
+                        schema_type: Some(JSONSchemaType::String),
+                        description: Some("The city and state, e.g. San Francisco, CA".to_string()),
+                        enum_values: None,
+                        properties: None,
+                        required: None,
+                        items: None,
+                    }),
+                ),
+                (
+                    "unit".to_string(),
+                    Box::new(JSONSchemaDefine {
+                        schema_type: Some(JSONSchemaType::String),
+                        description: None,
+                        enum_values: Some(vec!["celsius".to_string(), "fahrenheit".to_string()]),
+                        properties: None,
+                        required: None,
+                        items: None,
+                    }),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        ),
+        required: Some(vec!["location".to_string()]),
+    };
+
+    let json = serde_json::to_string(&params).unwrap();
+    assert_eq!(
+        json,
+        r#"{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}"#
+    );
+}
+
+#[test]
+fn test_chat_deserialize_tool_function_params() {
+    let json = r###"
+    {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "string",
+            "description": "The city and state, e.g. San Francisco, CA"
+          },
+          "unit": {
+            "type": "string",
+            "enum": ["celsius", "fahrenheit"]
+          }
+        },
+        "required": ["location"]
+    }"###;
+    let params: ToolFunctionParameters = serde_json::from_str(json).unwrap();
+    assert_eq!(params.schema_type, JSONSchemaType::Object);
+    let properties = params.properties.as_ref().unwrap();
+    assert_eq!(properties.len(), 2);
+    assert!(properties.contains_key("unit"));
+    assert!(properties.contains_key("location"));
+    let unit = properties.get("unit").unwrap();
+    assert_eq!(unit.schema_type, Some(JSONSchemaType::String));
+    assert_eq!(
+        unit.enum_values,
+        Some(vec!["celsius".to_string(), "fahrenheit".to_string()])
+    );
+    let location = properties.get("location").unwrap();
+    assert_eq!(location.schema_type, Some(JSONSchemaType::String));
+    assert_eq!(
+        location.description,
+        Some("The city and state, e.g. San Francisco, CA".to_string())
+    );
+    let required = params.required.as_ref().unwrap();
+    assert_eq!(required.len(), 1);
+    assert_eq!(required[0], "location");
 }
 
 /// Message for comprising the conversation.
@@ -844,7 +1452,7 @@ pub struct ChatCompletionRequestFunction {
 /// The parameters the functions accepts, described as a JSON Schema object. See the [guide](https://platform.openai.com/docs/guides/gpt/function-calling) for examples, and the [JSON Schema reference](https://json-schema.org/understanding-json-schema/) for documentation about the format.
 ///
 /// To describe a function that accepts no parameters, provide the value `{"type": "object", "properties": {}}`.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ChatCompletionRequestFunctionParameters {
     #[serde(rename = "type")]
     pub schema_type: JSONSchemaType,
@@ -854,7 +1462,7 @@ pub struct ChatCompletionRequestFunctionParameters {
     pub required: Option<Vec<String>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum JSONSchemaType {
     Object,
@@ -865,13 +1473,13 @@ pub enum JSONSchemaType {
     Boolean,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JSONSchemaDefine {
     #[serde(rename = "type")]
     pub schema_type: Option<JSONSchemaType>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "enum", skip_serializing_if = "Option::is_none")]
     pub enum_values: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub properties: Option<HashMap<String, Box<JSONSchemaDefine>>>,

@@ -274,6 +274,11 @@ impl Graph {
         &self.metadata.model_alias
     }
 
+    /// Get the prompt template type
+    pub fn prompt_template(&self) -> PromptTemplateType {
+        self.metadata.prompt_template
+    }
+
     /// Update metadata
     pub fn update_metadata(&mut self) -> Result<(), LlamaCoreError> {
         // update metadata

@@ -52,10 +52,46 @@ pub enum PromptTemplateType {
     Phi2Chat,
     #[value(name = "phi-2-instruct")]
     Phi2Instruct,
+    #[value(name = "phi-3-chat")]
+    Phi3Chat,
+    #[value(name = "phi-3-instruct")]
+    Phi3Instruct,
     #[value(name = "gemma-instruct")]
     GemmaInstruct,
     #[value(name = "octopus")]
     Octopus,
+}
+impl PromptTemplateType {
+    pub fn has_system_prompt(&self) -> bool {
+        match self {
+            PromptTemplateType::Llama2Chat
+            | PromptTemplateType::Llama3Chat
+            | PromptTemplateType::CodeLlama
+            | PromptTemplateType::CodeLlamaSuper
+            | PromptTemplateType::VicunaChat
+            | PromptTemplateType::VicunaLlava
+            | PromptTemplateType::ChatML
+            | PromptTemplateType::Baichuan2
+            | PromptTemplateType::WizardCoder
+            | PromptTemplateType::Zephyr
+            | PromptTemplateType::IntelNeural
+            | PromptTemplateType::DeepseekCoder
+            | PromptTemplateType::Octopus
+            | PromptTemplateType::Phi3Chat => true,
+            PromptTemplateType::MistralInstruct
+            | PromptTemplateType::MistralLite
+            | PromptTemplateType::HumanAssistant
+            | PromptTemplateType::DeepseekChat
+            | PromptTemplateType::GemmaInstruct
+            | PromptTemplateType::OpenChat
+            | PromptTemplateType::Phi2Chat
+            | PromptTemplateType::Phi2Instruct
+            | PromptTemplateType::Phi3Instruct
+            | PromptTemplateType::SolarInstruct
+            | PromptTemplateType::Vicuna11Chat
+            | PromptTemplateType::StableLMZephyr => false,
+        }
+    }
 }
 impl FromStr for PromptTemplateType {
     type Err = error::PromptError;
@@ -85,6 +121,8 @@ impl FromStr for PromptTemplateType {
             "solar-instruct" => Ok(PromptTemplateType::SolarInstruct),
             "phi-2-chat" => Ok(PromptTemplateType::Phi2Chat),
             "phi-2-instruct" => Ok(PromptTemplateType::Phi2Instruct),
+            "phi-3-chat" => Ok(PromptTemplateType::Phi3Chat),
+            "phi-3-instruct" => Ok(PromptTemplateType::Phi3Instruct),
             "gemma-instruct" => Ok(PromptTemplateType::GemmaInstruct),
             "octopus" => Ok(PromptTemplateType::Octopus),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
@@ -117,6 +155,8 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::SolarInstruct => write!(f, "solar-instruct"),
             PromptTemplateType::Phi2Chat => write!(f, "phi-2-chat"),
             PromptTemplateType::Phi2Instruct => write!(f, "phi-2-instruct"),
+            PromptTemplateType::Phi3Chat => write!(f, "phi-3-chat"),
+            PromptTemplateType::Phi3Instruct => write!(f, "phi-3-instruct"),
             PromptTemplateType::CodeLlamaSuper => write!(f, "codellama-super-instruct"),
             PromptTemplateType::GemmaInstruct => write!(f, "gemma-instruct"),
             PromptTemplateType::Octopus => write!(f, "octopus"),
@@ -124,50 +164,53 @@ impl std::fmt::Display for PromptTemplateType {
     }
 }
 
-/// Trait for inserting RAG context into chat messages
+/// Trait for merging RAG context into chat messages
 pub trait MergeRagContext: Send {
     fn build(
         messages: &mut Vec<endpoints::chat::ChatCompletionRequestMessage>,
         context: &[String],
+        has_system_prompt: bool,
     ) -> error::Result<()> {
-        if messages.is_empty() {
-            return Err(error::PromptError::NoMessages);
-        }
-
-        if context.is_empty() {
-            return Err(error::PromptError::Operation(
-                "No context provided.".to_string(),
-            ));
-        }
-
-        let context = context[0].trim_end();
-
-        // update or insert system message
-        match messages[0] {
-            ChatCompletionRequestMessage::System(ref message) => {
-                // compose new system message content
-                let content = format!("{original_system_message}\nUse the following pieces of context to answer the user's question.\nIf you don't know the answer, just say that you don't know, don't try to make up an answer.\n----------------\n{context}", original_system_message=message.content().trim(), context=context.trim_end());
-                // create system message
-                let system_message = ChatCompletionRequestMessage::new_system_message(
-                    content,
-                    messages[0].name().cloned(),
-                );
-                // replace the original system message
-                messages[0] = system_message;
+        if has_system_prompt {
+            if messages.is_empty() {
+                return Err(error::PromptError::NoMessages);
             }
-            _ => {
-                // prepare system message
-                let content = format!("Use the following pieces of context to answer the user's question.\nIf you don't know the answer, just say that you don't know, don't try to make up an answer.\n----------------\n{}", context.trim_end());
 
-                // create system message
-                let system_message = ChatCompletionRequestMessage::new_system_message(
-                    content,
-                    messages[0].name().cloned(),
-                );
-                // insert system message
-                messages.insert(0, system_message);
+            if context.is_empty() {
+                return Err(error::PromptError::Operation(
+                    "No context provided.".to_string(),
+                ));
             }
-        };
+
+            let context = context[0].trim_end();
+
+            // update or insert system message
+            match messages[0] {
+                ChatCompletionRequestMessage::System(ref message) => {
+                    // compose new system message content
+                    let content = format!("{original_system_message}\nUse the following pieces of context to answer the user's question.\nIf you don't know the answer, just say that you don't know, don't try to make up an answer.\n----------------\n{context}", original_system_message=message.content().trim(), context=context.trim_end());
+                    // create system message
+                    let system_message = ChatCompletionRequestMessage::new_system_message(
+                        content,
+                        messages[0].name().cloned(),
+                    );
+                    // replace the original system message
+                    messages[0] = system_message;
+                }
+                _ => {
+                    // prepare system message
+                    let content = format!("Use the following pieces of context to answer the user's question.\nIf you don't know the answer, just say that you don't know, don't try to make up an answer.\n----------------\n{}", context.trim_end());
+
+                    // create system message
+                    let system_message = ChatCompletionRequestMessage::new_system_message(
+                        content,
+                        messages[0].name().cloned(),
+                    );
+                    // insert system message
+                    messages.insert(0, system_message);
+                }
+            };
+        }
 
         Ok(())
     }

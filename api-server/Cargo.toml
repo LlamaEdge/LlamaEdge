@@ -4,8 +4,8 @@ resolver = "2"
 
 [workspace.dependencies]
 serde = { version = "1.0", features = ["derive"] }
-endpoints = { path = "endpoints", version = "^0.6" }
-chat-prompts = { path = "chat-prompts", version = "^0.5" }
+endpoints = { path = "endpoints", version = "^0.7" }
+chat-prompts = { path = "chat-prompts", version = "^0.6" }
 thiserror = "1"
 uuid = { version = "1.4", features = ["v4", "fast-rng", "macro-diagnostics"] }
 clap = { version = "4.4.6", features = ["cargo", "derive"] }
