@@ -52,6 +52,10 @@ pub enum PromptTemplateType {
     Phi2Chat,
     #[value(name = "phi-2-instruct")]
     Phi2Instruct,
+    #[value(name = "phi-3-chat")]
+    Phi3Chat,
+    #[value(name = "phi-3-instruct")]
+    Phi3Instruct,
     #[value(name = "gemma-instruct")]
     GemmaInstruct,
     #[value(name = "octopus")]
@@ -72,7 +76,8 @@ impl PromptTemplateType {
             | PromptTemplateType::Zephyr
             | PromptTemplateType::IntelNeural
             | PromptTemplateType::DeepseekCoder
-            | PromptTemplateType::Octopus => true,
+            | PromptTemplateType::Octopus
+            | PromptTemplateType::Phi3Chat => true,
             PromptTemplateType::MistralInstruct
             | PromptTemplateType::MistralLite
             | PromptTemplateType::HumanAssistant
@@ -81,6 +86,7 @@ impl PromptTemplateType {
             | PromptTemplateType::OpenChat
             | PromptTemplateType::Phi2Chat
             | PromptTemplateType::Phi2Instruct
+            | PromptTemplateType::Phi3Instruct
             | PromptTemplateType::SolarInstruct
             | PromptTemplateType::Vicuna11Chat
             | PromptTemplateType::StableLMZephyr => false,
@@ -115,6 +121,8 @@ impl FromStr for PromptTemplateType {
             "solar-instruct" => Ok(PromptTemplateType::SolarInstruct),
             "phi-2-chat" => Ok(PromptTemplateType::Phi2Chat),
             "phi-2-instruct" => Ok(PromptTemplateType::Phi2Instruct),
+            "phi-3-chat" => Ok(PromptTemplateType::Phi3Chat),
+            "phi-3-instruct" => Ok(PromptTemplateType::Phi3Instruct),
             "gemma-instruct" => Ok(PromptTemplateType::GemmaInstruct),
             "octopus" => Ok(PromptTemplateType::Octopus),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
@@ -147,6 +155,8 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::SolarInstruct => write!(f, "solar-instruct"),
             PromptTemplateType::Phi2Chat => write!(f, "phi-2-chat"),
             PromptTemplateType::Phi2Instruct => write!(f, "phi-2-instruct"),
+            PromptTemplateType::Phi3Chat => write!(f, "phi-3-chat"),
+            PromptTemplateType::Phi3Instruct => write!(f, "phi-3-instruct"),
             PromptTemplateType::CodeLlamaSuper => write!(f, "codellama-super-instruct"),
             PromptTemplateType::GemmaInstruct => write!(f, "gemma-instruct"),
             PromptTemplateType::Octopus => write!(f, "octopus"),
