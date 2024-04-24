@@ -1053,6 +1053,20 @@ fn post_process(
         } else {
             s.to_owned()
         }
+    } else if *template_ty == PromptTemplateType::Llama2Chat {
+        let s = output.as_ref().trim();
+        if s.ends_with("</s>") {
+            s.trim_end_matches("</s>").trim().to_owned()
+        } else {
+            s.to_owned()
+        }
+    } else if *template_ty == PromptTemplateType::Llama3Chat {
+        let s = output.as_ref().trim();
+        if s.ends_with("<|eot_id|>") {
+            s.trim_end_matches("<|eot_id|>").trim().to_owned()
+        } else {
+            s.to_owned()
+        }
     } else {
         output.as_ref().trim().to_owned()
     };
