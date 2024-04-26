@@ -1067,6 +1067,13 @@ fn post_process(
         } else {
             s.to_owned()
         }
+    } else if *template_ty == PromptTemplateType::Phi3Chat {
+        let s = output.as_ref().trim();
+        if s.ends_with("<|end|>") {
+            s.trim_end_matches("<|end|>").trim().to_owned()
+        } else {
+            s.to_owned()
+        }
     } else {
         output.as_ref().trim().to_owned()
     };
