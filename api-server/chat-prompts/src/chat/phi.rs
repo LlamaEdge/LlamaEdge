@@ -253,7 +253,7 @@ impl BuildChatPrompt for Phi3ChatPrompt {
         // system prompt
         let system_prompt = match messages[0] {
             ChatCompletionRequestMessage::System(ref message) => self.create_system_prompt(message),
-            _ => String::from("<|system|>\nYou are a friendly chatbot.</s>"),
+            _ => String::from("<|system|>\nYou are a friendly chatbot.<|end|>"),
         };
 
         // append user/assistant messages
