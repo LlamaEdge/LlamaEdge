@@ -3,7 +3,7 @@
 use crate::{embeddings::embeddings, error::LlamaCoreError};
 use endpoints::{
     embeddings::{EmbeddingObject, EmbeddingsResponse},
-    rag::RagEmbeddingRequest,
+    rag::{RagEmbeddingRequest, RagScoredPoint, RetrieveObject},
 };
 use qdrant::*;
 use text_splitter::{MarkdownSplitter, TextSplitter};
@@ -87,12 +87,12 @@ pub async fn rag_retrieve_context(
     qdrant_collection_name: impl AsRef<str>,
     limit: usize,
     score_threshold: Option<f32>,
-) -> Result<Vec<ScoredPoint>, LlamaCoreError> {
+) -> Result<RetrieveObject, LlamaCoreError> {
     // create a Qdrant client
     let qdrant_client = qdrant::Qdrant::new_with_url(qdrant_url.as_ref().to_string());
 
     // search for similar points
-    let search_result = qdrant_search_similar_points(
+    let scored_points = qdrant_search_similar_points(
         &qdrant_client,
         qdrant_collection_name.as_ref(),
         query_embedding,
@@ -102,7 +102,33 @@ pub async fn rag_retrieve_context(
     .await
     .map_err(LlamaCoreError::Operation)?;
 
-    Ok(search_result)
+    let ro = match scored_points.is_empty() {
+        true => RetrieveObject {
+            points: None,
+            limit,
+            score_threshold: score_threshold.unwrap_or(0.0),
+        },
+        false => {
+            let mut points: Vec<RagScoredPoint> = vec![];
+            for point in scored_points.iter() {
+                if let Some(payload) = &point.payload {
+                    if let Some(source) = payload.get("source") {
+                        points.push(RagScoredPoint {
+                            source: source.to_string(),
+                            score: point.score,
+                        })
+                    }
+                }
+            }
+            RetrieveObject {
+                points: Some(points),
+                limit,
+                score_threshold: score_threshold.unwrap_or(0.0),
+            }
+        }
+    };
+
+    Ok(ro)
 }
 
 async fn qdrant_create_collection(
@@ -180,9 +206,6 @@ async fn qdrant_search_similar_points(
         Err(err) => Err(err.to_string()),
     }
 }
-
-/// Type alias for `qdrant::ScoredPoint`
-pub type ScoredPoint = qdrant::ScoredPoint;
 
 /// Generate a list of chunks from a given text. Each chunk will be up to the `chunk_capacity`.
 ///
