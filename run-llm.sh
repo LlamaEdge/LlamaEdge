@@ -259,7 +259,7 @@ if [ -n "$model" ]; then
     printf "[+] Install WasmEdge with wasi-nn_ggml plugin ...\n\n"
 
     if [ "$ggml_version" = "latest" ]; then
-        if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- -v 0.13.5 --plugins wasi_nn-ggml wasmedge_rustls; then
+        if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v 0.13.5 --rustls; then
             source $HOME/.wasmedge/env
             wasmedge_path=$(which wasmedge)
             printf "\n    The WasmEdge Runtime is installed in %s.\n\n" "$wasmedge_path"
@@ -322,7 +322,7 @@ elif [ "$interactive" -eq 0 ]; then
     printf "[+] Installing WasmEdge with wasi-nn_ggml plugin ...\n\n"
 
     if [ "$ggml_version" = "latest" ]; then
-        if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- -v 0.13.5 --plugins wasi_nn-ggml wasmedge_rustls; then
+        if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v 0.13.5 --rustls; then
             source $HOME/.wasmedge/env
             wasmedge_path=$(which wasmedge)
             printf "\n    The WasmEdge Runtime is installed in %s.\n\n" "$wasmedge_path"
@@ -429,7 +429,7 @@ elif [ "$interactive" -eq 1 ]; then
     if [[ "$reinstall_wasmedge" == "1" ]]; then
         # install WasmEdge + wasi-nn_ggml plugin
         if [ "$ggml_version" = "latest" ]; then
-            if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- -v 0.13.5 --plugins wasi_nn-ggml wasmedge_rustls; then
+            if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v 0.13.5 --rustls; then
                 source $HOME/.wasmedge/env
                 wasmedge_path=$(which wasmedge)
                 printf "\n    The WasmEdge Runtime is installed in %s.\n\n" "$wasmedge_path"
