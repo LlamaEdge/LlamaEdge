@@ -166,12 +166,26 @@ impl std::fmt::Display for PromptTemplateType {
 
 /// Trait for merging RAG context into chat messages
 pub trait MergeRagContext: Send {
+    /// Merge RAG context into chat messages.
+    ///
+    /// Note that the default implementation simply merges the RAG context into the system message. That is, to use the default implementation, `has_system_prompt` should be set to `true` and `policy` set to `MergeRagContextPolicy::SystemMessage`.
+    ///
+    /// # Arguments
+    ///
+    /// * `messages` - The chat messages to merge the context into.
+    ///
+    /// * `context` - The RAG context to merge into the chat messages.
+    ///
+    /// * `has_system_prompt` - Whether the chat template has a system prompt.
+    ///
+    /// * `policy` - The policy for merging RAG context into chat messages.
     fn build(
         messages: &mut Vec<endpoints::chat::ChatCompletionRequestMessage>,
         context: &[String],
         has_system_prompt: bool,
+        policy: MergeRagContextPolicy,
     ) -> error::Result<()> {
-        if has_system_prompt {
+        if (policy == MergeRagContextPolicy::SystemMessage) && has_system_prompt {
             if messages.is_empty() {
                 return Err(error::PromptError::NoMessages);
             }
@@ -213,5 +227,25 @@ pub trait MergeRagContext: Send {
         }
 
         Ok(())
+    }
+}
+
+/// Define the strategy for merging RAG context into chat messages.
+#[derive(Clone, Debug, Copy, Default, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
+pub enum MergeRagContextPolicy {
+    /// Merge RAG context into the system message.
+    ///
+    /// Note that this policy is only applicable when the chat template has a system message.
+    #[default]
+    SystemMessage,
+    /// Merge RAG context into the last user message.
+    LastUserMessage,
+}
+impl std::fmt::Display for MergeRagContextPolicy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MergeRagContextPolicy::SystemMessage => write!(f, "system-message"),
+            MergeRagContextPolicy::LastUserMessage => write!(f, "last-user-message"),
+        }
     }
 }
