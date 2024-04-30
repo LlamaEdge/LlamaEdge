@@ -4,7 +4,7 @@ version = "0.8.6"
 edition = "2021"
 
 [dependencies]
-chat-prompts = { path = "../api-server/chat-prompts", version = "^0.6" }
+chat-prompts = { path = "../api-server/chat-prompts", version = "^0.7" }
 endpoints = { path = "../api-server/endpoints", version = "^0.7" }
 wasmedge-wasi-nn = "0.7.0"
 clap = { version = "4.4.6", features = ["cargo"] }
