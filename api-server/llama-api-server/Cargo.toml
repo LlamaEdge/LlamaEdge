@@ -11,8 +11,8 @@ serde_json = "1.0"
 endpoints.workspace = true
 chat-prompts.workspace = true
 serde_yaml = "0.9"
-hyper_wasi = { version = "0.15", features = ["full"] }
-tokio_wasi = { version = "1", features = ["full"] }
+hyper = { version = "0.14", features = ["full"] }
+tokio = { version = "^1.36", features = ["io-util", "fs", "net", "time", "rt", "macros"] }
 thiserror.workspace = true
 uuid.workspace = true
 clap.workspace = true
@@ -24,5 +24,3 @@ multipart-2021 = "0.19.0"
 
 [features]
 default = []
-full = ["https"]
-https = ["llama-core/https"]
