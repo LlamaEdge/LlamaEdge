@@ -13,15 +13,12 @@ use chat_prompts::{
     chat::{BuildChatPrompt, ChatPrompt},
     PromptTemplateType,
 };
-#[cfg(feature = "https")]
-use endpoints::chat::{
-    ChatCompletionRequestMessage, ChatCompletionUserMessageContent, ContentPart,
-};
 use endpoints::{
     chat::{
         ChatCompletionChunk, ChatCompletionChunkChoice, ChatCompletionChunkChoiceDelta,
         ChatCompletionObject, ChatCompletionObjectChoice, ChatCompletionObjectMessage,
-        ChatCompletionRequest, ChatCompletionRole,
+        ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRole,
+        ChatCompletionUserMessageContent, ContentPart,
     },
     common::{FinishReason, Usage},
 };
@@ -835,7 +832,6 @@ async fn update_metadata(chat_request: &ChatCompletionRequest) -> Result<Metadat
     let mut metadata = get_metadata(chat_request.model.as_ref())?;
 
     // check if necessary to update `image`
-    #[cfg(feature = "https")]
     if let Some(ChatCompletionRequestMessage::User(user_message)) = chat_request.messages.last() {
         if let ChatCompletionUserMessageContent::Parts(parts) = user_message.content() {
             for part in parts {
@@ -1157,7 +1153,6 @@ fn build_prompt(
 }
 
 /// Downloads an image from the given URL and returns the file name.
-#[cfg(feature = "https")]
 async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> {
     let image_url = image_url.as_ref();
     let url =
