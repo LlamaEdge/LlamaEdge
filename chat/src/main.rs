@@ -1,408 +1,210 @@
-mod error;
-
-use chat_prompts::{
-    chat::{BuildChatPrompt, ChatPrompt},
-    PromptTemplateType,
-};
-use clap::{crate_version, Arg, ArgAction, Command};
+use anyhow::bail;
+use chat_prompts::PromptTemplateType;
+use clap::Parser;
 use endpoints::chat::{
-    ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRole,
-    ChatCompletionUserMessageContent,
+    ChatCompletionChunk, ChatCompletionRequestBuilder, ChatCompletionRequestMessage,
+    ChatCompletionRequestSampling, ChatCompletionUserMessageContent,
 };
-use error::ChatError;
-use once_cell::sync::OnceCell;
+use futures::TryStreamExt;
+use llama_core::{init_core_context, MetadataBuilder};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::{io::Write, str::FromStr};
+use std::io::{self, Write};
 
-static MAX_BUFFER_SIZE: OnceCell<usize> = OnceCell::new();
+#[derive(Debug, Parser)]
+#[command(author, about, version, long_about=None)]
+struct Cli {
+    /// Model name
+    #[arg(short, long, default_value = "default")]
+    model_name: String,
+    /// Model alias
+    #[arg(short = 'a', long, default_value = "default")]
+    model_alias: String,
+    /// Size of the prompt context
+    #[arg(short, long, default_value = "512")]
+    ctx_size: u64,
+    /// Number of tokens to predict
+    #[arg(short, long, default_value = "1024")]
+    n_predict: u64,
+    /// Number of layers to run on the GPU
+    #[arg(short = 'g', long, default_value = "100")]
+    n_gpu_layers: u64,
+    /// Batch size for prompt processing
+    #[arg(short, long, default_value = "512")]
+    batch_size: u64,
+    /// Temperature for sampling
+    #[arg(long, conflicts_with = "top_p")]
+    temp: Option<f64>,
+    /// An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. 1.0 = disabled
+    #[arg(long, conflicts_with = "temp")]
+    top_p: Option<f64>,
+    /// Penalize repeat sequence of tokens
+    #[arg(long, default_value = "1.1")]
+    repeat_penalty: f64,
+    /// Repeat alpha presence penalty. 0.0 = disabled
+    #[arg(long, default_value = "0.0")]
+    presence_penalty: f64,
+    /// Repeat alpha frequency penalty. 0.0 = disabled
+    #[arg(long, default_value = "0.0")]
+    frequency_penalty: f64,
+    /// Sets the prompt template.
+    #[arg(short, long, value_parser = clap::value_parser!(PromptTemplateType), required = true)]
+    prompt_template: PromptTemplateType,
+    /// Halt generation at PROMPT, return control.
+    #[arg(short, long)]
+    reverse_prompt: Option<String>,
+    /// System prompt message string.
+    #[arg(long)]
+    system_prompt: Option<String>,
+    /// Print prompt strings to stdout
+    #[arg(long)]
+    log_prompts: bool,
+    /// Print statistics to stdout
+    #[arg(long)]
+    log_stat: bool,
+    /// Print all log information to stdout
+    #[arg(long)]
+    log_all: bool,
+    /// enable streaming stdout
+    #[arg(long, default_value = "false")]
+    disable_stream: bool,
+}
 
 #[allow(unreachable_code)]
-fn main() -> Result<(), String> {
-    let matches = Command::new("llama-chat")
-        .version(crate_version!())
-        .arg(
-            Arg::new("model_alias")
-                .short('a')
-                .long("model-alias")
-                .value_name("ALIAS")
-                .help("Model alias")
-                .default_value("default"),
-        )
-        .arg(
-            Arg::new("ctx_size")
-                .short('c')
-                .long("ctx-size")
-                .value_parser(clap::value_parser!(u64))
-                .value_name("CTX_SIZE")
-                .help("Size of the prompt context")
-                .default_value("512"),
-        )
-        .arg(
-            Arg::new("n_predict")
-                .short('n')
-                .long("n-predict")
-                .value_parser(clap::value_parser!(u64))
-                .value_name("N_PRDICT")
-                .help("Number of tokens to predict")
-                .default_value("1024"),
-        )
-        .arg(
-            Arg::new("n_gpu_layers")
-                .short('g')
-                .long("n-gpu-layers")
-                .value_parser(clap::value_parser!(u64))
-                .value_name("N_GPU_LAYERS")
-                .help("Number of layers to run on the GPU")
-                .default_value("100"),
-        )
-        .arg(
-            Arg::new("batch_size")
-                .short('b')
-                .long("batch-size")
-                .value_parser(clap::value_parser!(u64))
-                .value_name("BATCH_SIZE")
-                .help("Batch size for prompt processing")
-                .default_value("512"),
-        )
-        .arg(
-            Arg::new("temp")
-                .long("temp")
-                .value_parser(clap::value_parser!(f64))
-                .value_name("TEMP")
-                .help("Temperature for sampling")
-                .default_value("0.8"),
-        )
-        .arg(
-            Arg::new("top_p")
-                .long("top-p")
-                .value_parser(clap::value_parser!(f64))
-                .value_name("TOP_P")
-                .help("An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. 1.0 = disabled.")
-                .default_value("0.9"),
-        )
-        .arg(
-            Arg::new("repeat_penalty")
-                .long("repeat-penalty")
-                .value_parser(clap::value_parser!(f64))
-                .value_name("REPEAT_PENALTY")
-                .help("Penalize repeat sequence of tokens")
-                .default_value("1.1"),
-        )
-        .arg(
-            Arg::new("presence_penalty")
-                .long("presence-penalty")
-                .value_parser(clap::value_parser!(f64))
-                .value_name("PRESENCE_PENALTY")
-                .help("Repeat alpha presence penalty. 0.0 = disabled.")
-                .default_value("0.0"),
-        )
-        .arg(
-            Arg::new("frequency_penalty")
-                .long("frequency-penalty")
-                .value_parser(clap::value_parser!(f64))
-                .value_name("FREQUENCY_PENALTY")
-                .help("Repeat alpha frequency penalty. 0.0 = disabled")
-                .default_value("0.0"),
-        )
-        .arg(
-            Arg::new("reverse_prompt")
-                .short('r')
-                .long("reverse-prompt")
-                .value_name("REVERSE_PROMPT")
-                .help("Halt generation at PROMPT, return control."),
-        )
-        .arg(
-            Arg::new("system_prompt")
-                .short('s')
-                .long("system-prompt")
-                .value_name("SYSTEM_PROMPT")
-                .help("System prompt message string")
-                .default_value("[Default system message for the prompt template]"),
-        )
-        .arg(
-            Arg::new("prompt_template")
-                .short('p')
-                .long("prompt-template")
-                .value_parser([
-                    "llama-2-chat",
-                    "llama-3-chat",
-                    "codellama-instruct",
-                    "codellama-super-instruct",
-                    "mistral-instruct",
-                    "mistrallite",
-                    "openchat",
-                    "human-assistant",
-                    "vicuna-1.0-chat",
-                    "vicuna-1.1-chat",
-                    "chatml",
-                    "baichuan-2",
-                    "wizard-coder",
-                    "zephyr",
-                    "stablelm-zephyr",
-                    "intel-neural",
-                    "deepseek-chat",
-                    "deepseek-coder",
-                    "solar-instruct",
-                    "phi-2-instruct",
-                    "phi-3-chat",
-                    "phi-3-instruct",
-                    "gemma-instruct",
-                ])
-                .value_name("TEMPLATE")
-                .help("Prompt template.")
-                .default_value("llama-2-chat"),
-        )
-        .arg(
-            Arg::new("log_prompts")
-                .long("log-prompts")
-                .value_name("LOG_PROMPTS")
-                .help("Print prompt strings to stdout")
-                .action(ArgAction::SetTrue),
-        )
-        .arg(
-            Arg::new("log_stat")
-                .long("log-stat")
-                .value_name("LOG_STAT")
-                .help("Print statistics to stdout")
-                .action(ArgAction::SetTrue),
-        )
-        .arg(
-            Arg::new("log_all")
-                .long("log-all")
-                .value_name("LOG_all")
-                .help("Print all log information to stdout")
-                .action(ArgAction::SetTrue),
-        )
-        .after_help("Example: the command to run `llama-2-7B` model,\n  wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf llama-chat.wasm -p llama-2-chat\n")
-        .get_matches();
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> anyhow::Result<()> {
+    let cli = Cli::parse();
 
-    // create an `Metadata` instance
-    let mut options = Metadata::default();
+    // log version
+    log(format!(
+        "\n[INFO] llama-chat version: {}",
+        env!("CARGO_PKG_VERSION")
+    ));
 
-    // model alias
-    let model_name = matches
-        .get_one::<String>("model_alias")
-        .ok_or(String::from(
-            "Fail to parse the `model_alias` option from the command line.",
-        ))?;
-    println!("[INFO] Model alias: {alias}", alias = model_name);
-
-    // prompt context size
-    let ctx_size = matches.get_one::<u64>("ctx_size").ok_or(String::from(
-        "Fail to parse the `ctx_size` option from the command line.",
-    ))?;
-    println!("[INFO] Prompt context size: {size}", size = ctx_size);
-    options.ctx_size = *ctx_size;
-
-    // max buffer size
-    if MAX_BUFFER_SIZE.set(*ctx_size as usize).is_err() {
-        return Err(String::from(
-            "Fail to set `MAX_BUFFER_SIZE`. It is already set.",
-        ));
+    // log the cli options
+    log(format!("[INFO] Model name: {}", &cli.model_name));
+    log(format!("[INFO] Model alias: {}", &cli.model_alias));
+    log(format!("[INFO] Prompt template: {}", &cli.prompt_template));
+    // ctx size
+    log(format!("[INFO] Context size: {}", &cli.ctx_size));
+    // reverse prompt
+    if let Some(reverse_prompt) = &cli.reverse_prompt {
+        log(format!("[INFO] reverse prompt: {}", reverse_prompt));
     }
-
-    // number of tokens to predict
-    let n_predict = matches.get_one::<u64>("n_predict").ok_or(String::from(
-        "Fail to parse the `n_predict` option from the command line.",
-    ))?;
-    println!("[INFO] Number of tokens to predict: {n}", n = n_predict);
-    options.n_predict = *n_predict;
-
-    // n_gpu_layers
-    let n_gpu_layers = matches.get_one::<u64>("n_gpu_layers").ok_or(String::from(
-        "Fail to parse the `n_gpu_layers` option from the command line.",
-    ))?;
-    println!(
-        "[INFO] Number of layers to run on the GPU: {n}",
-        n = n_gpu_layers
-    );
-    options.n_gpu_layers = *n_gpu_layers;
-
-    // batch size
-    let batch_size = matches.get_one::<u64>("batch_size").ok_or(String::from(
-        "Fail to parse the `batch_size` option from the command line.",
-    ))?;
-    println!(
-        "[INFO] Batch size for prompt processing: {size}",
-        size = batch_size
-    );
-    options.batch_size = *batch_size;
-
-    // temperature
-    let temp = matches.get_one::<f64>("temp").ok_or(String::from(
-        "Fail to parse the `temp` option from the command line.",
-    ))?;
-    println!("[INFO] Temperature for sampling: {temp}", temp = temp);
-    options.temperature = *temp;
-
-    // top-p
-    let top_p = matches.get_one::<f64>("top_p").unwrap();
-    println!(
-        "[INFO] Top-p sampling (1.0 = disabled): {top_p}",
-        top_p = top_p
-    );
-
-    // repeat penalty
-    let repeat_penalty = matches
-        .get_one::<f64>("repeat_penalty")
-        .ok_or(String::from(
-            "Fail to parse the `repeat_penalty` option from the command line.",
-        ))?;
-    println!(
-        "[INFO] Penalize repeat sequence of tokens: {penalty}",
-        penalty = repeat_penalty
-    );
-    options.repeat_penalty = *repeat_penalty;
-
-    // presence penalty
-    let presence_penalty = matches
-        .get_one::<f64>("presence_penalty")
-        .ok_or(String::from(
-            "Fail to parse the `presence_penalty` option from the command line.",
-        ))?;
-    println!(
-        "[INFO] presence penalty (0.0 = disabled): {penalty}",
-        penalty = presence_penalty
-    );
-    options.presence_penalty = *presence_penalty;
-
-    // frequency penalty
-    let frequency_penalty = matches
-        .get_one::<f64>("frequency_penalty")
-        .ok_or(String::from(
-            "Fail to parse the `presence_penalty` option from the command line.",
-        ))?;
-    println!(
-        "[INFO] frequency penalty (0.0 = disabled): {penalty}",
-        penalty = frequency_penalty
-    );
-    options.frequency_penalty = *frequency_penalty;
-
-    // reverse_prompt
-    if let Some(reverse_prompt) = matches.get_one::<String>("reverse_prompt") {
-        println!("[INFO] Reverse prompt: {prompt}", prompt = &reverse_prompt);
-        options.reverse_prompt = Some(reverse_prompt.to_string());
-    }
-
     // system prompt
-    let system_prompt = matches
-        .get_one::<String>("system_prompt")
-        .ok_or(String::from(
-            "Fail to parse the `system_prompt` option from the command line.",
-        ))?;
-    let system_prompt = match system_prompt == "[Default system message for the prompt template]" {
-        true => {
-            println!("[INFO] Use default system prompt");
-            String::new()
-        }
-        false => {
-            println!(
-                "[INFO] Use custom system prompt: {prompt}",
-                prompt = system_prompt
-            );
-            system_prompt.to_string()
-        }
+    if let Some(system_prompt) = &cli.system_prompt {
+        log(format!("[INFO] system prompt: {}", system_prompt));
+    }
+    // n_predict
+    log(format!(
+        "[INFO] Number of tokens to predict: {}",
+        &cli.n_predict
+    ));
+    // n_gpu_layers
+    log(format!(
+        "[INFO] Number of layers to run on the GPU: {}",
+        &cli.n_gpu_layers
+    ));
+    // batch size
+    log(format!(
+        "[INFO] Batch size for prompt processing: {}",
+        &cli.batch_size
+    ));
+    // temp and top_p
+    if cli.temp.is_none() && cli.top_p.is_none() {
+        let temp = 1.0;
+        log(format!("[INFO] Temperature for sampling: {}", temp));
+    } else if let Some(temp) = cli.temp {
+        log(format!("[INFO] Temperature for sampling: {}", temp));
+    } else if let Some(top_p) = cli.top_p {
+        log(format!("[INFO] Top-p sampling (1.0 = disabled): {}", top_p));
+    }
+    // repeat penalty
+    log(format!(
+        "[INFO] Penalize repeat sequence of tokens: {}",
+        &cli.repeat_penalty
+    ));
+    // presence penalty
+    log(format!(
+        "[INFO] Presence penalty (0.0 = disabled): {}",
+        &cli.presence_penalty
+    ));
+    // frequency penalty
+    log(format!(
+        "[INFO] Frequency penalty (0.0 = disabled): {}",
+        &cli.frequency_penalty
+    ));
+    // log prompts
+    log(format!("[INFO] Enable prompt log: {}", &cli.log_prompts));
+    // log statistics
+    log(format!("[INFO] Enable plugin log: {}", &cli.log_stat));
+
+    // create a MetadataBuilder instance
+    let builder = MetadataBuilder::new(&cli.model_name, &cli.model_alias, cli.prompt_template)
+        .with_ctx_size(cli.ctx_size)
+        .with_n_predict(cli.n_predict)
+        .with_n_gpu_layers(cli.n_gpu_layers)
+        .with_batch_size(cli.batch_size)
+        .with_repeat_penalty(cli.repeat_penalty)
+        .with_presence_penalty(cli.presence_penalty)
+        .with_frequency_penalty(cli.frequency_penalty)
+        .with_reverse_prompt(cli.reverse_prompt)
+        .enable_prompts_log(cli.log_prompts || cli.log_all)
+        .enable_plugin_log(cli.log_stat || cli.log_all);
+    // temp and top_p
+    let builder = if cli.temp.is_none() && cli.top_p.is_none() {
+        let temp = 1.0;
+        log(format!("[INFO] Temperature for sampling: {}", temp));
+        builder.with_temperature(temp)
+    } else if let Some(temp) = cli.temp {
+        log(format!("[INFO] Temperature for sampling: {}", temp));
+        builder.with_temperature(temp)
+    } else if let Some(top_p) = cli.top_p {
+        log(format!("[INFO] Top-p sampling (1.0 = disabled): {}", top_p));
+        builder.with_top_p(top_p)
+    } else {
+        let temp = cli.temp.unwrap();
+        log(format!("[INFO] Temperature for sampling: {}", temp));
+        builder.with_temperature(temp)
+    };
+    // create a Metadata instance
+    let metadata = builder.build();
+
+    // initialize the core context
+    init_core_context(&[metadata])?;
+
+    // get the plugin version info
+    let plugin_info = llama_core::get_plugin_info()?;
+    log(format!(
+        "[INFO] Wasi-nn-ggml plugin: b{build_number} (commit {commit_id})",
+        build_number = plugin_info.build_number,
+        commit_id = plugin_info.commit_id,
+    ));
+
+    // create a ChatCompletionRequestSampling instance
+    let sampling = if cli.temp.is_none() && cli.top_p.is_none() {
+        ChatCompletionRequestSampling::Temperature(1.0)
+    } else if let Some(temp) = cli.temp {
+        ChatCompletionRequestSampling::Temperature(temp)
+    } else if let Some(top_p) = cli.top_p {
+        ChatCompletionRequestSampling::TopP(top_p)
+    } else {
+        let temp = cli.temp.unwrap();
+        ChatCompletionRequestSampling::Temperature(temp)
     };
 
-    // type of prompt template
-    let prompt_template = matches
-        .get_one::<String>("prompt_template")
-        .ok_or(String::from(
-            "Fail to parse the `prompt_template` option from the command line.",
-        ))?;
+    // create a chat request
+    let mut chat_request = ChatCompletionRequestBuilder::new(&cli.model_name, vec![])
+        .with_presence_penalty(cli.presence_penalty)
+        .with_frequency_penalty(cli.frequency_penalty)
+        .with_sampling(sampling)
+        .with_stream(!cli.disable_stream)
+        .build();
 
-    let template_ty = PromptTemplateType::from_str(prompt_template)
-        .map_err(|e| format!("Fail to parse prompt template type: {msg}", msg = e))?;
-    println!("[INFO] Prompt template: {ty:?}", ty = &template_ty);
-
-    // log prompts
-    let log_prompts = matches.get_flag("log_prompts");
-    println!("[INFO] Log prompts: {enable}", enable = log_prompts);
-
-    // log statistics
-    let log_stat = matches.get_flag("log_stat");
-    println!("[INFO] Log statistics: {enable}", enable = log_stat);
-
-    // log all
-    let log_all = matches.get_flag("log_all");
-    println!("[INFO] Log all information: {enable}", enable = log_all);
-
-    // set `log_enable`
-    if log_stat || log_all {
-        options.log_enable = true;
-    }
-
-    let template = create_prompt_template(template_ty);
-    let mut chat_request = ChatCompletionRequest::default();
-    // put system_prompt into the `messages` of chat_request
-    if !system_prompt.is_empty() {
+    // add system message if provided
+    if let Some(system_prompt) = &cli.system_prompt {
         let system_message = ChatCompletionRequestMessage::new_system_message(system_prompt, None);
 
         chat_request.messages.push(system_message);
-    }
-
-    // serialize metadata
-    let metadata = match serde_json::to_string(&options) {
-        Ok(metadata) => metadata,
-        Err(e) => return Err(format!("Fail to serialize options: {msg}", msg = e)),
-    };
-
-    if log_stat || log_all {
-        print_log_begin_separator(
-            "MODEL INFO (Load Model & Init Execution Context)",
-            Some("*"),
-            None,
-        );
-    }
-
-    // load the model into wasi-nn
-    let graph = match wasmedge_wasi_nn::GraphBuilder::new(
-        wasmedge_wasi_nn::GraphEncoding::Ggml,
-        wasmedge_wasi_nn::ExecutionTarget::AUTO,
-    )
-    .config(metadata)
-    .build_from_cache(model_name.as_ref())
-    {
-        Ok(graph) => graph,
-        Err(e) => return Err(format!("Fail to load model into wasi-nn: {msg}", msg = e)),
-    };
-
-    // initialize the execution context
-    let mut context = match graph.init_execution_context() {
-        Ok(context) => context,
-        Err(e) => {
-            return Err(format!(
-                "Fail to create wasi-nn execution context: {msg}",
-                msg = e
-            ))
-        }
-    };
-
-    // get version info
-    let max_output_size = *MAX_BUFFER_SIZE
-        .get()
-        .ok_or("Fail to get the underlying value of `MAX_BUFFER_SIZE`.".to_string())?;
-    let mut output_buffer = vec![0u8; max_output_size];
-    let mut output_size = context
-        .get_output(1, &mut output_buffer)
-        .map_err(|e| e.to_string())?;
-    output_size = std::cmp::min(max_output_size, output_size);
-    let metadata: serde_json::Value =
-        serde_json::from_slice(&output_buffer[..output_size]).map_err(|e| e.to_string())?;
-    let plugin_build_number = metadata["llama_build_number"]
-        .as_u64()
-        .ok_or("Failed to convert the `llama_build_number` of the metadata to u64.".to_string())?;
-    let plugin_commit = metadata["llama_commit"].as_str().ok_or(String::from(
-        "Fail to convert the `llama_commit` of the metadata to string.",
-    ))?;
-    println!(
-        "[INFO] Plugin version: b{} (commit {})",
-        plugin_build_number, plugin_commit,
-    );
-
-    if log_stat || log_all {
-        print_log_end_separator(Some("*"), None);
     }
 
     let readme = "
@@ -410,8 +212,7 @@ fn main() -> Result<(), String> {
     - Press [Ctrl+C] to interject at any time.
     - Press [Return] to end the input.
     - For multi-line inputs, end each line with '\\' and press [Return] to get another line.\n";
-
-    println!("{}", readme);
+    log(readme);
 
     loop {
         println!("\n[You]: ");
@@ -425,137 +226,60 @@ fn main() -> Result<(), String> {
 
         chat_request.messages.push(user_message);
 
-        if log_stat || log_all {
+        if cli.log_stat || cli.log_all {
             print_log_begin_separator("STATISTICS (Set Input)", Some("*"), None);
         }
 
-        // build prompt
-        let max_prompt_tokens = *ctx_size * 4 / 5;
-        let prompt = match build_prompt(
-            &template,
-            &mut chat_request,
-            &mut context,
-            max_prompt_tokens,
-        ) {
-            Ok(prompt) => prompt,
-            Err(e) => return Err(format!("Fail to generate prompt. Reason: {msg}", msg = e)),
-        };
-
-        if log_stat || log_all {
-            print_log_end_separator(Some("*"), None);
-        }
-
-        if log_prompts || log_all {
-            print_log_begin_separator("PROMPT", Some("*"), None);
-            println!("{}", &prompt);
+        if cli.log_stat || cli.log_all {
             print_log_end_separator(Some("*"), None);
         }
 
         println!("\n[Bot]:");
-
-        if log_stat || log_all {
-            print_log_begin_separator("STATISTICS (Compute)", Some("*"), None);
-        }
-
-        let start_time = std::time::Instant::now();
-
-        // compute
-        let result = match options.reverse_prompt {
-            Some(ref reverse_prompt) => stream_compute(&mut context, Some(reverse_prompt.as_str())),
-            None => stream_compute(&mut context, None),
-        };
-
-        let elapsed = start_time.elapsed();
-
-        if log_stat || log_all {
-            print_log_end_separator(Some("*"), None);
-        }
-
-        match result {
-            Ok(completion_message) => {
-                let token_info = get_token_info(&context)?;
-
-                if log_prompts || log_stat || log_all {
-                    print_log_begin_separator("STATISTICS", Some("*"), None);
-
-                    println!("\nPrompt tokens: {}", token_info.input_tokens);
-                    println!("\n*** Completion tokens: {}", token_info.output_tokens);
-                    println!(
-                        "\nTotal tokens: {}",
-                        token_info.input_tokens + token_info.output_tokens
-                    );
-                    println!("\nElapsed time: {:?}", elapsed);
-                    println!(
-                        "\nTokens per second (tps): {}. Note that the tps data is computed in the streaming mode. For more accurate tps data, please compute it in the non-streaming mode.",
-                        token_info.output_tokens as f64 / elapsed.as_secs_f64()
-                    );
-
-                    print_log_end_separator(Some("*"), None);
-                }
-
-                let processed_completion_message = post_process(&completion_message, template_ty);
-
-                let assistant_message = ChatCompletionRequestMessage::new_assistant_message(
-                    Some(processed_completion_message),
-                    None,
-                    None,
-                );
-
-                // put the assistant message into the message sequence of chat_request
-                chat_request.messages.push(assistant_message);
-
-                // this is the required step. Otherwise, will get a cumulative number when retrieve the number of output tokens of each round
-                context.fini_single().map_err(|e| e.to_string())?;
+        let mut assistant_answer = String::new();
+        match chat_request.stream {
+            Some(true) => {
+                match llama_core::chat::chat_completions_stream(&mut chat_request).await {
+                    Ok(mut stream) => {
+                        while let Some(data) = stream.try_next().await? {
+                            if let Some(chunk) = parse_sse_event(&data) {
+                                if let Some(content) = &chunk.choices[0].delta.content {
+                                    if content.is_empty() {
+                                        continue;
+                                    }
+                                    if assistant_answer.is_empty() {
+                                        let content = content.trim_start();
+                                        print!("{}", content);
+                                        assistant_answer.push_str(content);
+                                    } else {
+                                        print!("{content}");
+                                        assistant_answer.push_str(content);
+                                    }
+                                    io::stdout().flush().unwrap();
+                                }
+                            }
+                        }
+                        println!();
+                    }
+                    Err(e) => bail!("Fail to generate completion. Reason: {msg}", msg = e),
+                };
             }
-            Err(ChatError::ContextFull(completion_message)) => {
-                println!(
-                    "\n\n[WARNING] The message is cut off as the max context size is reached. You can try to ask the same question again, or increase the context size via the `--ctx-size` command option."
-                );
-
-                let token_info = get_token_info(&context)?;
-
-                if log_prompts || log_stat || log_all {
-                    print_log_begin_separator("STATISTICS", Some("*"), None);
-
-                    println!("\nPrompt tokens: {}", token_info.input_tokens);
-                    println!("\n*** Completion tokens: {}", token_info.output_tokens);
-                    println!(
-                        "\nTotal tokens: {}",
-                        token_info.input_tokens + token_info.output_tokens
-                    );
-                    println!("\nElapsed time: {:?}", elapsed);
-                    println!(
-                        "\nTokens per second (tps): {}. Note that the tps data is computed in the streaming mode. For more accurate tps data, please compute it in the non-streaming mode.",
-                        token_info.output_tokens as f64 / elapsed.as_secs_f64()
-                    );
-
-                    print_log_end_separator(Some("*"), None);
-                }
-
-                let assistant_message = ChatCompletionRequestMessage::new_assistant_message(
-                    Some(completion_message),
-                    None,
-                    None,
-                );
-
-                // put the assistant message into the message sequence of chat_request
-                chat_request.messages.push(assistant_message);
-
-                // this is the required step. Otherwise, will get a cumulative number when retrieve the number of output tokens of each round
-                context.fini_single().map_err(|e| e.to_string())?;
-            }
-            Err(ChatError::PromptTooLong) => {
-                return Err(
-                    "Prompt is too long. Please reduce the length of the prompt.".to_string(),
-                )
-            }
-            Err(ChatError::Operation(e)) => {
-                return Err(format!(
-                    "Operation error during the chat. Reason: {msg}",
-                    msg = e
-                ))
+            Some(false) | None => {
+                let chat_completion =
+                    match llama_core::chat::chat_completions(&mut chat_request).await {
+                        Ok(completion) => completion.choices[0].message.content.to_owned(),
+                        Err(e) => bail!("Fail to generate completion. Reason: {msg}", msg = e),
+                    };
+                println!("{chat_completion}");
+                assistant_answer = chat_completion;
             }
         }
+
+        let assistant_message = ChatCompletionRequestMessage::new_assistant_message(
+            Some(assistant_answer.trim().to_string()),
+            None,
+            None,
+        );
+        chat_request.messages.push(assistant_message);
     }
 
     Ok(())
@@ -624,299 +348,6 @@ fn print_log_end_separator(ch: Option<&str>, len: Option<usize>) {
     println!("{}", separator);
 }
 
-fn create_prompt_template(template_ty: PromptTemplateType) -> ChatPrompt {
-    match template_ty {
-        PromptTemplateType::Llama2Chat => {
-            ChatPrompt::Llama2ChatPrompt(chat_prompts::chat::llama::Llama2ChatPrompt)
-        }
-        PromptTemplateType::Llama3Chat => {
-            ChatPrompt::Llama3ChatPrompt(chat_prompts::chat::llama::Llama3ChatPrompt)
-        }
-        PromptTemplateType::MistralInstruct => {
-            ChatPrompt::MistralInstructPrompt(chat_prompts::chat::mistral::MistralInstructPrompt)
-        }
-        PromptTemplateType::MistralLite => {
-            ChatPrompt::MistralLitePrompt(chat_prompts::chat::mistral::MistralLitePrompt)
-        }
-        PromptTemplateType::OpenChat => {
-            ChatPrompt::OpenChatPrompt(chat_prompts::chat::openchat::OpenChatPrompt)
-        }
-        PromptTemplateType::CodeLlama => {
-            ChatPrompt::CodeLlamaInstructPrompt(chat_prompts::chat::llama::CodeLlamaInstructPrompt)
-        }
-        PromptTemplateType::CodeLlamaSuper => ChatPrompt::CodeLlamaSuperInstructPrompt(
-            chat_prompts::chat::llama::CodeLlamaSuperInstructPrompt,
-        ),
-        PromptTemplateType::HumanAssistant => ChatPrompt::HumanAssistantChatPrompt(
-            chat_prompts::chat::belle::HumanAssistantChatPrompt,
-        ),
-        PromptTemplateType::VicunaChat => {
-            ChatPrompt::VicunaChatPrompt(chat_prompts::chat::vicuna::VicunaChatPrompt)
-        }
-        PromptTemplateType::Vicuna11Chat => {
-            ChatPrompt::Vicuna11ChatPrompt(chat_prompts::chat::vicuna::Vicuna11ChatPrompt)
-        }
-        PromptTemplateType::VicunaLlava => {
-            ChatPrompt::VicunaLlavaPrompt(chat_prompts::chat::vicuna::VicunaLlavaPrompt)
-        }
-        PromptTemplateType::ChatML => {
-            ChatPrompt::ChatMLPrompt(chat_prompts::chat::chatml::ChatMLPrompt)
-        }
-        PromptTemplateType::Baichuan2 => {
-            ChatPrompt::Baichuan2ChatPrompt(chat_prompts::chat::baichuan::Baichuan2ChatPrompt)
-        }
-        PromptTemplateType::WizardCoder => {
-            ChatPrompt::WizardCoderPrompt(chat_prompts::chat::wizard::WizardCoderPrompt)
-        }
-        PromptTemplateType::Zephyr => {
-            ChatPrompt::ZephyrChatPrompt(chat_prompts::chat::zephyr::ZephyrChatPrompt)
-        }
-        PromptTemplateType::StableLMZephyr => ChatPrompt::StableLMZephyrChatPrompt(
-            chat_prompts::chat::zephyr::StableLMZephyrChatPrompt,
-        ),
-        PromptTemplateType::IntelNeural => {
-            ChatPrompt::NeuralChatPrompt(chat_prompts::chat::intel::NeuralChatPrompt)
-        }
-        PromptTemplateType::DeepseekChat => {
-            ChatPrompt::DeepseekChatPrompt(chat_prompts::chat::deepseek::DeepseekChatPrompt)
-        }
-        PromptTemplateType::DeepseekCoder => {
-            ChatPrompt::DeepseekCoderPrompt(chat_prompts::chat::deepseek::DeepseekCoderPrompt)
-        }
-        PromptTemplateType::SolarInstruct => {
-            ChatPrompt::SolarInstructPrompt(chat_prompts::chat::solar::SolarInstructPrompt)
-        }
-        PromptTemplateType::Phi2Chat => {
-            ChatPrompt::Phi2ChatPrompt(chat_prompts::chat::phi::Phi2ChatPrompt)
-        }
-        PromptTemplateType::Phi2Instruct => {
-            ChatPrompt::Phi2InstructPrompt(chat_prompts::chat::phi::Phi2InstructPrompt)
-        }
-        PromptTemplateType::Phi3Chat => {
-            ChatPrompt::Phi3ChatPrompt(chat_prompts::chat::phi::Phi3ChatPrompt)
-        }
-        PromptTemplateType::Phi3Instruct => {
-            ChatPrompt::Phi3InstructPrompt(chat_prompts::chat::phi::Phi3InstructPrompt)
-        }
-        PromptTemplateType::GemmaInstruct => {
-            ChatPrompt::GemmaInstructPrompt(chat_prompts::chat::gemma::GemmaInstructPrompt)
-        }
-        PromptTemplateType::Octopus => {
-            ChatPrompt::OctopusPrompt(chat_prompts::chat::octopus::OctopusPrompt)
-        }
-    }
-}
-
-fn post_process(output: impl AsRef<str>, template_ty: PromptTemplateType) -> String {
-    if template_ty == PromptTemplateType::Baichuan2 {
-        if output.as_ref().contains("用户:") {
-            output.as_ref().trim_end_matches("用户:").trim().to_owned()
-        } else {
-            output.as_ref().trim().to_owned()
-        }
-    } else if template_ty == PromptTemplateType::OpenChat {
-        if output.as_ref().contains("<|end_of_turn|>") {
-            output
-                .as_ref()
-                .trim_end_matches("<|end_of_turn|>")
-                .trim()
-                .to_owned()
-        } else {
-            output.as_ref().trim().to_owned()
-        }
-    } else if template_ty == PromptTemplateType::ChatML {
-        if output.as_ref().contains("<|im_start|>") && output.as_ref().contains("<|im_end|>") {
-            let idx_start = output.as_ref().find("<|im_start|>").unwrap();
-            let idx_end = output.as_ref().find("<|im_end|>").unwrap();
-
-            match idx_start <= idx_end {
-                true => output.as_ref().split("<|im_start|>").collect::<Vec<_>>()[0]
-                    .trim()
-                    .to_owned(),
-                false => output.as_ref().split("<|im_end|>").collect::<Vec<_>>()[0]
-                    .trim()
-                    .to_owned(),
-            }
-        } else if output.as_ref().contains("<|im_start|>") {
-            output.as_ref().split("<|im_start|>").collect::<Vec<_>>()[0]
-                .trim()
-                .to_owned()
-        } else if output.as_ref().contains("<|im_end|>") {
-            output.as_ref().split("<|im_end|>").collect::<Vec<_>>()[0]
-                .trim()
-                .to_owned()
-        } else {
-            output.as_ref().trim().to_owned()
-        }
-    } else if template_ty == PromptTemplateType::Zephyr
-        || template_ty == PromptTemplateType::MistralLite
-    {
-        if output.as_ref().contains("</s><") {
-            output.as_ref().trim_end_matches("</s><").trim().to_owned()
-        } else if output.as_ref().contains("</s>") {
-            output
-                .as_ref()
-                .strip_suffix("</s>")
-                .unwrap()
-                .trim()
-                .to_owned()
-        } else {
-            output.as_ref().trim().to_owned()
-        }
-    } else if template_ty == PromptTemplateType::DeepseekChat {
-        if output.as_ref().contains("<|end_of_sentence|>") {
-            output
-                .as_ref()
-                .trim_end_matches("<|end_of_sentence|>")
-                .trim()
-                .replace("<|end_of_sentence|>", " ")
-                .trim()
-                .to_owned()
-        } else {
-            output.as_ref().trim().to_owned()
-        }
-    } else if template_ty == PromptTemplateType::HumanAssistant {
-        if output.as_ref().contains("Human:") {
-            output.as_ref().trim_end_matches("Human:").trim().to_owned()
-        } else {
-            output.as_ref().trim().to_owned()
-        }
-    } else {
-        output.as_ref().trim().to_owned()
-    }
-}
-
-fn stream_compute(
-    context: &mut wasmedge_wasi_nn::GraphExecutionContext,
-    stop: Option<&str>,
-) -> Result<String, ChatError> {
-    let mut output = String::new();
-
-    let mut invalid_utf8_vec = vec![];
-
-    // Compute one token at a time, and get the token using the get_output_single().
-    loop {
-        match context.compute_single() {
-            Ok(_) => {
-                // Retrieve the output.
-                let max_output_size = *MAX_BUFFER_SIZE.get().ok_or(ChatError::Operation(
-                    "Failed to get the underlying value of `MAX_BUFFER_SIZE`.".to_string(),
-                ))?;
-                let mut output_buffer = vec![0u8; max_output_size];
-                let mut output_size =
-                    context
-                        .get_output_single(0, &mut output_buffer)
-                        .map_err(|e| {
-                            ChatError::Operation(format!("Failed by `get_output_single`. {}", e))
-                        })?;
-                output_size = std::cmp::min(max_output_size, output_size);
-
-                // decode the output buffer to a utf8 string
-                let token = match String::from_utf8(output_buffer[..output_size].to_vec()) {
-                    Ok(v) => v,
-                    Err(_) => {
-                        invalid_utf8_vec.extend_from_slice(&output_buffer[..output_size]);
-
-                        match String::from_utf8(invalid_utf8_vec.clone()) {
-                            Ok(token) => {
-                                // clear invalid_utf8_vec
-                                invalid_utf8_vec.clear();
-
-                                token
-                            }
-                            Err(_) => {
-                                if invalid_utf8_vec.len() > 3 {
-                                    return Err(ChatError::Operation(String::from(
-                                        "The length of the invalid utf8 bytes exceed 3.",
-                                    )));
-                                }
-
-                                continue;
-                            }
-                        }
-                    }
-                };
-
-                // remove the redundant characters at the beginning of each answer
-                if output.is_empty() && (token == " " || token == "\n") {
-                    continue;
-                }
-
-                // trigger the stop condition
-                if stop.is_some() && stop == Some(token.trim()) {
-                    break;
-                }
-
-                if output.is_empty() && token.starts_with(' ') {
-                    print!("{}", token.trim_start());
-                } else {
-                    print!("{}", token);
-                }
-                std::io::stdout()
-                    .flush()
-                    .map_err(|e| ChatError::Operation(e.to_string()))?;
-
-                output += &token;
-            }
-            Err(wasmedge_wasi_nn::Error::BackendError(
-                wasmedge_wasi_nn::BackendError::EndOfSequence,
-            )) => {
-                // Retrieve the output.
-                let max_output_size = *MAX_BUFFER_SIZE.get().ok_or(ChatError::Operation(
-                    "Failed to get the underlying value of `MAX_BUFFER_SIZE`.".to_string(),
-                ))?;
-                let mut output_buffer = vec![0u8; max_output_size];
-                let mut output_size = context
-                    .get_output_single(0, &mut output_buffer)
-                    .map_err(|e| ChatError::Operation(e.to_string()))?;
-                output_size = std::cmp::min(max_output_size, output_size);
-                let token = String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
-
-                // remove the redundant characters at the beginning of each answer
-                if output.is_empty() && (token == " " || token == "\n") {
-                    continue;
-                }
-
-                // trigger the stop condition
-                if stop.is_some() && stop == Some(token.trim()) {
-                    break;
-                }
-
-                if output.is_empty() && token.starts_with(' ') {
-                    print!("{}", token.trim_start());
-                } else {
-                    print!("{}", token);
-                }
-                std::io::stdout()
-                    .flush()
-                    .map_err(|e| ChatError::Operation(e.to_string()))?;
-
-                output += &token;
-                break;
-            }
-            Err(wasmedge_wasi_nn::Error::BackendError(
-                wasmedge_wasi_nn::BackendError::PromptTooLong,
-            )) => {
-                return Err(ChatError::PromptTooLong);
-            }
-            Err(wasmedge_wasi_nn::Error::BackendError(
-                wasmedge_wasi_nn::BackendError::ContextFull,
-            )) => {
-                return Err(ChatError::ContextFull(output));
-            }
-            Err(err) => {
-                return Err(ChatError::Operation(format!(
-                    "Stream compute error. {}",
-                    err
-                )));
-            }
-        }
-    }
-    println!("\n");
-
-    Ok(output)
-}
-
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct Metadata {
     // * Plugin parameters (used by this plugin):
@@ -962,113 +393,39 @@ pub struct Metadata {
     pub frequency_penalty: f64,
 }
 
-fn build_prompt(
-    template: &ChatPrompt,
-    chat_request: &mut ChatCompletionRequest,
-    context: &mut wasmedge_wasi_nn::GraphExecutionContext,
-    max_prompt_tokens: u64,
-) -> Result<String, String> {
-    loop {
-        // build prompt
-        let prompt = match template.build(&mut chat_request.messages) {
-            Ok(prompt) => prompt,
-            Err(e) => return Err(format!("Fail to build chat prompts: {msg}", msg = e)),
-        };
+fn log(msg: impl std::fmt::Display) {
+    println!("{}", msg);
+}
 
-        // read input tensor
-        let tensor_data = prompt.trim().as_bytes().to_vec();
-        if context
-            .set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data)
-            .is_err()
-        {
-            return Err(String::from("Fail to set input tensor"));
-        };
+fn parse_sse_event(s: &str) -> Option<ChatCompletionChunk> {
+    let lines: Vec<&str> = s.split('\n').collect();
+    // let mutevent = None;
+    let mut data = None;
 
-        // Retrieve the number of prompt tokens.
-        let max_input_size = *MAX_BUFFER_SIZE
-            .get()
-            .ok_or("Failed to get the underlying value of `MAX_BUFFER_SIZE`.".to_string())?;
-        let mut input_buffer = vec![0u8; max_input_size];
-        let mut input_size = context
-            .get_output(1, &mut input_buffer)
-            .map_err(|e| e.to_string())?;
-        input_size = std::cmp::min(max_input_size, input_size);
-        let token_info: Value =
-            serde_json::from_slice(&input_buffer[..input_size]).map_err(|e| e.to_string())?;
-        let prompt_tokens = token_info["input_tokens"]
-            .as_u64()
-            .ok_or("Failed to convert the `input_tokens` of the metadata to u64.".to_string())?;
-
-        match prompt_tokens > max_prompt_tokens {
-            true => {
-                match chat_request.messages[0].role() {
-                    ChatCompletionRole::System => {
-                        if chat_request.messages.len() >= 4 {
-                            if chat_request.messages[1].role() == ChatCompletionRole::User {
-                                chat_request.messages.remove(1);
-                            }
-                            if chat_request.messages[1].role() == ChatCompletionRole::Assistant {
-                                chat_request.messages.remove(1);
-                            }
-                        } else if chat_request.messages.len() == 3
-                            && chat_request.messages[1].role() == ChatCompletionRole::User
-                        {
-                            chat_request.messages.remove(1);
-                        } else {
-                            return Ok(prompt);
-                        }
-                    }
-                    ChatCompletionRole::User => {
-                        if chat_request.messages.len() >= 3 {
-                            if chat_request.messages[0].role() == ChatCompletionRole::User {
-                                chat_request.messages.remove(0);
-                            }
-                            if chat_request.messages[0].role() == ChatCompletionRole::Assistant {
-                                chat_request.messages.remove(0);
-                            }
-                        } else if chat_request.messages.len() == 2
-                            && chat_request.messages[0].role() == ChatCompletionRole::User
-                        {
-                            chat_request.messages.remove(0);
-                        } else {
-                            return Ok(prompt);
-                        }
-                    }
-                    _ => panic!("Found a unsupported chat message role!"),
-                }
-                continue;
-            }
-            false => return Ok(prompt),
+    for line in lines {
+        if line.starts_with("data:") {
+            data = Some(line.trim_start_matches("data:").trim());
         }
     }
-}
 
-fn get_token_info(context: &wasmedge_wasi_nn::GraphExecutionContext) -> Result<TokenInfo, String> {
-    let max_output_size = *MAX_BUFFER_SIZE
-        .get()
-        .ok_or("Failed to get the underlying value of `MAX_BUFFER_SIZE`.".to_string())?;
-    let mut output_buffer = vec![0u8; max_output_size];
-    let mut output_size = context
-        .get_output(1, &mut output_buffer)
-        .map_err(|e| e.to_string())?;
-    output_size = std::cmp::min(max_output_size, output_size);
-    let token_info: Value =
-        serde_json::from_slice(&output_buffer[..output_size]).map_err(|e| e.to_string())?;
+    match data {
+        Some(s) => {
+            if s.trim() == "[DONE]" {
+                return None;
+            }
 
-    let input_tokens = token_info["input_tokens"]
-        .as_u64()
-        .ok_or("Failed to convert the `input_tokens` of the metadata to u64.".to_string())?;
-    let output_tokens = token_info["output_tokens"]
-        .as_u64()
-        .ok_or("Failed to convert the `output_tokens` of the metadata to u64.".to_string())?;
-
-    Ok(TokenInfo {
-        input_tokens,
-        output_tokens,
-    })
-}
-
-struct TokenInfo {
-    input_tokens: u64,
-    output_tokens: u64,
+            match serde_json::from_str(s) {
+                Ok(chunk) => Some(chunk),
+                Err(e) => {
+                    log(format!(
+                        "[ERROR] Fail to parse SSE data. Reason: {msg}. Data: {data}",
+                        msg = e,
+                        data = s
+                    ));
+                    None
+                }
+            }
+        }
+        _ => None,
+    }
 }
