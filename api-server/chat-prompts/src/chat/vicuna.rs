@@ -102,7 +102,7 @@ impl BuildChatPrompt for VicunaChatPrompt {
                 ChatCompletionRequestMessage::Assistant(message) => {
                     prompt = self.append_assistant_message(&prompt, message)?;
                 }
-                ChatCompletionRequestMessage::System(_) => continue,
+                _ => continue,
             }
         }
 
@@ -184,7 +184,7 @@ impl BuildChatPrompt for Vicuna11ChatPrompt {
                 ChatCompletionRequestMessage::Assistant(message) => {
                     prompt = self.append_assistant_message(&prompt, message)?;
                 }
-                ChatCompletionRequestMessage::System(_) => continue,
+                _ => continue,
             }
         }
         prompt.push_str(" ASSISTANT:");
@@ -319,7 +319,7 @@ impl BuildChatPrompt for VicunaLlavaPrompt {
                 ChatCompletionRequestMessage::Assistant(message) => {
                     prompt = self.append_assistant_message(&prompt, message)?;
                 }
-                ChatCompletionRequestMessage::System(_) => continue,
+                _ => continue,
             }
         }
 

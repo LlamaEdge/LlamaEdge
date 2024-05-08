@@ -111,7 +111,7 @@ impl BuildChatPrompt for Llama2ChatPrompt {
                 ChatCompletionRequestMessage::Assistant(message) => {
                     prompt = self.append_assistant_message(&prompt, message)?;
                 }
-                ChatCompletionRequestMessage::System(_) => continue,
+                _ => continue,
             }
         }
 
@@ -215,7 +215,7 @@ impl BuildChatPrompt for CodeLlamaInstructPrompt {
                 ChatCompletionRequestMessage::Assistant(message) => {
                     prompt = self.append_assistant_message(&prompt, message)?;
                 }
-                ChatCompletionRequestMessage::System(_) => continue,
+                _ => continue,
             }
         }
 
@@ -319,7 +319,7 @@ impl BuildChatPrompt for CodeLlamaSuperInstructPrompt {
                 ChatCompletionRequestMessage::Assistant(message) => {
                     prompt = self.append_assistant_message(&prompt, message)?;
                 }
-                ChatCompletionRequestMessage::System(_) => continue,
+                _ => continue,
             }
         }
 
@@ -427,7 +427,7 @@ impl BuildChatPrompt for Llama3ChatPrompt {
                 ChatCompletionRequestMessage::Assistant(message) => {
                     prompt = self.append_assistant_message(&prompt, message)?;
                 }
-                ChatCompletionRequestMessage::System(_) => continue,
+                _ => continue,
             }
         }
 
