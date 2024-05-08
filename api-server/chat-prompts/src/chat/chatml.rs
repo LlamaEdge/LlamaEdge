@@ -110,7 +110,7 @@ impl BuildChatPrompt for ChatMLPrompt {
                 ChatCompletionRequestMessage::Assistant(message) => {
                     prompt = self.append_assistant_message(&prompt, message)?;
                 }
-                ChatCompletionRequestMessage::System(_) => continue,
+                _ => continue,
             }
         }
 
