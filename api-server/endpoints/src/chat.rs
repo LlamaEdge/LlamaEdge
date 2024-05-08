@@ -28,6 +28,7 @@ impl ChatCompletionRequestBuilder {
                 top_p: None,
                 n_choice: None,
                 stream: None,
+                stream_options: None,
                 stop: None,
                 max_tokens: None,
                 presence_penalty: None,
@@ -64,8 +65,17 @@ impl ChatCompletionRequestBuilder {
         self
     }
 
-    pub fn with_stream(mut self, flag: bool) -> Self {
+    /// Enables streaming reponse.
+    pub fn enable_stream(mut self, flag: bool) -> Self {
         self.req.stream = Some(flag);
+        self
+    }
+
+    /// Includes uage in streaming response.
+    pub fn include_usage(mut self) -> Self {
+        self.req.stream_options = Some(StreamOptions {
+            include_usage: Some(true),
+        });
         self
     }
 
@@ -170,6 +180,9 @@ pub struct ChatCompletionRequest {
     /// Defaults to false.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stream: Option<bool>,
+    /// Options for streaming response. Only set this when you set `stream: true`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stream_options: Option<StreamOptions>,
     /// A list of tokens at which to stop generation. If None, no stop tokens are used. Up to 4 sequences where the API will stop generating further tokens.
     /// Defaults to None
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -237,7 +250,8 @@ fn test_chat_serialize_chat_request() {
         let request = ChatCompletionRequestBuilder::new("model-id", messages)
             .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
             .with_n_choices(3)
-            .with_stream(true)
+            .enable_stream(true)
+            .include_usage()
             .with_stop(vec!["stop1".to_string(), "stop2".to_string()])
             .with_max_tokens(100)
             .with_presence_penalty(0.5)
@@ -248,7 +262,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto"}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto"}"#
         );
     }
 
@@ -346,7 +360,8 @@ fn test_chat_serialize_chat_request() {
         let request = ChatCompletionRequestBuilder::new("model-id", messages)
             .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
             .with_n_choices(3)
-            .with_stream(true)
+            .enable_stream(true)
+            .include_usage()
             .with_stop(vec!["stop1".to_string(), "stop2".to_string()])
             .with_max_tokens(100)
             .with_presence_penalty(0.5)
@@ -363,7 +378,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#
         );
     }
 }
@@ -496,7 +511,7 @@ fn test_chat_deserialize_chat_request() {
 pub struct ChatResponseFormat {
     /// Must be one of `text`` or `json_object`. Defaults to `text`.
     #[serde(rename = "type")]
-    ty: String,
+    pub ty: String,
 }
 impl Default for ChatResponseFormat {
     fn default() -> Self {
@@ -519,6 +534,12 @@ fn test_chat_serialize_response_format() {
     };
     let json = serde_json::to_string(&response_format).unwrap();
     assert_eq!(json, r#"{"type":"json_object"}"#);
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct StreamOptions {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_usage: Option<bool>,
 }
 
 /// Controls which (if any) function is called by the model. Defaults to `None`.
@@ -1651,6 +1672,11 @@ pub struct ChatCompletionChunk {
     pub system_fingerprint: String,
     /// The object type, which is always `chat.completion.chunk`.
     pub object: String,
+    /// Usage statistics for the completion request.
+    ///
+    /// An optional field that will only be present when you set stream_options: {"include_usage": true} in your request. When present, it contains a null value except for the last chunk which contains the token usage statistics for the entire request.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub usage: Option<Usage>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
