@@ -1,7 +1,7 @@
 use crate::{
     chat::{
         ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRequestSampling,
-        ChatResponseFormat, Tool, ToolChoice,
+        ChatResponseFormat, StreamOptions, Tool, ToolChoice,
     },
     embeddings::EmbeddingRequest,
 };
@@ -127,6 +127,9 @@ pub struct RagChatCompletionsRequest {
     /// Defaults to false.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stream: Option<bool>,
+    /// Options for streaming response. Only set this when you set `stream: true`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stream_options: Option<StreamOptions>,
     /// A list of tokens at which to stop generation. If None, no stop tokens are used. Up to 4 sequences where the API will stop generating further tokens.
     /// Defaults to None
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -171,6 +174,7 @@ impl RagChatCompletionsRequest {
             top_p: self.top_p,
             n_choice: self.n_choice,
             stream: self.stream,
+            stream_options: self.stream_options.clone(),
             stop: self.stop.clone(),
             max_tokens: self.max_tokens,
             presence_penalty: self.presence_penalty,
@@ -203,6 +207,7 @@ impl RagChatCompletionsRequest {
             top_p: chat_completions_request.top_p,
             n_choice: chat_completions_request.n_choice,
             stream: chat_completions_request.stream,
+            stream_options: chat_completions_request.stream_options,
             stop: chat_completions_request.stop,
             max_tokens: chat_completions_request.max_tokens,
             presence_penalty: chat_completions_request.presence_penalty,
@@ -249,6 +254,7 @@ impl RagChatCompletionRequestBuilder {
                 top_p: None,
                 n_choice: None,
                 stream: None,
+                stream_options: None,
                 stop: None,
                 max_tokens: None,
                 presence_penalty: None,
