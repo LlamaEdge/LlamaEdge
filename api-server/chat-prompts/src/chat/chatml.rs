@@ -2,7 +2,8 @@ use super::BuildChatPrompt;
 use crate::error::{PromptError, Result};
 use endpoints::chat::{
     ChatCompletionAssistantMessage, ChatCompletionRequestMessage, ChatCompletionSystemMessage,
-    ChatCompletionUserMessage, ChatCompletionUserMessageContent, ContentPart,
+    ChatCompletionToolMessage, ChatCompletionUserMessage, ChatCompletionUserMessageContent,
+    ContentPart,
 };
 
 /// Generate prompts for the models using ChatML template.
@@ -87,6 +88,21 @@ impl ChatMLPrompt {
             assistant_message = content.trim(),
         ))
     }
+
+    /// create a tool prompt from a chat completion request message.
+    fn append_tool_message(
+        &self,
+        chat_history: impl AsRef<str>,
+        message: &ChatCompletionToolMessage,
+    ) -> Result<String> {
+        let content = message.content();
+
+        Ok(format!(
+            "{chat_history}\n<|im_start|>tool\n{tool_message}<|im_end|>",
+            chat_history = chat_history.as_ref().trim(),
+            tool_message = content.trim(),
+        ))
+    }
 }
 impl BuildChatPrompt for ChatMLPrompt {
     fn build(&self, messages: &mut Vec<ChatCompletionRequestMessage>) -> Result<String> {
@@ -109,6 +125,9 @@ impl BuildChatPrompt for ChatMLPrompt {
                 }
                 ChatCompletionRequestMessage::Assistant(message) => {
                     prompt = self.append_assistant_message(&prompt, message)?;
+                }
+                ChatCompletionRequestMessage::Tool(message) => {
+                    prompt = self.append_tool_message(&prompt, message)?;
                 }
                 _ => continue,
             }
