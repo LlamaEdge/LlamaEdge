@@ -53,7 +53,7 @@ struct Cli {
     #[arg(short, long)]
     reverse_prompt: Option<String>,
     /// System prompt message string.
-    #[arg(long)]
+    #[arg(short, long)]
     system_prompt: Option<String>,
     /// Print prompt strings to stdout
     #[arg(long)]
