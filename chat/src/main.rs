@@ -197,7 +197,7 @@ async fn main() -> anyhow::Result<()> {
         .with_presence_penalty(cli.presence_penalty)
         .with_frequency_penalty(cli.frequency_penalty)
         .with_sampling(sampling)
-        .with_stream(!cli.disable_stream)
+        .enable_stream(!cli.disable_stream)
         .build();
 
     // add system message if provided
