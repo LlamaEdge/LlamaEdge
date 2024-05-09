@@ -2,7 +2,7 @@
 
 use crate::{embeddings::embeddings, error::LlamaCoreError};
 use endpoints::{
-    embeddings::{EmbeddingObject, EmbeddingsResponse},
+    embeddings::{EmbeddingObject, EmbeddingsResponse, InputText},
     rag::{RagEmbeddingRequest, RagScoredPoint, RetrieveObject},
 };
 use qdrant::*;
@@ -37,7 +37,11 @@ pub async fn rag_doc_chunks_to_embeddings(
     // compute embeddings for the document
     let response = embeddings(embedding_request).await?;
 
-    let chunks = embedding_request.input.as_slice();
+    let chunks = match &embedding_request.input {
+        InputText::String(text) => vec![text.clone()],
+        InputText::Array(texts) => texts.clone(),
+    };
+    // let chunks = embedding_request.input.as_slice();
     let embeddings = response.data.as_slice();
     let dim = embeddings[0].embedding.len();
 
@@ -54,7 +58,13 @@ pub async fn rag_doc_chunks_to_embeddings(
     println!("\n[+] Upserting points ...");
 
     // create and upsert points
-    qdrant_persist_embeddings(&qdrant_client, qdrant_collection_name, embeddings, chunks).await?;
+    qdrant_persist_embeddings(
+        &qdrant_client,
+        qdrant_collection_name,
+        embeddings,
+        chunks.as_slice(),
+    )
+    .await?;
 
     Ok(response)
 }
@@ -140,7 +150,7 @@ async fn qdrant_create_collection(
         .create_collection(collection_name.as_ref(), dim as u32)
         .await
     {
-        println!("Failed to create collection. {}", err);
+        println!("{}", err);
         return Err(LlamaCoreError::Operation(err.to_string()));
     }
 
