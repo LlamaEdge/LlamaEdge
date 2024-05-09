@@ -26,7 +26,7 @@ impl RagEmbeddingRequest {
         RagEmbeddingRequest {
             embedding_request: EmbeddingRequest {
                 model: "dummy-embedding-model".to_string(),
-                input: input.to_vec(),
+                input: input.into(),
                 encoding_format: None,
                 user: None,
             },
@@ -52,7 +52,7 @@ impl RagEmbeddingRequest {
 fn test_rag_serialize_embedding_request() {
     let embedding_request = EmbeddingRequest {
         model: "model".to_string(),
-        input: vec!["input".to_string()],
+        input: "Hello, world!".into(),
         encoding_format: None,
         user: None,
     };
@@ -66,13 +66,13 @@ fn test_rag_serialize_embedding_request() {
     let json = serde_json::to_string(&rag_embedding_request).unwrap();
     assert_eq!(
         json,
-        r#"{"embeddings":{"model":"model","input":["input"]},"url":"http://localhost:6333","collection_name":"qdrant_collection_name"}"#
+        r#"{"embeddings":{"model":"model","input":"Hello, world!"},"url":"http://localhost:6333","collection_name":"qdrant_collection_name"}"#
     );
 }
 
 #[test]
 fn test_rag_deserialize_embedding_request() {
-    let json = r#"{"embeddings":{"model":"model","input":["input"]},"url":"http://localhost:6333","collection_name":"qdrant_collection_name"}"#;
+    let json = r#"{"embeddings":{"model":"model","input":["Hello, world!"]},"url":"http://localhost:6333","collection_name":"qdrant_collection_name"}"#;
     let rag_embedding_request: RagEmbeddingRequest = serde_json::from_str(json).unwrap();
     assert_eq!(rag_embedding_request.qdrant_url, "http://localhost:6333");
     assert_eq!(
@@ -82,7 +82,7 @@ fn test_rag_deserialize_embedding_request() {
     assert_eq!(rag_embedding_request.embedding_request.model, "model");
     assert_eq!(
         rag_embedding_request.embedding_request.input,
-        vec!["input".to_string()]
+        vec!["Hello, world!"].into()
     );
 }
 
