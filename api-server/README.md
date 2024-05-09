@@ -422,7 +422,7 @@ Options:
   -c, --ctx-size <CTX_SIZE>
           Context size [default: 512]
   -p, --prompt-template <PROMPT_TEMPLATE>
-          Sets the prompt template [possible values: llama-2-chat, mistral-instruct, mistrallite, openchat, codellama-instruct, codellama-super-instruct, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, solar-instruct, phi-2-chat, phi-2-instruct, phi-3-chat, phi-3-instruct, gemma-instruct]
+          Sets the prompt template [possible values: llama-2-chat, llama-3-chat, mistral-instruct, mistrallite, openchat, codellama-instruct, codellama-super-instruct, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, solar-instruct, phi-2-chat, phi-2-instruct, phi-3-chat, phi-3-instruct, gemma-instruct, octopus]
   -r, --reverse-prompt <REVERSE_PROMPT>
           Halt generation at PROMPT, return control
   -n, --n-predict <N_PREDICT>

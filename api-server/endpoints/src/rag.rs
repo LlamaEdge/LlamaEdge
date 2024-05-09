@@ -1,7 +1,7 @@
 use crate::{
     chat::{
         ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRequestSampling,
-        ChatResponseFormat, Tool, ToolChoice,
+        ChatResponseFormat, StreamOptions, Tool, ToolChoice,
     },
     embeddings::EmbeddingRequest,
 };
@@ -26,7 +26,7 @@ impl RagEmbeddingRequest {
         RagEmbeddingRequest {
             embedding_request: EmbeddingRequest {
                 model: "dummy-embedding-model".to_string(),
-                input: input.to_vec(),
+                input: input.into(),
                 encoding_format: None,
                 user: None,
             },
@@ -52,7 +52,7 @@ impl RagEmbeddingRequest {
 fn test_rag_serialize_embedding_request() {
     let embedding_request = EmbeddingRequest {
         model: "model".to_string(),
-        input: vec!["input".to_string()],
+        input: "Hello, world!".into(),
         encoding_format: None,
         user: None,
     };
@@ -66,13 +66,13 @@ fn test_rag_serialize_embedding_request() {
     let json = serde_json::to_string(&rag_embedding_request).unwrap();
     assert_eq!(
         json,
-        r#"{"embeddings":{"model":"model","input":["input"]},"url":"http://localhost:6333","collection_name":"qdrant_collection_name"}"#
+        r#"{"embeddings":{"model":"model","input":"Hello, world!"},"url":"http://localhost:6333","collection_name":"qdrant_collection_name"}"#
     );
 }
 
 #[test]
 fn test_rag_deserialize_embedding_request() {
-    let json = r#"{"embeddings":{"model":"model","input":["input"]},"url":"http://localhost:6333","collection_name":"qdrant_collection_name"}"#;
+    let json = r#"{"embeddings":{"model":"model","input":["Hello, world!"]},"url":"http://localhost:6333","collection_name":"qdrant_collection_name"}"#;
     let rag_embedding_request: RagEmbeddingRequest = serde_json::from_str(json).unwrap();
     assert_eq!(rag_embedding_request.qdrant_url, "http://localhost:6333");
     assert_eq!(
@@ -82,7 +82,7 @@ fn test_rag_deserialize_embedding_request() {
     assert_eq!(rag_embedding_request.embedding_request.model, "model");
     assert_eq!(
         rag_embedding_request.embedding_request.input,
-        vec!["input".to_string()]
+        vec!["Hello, world!"].into()
     );
 }
 
@@ -127,6 +127,9 @@ pub struct RagChatCompletionsRequest {
     /// Defaults to false.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stream: Option<bool>,
+    /// Options for streaming response. Only set this when you set `stream: true`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stream_options: Option<StreamOptions>,
     /// A list of tokens at which to stop generation. If None, no stop tokens are used. Up to 4 sequences where the API will stop generating further tokens.
     /// Defaults to None
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -171,6 +174,7 @@ impl RagChatCompletionsRequest {
             top_p: self.top_p,
             n_choice: self.n_choice,
             stream: self.stream,
+            stream_options: self.stream_options.clone(),
             stop: self.stop.clone(),
             max_tokens: self.max_tokens,
             presence_penalty: self.presence_penalty,
@@ -203,6 +207,7 @@ impl RagChatCompletionsRequest {
             top_p: chat_completions_request.top_p,
             n_choice: chat_completions_request.n_choice,
             stream: chat_completions_request.stream,
+            stream_options: chat_completions_request.stream_options,
             stop: chat_completions_request.stop,
             max_tokens: chat_completions_request.max_tokens,
             presence_penalty: chat_completions_request.presence_penalty,
@@ -249,6 +254,7 @@ impl RagChatCompletionRequestBuilder {
                 top_p: None,
                 n_choice: None,
                 stream: None,
+                stream_options: None,
                 stop: None,
                 max_tokens: None,
                 presence_penalty: None,

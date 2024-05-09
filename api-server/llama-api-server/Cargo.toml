@@ -1,10 +1,10 @@
 [package]
 name = "llama-api-server"
-version = "0.9.1"
+version = "0.10.0"
 edition = "2021"
 
 [dependencies]
-llama-core = { path = "../llama-core", version = "^0.8" }
+llama-core = { path = "../llama-core", version = "^0.9" }
 futures = { version = "0.3.6", default-features = false, features = ["async-await", "std"] }
 serde.workspace = true
 serde_json = "1.0"
