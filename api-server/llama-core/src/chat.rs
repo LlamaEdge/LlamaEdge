@@ -63,7 +63,7 @@ pub async fn chat_completions_stream(
     // set prompt
     set_prompt(chat_request.model.as_ref(), &prompt)?;
 
-    let mut one_more_run_then_stop = true;
+    // init state machine
     let mut stream_state = match include_usage {
         true => StreamState::Usage,
         false => StreamState::Done,
@@ -187,6 +187,7 @@ pub async fn chat_completions_stream(
                                             completion_tokens: token_info.completion_tokens,
                                             total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
                                         });
+                                        println!("    * token_info: {:?}", token_info);
 
                                         let created = SystemTime::now()
                                         .duration_since(std::time::UNIX_EPOCH)
@@ -535,11 +536,6 @@ pub async fn chat_completions_stream(
                                     }
                                 };
 
-                                // ! debug
-                                // retrieve the number of prompt and completion tokens
-                                let token_info = get_token_info_by_graph(graph)?;
-                                println!("[DEBUG] token_info: {:?}", token_info);
-
                                 let created = SystemTime::now()
                                     .duration_since(std::time::UNIX_EPOCH)
                                     .map_err(|e| {
@@ -583,13 +579,56 @@ pub async fn chat_completions_stream(
                             Err(wasmedge_wasi_nn::Error::BackendError(
                                 wasmedge_wasi_nn::BackendError::EndOfSequence,
                             )) => {
-                                match one_more_run_then_stop {
-                                    true => {
-                                        one_more_run_then_stop = false;
+                                match stream_state {
+                                    StreamState::Usage => {
+                                        stream_state = StreamState::Done;
+
+                                        // retrieve the number of prompt and completion tokens
+                                        let token_info = get_token_info_by_graph(graph)?;
+
+                                        let usage = Some(Usage {
+                                            prompt_tokens: token_info.prompt_tokens,
+                                            completion_tokens: token_info.completion_tokens,
+                                            total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
+                                        });
+                                        println!("    * token_info: {:?}", token_info);
+
+                                        let created = SystemTime::now()
+                                        .duration_since(std::time::UNIX_EPOCH)
+                                        .map_err(|e| {
+                                            LlamaCoreError::Operation(format!(
+                                                "Failed to get the current time. {}",
+                                                e
+                                            ))
+                                        })?;
+
+                                        let chat_completion_chunk = ChatCompletionChunk {
+                                            id: gen_chat_id(),
+                                            object: "chat.completion.chunk".to_string(),
+                                            created: created.as_secs(),
+                                            model: graph.name().to_owned(),
+                                            system_fingerprint: "fp_44709d6fcb".to_string(),
+                                            choices: vec![],
+                                            usage,
+                                        };
+
+                                        // serialize chat completion chunk
+                                        let chunk_str =
+                                        serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                                            LlamaCoreError::Operation(format!(
+                                                "Failed to serialize chat completion chunk. {}",
+                                                e
+                                            ))
+                                        })?;
+
+                                        Ok(format!("data: {}\n\n", chunk_str))
+                                    }
+                                    StreamState::Done => {
+                                        stream_state = StreamState::EndOfSequence;
 
                                         Ok("data: [DONE]\n\n".to_string())
                                     }
-                                    false => {
+                                    StreamState::EndOfSequence => {
                                         // clear context
                                         if let Err(e) = graph.finish_single() {
                                             return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
@@ -604,8 +643,13 @@ pub async fn chat_completions_stream(
                             Err(wasmedge_wasi_nn::Error::BackendError(
                                 wasmedge_wasi_nn::BackendError::ContextFull,
                             )) => {
-                                match one_more_run_then_stop {
-                                    true => {
+                                match context_full_state {
+                                    ContextFullState::Message => {
+                                        match include_usage {
+                                            true => context_full_state = ContextFullState::Usage,
+                                            false => context_full_state = ContextFullState::Done,
+                                        }
+
                                         let created = SystemTime::now()
                                             .duration_since(std::time::UNIX_EPOCH)
                                             .map_err(|e| {
@@ -635,8 +679,6 @@ pub async fn chat_completions_stream(
                                             usage: None,
                                         };
 
-                                        one_more_run_then_stop = false;
-
                                         // serialize chat completion chunk
                                         let chunk_str =
                                             serde_json::to_string(&chat_completion_chunk).map_err(|e| {
@@ -648,7 +690,55 @@ pub async fn chat_completions_stream(
 
                                         Ok(format!("data: {}\n\n", chunk_str))
                                     }
-                                    false => {
+                                    ContextFullState::Usage => {
+                                        context_full_state = ContextFullState::Done;
+
+                                        // retrieve the number of prompt and completion tokens
+                                        let token_info = get_token_info_by_graph(graph)?;
+
+                                        let usage = Some(Usage {
+                                            prompt_tokens: token_info.prompt_tokens,
+                                            completion_tokens: token_info.completion_tokens,
+                                            total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
+                                        });
+
+                                        let created = SystemTime::now()
+                                        .duration_since(std::time::UNIX_EPOCH)
+                                        .map_err(|e| {
+                                            LlamaCoreError::Operation(format!(
+                                                "Failed to get the current time. {}",
+                                                e
+                                            ))
+                                        })?;
+
+                                        let chat_completion_chunk = ChatCompletionChunk {
+                                            id: gen_chat_id(),
+                                            object: "chat.completion.chunk".to_string(),
+                                            created: created.as_secs(),
+                                            model: graph.name().to_owned(),
+                                            system_fingerprint: "fp_44709d6fcb".to_string(),
+                                            choices: vec![],
+                                            usage,
+                                        };
+
+                                        // serialize chat completion chunk
+                                        let chunk_str =
+                                        serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                                            LlamaCoreError::Operation(format!(
+                                                "Failed to serialize chat completion chunk. {}",
+                                                e
+                                            ))
+                                        })?;
+
+                                        Ok(format!("data: {}\n\n", chunk_str))
+
+                                    }
+                                    ContextFullState::Done => {
+                                        context_full_state = ContextFullState::EndOfSequence;
+
+                                        Ok("data: [DONE]\n\n".to_string())
+                                    }
+                                    ContextFullState::EndOfSequence => {
                                         // clear context
                                         if let Err(e) = graph.finish_single() {
                                             return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
@@ -663,8 +753,13 @@ pub async fn chat_completions_stream(
                             Err(wasmedge_wasi_nn::Error::BackendError(
                                 wasmedge_wasi_nn::BackendError::PromptTooLong,
                             )) => {
-                                match one_more_run_then_stop {
-                                    true => {
+                                match prompt_too_long_state {
+                                    PromptTooLongState::Message => {
+                                        match include_usage {
+                                            true => prompt_too_long_state = PromptTooLongState::Usage,
+                                            false => prompt_too_long_state = PromptTooLongState::Done,
+                                        }
+
                                         let created = SystemTime::now()
                                             .duration_since(std::time::UNIX_EPOCH)
                                             .map_err(|e| {
@@ -694,7 +789,47 @@ pub async fn chat_completions_stream(
                                             usage: None,
                                         };
 
-                                        one_more_run_then_stop = false;
+                                        // serialize chat completion chunk
+                                        let chunk_str =
+                                        serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                                            LlamaCoreError::Operation(format!(
+                                                "Failed to serialize chat completion chunk. {}",
+                                                e
+                                            ))
+                                        })?;
+
+                                        Ok(format!("data: {}\n\n", chunk_str))
+                                    }
+                                    PromptTooLongState::Usage => {
+                                        prompt_too_long_state = PromptTooLongState::Done;
+
+                                        // retrieve the number of prompt and completion tokens
+                                        let token_info = get_token_info_by_graph(graph)?;
+
+                                        let usage = Some(Usage {
+                                            prompt_tokens: token_info.prompt_tokens,
+                                            completion_tokens: token_info.completion_tokens,
+                                            total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
+                                        });
+
+                                        let created = SystemTime::now()
+                                        .duration_since(std::time::UNIX_EPOCH)
+                                        .map_err(|e| {
+                                            LlamaCoreError::Operation(format!(
+                                                "Failed to get the current time. {}",
+                                                e
+                                            ))
+                                        })?;
+
+                                        let chat_completion_chunk = ChatCompletionChunk {
+                                            id: gen_chat_id(),
+                                            object: "chat.completion.chunk".to_string(),
+                                            created: created.as_secs(),
+                                            model: graph.name().to_owned(),
+                                            system_fingerprint: "fp_44709d6fcb".to_string(),
+                                            choices: vec![],
+                                            usage,
+                                        };
 
                                         // serialize chat completion chunk
                                         let chunk_str =
@@ -707,7 +842,12 @@ pub async fn chat_completions_stream(
 
                                         Ok(format!("data: {}\n\n", chunk_str))
                                     }
-                                    false => {
+                                    PromptTooLongState::Done => {
+                                        prompt_too_long_state = PromptTooLongState::EndOfSequence;
+
+                                        Ok("data: [DONE]\n\n".to_string())
+                                    }
+                                    PromptTooLongState::EndOfSequence => {
                                         // clear context
                                         if let Err(e) = graph.finish_single() {
                                             return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
