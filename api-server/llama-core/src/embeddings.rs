@@ -7,7 +7,7 @@ use crate::{
 };
 use endpoints::{
     common::Usage,
-    embeddings::{EmbeddingObject, EmbeddingRequest, EmbeddingsResponse},
+    embeddings::{EmbeddingObject, EmbeddingRequest, EmbeddingsResponse, InputText},
 };
 use serde::{Deserialize, Serialize};
 
@@ -63,7 +63,12 @@ pub async fn embeddings(
     }
 
     // compute embeddings
-    let (data, usage) = compute_embeddings(graph, &embedding_request.input)?;
+    let (data, usage) = match &embedding_request.input {
+        InputText::String(text) => compute_embeddings(graph, &[text.to_owned()])?,
+        InputText::Array(texts) => compute_embeddings(graph, texts.as_slice())?,
+    };
+
+    // let (data, usage) = compute_embeddings(graph, &embedding_request.input)?;
 
     if graph.metadata.log_prompts || graph.metadata.log_enable {
         println!("[+] Embeddings computed successfully.\n");
