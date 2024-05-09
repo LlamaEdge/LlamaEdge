@@ -110,49 +110,51 @@ If you have 3 apples, each costing 5 dollars, the total cost of the apples is 15
 The options for `llama-chat` wasm app are:
 
 ```console
-~/workspace/llama-utils/chat$ wasmedge llama-chat.wasm -h
-Usage: llama-chat.wasm [OPTIONS]
+~/LlamaEdge/chat$ wasmedge llama-chat.wasm -h
+
+Usage: llama-chat.wasm [OPTIONS] --prompt-template <PROMPT_TEMPLATE>
 
 Options:
-  -a, --model-alias <ALIAS>
+  -m, --model-name <MODEL_NAME>
+          Model name [default: default]
+  -a, --model-alias <MODEL_ALIAS>
           Model alias [default: default]
   -c, --ctx-size <CTX_SIZE>
           Size of the prompt context [default: 512]
-  -n, --n-predict <N_PRDICT>
+  -n, --n-predict <N_PREDICT>
           Number of tokens to predict [default: 1024]
   -g, --n-gpu-layers <N_GPU_LAYERS>
           Number of layers to run on the GPU [default: 100]
   -b, --batch-size <BATCH_SIZE>
           Batch size for prompt processing [default: 512]
       --temp <TEMP>
-          Temperature for sampling [default: 0.8]
+          Temperature for sampling
       --top-p <TOP_P>
-          An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. 1.0 = disabled. [default: 0.9]
+          An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. 1.0 = disabled
       --repeat-penalty <REPEAT_PENALTY>
           Penalize repeat sequence of tokens [default: 1.1]
       --presence-penalty <PRESENCE_PENALTY>
-          Repeat alpha presence penalty. 0.0 = disabled. [default: 0.0]
-      -frequency-penalty <FREQUENCY_PENALTY>
+          Repeat alpha presence penalty. 0.0 = disabled [default: 0.0]
+      --frequency-penalty <FREQUENCY_PENALTY>
           Repeat alpha frequency penalty. 0.0 = disabled [default: 0.0]
+  -p, --prompt-template <PROMPT_TEMPLATE>
+          Sets the prompt template [possible values: llama-2-chat, llama-3-chat, mistral-instruct, mistrallite, openchat, codellama-instruct, codellama-super-instruct, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, solar-instruct, phi-2-chat, phi-2-instruct, phi-3-chat, phi-3-instruct, gemma-instruct, octopus]
   -r, --reverse-prompt <REVERSE_PROMPT>
-          Halt generation at PROMPT, return control.
+          Halt generation at PROMPT, return control
   -s, --system-prompt <SYSTEM_PROMPT>
-          System prompt message string [default: "[Default system message for the prompt template]"]
-  -p, --prompt-template <TEMPLATE>
-          Prompt template. [default: llama-2-chat] [possible values: llama-2-chat, codellama-instruct, codellama-super-instruct, mistral-instruct, mistrallite, openchat, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, chatml, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, solar-instruct, phi-2-instruct, phi-3-chat, phi-3-instruct, gemma-instruct]
+          System prompt message string
       --log-prompts
           Print prompt strings to stdout
       --log-stat
           Print statistics to stdout
       --log-all
           Print all log information to stdout
+      --disable-stream
+          enable streaming stdout
   -h, --help
           Print help
   -V, --version
           Print version
-
-Example: the command to run `llama-2-7B` model,
-  wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf llama-chat.wasm -p llama-2-chat
 ```
 
 ## Optional: Build the `llama-chat` wasm app yourself
