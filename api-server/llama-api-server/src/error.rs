@@ -3,8 +3,14 @@ use thiserror::Error;
 
 #[allow(dead_code)]
 pub(crate) fn not_implemented() -> Result<Response<Body>, hyper::Error> {
-    let mut response = Response::new(Body::from("501 Not Implemented"));
-    *response.status_mut() = hyper::StatusCode::NOT_IMPLEMENTED;
+    let response = Response::builder()
+        .header("Access-Control-Allow-Origin", "*")
+        .header("Access-Control-Allow-Methods", "*")
+        .header("Access-Control-Allow-Headers", "*")
+        .status(hyper::StatusCode::NOT_IMPLEMENTED)
+        .body(Body::from("501 Not Implemented"))
+        .unwrap();
+
     Ok(response)
 }
 
@@ -13,8 +19,15 @@ pub(crate) fn internal_server_error(msg: impl AsRef<str>) -> Result<Response<Bod
         true => "500 Internal Server Error".to_string(),
         false => format!("500 Internal Server Error: {}", msg.as_ref()),
     };
-    let mut response = Response::new(Body::from(err_msg));
-    *response.status_mut() = hyper::StatusCode::INTERNAL_SERVER_ERROR;
+
+    let response = Response::builder()
+        .header("Access-Control-Allow-Origin", "*")
+        .header("Access-Control-Allow-Methods", "*")
+        .header("Access-Control-Allow-Headers", "*")
+        .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
+        .body(Body::from(err_msg))
+        .unwrap();
+
     Ok(response)
 }
 
@@ -23,8 +36,15 @@ pub(crate) fn bad_request(msg: impl AsRef<str>) -> Result<Response<Body>, hyper:
         true => "400 Bad Request".to_string(),
         false => format!("400 Bad Request: {}", msg.as_ref()),
     };
-    let mut response = Response::new(Body::from(err_msg));
-    *response.status_mut() = hyper::StatusCode::BAD_REQUEST;
+
+    let response = Response::builder()
+        .header("Access-Control-Allow-Origin", "*")
+        .header("Access-Control-Allow-Methods", "*")
+        .header("Access-Control-Allow-Headers", "*")
+        .status(hyper::StatusCode::BAD_REQUEST)
+        .body(Body::from(err_msg))
+        .unwrap();
+
     Ok(response)
 }
 
@@ -36,8 +56,15 @@ pub(crate) fn invalid_endpoint(msg: impl AsRef<str>) -> Result<Response<Body>, h
             msg.as_ref()
         ),
     };
-    let mut response = Response::new(Body::from(err_msg));
-    *response.status_mut() = hyper::StatusCode::NOT_FOUND;
+
+    let response = Response::builder()
+        .header("Access-Control-Allow-Origin", "*")
+        .header("Access-Control-Allow-Methods", "*")
+        .header("Access-Control-Allow-Headers", "*")
+        .status(hyper::StatusCode::NOT_FOUND)
+        .body(Body::from(err_msg))
+        .unwrap();
+
     Ok(response)
 }
 
