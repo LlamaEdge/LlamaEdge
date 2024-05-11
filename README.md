@@ -2,6 +2,8 @@
 
 The LlamaEdge project makes it easy for you to run LLM inference apps and create OpenAI-compatible API services for the Llama2 series of LLMs locally.
 
+ ⭐ Like our work? Give us a star!
+
 ## Quick start
 
 Enhance your onboarding experience and quickly get started with LlamaEdge using the following scripts.
