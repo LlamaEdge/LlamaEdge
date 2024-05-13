@@ -110,7 +110,9 @@ done
 
 ss_urls=(
     "https://huggingface.co/second-state/Gemma-2b-it-GGUF/resolve/main/gemma-2b-it-Q5_K_M.gguf"
+    "https://huggingface.co/second-state/Yi-1.5-9B-Chat-GGUF/resolve/main/Yi-1.5-9B-Chat-Q5_K_M.gguf"
     "https://huggingface.co/second-state/Phi-3-mini-4k-instruct-GGUF/resolve/main/Phi-3-mini-4k-instruct-Q5_K_M.gguf"
+    "https://huggingface.co/second-state/Llama-3-8B-Instruct-GGUF/resolve/main/Meta-Llama-3-8B-Instruct-Q5_K_M.gguf"
     "https://huggingface.co/second-state/Llama-2-7B-Chat-GGUF/resolve/main/Llama-2-7b-chat-hf-Q5_K_M.gguf"
     "https://huggingface.co/second-state/stablelm-2-zephyr-1.6b-GGUF/resolve/main/stablelm-2-zephyr-1_6b-Q5_K_M.gguf"
     "https://huggingface.co/second-state/OpenChat-3.5-0106-GGUF/resolve/main/openchat-3.5-0106-Q5_K_M.gguf"
@@ -128,7 +130,9 @@ ss_urls=(
 # sample models
 ss_models=(
     "gemma-2b-it"
+    "yi-1.5-9b-chat"
     "phi-3-mini-4k"
+    "llama-3-8b-instruct"
     "llama-2-7b-chat"
     "stablelm-2-zephyr-1.6b"
     "openchat-3.5-0106"
@@ -146,7 +150,9 @@ ss_models=(
 # prompt types
 prompt_types=(
     "gemma-instruct"
+    "chatml"
     "phi-3-chat"
+    "llama-3-chat"
     "llama-2-chat"
     "chatml"
     "openchat"
