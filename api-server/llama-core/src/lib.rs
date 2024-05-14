@@ -47,8 +47,8 @@ pub struct Metadata {
     // * Plugin parameters (used by this plugin):
     #[serde(rename = "enable-log")]
     pub log_enable: bool,
-    // #[serde(rename = "enable-debug-log")]
-    // pub debug_log: bool,
+    #[serde(rename = "enable-debug-log")]
+    pub debug_log: bool,
     // #[serde(rename = "stream-stdout")]
     // pub stream_stdout: bool,
     #[serde(rename = "embedding")]
@@ -96,6 +96,7 @@ impl Default for Metadata {
             model_name: String::new(),
             model_alias: String::new(),
             log_prompts: false,
+            debug_log: false,
             prompt_template: PromptTemplateType::Llama2Chat,
             log_enable: false,
             embeddings: false,
@@ -149,6 +150,11 @@ impl MetadataBuilder {
 
     pub fn enable_plugin_log(mut self, enable: bool) -> Self {
         self.metadata.log_enable = enable;
+        self
+    }
+
+    pub fn enable_debug_log(mut self, enable: bool) -> Self {
+        self.metadata.debug_log = enable;
         self
     }
 
@@ -345,7 +351,7 @@ impl Graph {
     }
 }
 
-/// Initialize the core context for general chat and embedding scenarios.
+/// Initialize the core context for general chat/embedding scenarios.
 pub fn init_core_context(metadata_for_models: &[Metadata]) -> Result<(), LlamaCoreError> {
     // chat models
     let mut chat_graphs = HashMap::new();
