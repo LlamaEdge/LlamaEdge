@@ -72,6 +72,14 @@ struct Cli {
 #[allow(unreachable_code)]
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> anyhow::Result<()> {
+    // get the environment variable `PLUGIN_DEBUG`
+    let plugin_debug = std::env::var("PLUGIN_DEBUG").unwrap_or_default();
+    let plugin_debug = match plugin_debug.is_empty() {
+        true => false,
+        false => plugin_debug.to_lowercase().parse::<bool>().unwrap_or(false),
+    };
+
+    // parse the command line arguments
     let cli = Cli::parse();
 
     // log version
@@ -149,7 +157,8 @@ async fn main() -> anyhow::Result<()> {
         .with_frequency_penalty(cli.frequency_penalty)
         .with_reverse_prompt(cli.reverse_prompt)
         .enable_prompts_log(cli.log_prompts || cli.log_all)
-        .enable_plugin_log(cli.log_stat || cli.log_all);
+        .enable_plugin_log(cli.log_stat || cli.log_all)
+        .enable_debug_log(plugin_debug);
     // temp and top_p
     let builder = if cli.temp.is_none() && cli.top_p.is_none() {
         let temp = 1.0;
