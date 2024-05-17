@@ -148,7 +148,7 @@ fn compute_embeddings(
             Err(e) => {
                 return Err(LlamaCoreError::Backend(BackendError::Compute(format!(
                     "Failed to compute embeddings. Reason: {}",
-                    e.to_string()
+                    e
                 ))));
             }
         }
