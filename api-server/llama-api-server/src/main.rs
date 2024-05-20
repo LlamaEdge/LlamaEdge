@@ -84,6 +84,14 @@ struct Cli {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), ServerError> {
+    // get the environment variable `PLUGIN_DEBUG`
+    let plugin_debug = std::env::var("PLUGIN_DEBUG").unwrap_or_default();
+    let plugin_debug = match plugin_debug.is_empty() {
+        true => false,
+        false => plugin_debug.to_lowercase().parse::<bool>().unwrap_or(false),
+    };
+
+    // parse the command line arguments
     let cli = Cli::parse();
 
     // log the version of the server
@@ -151,6 +159,7 @@ async fn main() -> Result<(), ServerError> {
         .with_mmproj(cli.llava_mmproj.clone())
         .enable_prompts_log(cli.log_prompts || cli.log_all)
         .enable_plugin_log(cli.log_stat || cli.log_all)
+        .enable_debug_log(plugin_debug)
         .build();
 
     // initialize the core context

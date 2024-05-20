@@ -30,13 +30,21 @@ use futures::{
     future,
     stream::{self, TryStreamExt},
 };
-use std::{sync::Mutex, time::SystemTime};
+use std::{
+    sync::{Arc, Mutex},
+    time::SystemTime,
+};
 
 /// Processes a chat-completion request and returns ChatCompletionChunk instances in stream.
 pub async fn chat_completions_stream(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, LlamaCoreError> {
     let model_name = chat_request.model.clone();
+    let id = match &chat_request.user {
+        Some(id) => id.clone(),
+        None => gen_chat_id(),
+    };
+    let ref_id = Arc::new(id.clone());
 
     // parse the `include_usage` option
     let include_usage = match chat_request.stream_options {
@@ -72,6 +80,9 @@ pub async fn chat_completions_stream(
     let mut prompt_too_long_state = PromptTooLongState::Message;
 
     let stream = stream::repeat_with(move || {
+        let id_cloned = ref_id.clone();
+        let id = (*id_cloned).clone();
+
         // get graph
         match &model_name {
             Some(model_name) => {
@@ -142,7 +153,7 @@ pub async fn chat_completions_stream(
                                     })?;
 
                                 let chat_completion_chunk = ChatCompletionChunk {
-                                    id: gen_chat_id(),
+                                    id,
                                     object: "chat.completion.chunk".to_string(),
                                     created: created.as_secs(),
                                     model: graph.name().to_owned(),
@@ -199,7 +210,7 @@ pub async fn chat_completions_stream(
                                         })?;
 
                                         let chat_completion_chunk = ChatCompletionChunk {
-                                            id: gen_chat_id(),
+                                            id,
                                             object: "chat.completion.chunk".to_string(),
                                             created: created.as_secs(),
                                             model: graph.name().to_owned(),
@@ -256,7 +267,7 @@ pub async fn chat_completions_stream(
                                             })?;
 
                                         let chat_completion_chunk = ChatCompletionChunk {
-                                            id: gen_chat_id(),
+                                            id,
                                             object: "chat.completion.chunk".to_string(),
                                             created: created.as_secs(),
                                             model: graph.name().to_owned(),
@@ -308,7 +319,7 @@ pub async fn chat_completions_stream(
                                         })?;
 
                                         let chat_completion_chunk = ChatCompletionChunk {
-                                            id: gen_chat_id(),
+                                            id,
                                             object: "chat.completion.chunk".to_string(),
                                             created: created.as_secs(),
                                             model: graph.name().to_owned(),
@@ -366,7 +377,7 @@ pub async fn chat_completions_stream(
                                             })?;
 
                                         let chat_completion_chunk = ChatCompletionChunk {
-                                            id: gen_chat_id(),
+                                            id,
                                             object: "chat.completion.chunk".to_string(),
                                             created: created.as_secs(),
                                             model: graph.name().to_owned(),
@@ -418,7 +429,7 @@ pub async fn chat_completions_stream(
                                         })?;
 
                                         let chat_completion_chunk = ChatCompletionChunk {
-                                            id: gen_chat_id(),
+                                            id,
                                             object: "chat.completion.chunk".to_string(),
                                             created: created.as_secs(),
                                             model: graph.name().to_owned(),
@@ -546,7 +557,7 @@ pub async fn chat_completions_stream(
                                     })?;
 
                                 let chat_completion_chunk = ChatCompletionChunk {
-                                    id: gen_chat_id(),
+                                    id,
                                     object: "chat.completion.chunk".to_string(),
                                     created: created.as_secs(),
                                     model: graph.name().to_owned(),
@@ -603,7 +614,7 @@ pub async fn chat_completions_stream(
                                         })?;
 
                                         let chat_completion_chunk = ChatCompletionChunk {
-                                            id: gen_chat_id(),
+                                            id,
                                             object: "chat.completion.chunk".to_string(),
                                             created: created.as_secs(),
                                             model: graph.name().to_owned(),
@@ -660,7 +671,7 @@ pub async fn chat_completions_stream(
                                             })?;
 
                                         let chat_completion_chunk = ChatCompletionChunk {
-                                            id: gen_chat_id(),
+                                            id,
                                             object: "chat.completion.chunk".to_string(),
                                             created: created.as_secs(),
                                             model: graph.name().to_owned(),
@@ -712,7 +723,7 @@ pub async fn chat_completions_stream(
                                         })?;
 
                                         let chat_completion_chunk = ChatCompletionChunk {
-                                            id: gen_chat_id(),
+                                            id,
                                             object: "chat.completion.chunk".to_string(),
                                             created: created.as_secs(),
                                             model: graph.name().to_owned(),
@@ -770,7 +781,7 @@ pub async fn chat_completions_stream(
                                             })?;
 
                                         let chat_completion_chunk = ChatCompletionChunk {
-                                            id: gen_chat_id(),
+                                            id,
                                             object: "chat.completion.chunk".to_string(),
                                             created: created.as_secs(),
                                             model: graph.name().to_owned(),
@@ -822,7 +833,7 @@ pub async fn chat_completions_stream(
                                         })?;
 
                                         let chat_completion_chunk = ChatCompletionChunk {
-                                            id: gen_chat_id(),
+                                            id,
                                             object: "chat.completion.chunk".to_string(),
                                             created: created.as_secs(),
                                             model: graph.name().to_owned(),
@@ -894,6 +905,10 @@ pub async fn chat_completions(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<ChatCompletionObject, LlamaCoreError> {
     let model_name = chat_request.model.clone();
+    let id = match &chat_request.user {
+        Some(id) => id.clone(),
+        None => gen_chat_id(),
+    };
 
     // update metadata
     let mut metadata = update_metadata(chat_request).await?;
@@ -915,10 +930,13 @@ pub async fn chat_completions(
     set_prompt(model_name.as_ref(), &prompt)?;
 
     // compute
-    compute(model_name.as_ref())
+    compute(model_name.as_ref(), id)
 }
 
-fn compute(model_name: Option<&String>) -> Result<ChatCompletionObject, LlamaCoreError> {
+fn compute(
+    model_name: Option<&String>,
+    id: impl Into<String>,
+) -> Result<ChatCompletionObject, LlamaCoreError> {
     match model_name {
         Some(model_name) => {
             let chat_graphs = CHAT_GRAPHS
@@ -933,7 +951,7 @@ fn compute(model_name: Option<&String>) -> Result<ChatCompletionObject, LlamaCor
                 ))
             })?;
             match chat_graphs.get_mut(model_name) {
-                Some(graph) => compute_by_graph(graph),
+                Some(graph) => compute_by_graph(graph, id),
                 None => Err(LlamaCoreError::Operation(format!(
                     "The model `{}` does not exist in the chat graphs.",
                     &model_name
@@ -954,7 +972,7 @@ fn compute(model_name: Option<&String>) -> Result<ChatCompletionObject, LlamaCor
             })?;
 
             match chat_graphs.iter_mut().next() {
-                Some((_, graph)) => compute_by_graph(graph),
+                Some((_, graph)) => compute_by_graph(graph, id),
                 None => Err(LlamaCoreError::Operation(String::from(
                     "There is no model available in the chat graphs.",
                 ))),
@@ -963,7 +981,10 @@ fn compute(model_name: Option<&String>) -> Result<ChatCompletionObject, LlamaCor
     }
 }
 
-fn compute_by_graph(graph: &mut Graph) -> Result<ChatCompletionObject, LlamaCoreError> {
+fn compute_by_graph(
+    graph: &mut Graph,
+    id: impl Into<String>,
+) -> Result<ChatCompletionObject, LlamaCoreError> {
     match graph.compute() {
         Ok(_) => {
             // Retrieve the output.
@@ -999,7 +1020,7 @@ fn compute_by_graph(graph: &mut Graph) -> Result<ChatCompletionObject, LlamaCore
 
             // create ChatCompletionResponse
             Ok(ChatCompletionObject {
-                id: gen_chat_id(),
+                id: id.into(),
                 object: String::from("chat.completion"),
                 created: created.as_secs(),
                 model: graph.name().to_owned(),
@@ -1053,7 +1074,7 @@ fn compute_by_graph(graph: &mut Graph) -> Result<ChatCompletionObject, LlamaCore
 
             // create ChatCompletionResponse
             Ok(ChatCompletionObject {
-                id: gen_chat_id(),
+                id: id.into(),
                 object: String::from("chat.completion"),
                 created: created.as_secs(),
                 model: graph.name().to_owned(),
@@ -1111,7 +1132,7 @@ fn compute_by_graph(graph: &mut Graph) -> Result<ChatCompletionObject, LlamaCore
 
             // create ChatCompletionResponse
             Ok(ChatCompletionObject {
-                id: gen_chat_id(),
+                id: id.into(),
                 object: String::from("chat.completion"),
                 created: created.as_secs(),
                 model: graph.name().to_owned(),
