@@ -1,4 +1,4 @@
-use crate::error;
+use crate::{error, utils::gen_chat_id};
 use endpoints::{
     chat::ChatCompletionRequest,
     completions::CompletionRequest,
@@ -53,12 +53,17 @@ pub(crate) async fn embeddings_handler(
 ) -> Result<Response<Body>, hyper::Error> {
     // parse request
     let body_bytes = to_bytes(req.body_mut()).await?;
-    let embedding_request: EmbeddingRequest = match serde_json::from_slice(&body_bytes) {
+    let mut embedding_request: EmbeddingRequest = match serde_json::from_slice(&body_bytes) {
         Ok(embedding_request) => embedding_request,
         Err(e) => {
             return error::bad_request(format!("Fail to parse embedding request: {msg}", msg = e));
         }
     };
+
+    if embedding_request.user.is_none() {
+        embedding_request.user = Some(gen_chat_id())
+    };
+    let id = embedding_request.user.clone().unwrap();
 
     println!("\n[+] Running embeddings handler ...");
     match llama_core::embeddings::embeddings(&embedding_request).await {
@@ -72,6 +77,7 @@ pub(crate) async fn embeddings_handler(
                         .header("Access-Control-Allow-Methods", "*")
                         .header("Access-Control-Allow-Headers", "*")
                         .header("Content-Type", "application/json")
+                        .header("user", id)
                         .body(Body::from(s));
                     match result {
                         Ok(response) => Ok(response),
@@ -93,7 +99,7 @@ pub(crate) async fn completions_handler(
 ) -> Result<Response<Body>, hyper::Error> {
     // parse request
     let body_bytes = to_bytes(req.body_mut()).await?;
-    let completion_request: CompletionRequest = match serde_json::from_slice(&body_bytes) {
+    let mut completion_request: CompletionRequest = match serde_json::from_slice(&body_bytes) {
         Ok(completion_request) => completion_request,
         Err(e) => {
             return error::bad_request(format!(
@@ -102,6 +108,11 @@ pub(crate) async fn completions_handler(
             ));
         }
     };
+
+    if completion_request.user.is_none() {
+        completion_request.user = Some(gen_chat_id())
+    };
+    let id = completion_request.user.clone().unwrap();
 
     println!("\n[+] Running completions handler ...");
     match llama_core::completions::completions(&completion_request).await {
@@ -123,6 +134,7 @@ pub(crate) async fn completions_handler(
                 .header("Access-Control-Allow-Methods", "*")
                 .header("Access-Control-Allow-Headers", "*")
                 .header("Content-Type", "application/json")
+                .header("user", id)
                 .body(Body::from(s));
             match result {
                 Ok(response) => Ok(response),
@@ -158,7 +170,7 @@ pub(crate) async fn chat_completions_handler(
 
     // parse request
     let body_bytes = to_bytes(req.body_mut()).await?;
-    let chat_request: ChatCompletionRequest = match serde_json::from_slice(&body_bytes) {
+    let mut chat_request: ChatCompletionRequest = match serde_json::from_slice(&body_bytes) {
         Ok(chat_request) => chat_request,
         Err(e) => {
             return error::bad_request(format!(
@@ -166,6 +178,11 @@ pub(crate) async fn chat_completions_handler(
                 msg = e
             ));
         }
+    };
+
+    // check if the user id is provided
+    if chat_request.user.is_none() {
+        chat_request.user = Some(gen_chat_id())
     };
 
     match chat_request.stream {
@@ -178,6 +195,7 @@ pub(crate) async fn chat_completions_handler(
 async fn chat_completions_stream(
     mut chat_request: ChatCompletionRequest,
 ) -> Result<Response<Body>, hyper::Error> {
+    let id = chat_request.user.clone().unwrap();
     match llama_core::chat::chat_completions_stream(&mut chat_request).await {
         Ok(stream) => {
             let stream = stream.map_err(|e| e.to_string());
@@ -189,6 +207,7 @@ async fn chat_completions_stream(
                 .header("Content-Type", "text/event-stream")
                 .header("Cache-Control", "no-cache")
                 .header("Connection", "keep-alive")
+                .header("user", id)
                 .body(Body::wrap_stream(stream));
 
             match result {
@@ -204,6 +223,7 @@ async fn chat_completions_stream(
 async fn chat_completions(
     mut chat_request: ChatCompletionRequest,
 ) -> Result<Response<Body>, hyper::Error> {
+    let id = chat_request.user.clone().unwrap();
     match llama_core::chat::chat_completions(&mut chat_request).await {
         Ok(chat_completion_object) => {
             // serialize chat completion object
@@ -223,6 +243,7 @@ async fn chat_completions(
                 .header("Access-Control-Allow-Methods", "*")
                 .header("Access-Control-Allow-Headers", "*")
                 .header("Content-Type", "application/json")
+                .header("user", id)
                 .body(Body::from(s));
 
             match result {
