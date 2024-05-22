@@ -71,6 +71,8 @@ pub struct Metadata {
     // pub main_gpu: u64,
     // #[serde(rename = "tensor-split")]
     // pub tensor_split: String,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "use-mmap")]
+    use_mmap: Option<bool>,
 
     // * Context parameters (used by the llama context):
     #[serde(rename = "ctx-size")]
@@ -194,6 +196,11 @@ impl MetadataBuilder {
 
     pub fn with_batch_size(mut self, size: u64) -> Self {
         self.metadata.batch_size = size;
+        self
+    }
+
+    pub fn disable_mmap(mut self, disable: bool) -> Self {
+        self.metadata.use_mmap = !disable;
         self
     }
 

@@ -74,6 +74,12 @@ fn main() -> Result<(), String> {
                 .help("Enable trace logs")
                 .action(ArgAction::SetTrue),
         )
+        .arg(Arg::new("no_mmap")
+            .long("no-mmap")
+            .value_name("NO_MMAP")
+            .help("Disable memory mapping for file access")
+            .action(ArgAction::SetFalse),
+        )
         .get_matches();
 
     // model alias
@@ -126,6 +132,10 @@ fn main() -> Result<(), String> {
     let log_enable = matches.get_flag("log_enable");
     println!("[INFO] Log enable: {enable}", enable = log_enable);
     options.log_enable = log_enable;
+    
+    let no_mmap = matches.get_flag("no_mmap");
+    eprintln!("[INFO] no mmap: {nommap}", nommap = !no_mmap);
+    options.use_mmap = !no_mmap;
 
     // load the model into wasi-nn
     let graph = wasmedge_wasi_nn::GraphBuilder::new(
@@ -187,4 +197,6 @@ struct Options {
     batch_size: u64,
     #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
     reverse_prompt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "use-mmap")]
+    use_mmap: Option<bool>,
 }

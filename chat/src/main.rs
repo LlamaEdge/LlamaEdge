@@ -61,6 +61,9 @@ struct Cli {
     /// Print statistics to stdout
     #[arg(long)]
     log_stat: bool,
+    /// Disable memory mapping for file access
+    #[arg(long)]
+    no_mmap: bool,
     /// Print all log information to stdout
     #[arg(long)]
     log_all: bool,
@@ -149,7 +152,8 @@ async fn main() -> anyhow::Result<()> {
         .with_frequency_penalty(cli.frequency_penalty)
         .with_reverse_prompt(cli.reverse_prompt)
         .enable_prompts_log(cli.log_prompts || cli.log_all)
-        .enable_plugin_log(cli.log_stat || cli.log_all);
+        .enable_plugin_log(cli.log_stat || cli.log_all)
+        .disable_mmap(cli.disable_mmap);
     // temp and top_p
     let builder = if cli.temp.is_none() && cli.top_p.is_none() {
         let temp = 1.0;
@@ -373,6 +377,8 @@ pub struct Metadata {
     // pub main_gpu: u64,
     // #[serde(rename = "tensor-split")]
     // pub tensor_split: String,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "use-mmap")]
+    use_mmap: Option<bool>,
 
     // * Context parameters (used by the llama context):
     #[serde(rename = "ctx-size")]
