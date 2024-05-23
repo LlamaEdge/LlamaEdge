@@ -410,21 +410,42 @@ Then, you will be asked to open `http://127.0.0.1:8080` from your browser.
 The `-h` or `--help` option can list the available options of the `llama-api-server` wasm app:
 
 ```console
-$ wasmedge llama-api-server.wasm -h
+$ wasmedge llama-api-server.wasm help
 
-Usage: llama-api-server.wasm [OPTIONS] --prompt-template <PROMPT_TEMPLATE>
+Usage: llama-api-server.wasm [OPTIONS] <COMMAND>
+
+Commands:
+  chat       Start server for chat completions
+  embedding  Start server for computing embeddings
+  max        Start server for both chat completions and computing embeddings
+  help       Print this message or the help of the given subcommand(s)
 
 Options:
-  -m, --model-name <MODEL_NAME>
-          Model name [default: default]
-  -a, --model-alias <MODEL_ALIAS>
-          Model alias [default: default]
+      --socket-addr <SOCKET_ADDR>  Socket address of LlamaEdge API Server instance [default: 0.0.0.0:8080]
+  -h, --help                       Print help
+  -V, --version                    Print version
+```
+
+<details> <summary> `chat` subcommand for chat completions only </summary>
+
+```console
+$ wasmedge llama-api-server.wasm help chat
+
+Start server for chat completions
+
+Usage: llama-api-server.wasm chat [OPTIONS] --model-name <MODEL_NAME> --prompt-template <PROMPT_TEMPLATE>
+
+Options:
+      --model-name <MODEL_NAME>
+          Name of chat model
+      --model-alias <MODEL_ALIAS>
+          Alias for chat model [default: default]
   -c, --ctx-size <CTX_SIZE>
-          Context size [default: 512]
+          Context size of chat model [default: 512]
   -p, --prompt-template <PROMPT_TEMPLATE>
-          Sets the prompt template [possible values: llama-2-chat, llama-3-chat, mistral-instruct, mistrallite, openchat, codellama-instruct, codellama-super-instruct, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, solar-instruct, phi-2-chat, phi-2-instruct, phi-3-chat, phi-3-instruct, gemma-instruct, octopus]
+          Prompt template used for chat completions [possible values: llama-2-chat, llama-3-chat, mistral-instruct, mistrallite, openchat, codellama-instruct, codellama-super-instruct, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, solar-instruct, phi-2-chat, phi-2-instruct, phi-3-chat, phi-3-instruct, gemma-instruct, octopus]
   -r, --reverse-prompt <REVERSE_PROMPT>
-          Halt generation at PROMPT, return control
+          Reverse prompt for stopping generation
   -n, --n-predict <N_PREDICT>
           Number of tokens to predict [default: 1024]
   -g, --n-gpu-layers <N_GPU_LAYERS>
@@ -449,15 +470,94 @@ Options:
           Print statistics to stdout
       --log-all
           Print all log information to stdout
-      --socket-addr <SOCKET_ADDR>
-          Socket address of LlamaEdge API Server instance [default: 0.0.0.0:8080]
       --web-ui <WEB_UI>
           Root path for the Web UI files [default: chatbot-ui]
   -h, --help
           Print help
-  -V, --version
-          Print version
 ```
+
+</details>
+
+<details> <summary> `embedding` subcommand for computing embeddings only </summary>
+
+```console
+$ wasmedge llama-api-server.wasm help embedding
+
+Start server for computing embeddings
+
+Usage: llama-api-server.wasm embedding [OPTIONS] --model-name <MODEL_NAME>
+
+Options:
+      --model-name <MODEL_NAME>    Name of embedding model
+      --model-alias <MODEL_ALIAS>  Alias for embedding model [default: default]
+  -c, --ctx-size <CTX_SIZE>        Context size of embedding model [default: 512]
+  -b, --batch-size <BATCH_SIZE>    Batch size for embedding model [default: 512]
+      --log-stat                   Print statistics to stdout
+      --log-all                    Print all log information to stdout
+  -h, --help                       Print help
+```
+
+</details>
+
+<details> <summary> `max` subcommand for both chat completions and computing embeddings</summary>
+
+```console
+$ wasmedge llama-api-server.wasm help max
+
+Start server for both chat completions and computing embeddings
+
+Usage: llama-api-server.wasm max [OPTIONS] --model-name <MODEL_NAME> --prompt-template <PROMPT_TEMPLATE> --embedding-model-name <EMBEDDING_MODEL_NAME>
+
+Options:
+      --model-name <MODEL_NAME>
+          Name of chat model
+      --model-alias <MODEL_ALIAS>
+          Alias for chat model [default: default]
+      --ctx-size <CTX_SIZE>
+          Context size of chat model [default: 512]
+      --prompt-template <PROMPT_TEMPLATE>
+          Prompt template used for chat completions [possible values: llama-2-chat, llama-3-chat, mistral-instruct, mistrallite, openchat, codellama-instruct, codellama-super-instruct, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, solar-instruct, phi-2-chat, phi-2-instruct, phi-3-chat, phi-3-instruct, gemma-instruct, octopus]
+      --reverse-prompt <REVERSE_PROMPT>
+          Reverse prompt for stopping generation
+      --n-predict <N_PREDICT>
+          Number of tokens to predict [default: 1024]
+      --n-gpu-layers <N_GPU_LAYERS>
+          Number of layers to run on the GPU [default: 100]
+      --batch-size <BATCH_SIZE>
+          Batch size for prompt processing [default: 512]
+      --temp <TEMP>
+          Temperature for sampling [default: 1.0]
+      --top-p <TOP_P>
+          An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. 1.0 = disabled [default: 1.0]
+      --repeat-penalty <REPEAT_PENALTY>
+          Penalize repeat sequence of tokens [default: 1.1]
+      --presence-penalty <PRESENCE_PENALTY>
+          Repeat alpha presence penalty. 0.0 = disabled [default: 0.0]
+      --frequency-penalty <FREQUENCY_PENALTY>
+          Repeat alpha frequency penalty. 0.0 = disabled [default: 0.0]
+      --llava-mmproj <LLAVA_MMPROJ>
+          Path to the multimodal projector file
+      --embedding-model-name <EMBEDDING_MODEL_NAME>
+          Name of embedding model
+      --embedding-model-alias <EMBEDDING_MODEL_ALIAS>
+          Alias for embedding model [default: embedding]
+      --embedding-ctx-size <EMBEDDING_CTX_SIZE>
+          Context size of embedding model [default: 512]
+      --embedding-batch-size <EMBEDDING_BATCH_SIZE>
+          Batch size for embedding model [default: 512]
+      --log-prompts
+          Print prompt strings to stdout
+      --log-stat
+          Print statistics to stdout
+      --log-all
+          Print all log information to stdout
+      --web-ui <WEB_UI>
+          Root path for the Web UI files [default: chatbot-ui]
+  -h, --help
+          Print help
+```
+
+</details>
 
 Please guarantee that the port is not occupied by other processes. If the port specified is available on your machine and the command is successful, you should see the following output in the terminal:
 
