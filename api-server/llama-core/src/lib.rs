@@ -11,7 +11,10 @@ pub use error::LlamaCoreError;
 use chat_prompts::PromptTemplateType;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::Mutex};
+use std::{
+    collections::HashMap,
+    sync::{Mutex, RwLock},
+};
 use utils::{get_output_buffer, set_tensor_data_u8};
 use wasmedge_wasi_nn::{
     Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext, TensorType,
@@ -23,6 +26,8 @@ pub(crate) static CHAT_GRAPHS: OnceCell<Mutex<HashMap<String, Graph>>> = OnceCel
 pub(crate) static EMBEDDING_GRAPHS: OnceCell<Mutex<HashMap<String, Graph>>> = OnceCell::new();
 // cache bytes for decoding utf8
 pub(crate) static CACHED_UTF8_ENCODINGS: OnceCell<Mutex<Vec<u8>>> = OnceCell::new();
+// running mode
+pub(crate) static RUNNING_MODE: OnceCell<RwLock<RunningMode>> = OnceCell::new();
 
 pub(crate) const MAX_BUFFER_SIZE: usize = 2usize.pow(14) * 15 + 128;
 pub(crate) const OUTPUT_TENSOR: usize = 0;
@@ -351,20 +356,63 @@ impl Graph {
     }
 }
 
-/// Initialize the core context for general chat/embedding scenarios.
-pub fn init_core_context(metadata_for_models: &[Metadata]) -> Result<(), LlamaCoreError> {
-    // chat models
-    let mut chat_graphs = HashMap::new();
-    for metadata in metadata_for_models {
-        let graph = Graph::new(metadata).map_err(|e| {
-            LlamaCoreError::InitContext(format!("Failed to create a chat graph. {}", e))
-        })?;
-
-        chat_graphs.insert(graph.name().to_string(), graph);
+pub fn init_core_context(
+    metadata_for_chats: Option<&[Metadata]>,
+    metadata_for_embeddings: Option<&[Metadata]>,
+) -> Result<(), LlamaCoreError> {
+    if metadata_for_chats.is_none() && metadata_for_embeddings.is_none() {
+        return Err(LlamaCoreError::InitContext(
+            "Failed to initialize the core context. Please set metadata for chat completions and/or embeddings.".into(),
+        ));
     }
 
-    CHAT_GRAPHS.set(Mutex::new(chat_graphs)).map_err(|_| {
-        LlamaCoreError::InitContext("The `CHAT_GRAPHS` has already been initialized".to_string())
+    let mut mode = RunningMode::Embeddings;
+
+    if let Some(metadata_chats) = metadata_for_chats {
+        let mut chat_graphs = HashMap::new();
+        for metadata in metadata_chats {
+            let graph = Graph::new(metadata).map_err(|e| {
+                LlamaCoreError::InitContext(format!("Failed to create a chat graph. {}", e))
+            })?;
+
+            chat_graphs.insert(graph.name().to_string(), graph);
+        }
+        CHAT_GRAPHS.set(Mutex::new(chat_graphs)).map_err(|_| {
+            LlamaCoreError::InitContext(
+                "Failed to initialize the core context. Reason: the `CHAT_GRAPHS` has already been initialized".to_string(),
+            )
+        })?;
+
+        mode = RunningMode::Chat
+    }
+
+    if let Some(metadata_embeddings) = metadata_for_embeddings {
+        let mut embedding_graphs = HashMap::new();
+        for metadata in metadata_embeddings {
+            let graph = Graph::new(metadata).map_err(|e| {
+                LlamaCoreError::InitContext(format!(
+                    "Failed to create a embedding graph. Reason: {}",
+                    e
+                ))
+            })?;
+
+            embedding_graphs.insert(graph.name().to_string(), graph);
+        }
+        EMBEDDING_GRAPHS
+            .set(Mutex::new(embedding_graphs))
+            .map_err(|_| {
+                LlamaCoreError::InitContext(
+                    "Failed to initialize the core context. Reason: The `EMBEDDING_GRAPHS` has already been initialized".to_string(),
+                )
+            })?;
+
+        if mode == RunningMode::Chat {
+            mode = RunningMode::ChatEmbedding;
+        }
+    }
+
+    RUNNING_MODE.set(RwLock::new(mode)).map_err(|_| {
+        LlamaCoreError::InitContext("Failed to initialize the core context. Reason: The `RUNNING_MODE` has already been initialized".to_string())
     })?;
 
     Ok(())
@@ -418,6 +466,11 @@ pub fn init_rag_core_context(
             )
         })?;
 
+    // set running mode
+    RUNNING_MODE.set(RwLock::new(RunningMode::Rag)).map_err(|_| {
+            LlamaCoreError::InitContext("Failed to initialize the core context. Reason: The `RUNNING_MODE` has already been initialized".to_string())
+        })?;
+
     Ok(())
 }
 
@@ -425,22 +478,56 @@ pub fn init_rag_core_context(
 ///
 /// Note that it is required to call `init_core_context` before calling this function.
 pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
-    let chat_graphs = CHAT_GRAPHS
-        .get()
-        .ok_or(LlamaCoreError::Operation(String::from(
-            "Fail to get the underlying value of `CHAT_GRAPHS`.",
-        )))?;
-    let chat_graphs = chat_graphs.lock().map_err(|e| {
-        LlamaCoreError::Operation(format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e))
-    })?;
+    match running_mode()? {
+        RunningMode::Embeddings => {
+            let embedding_graphs =
+                EMBEDDING_GRAPHS
+                    .get()
+                    .ok_or(LlamaCoreError::Operation(String::from(
+                        "Fail to get the underlying value of `EMBEDDING_GRAPHS`.",
+                    )))?;
+            let embedding_graphs = embedding_graphs.lock().map_err(|e| {
+                LlamaCoreError::Operation(format!(
+                    "Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}",
+                    e
+                ))
+            })?;
 
-    let graph = chat_graphs
-        .values()
-        .next()
-        .ok_or(LlamaCoreError::Operation(String::from(
-            "Fail to get the underlying value of `GRAPH`.",
-        )))?;
+            let graph = embedding_graphs
+                .values()
+                .next()
+                .ok_or(LlamaCoreError::Operation(String::from(
+                    "Fail to get the underlying value of `GRAPH`.",
+                )))?;
 
+            get_plugin_info_by_graph(graph)
+        }
+        _ => {
+            let chat_graphs = CHAT_GRAPHS
+                .get()
+                .ok_or(LlamaCoreError::Operation(String::from(
+                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
+                )))?;
+            let chat_graphs = chat_graphs.lock().map_err(|e| {
+                LlamaCoreError::Operation(format!(
+                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
+                    e
+                ))
+            })?;
+
+            let graph = chat_graphs
+                .values()
+                .next()
+                .ok_or(LlamaCoreError::Operation(String::from(
+                    "Fail to get the underlying value of `GRAPH`.",
+                )))?;
+
+            get_plugin_info_by_graph(graph)
+        }
+    }
+}
+
+fn get_plugin_info_by_graph(graph: &Graph) -> Result<PluginInfo, LlamaCoreError> {
     // get the plugin metadata
     let output_buffer = get_output_buffer(graph, PLUGIN_VERSION)?;
     let metadata: serde_json::Value = serde_json::from_slice(&output_buffer[..]).map_err(|e| {
@@ -485,4 +572,29 @@ impl std::fmt::Display for PluginInfo {
             self.build_number, self.commit_id
         )
     }
+}
+
+/// Running mode
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum RunningMode {
+    Chat,
+    Embeddings,
+    ChatEmbedding,
+    Rag,
+}
+
+/// Return the current running mode.
+pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
+    let mode = RUNNING_MODE
+        .get()
+        .ok_or(LlamaCoreError::Operation(String::from(
+            "Fail to get the underlying value of `RUNNING_MODE`.",
+        )))?
+        .read()
+        .map_err(|e| {
+            LlamaCoreError::Operation(format!("Fail to acquire the lock of `RUNNING_MODE`. {}", e))
+        })?
+        .to_owned();
+
+    Ok(mode.to_owned())
 }
