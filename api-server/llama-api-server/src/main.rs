@@ -12,6 +12,8 @@ use hyper::{
     Body, Request, Response, Server, StatusCode,
 };
 use llama_core::MetadataBuilder;
+use once_cell::sync::OnceCell;
+use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 use utils::log;
 
@@ -19,6 +21,8 @@ type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 // default socket address of LlamaEdge API Server instance
 const DEFAULT_SOCKET_ADDRESS: &str = "0.0.0.0:8080";
+// server info
+pub(crate) static SERVER_INFO: OnceCell<ServerInfo> = OnceCell::new();
 
 #[derive(Debug, Parser)]
 #[command(author, about, version, long_about=None)]
@@ -211,6 +215,8 @@ async fn main() -> Result<(), ServerError> {
     let server_version = env!("CARGO_PKG_VERSION").to_string();
     log(format!("[INFO] LlamaEdge-RAG version: {}", &server_version));
 
+    let mut chat_model_config = None;
+    let mut embedding_model_config = None;
     let web_ui = match cli.command {
         Commands::Chat(chat_args) => {
             // log
@@ -287,6 +293,23 @@ async fn main() -> Result<(), ServerError> {
             .enable_debug_log(plugin_debug)
             .build();
 
+            // set the chat model config
+            chat_model_config = Some(ModelConfig {
+                name: metadata.model_name.clone(),
+                ty: "chat".to_string(),
+                ctx_size: metadata.ctx_size,
+                batch_size: metadata.batch_size,
+                prompt_template: Some(metadata.prompt_template),
+                n_predict: Some(metadata.n_predict),
+                reverse_prompt: metadata.reverse_prompt.clone(),
+                n_gpu_layers: Some(metadata.n_gpu_layers),
+                temperature: Some(metadata.temperature),
+                top_p: Some(metadata.top_p),
+                repeat_penalty: Some(metadata.repeat_penalty),
+                presence_penalty: Some(metadata.presence_penalty),
+                frequency_penalty: Some(metadata.frequency_penalty),
+            });
+
             // initialize the core context
             llama_core::init_core_context(Some(&[metadata]), None)
                 .map_err(|e| ServerError::Operation(format!("{}", e)))?;
@@ -317,6 +340,15 @@ async fn main() -> Result<(), ServerError> {
             .enable_plugin_log(embedding_args.log_stat || embedding_args.log_all || plugin_debug)
             .enable_debug_log(plugin_debug)
             .build();
+
+            // set the embedding model config
+            embedding_model_config = Some(ModelConfig {
+                name: metadata.model_name.clone(),
+                ty: "embedding".to_string(),
+                ctx_size: metadata.ctx_size,
+                batch_size: metadata.batch_size,
+                ..Default::default()
+            });
 
             // initialize the core context
             llama_core::init_core_context(None, Some(&[metadata]))
@@ -429,6 +461,23 @@ async fn main() -> Result<(), ServerError> {
                 .build()
             };
 
+            // set the chat model config
+            chat_model_config = Some(ModelConfig {
+                name: metadata_chat.model_name.clone(),
+                ty: "chat".to_string(),
+                ctx_size: metadata_chat.ctx_size,
+                batch_size: metadata_chat.batch_size,
+                prompt_template: Some(metadata_chat.prompt_template),
+                n_predict: Some(metadata_chat.n_predict),
+                reverse_prompt: metadata_chat.reverse_prompt.clone(),
+                n_gpu_layers: Some(metadata_chat.n_gpu_layers),
+                temperature: Some(metadata_chat.temperature),
+                top_p: Some(metadata_chat.top_p),
+                repeat_penalty: Some(metadata_chat.repeat_penalty),
+                presence_penalty: Some(metadata_chat.presence_penalty),
+                frequency_penalty: Some(metadata_chat.frequency_penalty),
+            });
+
             // create metadata for embedding model
             let metadata_embedding = {
                 MetadataBuilder::new(
@@ -443,6 +492,15 @@ async fn main() -> Result<(), ServerError> {
                 .build()
             };
 
+            // set the embedding model config
+            embedding_model_config = Some(ModelConfig {
+                name: metadata_embedding.model_name.clone(),
+                ty: "embedding".to_string(),
+                ctx_size: metadata_embedding.ctx_size,
+                batch_size: metadata_embedding.batch_size,
+                ..Default::default()
+            });
+
             // initialize the core context
             llama_core::init_core_context(Some(&[metadata_chat]), Some(&[metadata_embedding]))
                 .map_err(|e| ServerError::Operation(format!("{}", e)))?;
@@ -455,11 +513,32 @@ async fn main() -> Result<(), ServerError> {
     // get the plugin version info
     let plugin_info =
         llama_core::get_plugin_info().map_err(|e| ServerError::Operation(e.to_string()))?;
-    log(format!(
-        "[INFO] Wasi-nn-ggml plugin: b{build_number} (commit {commit_id})",
+    let plugin_version = format!(
+        "b{build_number} (commit {commit_id})",
         build_number = plugin_info.build_number,
         commit_id = plugin_info.commit_id,
-    ));
+    );
+    log(format!("[INFO] Wasi-nn-ggml plugin: {}", &plugin_version));
+
+    // socket address
+    let addr = cli
+        .socket_addr
+        .parse::<SocketAddr>()
+        .map_err(|e| ServerError::SocketAddr(e.to_string()))?;
+    // set the server info
+    let port = addr.port().to_string();
+
+    // create server info
+    let server_info = ServerInfo {
+        version: server_version,
+        plugin_version,
+        port,
+        chat_model: chat_model_config,
+        embedding_model: embedding_model_config,
+    };
+    SERVER_INFO
+        .set(server_info)
+        .map_err(|_| ServerError::Operation("Failed to set `SERVER_INFO`.".to_string()))?;
 
     let new_service = make_service_fn(move |_| {
         // let web_ui = cli.web_ui.to_string_lossy().to_string();
@@ -472,11 +551,6 @@ async fn main() -> Result<(), ServerError> {
         }
     });
 
-    // socket address
-    let addr = cli
-        .socket_addr
-        .parse::<SocketAddr>()
-        .map_err(|e| ServerError::SocketAddr(e.to_string()))?;
     let server = Server::bind(&addr).serve(new_service);
 
     log(format!(
@@ -537,4 +611,44 @@ fn static_response(path_str: &str, root: String) -> Response<Body> {
 #[derive(Clone, Debug)]
 pub struct AppState {
     pub state_thing: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) struct ServerInfo {
+    version: String,
+    plugin_version: String,
+    port: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    chat_model: Option<ModelConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    embedding_model: Option<ModelConfig>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub(crate) struct ModelConfig {
+    // model name
+    name: String,
+    // type: chat or embedding
+    #[serde(rename = "type")]
+    ty: String,
+    pub ctx_size: u64,
+    pub batch_size: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prompt_template: Option<PromptTemplateType>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub n_predict: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reverse_prompt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub n_gpu_layers: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub top_p: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repeat_penalty: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub presence_penalty: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub frequency_penalty: Option<f64>,
 }

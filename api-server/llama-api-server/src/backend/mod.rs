@@ -25,6 +25,7 @@ async fn handle_chat_request(req: Request<Body>) -> Result<Response<Body>, hyper
         "/v1/models" => ggml::models_handler().await,
         "/v1/chat/completions" => ggml::chat_completions_handler(req).await,
         "/v1/completions" => ggml::completions_handler(req).await,
+        "/v1/info" => ggml::server_info().await,
         _ => error::invalid_endpoint(req.uri().path()),
     }
 }
@@ -35,6 +36,7 @@ async fn handle_embedding_request(req: Request<Body>) -> Result<Response<Body>, 
         "/v1/embeddings" => ggml::embeddings_handler(req).await,
         "/v1/files" => ggml::files_handler(req).await,
         "/v1/chunks" => ggml::chunks_handler(req).await,
+        "/v1/info" => ggml::server_info().await,
         _ => error::invalid_endpoint(req.uri().path()),
     }
 }
@@ -47,6 +49,7 @@ async fn handle_chat_embedding_request(req: Request<Body>) -> Result<Response<Bo
         "/v1/embeddings" => ggml::embeddings_handler(req).await,
         "/v1/files" => ggml::files_handler(req).await,
         "/v1/chunks" => ggml::chunks_handler(req).await,
+        "/v1/info" => ggml::server_info().await,
         _ => error::invalid_endpoint(req.uri().path()),
     }
 }
