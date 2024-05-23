@@ -138,7 +138,7 @@ If the command is successful, you should see the similar output as below in your
 
 ### `/v1/chat/completions` endpoint
 
-`/v1/chat/completions` endpoint is used for multi-turn conversations between human users and LLM models.
+`/v1/chat/completions` endpoint is used for multi-turn conversations between human users and LLM models. To use this endpoint, user `chat` or `max` subcommands to start the API server.
 
 <details> <summary> Example </summary>
 
@@ -181,7 +181,7 @@ Here is the response from LlamaEdge API server:
 
 ### `/v1/files` endpoint
 
-`/v1/files` endpoint is used for uploading text and markdown files to LlamaEdge API server.
+`/v1/files` endpoint is used for uploading text and markdown files to LlamaEdge API server.  To use this endpoint, user `embedding` or `max` subcommands to start the API server.
 
 <details> <summary> Example </summary>
 
@@ -212,7 +212,7 @@ If you'd like to build a RAG chatbot, it's strongly recommended to visit [LlamaE
 
 ### `/v1/chunks` endpoint
 
-To segment the uploaded file to chunks for computing embeddings, use the `/v1/chunks` API.
+To segment the uploaded file to chunks for computing embeddings, use the `/v1/chunks` API.  To use this endpoint, user `embedding` or `max` subcommands to start the API server.
 
 <details> <summary> Example </summary>
 
@@ -248,7 +248,7 @@ If you'd like to build a RAG chatbot, it's strongly recommended to visit [LlamaE
 
 ### `/v1/embeddings` endpoint
 
-To compute embeddings for user query or file chunks, use the `/v1/embeddings` API.
+To compute embeddings for user query or file chunks, use the `/v1/embeddings` API.  To use this endpoint, user `embedding` or `max` subcommands to start the API server.
 
 <details> <summary> Example </summary>
 
@@ -349,7 +349,7 @@ If you'd like to build a RAG chatbot, it's strongly recommended to visit [LlamaE
 
 ### `/v1/completions` endpoint
 
-To obtain the completion for a single prompt, use the `/v1/completions` API.
+To obtain the completion for a single prompt, use the `/v1/completions` API. To use this endpoint, user `chat` or `max` subcommands to start the API server.
 
 <details> <summary> Example </summary>
 
@@ -426,7 +426,7 @@ Options:
   -V, --version                    Print version
 ```
 
-<details> <summary> `chat` subcommand for chat completions only </summary>
+<details> <summary> *chat* subcommand for chat completions only </summary>
 
 ```console
 $ wasmedge llama-api-server.wasm help chat
