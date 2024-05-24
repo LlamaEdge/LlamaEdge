@@ -1,4 +1,4 @@
-use crate::{error, utils::gen_chat_id};
+use crate::{error, utils::gen_chat_id, SERVER_INFO};
 use endpoints::{
     chat::ChatCompletionRequest,
     completions::CompletionRequest,
@@ -490,6 +490,36 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Result<Response<Bo
                 )),
             }
         }
+        Err(e) => error::internal_server_error(e.to_string()),
+    }
+}
+
+pub(crate) async fn server_info() -> Result<Response<Body>, hyper::Error> {
+    // get the server info
+    let server_info = match SERVER_INFO.get() {
+        Some(server_info) => server_info,
+        None => {
+            return error::internal_server_error("The server info is not set.");
+        }
+    };
+
+    // serialize server info
+    let s = match serde_json::to_string(&server_info) {
+        Ok(s) => s,
+        Err(e) => {
+            return error::internal_server_error(format!("Fail to serialize server info. {}", e));
+        }
+    };
+
+    // return response
+    let result = Response::builder()
+        .header("Access-Control-Allow-Origin", "*")
+        .header("Access-Control-Allow-Methods", "*")
+        .header("Access-Control-Allow-Headers", "*")
+        .header("Content-Type", "application/json")
+        .body(Body::from(s));
+    match result {
+        Ok(response) => Ok(response),
         Err(e) => error::internal_server_error(e.to_string()),
     }
 }
