@@ -114,6 +114,9 @@ impl From<PromptTemplateType> for ChatPrompt {
                 ChatPrompt::GemmaInstructPrompt(GemmaInstructPrompt)
             }
             PromptTemplateType::Octopus => ChatPrompt::OctopusPrompt(OctopusPrompt),
+            PromptTemplateType::Embedding => {
+                panic!("Embedding prompt template is not used for building chat prompts")
+            }
         }
     }
 }

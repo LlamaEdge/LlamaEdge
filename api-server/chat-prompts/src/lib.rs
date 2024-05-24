@@ -60,6 +60,8 @@ pub enum PromptTemplateType {
     GemmaInstruct,
     #[value(name = "octopus")]
     Octopus,
+    #[value(name = "embedding")]
+    Embedding,
 }
 impl PromptTemplateType {
     pub fn has_system_prompt(&self) -> bool {
@@ -89,7 +91,8 @@ impl PromptTemplateType {
             | PromptTemplateType::Phi3Instruct
             | PromptTemplateType::SolarInstruct
             | PromptTemplateType::Vicuna11Chat
-            | PromptTemplateType::StableLMZephyr => false,
+            | PromptTemplateType::StableLMZephyr
+            | PromptTemplateType::Embedding => false,
         }
     }
 }
@@ -125,6 +128,7 @@ impl FromStr for PromptTemplateType {
             "phi-3-instruct" => Ok(PromptTemplateType::Phi3Instruct),
             "gemma-instruct" => Ok(PromptTemplateType::GemmaInstruct),
             "octopus" => Ok(PromptTemplateType::Octopus),
+            "embedding" => Ok(PromptTemplateType::Embedding),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
                 template.to_string(),
             )),
@@ -160,6 +164,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::CodeLlamaSuper => write!(f, "codellama-super-instruct"),
             PromptTemplateType::GemmaInstruct => write!(f, "gemma-instruct"),
             PromptTemplateType::Octopus => write!(f, "octopus"),
+            PromptTemplateType::Embedding => write!(f, "embedding"),
         }
     }
 }
