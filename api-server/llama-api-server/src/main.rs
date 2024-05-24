@@ -153,7 +153,7 @@ async fn main() -> Result<(), ServerError> {
     ));
 
     // batch size
-    if cli.batch_size.len() < 1 && cli.batch_size.len() > 2 {
+    if cli.batch_size.is_empty() && cli.batch_size.len() > 2 {
         return Err(ServerError::ArgumentError(
             "Invalid setting for batch size. For running chat or embedding model, please specify a single batch size. For running both chat and embedding models, please specify two batch sizes: the first one for chat model, the other for embedding model.".to_owned(),
         ));
@@ -170,7 +170,7 @@ async fn main() -> Result<(), ServerError> {
     ));
 
     // prompt template
-    if cli.prompt_template.len() < 1 && cli.prompt_template.len() > 2 {
+    if cli.prompt_template.is_empty() && cli.prompt_template.len() > 2 {
         return Err(ServerError::ArgumentError(
             "LlamaEdge API server requires prompt templates. For running chat or embedding model, please specify a single prompt template. For running both chat and embedding models, please specify two prompt templates: the first one for chat model, the other for embedding model.".to_owned(),
         ));
