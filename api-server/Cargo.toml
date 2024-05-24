@@ -9,3 +9,6 @@ chat-prompts = { path = "chat-prompts", version = "^0.8" }
 thiserror = "1"
 uuid = { version = "1.4", features = ["v4", "fast-rng", "macro-diagnostics"] }
 clap = { version = "4.4.6", features = ["cargo", "derive"] }
+log = { version = "0.4.21", features = ["std", "kv", "kv_serde"] }
+wasi-logger = { version = "0.1.2", features = ["kv"] }
+chrono = "0.4.38"
