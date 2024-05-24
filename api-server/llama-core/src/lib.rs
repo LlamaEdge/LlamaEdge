@@ -582,6 +582,16 @@ pub enum RunningMode {
     ChatEmbedding,
     Rag,
 }
+impl std::fmt::Display for RunningMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RunningMode::Chat => write!(f, "chat"),
+            RunningMode::Embeddings => write!(f, "embeddings"),
+            RunningMode::ChatEmbedding => write!(f, "chat-embeddings"),
+            RunningMode::Rag => write!(f, "rag"),
+        }
+    }
+}
 
 /// Return the current running mode.
 pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
