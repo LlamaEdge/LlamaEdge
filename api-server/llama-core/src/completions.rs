@@ -2,8 +2,9 @@
 
 use crate::{
     error::{BackendError, LlamaCoreError},
+    running_mode,
     utils::{get_output_buffer, get_token_info_by_graph},
-    Graph, CHAT_GRAPHS, OUTPUT_TENSOR,
+    Graph, RunningMode, CHAT_GRAPHS, OUTPUT_TENSOR,
 };
 use endpoints::{
     common::{FinishReason, Usage},
@@ -13,6 +14,13 @@ use std::time::SystemTime;
 
 /// Given a prompt, the model will return one or more predicted completions along with the probabilities of alternative tokens at each position.
 pub async fn completions(request: &CompletionRequest) -> Result<CompletionObject, LlamaCoreError> {
+    let running_mode = running_mode()?;
+    if running_mode == RunningMode::Embeddings || running_mode == RunningMode::Rag {
+        return Err(LlamaCoreError::Operation(format!(
+            "The completion is not supported in the {running_mode} mode.",
+        )));
+    }
+
     let prompt = request.prompt.join(" ");
 
     compute(prompt.trim(), request.model.as_ref())
