@@ -1,13 +1,13 @@
 //! Define APIs for chat completion.
 
 use crate::{
-    error,
+    error, running_mode,
     utils::{
         gen_chat_id, get_output_buffer, get_output_buffer_single, get_token_info_by_graph,
         get_token_info_by_graph_name, print_log_begin_separator, print_log_end_separator,
         set_tensor_data_u8,
     },
-    Graph, Metadata, CACHED_UTF8_ENCODINGS, CHAT_GRAPHS, OUTPUT_TENSOR,
+    Graph, Metadata, RunningMode, CACHED_UTF8_ENCODINGS, CHAT_GRAPHS, OUTPUT_TENSOR,
 };
 use chat_prompts::{
     chat::{BuildChatPrompt, ChatPrompt},
@@ -39,6 +39,13 @@ use std::{
 pub async fn chat_completions_stream(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, LlamaCoreError> {
+    let running_mode = running_mode()?;
+    if running_mode == RunningMode::Embeddings {
+        return Err(LlamaCoreError::Operation(format!(
+            "The chat completion is not supported in the {running_mode} mode.",
+        )));
+    }
+
     let model_name = chat_request.model.clone();
     let id = match &chat_request.user {
         Some(id) => id.clone(),
@@ -904,6 +911,13 @@ pub async fn chat_completions_stream(
 pub async fn chat_completions(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<ChatCompletionObject, LlamaCoreError> {
+    let running_mode = running_mode()?;
+    if running_mode == RunningMode::Embeddings {
+        return Err(LlamaCoreError::Operation(format!(
+            "The chat completion is not supported in the {running_mode} mode.",
+        )));
+    }
+
     let model_name = chat_request.model.clone();
     let id = match &chat_request.user {
         Some(id) => id.clone(),

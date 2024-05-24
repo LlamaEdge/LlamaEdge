@@ -412,25 +412,27 @@ The `-h` or `--help` option can list the available options of the `llama-api-ser
 ```console
 $ wasmedge llama-api-server.wasm -h
 
-Usage: llama-api-server.wasm [OPTIONS] --prompt-template <PROMPT_TEMPLATE>
+LlamaEdge API Server
+
+Usage: llama-api-server.wasm [OPTIONS] --model-name <MODEL_NAME> --prompt-template <PROMPT_TEMPLATE>
 
 Options:
   -m, --model-name <MODEL_NAME>
-          Model name [default: default]
+          Sets names for chat and embedding models. The names are separated by comma without space, for example, '--model-name Llama-2-7b,all-minilm'
   -a, --model-alias <MODEL_ALIAS>
-          Model alias [default: default]
+          Model aliases for chat and embedding models [default: default,embedding]
   -c, --ctx-size <CTX_SIZE>
-          Context size [default: 512]
+          Sets context sizes for chat and embedding models, respectively. The sizes are separated by comma without space, for example, '--ctx-size 4096,384'. The first value is for the chat model, and the second is for the embedding model [default: 4096,384]
+  -b, --batch-size <BATCH_SIZE>
+          Sets batch sizes for chat and embedding models, respectively. The sizes are separated by comma without space, for example, '--batch-size 128,64'. The first value is for the chat model, and the second is for the embedding model [default: 512,512]
   -p, --prompt-template <PROMPT_TEMPLATE>
-          Sets the prompt template [possible values: llama-2-chat, llama-3-chat, mistral-instruct, mistrallite, openchat, codellama-instruct, codellama-super-instruct, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, solar-instruct, phi-2-chat, phi-2-instruct, phi-3-chat, phi-3-instruct, gemma-instruct, octopus]
+          Sets the prompt template [possible values: llama-2-chat, llama-3-chat, mistral-instruct, mistrallite, openchat, codellama-instruct, codellama-super-instruct, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, solar-instruct, phi-2-chat, phi-2-instruct, phi-3-chat, phi-3-instruct, gemma-instruct, octopus, embedding]
   -r, --reverse-prompt <REVERSE_PROMPT>
           Halt generation at PROMPT, return control
   -n, --n-predict <N_PREDICT>
           Number of tokens to predict [default: 1024]
   -g, --n-gpu-layers <N_GPU_LAYERS>
           Number of layers to run on the GPU [default: 100]
-  -b, --batch-size <BATCH_SIZE>
-          Batch size for prompt processing [default: 512]
       --temp <TEMP>
           Temperature for sampling [default: 1.0]
       --top-p <TOP_P>

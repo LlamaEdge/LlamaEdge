@@ -2,8 +2,9 @@
 
 use crate::{
     error::{BackendError, LlamaCoreError},
+    running_mode,
     utils::{get_output_buffer, get_token_info_by_graph},
-    Graph, CHAT_GRAPHS, EMBEDDING_GRAPHS, OUTPUT_TENSOR,
+    Graph, RunningMode, CHAT_GRAPHS, EMBEDDING_GRAPHS, OUTPUT_TENSOR,
 };
 use endpoints::{
     common::Usage,
@@ -23,6 +24,13 @@ use serde::{Deserialize, Serialize};
 pub async fn embeddings(
     embedding_request: &EmbeddingRequest,
 ) -> Result<EmbeddingsResponse, LlamaCoreError> {
+    let running_mode = running_mode()?;
+    if running_mode == RunningMode::Chat || running_mode == RunningMode::Rag {
+        return Err(LlamaCoreError::Operation(format!(
+            "Computing embeddings is not supported in the {running_mode} mode.",
+        )));
+    }
+
     let model_name = &embedding_request.model;
 
     // For general embedding scenario, the embedding model is the same as the chat model.

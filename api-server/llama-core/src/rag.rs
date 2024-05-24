@@ -1,6 +1,6 @@
 //! Define APIs for RAG operations.
 
-use crate::{embeddings::embeddings, error::LlamaCoreError};
+use crate::{embeddings::embeddings, error::LlamaCoreError, running_mode, RunningMode};
 use endpoints::{
     embeddings::{EmbeddingObject, EmbeddingsResponse, InputText},
     rag::{RagEmbeddingRequest, RagScoredPoint, RetrieveObject},
@@ -25,6 +25,13 @@ use tiktoken_rs::cl100k_base;
 pub async fn rag_doc_chunks_to_embeddings(
     rag_embedding_request: &RagEmbeddingRequest,
 ) -> Result<EmbeddingsResponse, LlamaCoreError> {
+    let running_mode = running_mode()?;
+    if running_mode != RunningMode::Rag {
+        return Err(LlamaCoreError::Operation(format!(
+            "Creating knowledge base is not supported in the {running_mode} mode.",
+        )));
+    }
+
     let embedding_request = &rag_embedding_request.embedding_request;
     let qdrant_url = rag_embedding_request.qdrant_url.as_str();
     let qdrant_collection_name = rag_embedding_request.qdrant_collection_name.as_str();
@@ -77,6 +84,13 @@ pub async fn rag_doc_chunks_to_embeddings(
 pub async fn rag_query_to_embeddings(
     rag_embedding_request: &RagEmbeddingRequest,
 ) -> Result<EmbeddingsResponse, LlamaCoreError> {
+    let running_mode = running_mode()?;
+    if running_mode != RunningMode::Rag {
+        return Err(LlamaCoreError::Operation(format!(
+            "The RAG query is not supported in the {running_mode} mode.",
+        )));
+    }
+
     embeddings(&rag_embedding_request.embedding_request).await
 }
 
@@ -98,6 +112,13 @@ pub async fn rag_retrieve_context(
     limit: usize,
     score_threshold: Option<f32>,
 ) -> Result<RetrieveObject, LlamaCoreError> {
+    let running_mode = running_mode()?;
+    if running_mode != RunningMode::Rag {
+        return Err(LlamaCoreError::Operation(format!(
+            "The context retrieval is not supported in the {running_mode} mode.",
+        )));
+    }
+
     // create a Qdrant client
     let qdrant_client = qdrant::Qdrant::new_with_url(qdrant_url.as_ref().to_string());
 
