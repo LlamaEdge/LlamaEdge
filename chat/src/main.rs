@@ -179,7 +179,7 @@ async fn main() -> anyhow::Result<()> {
     let metadata = builder.build();
 
     // initialize the core context
-    init_core_context(&[metadata])?;
+    init_core_context(Some(&[metadata]), None)?;
 
     // get the plugin version info
     let plugin_info = llama_core::get_plugin_info()?;
