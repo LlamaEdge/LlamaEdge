@@ -117,30 +117,35 @@ async fn main() -> Result<(), ServerError> {
         &server_version
     ));
 
-    // log the cli options
-    // if cli.model_name.len() != 2 {
-    //     return Err(ServerError::ArgumentError(
-    //         "LlamaEdge RAG API server requires a chat model and an embedding model.".to_owned(),
-    //     ));
-    // }
+    // log model names
+    if cli.model_name.is_empty() && cli.model_name.len() > 2 {
+        return Err(ServerError::ArgumentError(
+            "Invalid setting for model name. For running chat or embedding model, please specify a single model name. For running both chat and embedding models, please specify two model names: the first one for chat model, the other for embedding model.".to_owned(),
+        ));
+    }
     log(format!(
         "[INFO] Model names: {names}",
         names = &cli.model_name.join(",")
     ));
-    // if cli.model_alias.len() != 2 {
-    //     return Err(ServerError::ArgumentError(
-    //         "LlamaEdge RAG API server requires two model aliases: one for chat model, one for embedding model.".to_owned(),
-    //     ));
-    // }
+
+    // log model aliases
     log(format!(
         "[INFO] Model aliases: {aliases}",
         aliases = &cli.model_alias.join(",")
     ));
-    // if cli.ctx_size.len() != 2 {
-    //     return Err(ServerError::ArgumentError(
-    //         "LlamaEdge RAG API server requires two context sizes: one for chat model, one for embedding model.".to_owned(),
-    //     ));
-    // }
+    // log model aliases
+    if cli.model_alias.is_empty() && cli.model_alias.len() > 2 {
+        return Err(ServerError::ArgumentError(
+            "Invalid setting for model alias. For running chat or embedding model, please specify a single model alias. For running both chat and embedding models, please specify two model aliases: the first one for chat model, the other for embedding model.".to_owned(),
+        ));
+    }
+
+    // context size
+    if cli.ctx_size.is_empty() && cli.ctx_size.len() > 2 {
+        return Err(ServerError::ArgumentError(
+            "Invalid setting for context size. For running chat or embedding model, please specify a single context size. For running both chat and embedding models, please specify two context sizes: the first one for chat model, the other for embedding model.".to_owned(),
+        ));
+    }
     let ctx_sizes_str: String = cli
         .ctx_size
         .iter()
@@ -151,6 +156,11 @@ async fn main() -> Result<(), ServerError> {
         "[INFO] Context sizes: {ctx_sizes}",
         ctx_sizes = ctx_sizes_str
     ));
+    if cli.model_name.len() != cli.ctx_size.len() {
+        return Err(ServerError::ArgumentError(
+            "The number of model names and context sizes must be the same.".to_owned(),
+        ));
+    }
 
     // batch size
     if cli.batch_size.is_empty() && cli.batch_size.len() > 2 {
@@ -168,6 +178,11 @@ async fn main() -> Result<(), ServerError> {
         "[INFO] Batch sizes: {batch_sizes}",
         batch_sizes = batch_sizes_str
     ));
+    if cli.model_name.len() != cli.batch_size.len() {
+        return Err(ServerError::ArgumentError(
+            "The number of model names and batch sizes must be the same.".to_owned(),
+        ));
+    }
 
     // prompt template
     if cli.prompt_template.is_empty() && cli.prompt_template.len() > 2 {
@@ -182,7 +197,13 @@ async fn main() -> Result<(), ServerError> {
         .collect::<Vec<String>>()
         .join(",");
     log(format!("[INFO] Prompt template: {prompt_template_str}"));
+    if cli.model_name.len() != cli.prompt_template.len() {
+        return Err(ServerError::ArgumentError(
+            "The number of model names and prompt templates must be the same.".to_owned(),
+        ));
+    }
 
+    // log other settings
     if let Some(reverse_prompt) = &cli.reverse_prompt {
         log(format!("[INFO] reverse prompt: {}", reverse_prompt));
     }
