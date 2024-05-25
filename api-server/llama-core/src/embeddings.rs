@@ -25,7 +25,7 @@ pub async fn embeddings(
     embedding_request: &EmbeddingRequest,
 ) -> Result<EmbeddingsResponse, LlamaCoreError> {
     let running_mode = running_mode()?;
-    if running_mode == RunningMode::Chat || running_mode == RunningMode::Rag {
+    if running_mode == RunningMode::Chat {
         return Err(LlamaCoreError::Operation(format!(
             "Computing embeddings is not supported in the {running_mode} mode.",
         )));
