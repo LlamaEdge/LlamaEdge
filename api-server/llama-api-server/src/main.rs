@@ -29,7 +29,7 @@ const DEFAULT_SOCKET_ADDRESS: &str = "0.0.0.0:8080";
 #[command(name = "LlamaEdge API Server", version = env!("CARGO_PKG_VERSION"), author = env!("CARGO_PKG_AUTHORS"), about = "LlamaEdge API Server")]
 struct Cli {
     /// Sets names for chat and/or embedding models. To run both chat and embedding models, the names should be separated by comma without space, for example, '--model-name Llama-2-7b,all-minilm'. The first value is for the chat model, and the second is for the embedding model.
-    #[arg(short, long, value_delimiter = ',', required = true)]
+    #[arg(short, long, value_delimiter = ',', default_value = "default")]
     model_name: Vec<String>,
     /// Model aliases for chat and embedding models
     #[arg(
