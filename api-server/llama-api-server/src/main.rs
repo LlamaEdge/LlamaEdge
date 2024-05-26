@@ -20,7 +20,7 @@ use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{net::SocketAddr, path::PathBuf};
-use utils::{log, LogLevel};
+use utils::{info, LogLevel};
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -131,7 +131,7 @@ async fn main() -> Result<(), ServerError> {
     let value = json!({
         "server_version": env!("CARGO_PKG_VERSION").to_string(),
     });
-    log(value);
+    info(value);
 
     // log model names
     if cli.model_name.is_empty() && cli.model_name.len() > 2 {
@@ -142,19 +142,19 @@ async fn main() -> Result<(), ServerError> {
     let value = json!({
         "model_name": cli.model_name.join(",").to_string(),
     });
-    log(value);
+    info(value);
 
     // log model alias
     let mut model_alias = String::new();
     if cli.model_name.len() == 1 {
-        model_alias = cli.model_alias[0].clone();
+        model_alias.clone_from(&cli.model_alias[0]);
     } else if cli.model_alias.len() == 2 {
         model_alias = cli.model_alias.join(",").to_string();
     }
     let value = json!({
         "model_alias": model_alias,
     });
-    log(value);
+    info(value);
 
     // log context size
     if cli.ctx_size.is_empty() && cli.ctx_size.len() > 2 {
@@ -176,7 +176,7 @@ async fn main() -> Result<(), ServerError> {
     let value = json!({
         "ctx_size": ctx_sizes_str,
     });
-    log(value);
+    info(value);
 
     // log batch size
     if cli.batch_size.is_empty() && cli.batch_size.len() > 2 {
@@ -198,7 +198,7 @@ async fn main() -> Result<(), ServerError> {
     let value = json!({
         "batch_size": batch_sizes_str,
     });
-    log(value);
+    info(value);
 
     // log prompt template
     if cli.prompt_template.is_empty() && cli.prompt_template.len() > 2 {
@@ -215,7 +215,7 @@ async fn main() -> Result<(), ServerError> {
     let value = json!({
         "prompt_template": prompt_template_str,
     });
-    log(value);
+    info(value);
     if cli.model_name.len() != cli.prompt_template.len() {
         return Err(ServerError::ArgumentError(
             "The number of model names and prompt templates must be the same.".to_owned(),
@@ -227,57 +227,57 @@ async fn main() -> Result<(), ServerError> {
         let value = json!({
             "reverse_prompt": reverse_prompt.clone(),
         });
-        log(value);
+        info(value);
     }
 
     // log n_predict
     let value = json!({
         "n_predict": cli.n_predict,
     });
-    log(value);
+    info(value);
 
     // log n_gpu_layers
     let value = json!({
         "n_gpu_layers": cli.n_gpu_layers,
     });
-    log(value);
+    info(value);
 
     // log temperature
     let value = json!({
         "temp": cli.temp,
     });
-    log(value);
+    info(value);
 
     // log top-p sampling
     let value = json!({
         "top_p": cli.top_p,
     });
-    log(value);
+    info(value);
 
     // repeat penalty
     let value = json!({
         "repeat_penalty": cli.repeat_penalty,
     });
-    log(value);
+    info(value);
 
     // log presence penalty
     let value = json!({
         "presence penalty": cli.presence_penalty,
     });
-    log(value);
+    info(value);
 
     // log frequency penalty
     let value = json!({
         "frequency_penalty": cli.frequency_penalty,
     });
-    log(value);
+    info(value);
 
     // log multimodal projector
     if let Some(llava_mmproj) = &cli.llava_mmproj {
         let value = json!({
             "Multimodal_projector": llava_mmproj.clone(),
         });
-        log(value);
+        info(value);
     }
 
     // initialize the core context
@@ -435,7 +435,7 @@ async fn main() -> Result<(), ServerError> {
     let value = json!({
         "plugin_ggml_version": plugin_version,
     });
-    log(value);
+    info(value);
 
     // socket address
     let addr = cli
@@ -461,7 +461,7 @@ async fn main() -> Result<(), ServerError> {
             "remote_addr": conn.remote_addr().to_string(),
             "local_addr": conn.local_addr().to_string(),
         });
-        log(value);
+        info(value);
 
         // web ui
         let web_ui = cli.web_ui.to_string_lossy().to_string();
@@ -475,7 +475,7 @@ async fn main() -> Result<(), ServerError> {
     let value = json!({
         "socket_address": addr.to_string(),
     });
-    log(value);
+    info(value);
 
     // println!(
     //     "LlamaEdge API server listening on http://{}:{}",
