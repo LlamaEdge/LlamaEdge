@@ -78,15 +78,13 @@ pub(crate) fn internal_server_error_new(msg: impl AsRef<str>) -> Response<Body> 
         error!("{}", &message);
     }
 
-    let response = Response::builder()
+    Response::builder()
         .header("Access-Control-Allow-Origin", "*")
         .header("Access-Control-Allow-Methods", "*")
         .header("Access-Control-Allow-Headers", "*")
         .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
         .body(Body::from(err_msg))
-        .unwrap();
-
-    response
+        .unwrap()
 }
 
 pub(crate) fn bad_request(msg: impl AsRef<str>) -> Result<Response<Body>, hyper::Error> {
