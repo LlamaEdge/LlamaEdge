@@ -88,7 +88,7 @@ pub(crate) fn info(value: serde_json::Value) {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct NewLogRecord {
+pub(crate) struct NewLogRecord {
     /// log level
     level: LogLevel,
     /// User id
