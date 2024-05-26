@@ -144,13 +144,24 @@ async fn main() -> Result<(), ServerError> {
     });
     log(value);
 
-    // context size
+    // log model alias
+    let mut model_alias = String::new();
+    if cli.model_name.len() == 1 {
+        model_alias = cli.model_alias[0].clone();
+    } else if cli.model_alias.len() == 2 {
+        model_alias = cli.model_alias.join(",").to_string();
+    }
+    let value = json!({
+        "model_alias": model_alias,
+    });
+    log(value);
+
+    // log context size
     if cli.ctx_size.is_empty() && cli.ctx_size.len() > 2 {
         return Err(ServerError::ArgumentError(
             "Invalid setting for context size. For running chat or embedding model, please specify a single context size. For running both chat and embedding models, please specify two context sizes: the first one for chat model, the other for embedding model.".to_owned(),
         ));
     }
-
     let mut ctx_sizes_str = String::new();
     if cli.model_name.len() == 1 {
         ctx_sizes_str = cli.ctx_size[0].to_string();
@@ -162,10 +173,10 @@ async fn main() -> Result<(), ServerError> {
             .collect::<Vec<String>>()
             .join(",");
     }
-    log(format!(
-        "[INFO] Context size: {ctx_sizes}",
-        ctx_sizes = ctx_sizes_str
-    ));
+    let value = json!({
+        "ctx_size": ctx_sizes_str,
+    });
+    log(value);
 
     // log batch size
     if cli.batch_size.is_empty() && cli.batch_size.len() > 2 {
@@ -184,10 +195,10 @@ async fn main() -> Result<(), ServerError> {
             .collect::<Vec<String>>()
             .join(",");
     }
-    log(format!(
-        "[INFO] Batch size: {batch_sizes}",
-        batch_sizes = batch_sizes_str
-    ));
+    let value = json!({
+        "batch_size": batch_sizes_str,
+    });
+    log(value);
 
     // log prompt template
     if cli.prompt_template.is_empty() && cli.prompt_template.len() > 2 {
