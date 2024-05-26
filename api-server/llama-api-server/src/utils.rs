@@ -1,3 +1,4 @@
+use crate::LOG_TARGET;
 use serde::{Deserialize, Serialize};
 
 pub(crate) fn gen_chat_id() -> String {
@@ -156,4 +157,35 @@ pub(crate) struct ChatResponseLogRecord {
     pub is_server_error: bool,
     /// time stamp
     pub timestamp: String,
+}
+
+pub(crate) fn log(value: serde_json::Value) {
+    let record = NewLogRecord::new(LogLevel::Info, None, value);
+    let record = serde_json::to_string(&record).unwrap();
+    log!(target: LOG_TARGET, log::Level::Info, "{}", record.to_string());
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct NewLogRecord {
+    /// log level
+    level: LogLevel,
+    /// User id
+    #[serde(skip_serializing_if = "Option::is_none")]
+    user: Option<String>,
+    /// log message
+    #[serde(flatten)]
+    message: serde_json::Value,
+    /// time stamp
+    timestamp: String,
+}
+
+impl NewLogRecord {
+    pub(crate) fn new(level: LogLevel, user: Option<String>, message: serde_json::Value) -> Self {
+        Self {
+            level,
+            user,
+            message: message.into(),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        }
+    }
 }
