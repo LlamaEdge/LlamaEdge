@@ -1,4 +1,8 @@
-use crate::{error, utils::gen_chat_id, SERVER_INFO};
+use crate::{
+    error,
+    utils::{gen_chat_id, LogLevel, NewLogRecord},
+    SERVER_INFO,
+};
 use endpoints::{
     chat::ChatCompletionRequest,
     completions::CompletionRequest,
@@ -7,9 +11,13 @@ use endpoints::{
     rag::{ChunksRequest, ChunksResponse},
 };
 use futures_util::TryStreamExt;
-use hyper::{body::to_bytes, Body, Method, Request, Response};
+use hyper::{
+    body::{to_bytes, HttpBody},
+    Body, Method, Request, Response,
+};
 use multipart::server::{Multipart, ReadEntry, ReadEntryResult};
 use multipart_2021 as multipart;
+use serde_json::json;
 use std::{
     fs::{self, File},
     io::{Cursor, Read, Write},
@@ -19,9 +27,34 @@ use std::{
 
 /// List all models available.
 pub(crate) async fn models_handler() -> Result<Response<Body>, hyper::Error> {
+    // log request
+    {
+        let record = NewLogRecord::new(
+            LogLevel::Info,
+            None,
+            json!({
+                "message": "Handle model list request",
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        info!("{}", &message);
+    }
+
     let list_models_response = match llama_core::models::models().await {
         Ok(list_models_response) => list_models_response,
         Err(e) => {
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": format!("Failed to get model list. Reason: {}", e.to_string()),
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!("{}", &message);
+            }
             return error::internal_server_error(e.to_string());
         }
     };
@@ -30,6 +63,18 @@ pub(crate) async fn models_handler() -> Result<Response<Body>, hyper::Error> {
     let s = match serde_json::to_string(&list_models_response) {
         Ok(s) => s,
         Err(e) => {
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": format!("Failed to serialize the model list result. Reason: {}", e.to_string()),
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!("{}", &message);
+            }
             return error::internal_server_error(e.to_string());
         }
     };
@@ -42,8 +87,52 @@ pub(crate) async fn models_handler() -> Result<Response<Body>, hyper::Error> {
         .header("Content-Type", "application/json")
         .body(Body::from(s));
     match result {
-        Ok(response) => Ok(response),
-        Err(e) => error::internal_server_error(e.to_string()),
+        Ok(response) => {
+            // log
+            {
+                let status_code = response.status();
+                let response_version = format!("{:?}", response.version());
+                let response_body_size: u64 = response.body().size_hint().lower();
+                let response_status = status_code.as_u16();
+                let response_is_informational = status_code.is_informational();
+                let response_is_success = status_code.is_success();
+                let response_is_redirection = status_code.is_redirection();
+                let response_is_client_error = status_code.is_client_error();
+                let response_is_server_error = status_code.is_server_error();
+                let record = NewLogRecord::new(
+                    LogLevel::Info,
+                    None,
+                    json!({
+                        "response_version": response_version,
+                        "response_body_size": response_body_size,
+                        "response_status": response_status,
+                        "response_is_informational": response_is_informational,
+                        "response_is_success": response_is_success,
+                        "response_is_redirection": response_is_redirection,
+                        "response_is_client_error": response_is_client_error,
+                        "response_is_server_error": response_is_server_error,
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                info!("{}", &message);
+            }
+            Ok(response)
+        }
+        Err(e) => {
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": format!("Failed to get model list. Reason: {}", e.to_string()),
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!("{}", &message);
+            }
+            error::internal_server_error(e.to_string())
+        }
     }
 }
 
@@ -168,6 +257,46 @@ pub(crate) async fn chat_completions_handler(
         }
     }
 
+    // log request
+    {
+        let method = hyper::http::Method::as_str(req.method()).to_string();
+        let path = req.uri().path().to_string();
+        let version = format!("{:?}", req.version());
+        let size: u64 = req
+            .headers()
+            .get("content-length")
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .parse()
+            .unwrap();
+        let record = NewLogRecord::new(
+            LogLevel::Info,
+            None,
+            json!({
+                "request_method": method,
+                "request_path": path,
+                "request_http_version": version,
+                "request_body_size": size,
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        info!("{}", &message);
+    }
+
+    // log
+    {
+        let record = NewLogRecord::new(
+            LogLevel::Info,
+            None,
+            json!({
+                "message": "Parse chat completion request body",
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        info!("{}", &message);
+    }
+
     // parse request
     let body_bytes = to_bytes(req.body_mut()).await?;
     let mut chat_request: ChatCompletionRequest = match serde_json::from_slice(&body_bytes) {
@@ -185,16 +314,111 @@ pub(crate) async fn chat_completions_handler(
         chat_request.user = Some(gen_chat_id())
     };
 
-    match chat_request.stream {
+    // log user id
+    {
+        let record = NewLogRecord::new(
+            LogLevel::Info,
+            None,
+            json!({
+                "user": chat_request.user.clone().unwrap(),
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        info!("{}", &message);
+    }
+
+    // log
+    {
+        let record = NewLogRecord::new(
+            LogLevel::Info,
+            None,
+            json!({
+                "message": "Handle chat completion request",
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        info!("{}", &message);
+    }
+
+    // handle chat request
+    let response = match chat_request.stream {
         Some(true) => chat_completions_stream(chat_request).await,
         Some(false) | None => chat_completions(chat_request).await,
+    };
+
+    // log response
+    let status_code = response.status();
+    if status_code.as_u16() < 400 {
+        // log response
+        let response_version = format!("{:?}", response.version());
+        let response_body_size: u64 = response.body().size_hint().lower();
+        let response_status = status_code.as_u16();
+        let response_is_informational = status_code.is_informational();
+        let response_is_success = status_code.is_success();
+        let response_is_redirection = status_code.is_redirection();
+        let response_is_client_error = status_code.is_client_error();
+        let response_is_server_error = status_code.is_server_error();
+        let record = NewLogRecord::new(
+            LogLevel::Info,
+            None,
+            json!({
+                "response_version": response_version,
+                "response_body_size": response_body_size,
+                "response_status": response_status,
+                "response_is_informational": response_is_informational,
+                "response_is_success": response_is_success,
+                "response_is_redirection": response_is_redirection,
+                "response_is_client_error": response_is_client_error,
+                "response_is_server_error": response_is_server_error,
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        info!("{}", &message);
+    } else {
+        let response_version = format!("{:?}", response.version());
+        let response_body_size: u64 = response.body().size_hint().lower();
+        let response_status = status_code.as_u16();
+        let response_is_informational = status_code.is_informational();
+        let response_is_success = status_code.is_success();
+        let response_is_redirection = status_code.is_redirection();
+        let response_is_client_error = status_code.is_client_error();
+        let response_is_server_error = status_code.is_server_error();
+        let record = NewLogRecord::new(
+            LogLevel::Error,
+            None,
+            json!({
+                "response_version": response_version,
+                "response_body_size": response_body_size,
+                "response_status": response_status,
+                "response_is_informational": response_is_informational,
+                "response_is_success": response_is_success,
+                "response_is_redirection": response_is_redirection,
+                "response_is_client_error": response_is_client_error,
+                "response_is_server_error": response_is_server_error,
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        error!("{}", &message);
     }
+
+    Ok(response)
 }
 
 /// Process a chat-completion request in stream mode and returns a chat-completion response with the answer from the model.
-async fn chat_completions_stream(
-    mut chat_request: ChatCompletionRequest,
-) -> Result<Response<Body>, hyper::Error> {
+async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Response<Body> {
+    // log
+    {
+        let record = NewLogRecord::new(
+            LogLevel::Info,
+            None,
+            json!({
+                "message": "start chat completions in stream mode",
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        info!("{}", &message);
+    }
+
     let id = chat_request.user.clone().unwrap();
     match llama_core::chat::chat_completions_stream(&mut chat_request).await {
         Ok(stream) => {
@@ -211,18 +435,71 @@ async fn chat_completions_stream(
                 .body(Body::wrap_stream(stream));
 
             match result {
-                Ok(response) => Ok(response),
-                Err(e) => error::internal_server_error(e.to_string()),
+                Ok(response) => {
+                    // log
+                    {
+                        let record = NewLogRecord::new(
+                            LogLevel::Info,
+                            None,
+                            json!({
+                                "message": "finish chat completions in stream mode",
+                            }),
+                        );
+                        let message = serde_json::to_string(&record).unwrap();
+                        info!("{}", &message);
+                    }
+                    response
+                }
+                Err(e) => {
+                    // log
+                    {
+                        let record = NewLogRecord::new(
+                            LogLevel::Error,
+                            None,
+                            json!({
+                                "message": format!("Failed chat completions in stream mode. Reason: {}", e.to_string()),
+                            }),
+                        );
+                        let message = serde_json::to_string(&record).unwrap();
+                        error!("{}", &message);
+                    }
+                    error::internal_server_error_new(e.to_string())
+                }
             }
         }
-        Err(e) => error::internal_server_error(e.to_string()),
+        Err(e) => {
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": format!("Failed chat completions in stream mode. Reason: {}", e.to_string()),
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!("{}", &message);
+            }
+            error::internal_server_error_new(e.to_string())
+        }
     }
 }
 
 /// Process a chat-completion request and returns a chat-completion response with the answer from the model.
-async fn chat_completions(
-    mut chat_request: ChatCompletionRequest,
-) -> Result<Response<Body>, hyper::Error> {
+async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<Body> {
+    // log
+    {
+        let record = NewLogRecord::new(
+            LogLevel::Info,
+            None,
+            json!({
+                "message": "start chat completions in non-stream mode",
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        info!("{}", &message);
+    }
+
     let id = chat_request.user.clone().unwrap();
     match llama_core::chat::chat_completions(&mut chat_request).await {
         Ok(chat_completion_object) => {
@@ -230,7 +507,22 @@ async fn chat_completions(
             let s = match serde_json::to_string(&chat_completion_object) {
                 Ok(s) => s,
                 Err(e) => {
-                    return error::internal_server_error(format!(
+                    // log
+                    {
+                        let record = NewLogRecord::new(
+                            LogLevel::Error,
+                            None,
+                            json!({
+                                "message": format!(
+                                    "Fail to serialize chat completion object. {}",
+                                    e
+                                ),
+                            }),
+                        );
+                        let message = serde_json::to_string(&record).unwrap();
+                        error!("{}", &message);
+                    }
+                    return error::internal_server_error_new(format!(
                         "Fail to serialize chat completion object. {}",
                         e
                     ));
@@ -247,11 +539,53 @@ async fn chat_completions(
                 .body(Body::from(s));
 
             match result {
-                Ok(response) => Ok(response),
-                Err(e) => error::internal_server_error(e.to_string()),
+                Ok(response) => {
+                    // log
+                    {
+                        let record = NewLogRecord::new(
+                            LogLevel::Info,
+                            None,
+                            json!({
+                                "message": "finish chat completions in non-stream mode",
+                            }),
+                        );
+                        let message = serde_json::to_string(&record).unwrap();
+                        info!("{}", &message);
+                    }
+                    response
+                }
+                Err(e) => {
+                    // log
+                    {
+                        let record = NewLogRecord::new(
+                            LogLevel::Error,
+                            None,
+                            json!({
+                                "message": format!("Failed chat completions in non-stream mode. Reason: {}", e.to_string()),
+                            }),
+                        );
+                        let message = serde_json::to_string(&record).unwrap();
+                        error!("{}", &message);
+                    }
+                    error::internal_server_error_new(e.to_string())
+                }
             }
         }
-        Err(e) => error::internal_server_error(e.to_string()),
+        Err(e) => {
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": format!("Failed chat completions in non-stream mode. Reason: {}", e.to_string()),
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!("{}", &message);
+            }
+            error::internal_server_error_new(e.to_string())
+        }
     }
 }
 
