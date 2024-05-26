@@ -28,8 +28,8 @@ const DEFAULT_SOCKET_ADDRESS: &str = "0.0.0.0:8080";
 #[derive(Debug, Parser)]
 #[command(name = "LlamaEdge API Server", version = env!("CARGO_PKG_VERSION"), author = env!("CARGO_PKG_AUTHORS"), about = "LlamaEdge API Server")]
 struct Cli {
-    /// Sets names for chat and embedding models. The names are separated by comma without space, for example, '--model-name Llama-2-7b,all-minilm'.
-    #[arg(short, long, value_delimiter = ',', required = true)]
+    /// Sets names for chat and/or embedding models. To run both chat and embedding models, the names should be separated by comma without space, for example, '--model-name Llama-2-7b,all-minilm'. The first value is for the chat model, and the second is for the embedding model.
+    #[arg(short, long, value_delimiter = ',', default_value = "default")]
     model_name: Vec<String>,
     /// Model aliases for chat and embedding models
     #[arg(
@@ -39,7 +39,7 @@ struct Cli {
         default_value = "default,embedding"
     )]
     model_alias: Vec<String>,
-    /// Sets context sizes for chat and embedding models, respectively. The sizes are separated by comma without space, for example, '--ctx-size 4096,384'. The first value is for the chat model, and the second is for the embedding model.
+    /// Sets context sizes for chat and/or embedding models. To run both chat and embedding models, the sizes should be separated by comma without space, for example, '--ctx-size 4096,384'. The first value is for the chat model, and the second is for the embedding model.
     #[arg(
         short = 'c',
         long,
@@ -48,10 +48,10 @@ struct Cli {
         value_parser = clap::value_parser!(u64)
     )]
     ctx_size: Vec<u64>,
-    /// Sets batch sizes for chat and embedding models, respectively. The sizes are separated by comma without space, for example, '--batch-size 128,64'. The first value is for the chat model, and the second is for the embedding model.
+    /// Sets batch sizes for chat and/or embedding models. To run both chat and embedding models, the sizes should be separated by comma without space, for example, '--batch-size 128,64'. The first value is for the chat model, and the second is for the embedding model.
     #[arg(short, long, value_delimiter = ',', default_value = "512,512", value_parser = clap::value_parser!(u64))]
     batch_size: Vec<u64>,
-    /// Sets prompt templates for chat and embedding models, respectively. The prompt templates are separated by comma without space, for example, '--prompt-template llama-2-chat,embedding'. The first value is for the chat model, and the second is for the embedding model.
+    /// Sets prompt templates for chat and/or embedding models, respectively. To run both chat and embedding models, the prompt templates should be separated by comma without space, for example, '--prompt-template llama-2-chat,embedding'. The first value is for the chat model, and the second is for the embedding model.
     #[arg(short, long, value_delimiter = ',', value_parser = clap::value_parser!(PromptTemplateType), required = true)]
     prompt_template: Vec<PromptTemplateType>,
     /// Halt generation at PROMPT, return control.
@@ -112,10 +112,7 @@ async fn main() -> Result<(), ServerError> {
 
     // log the version of the server
     let server_version = env!("CARGO_PKG_VERSION").to_string();
-    log(format!(
-        "\n[INFO] LlamaEdge-RAG version: {}",
-        &server_version
-    ));
+    log(format!("\n[INFO] LlamaEdge version: {}", &server_version));
 
     // log model names
     if cli.model_name.is_empty() && cli.model_name.len() > 2 {
@@ -128,39 +125,28 @@ async fn main() -> Result<(), ServerError> {
         names = &cli.model_name.join(",")
     ));
 
-    // log model aliases
-    log(format!(
-        "[INFO] Model aliases: {aliases}",
-        aliases = &cli.model_alias.join(",")
-    ));
-    // log model aliases
-    if cli.model_alias.is_empty() && cli.model_alias.len() > 2 {
-        return Err(ServerError::ArgumentError(
-            "Invalid setting for model alias. For running chat or embedding model, please specify a single model alias. For running both chat and embedding models, please specify two model aliases: the first one for chat model, the other for embedding model.".to_owned(),
-        ));
-    }
-
     // context size
     if cli.ctx_size.is_empty() && cli.ctx_size.len() > 2 {
         return Err(ServerError::ArgumentError(
             "Invalid setting for context size. For running chat or embedding model, please specify a single context size. For running both chat and embedding models, please specify two context sizes: the first one for chat model, the other for embedding model.".to_owned(),
         ));
     }
-    let ctx_sizes_str: String = cli
-        .ctx_size
-        .iter()
-        .map(|n| n.to_string())
-        .collect::<Vec<String>>()
-        .join(",");
+
+    let mut ctx_sizes_str = String::new();
+    if cli.model_name.len() == 1 {
+        ctx_sizes_str = cli.ctx_size[0].to_string();
+    } else if cli.model_name.len() == 2 {
+        ctx_sizes_str = cli
+            .ctx_size
+            .iter()
+            .map(|n| n.to_string())
+            .collect::<Vec<String>>()
+            .join(",");
+    }
     log(format!(
-        "[INFO] Context sizes: {ctx_sizes}",
+        "[INFO] Context size: {ctx_sizes}",
         ctx_sizes = ctx_sizes_str
     ));
-    if cli.model_name.len() != cli.ctx_size.len() {
-        return Err(ServerError::ArgumentError(
-            "The number of model names and context sizes must be the same.".to_owned(),
-        ));
-    }
 
     // batch size
     if cli.batch_size.is_empty() && cli.batch_size.len() > 2 {
@@ -168,21 +154,21 @@ async fn main() -> Result<(), ServerError> {
             "Invalid setting for batch size. For running chat or embedding model, please specify a single batch size. For running both chat and embedding models, please specify two batch sizes: the first one for chat model, the other for embedding model.".to_owned(),
         ));
     }
-    let batch_sizes_str: String = cli
-        .batch_size
-        .iter()
-        .map(|n| n.to_string())
-        .collect::<Vec<String>>()
-        .join(",");
+    let mut batch_sizes_str = String::new();
+    if cli.model_name.len() == 1 {
+        batch_sizes_str = cli.batch_size[0].to_string();
+    } else if cli.model_name.len() == 2 {
+        batch_sizes_str = cli
+            .batch_size
+            .iter()
+            .map(|n| n.to_string())
+            .collect::<Vec<String>>()
+            .join(",");
+    }
     log(format!(
-        "[INFO] Batch sizes: {batch_sizes}",
+        "[INFO] Batch size: {batch_sizes}",
         batch_sizes = batch_sizes_str
     ));
-    if cli.model_name.len() != cli.batch_size.len() {
-        return Err(ServerError::ArgumentError(
-            "The number of model names and batch sizes must be the same.".to_owned(),
-        ));
-    }
 
     // prompt template
     if cli.prompt_template.is_empty() && cli.prompt_template.len() > 2 {
