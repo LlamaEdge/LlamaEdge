@@ -11,14 +11,16 @@ use clap::Parser;
 use error::ServerError;
 use hyper::{
     header,
+    server::conn::AddrStream,
     service::{make_service_fn, service_fn},
     Body, Request, Response, Server, StatusCode,
 };
 use llama_core::MetadataBuilder;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::{net::SocketAddr, path::PathBuf};
-use utils::{LogLevel, LogRecord};
+use utils::{log, LogLevel};
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -126,10 +128,10 @@ async fn main() -> Result<(), ServerError> {
     let cli = Cli::parse();
 
     // log the version of the server
-    let server_version = env!("CARGO_PKG_VERSION").to_string();
-    let message = format!("LlamaEdge version: {}", &server_version);
-    let record = serde_json::to_string(&LogRecord::new(LogLevel::Info, None, message)).unwrap();
-    log!(target: LOG_TARGET, log::Level::Info, "{}", record);
+    let value = json!({
+        "server_version": env!("CARGO_PKG_VERSION").to_string(),
+    });
+    log(value);
 
     // log model names
     if cli.model_name.is_empty() && cli.model_name.len() > 2 {
@@ -137,9 +139,10 @@ async fn main() -> Result<(), ServerError> {
             "Invalid setting for model name. For running chat or embedding model, please specify a single model name. For running both chat and embedding models, please specify two model names: the first one for chat model, the other for embedding model.".to_owned(),
         ));
     }
-    let message = format!("Model names: {names}", names = &cli.model_name.join(","));
-    let record = serde_json::to_string(&LogRecord::new(LogLevel::Info, None, message)).unwrap();
-    log!(target: LOG_TARGET, log::Level::Info, "{}", record);
+    let value = json!({
+        "model_name": cli.model_name.join(",").to_string(),
+    });
+    log(value);
 
     // context size
     if cli.ctx_size.is_empty() && cli.ctx_size.len() > 2 {
@@ -164,7 +167,7 @@ async fn main() -> Result<(), ServerError> {
         ctx_sizes = ctx_sizes_str
     ));
 
-    // batch size
+    // log batch size
     if cli.batch_size.is_empty() && cli.batch_size.len() > 2 {
         return Err(ServerError::ArgumentError(
             "Invalid setting for batch size. For running chat or embedding model, please specify a single batch size. For running both chat and embedding models, please specify two batch sizes: the first one for chat model, the other for embedding model.".to_owned(),
@@ -186,7 +189,7 @@ async fn main() -> Result<(), ServerError> {
         batch_sizes = batch_sizes_str
     ));
 
-    // prompt template
+    // log prompt template
     if cli.prompt_template.is_empty() && cli.prompt_template.len() > 2 {
         return Err(ServerError::ArgumentError(
             "LlamaEdge API server requires prompt templates. For running chat or embedding model, please specify a single prompt template. For running both chat and embedding models, please specify two prompt templates: the first one for chat model, the other for embedding model.".to_owned(),
@@ -198,78 +201,73 @@ async fn main() -> Result<(), ServerError> {
         .map(|n| n.to_string())
         .collect::<Vec<String>>()
         .join(",");
-    let message = format!("Prompt template: {prompt_template_str}");
-    let record = serde_json::to_string(&LogRecord::new(LogLevel::Info, None, message)).unwrap();
-    log!(target: LOG_TARGET, log::Level::Info, "{}", record);
+    let value = json!({
+        "prompt_template": prompt_template_str,
+    });
+    log(value);
     if cli.model_name.len() != cli.prompt_template.len() {
         return Err(ServerError::ArgumentError(
             "The number of model names and prompt templates must be the same.".to_owned(),
         ));
     }
 
-    // reverse prompt
+    // log reverse prompt
     if let Some(reverse_prompt) = &cli.reverse_prompt {
-        // log(format!("[INFO] reverse prompt: {}", reverse_prompt));
-        let message = format!("reverse prompt: {}", reverse_prompt);
-        let record = serde_json::to_string(&LogRecord::new(LogLevel::Info, None, message)).unwrap();
-        log!(target: LOG_TARGET, log::Level::Info, "{}", record);
+        let value = json!({
+            "reverse_prompt": reverse_prompt.clone(),
+        });
+        log(value);
     }
 
-    // n_predict
-    let message = format!("Number of tokens to predict: {}", &cli.n_predict);
-    let record = serde_json::to_string(&LogRecord::new(LogLevel::Info, None, message)).unwrap();
-    log!(target: LOG_TARGET, log::Level::Info, "{}", record);
+    // log n_predict
+    let value = json!({
+        "n_predict": cli.n_predict,
+    });
+    log(value);
 
-    // n_gpu_layers
-    let message = format!("Number of layers to run on the GPU: {}", &cli.n_gpu_layers);
-    let record = serde_json::to_string(&LogRecord::new(LogLevel::Info, None, message)).unwrap();
-    log!(target: LOG_TARGET, log::Level::Info, "{}", record);
+    // log n_gpu_layers
+    let value = json!({
+        "n_gpu_layers": cli.n_gpu_layers,
+    });
+    log(value);
 
-    // temperature
-    let message = format!("Temperature for sampling: {}", &cli.temp);
-    let record = serde_json::to_string(&LogRecord::new(LogLevel::Info, None, message)).unwrap();
-    log!(target: LOG_TARGET, log::Level::Info, "{}", record);
+    // log temperature
+    let value = json!({
+        "temp": cli.temp,
+    });
+    log(value);
 
-    // top-p sampling
-    let message = format!("Top-p sampling (1.0 = disabled): {}", &cli.top_p);
-    let record = serde_json::to_string(&LogRecord::new(LogLevel::Info, None, message)).unwrap();
-    log!(target: LOG_TARGET, log::Level::Info, "{}", record);
+    // log top-p sampling
+    let value = json!({
+        "top_p": cli.top_p,
+    });
+    log(value);
 
     // repeat penalty
-    let message = format!(
-        "Penalize repeat sequence of tokens: {}",
-        &cli.repeat_penalty
-    );
-    let record = serde_json::to_string(&LogRecord::new(LogLevel::Info, None, message)).unwrap();
-    log!(target: LOG_TARGET, log::Level::Info, "{}", record);
+    let value = json!({
+        "repeat_penalty": cli.repeat_penalty,
+    });
+    log(value);
 
-    // presence penalty
-    let message = format!(
-        "Presence penalty (0.0 = disabled): {}",
-        &cli.presence_penalty
-    );
-    let record = serde_json::to_string(&LogRecord::new(LogLevel::Info, None, message)).unwrap();
-    log!(target: LOG_TARGET, log::Level::Info, "{}", record);
+    // log presence penalty
+    let value = json!({
+        "presence penalty": cli.presence_penalty,
+    });
+    log(value);
 
-    // frequency penalty
-    let message = format!(
-        "Frequency penalty (0.0 = disabled): {}",
-        &cli.frequency_penalty
-    );
-    let record = serde_json::to_string(&LogRecord::new(LogLevel::Info, None, message)).unwrap();
-    log!(target: LOG_TARGET, log::Level::Info, "{}", record);
+    // log frequency penalty
+    let value = json!({
+        "frequency_penalty": cli.frequency_penalty,
+    });
+    log(value);
 
-    // multimodal projector
+    // log multimodal projector
     if let Some(llava_mmproj) = &cli.llava_mmproj {
-        // log(format!("[INFO] Multimodal projector: {}", llava_mmproj));
-        let message = format!("Multimodal projector: {}", llava_mmproj);
-        let record = serde_json::to_string(&LogRecord::new(LogLevel::Info, None, message)).unwrap();
-        log!(target: LOG_TARGET, log::Level::Info, "{}", record);
+        let value = json!({
+            "Multimodal_projector": llava_mmproj.clone(),
+        });
+        log(value);
     }
-
-    let message = format!("Socket address: {}", &cli.socket_addr);
-    let record = serde_json::to_string(&LogRecord::new(LogLevel::Info, None, message)).unwrap();
-    log!(target: LOG_TARGET, log::Level::Info, "{}", record);
 
     // initialize the core context
     let mut chat_model_config = None;
@@ -415,7 +413,7 @@ async fn main() -> Result<(), ServerError> {
             .map_err(|e| ServerError::Operation(format!("{}", e)))?;
     }
 
-    // get the plugin version info
+    // log plugin version
     let plugin_info =
         llama_core::get_plugin_info().map_err(|e| ServerError::Operation(e.to_string()))?;
     let plugin_version = format!(
@@ -423,9 +421,10 @@ async fn main() -> Result<(), ServerError> {
         build_number = plugin_info.build_number,
         commit_id = plugin_info.commit_id,
     );
-    let message = format!("Wasi-nn-ggml plugin: {}", &plugin_version);
-    let record = serde_json::to_string(&LogRecord::new(LogLevel::Info, None, message)).unwrap();
-    log!(target: LOG_TARGET, log::Level::Info, "{}", record);
+    let value = json!({
+        "plugin_ggml_version": plugin_version,
+    });
+    log(value);
 
     // socket address
     let addr = cli
@@ -436,7 +435,7 @@ async fn main() -> Result<(), ServerError> {
 
     // create server info
     let server_info = ServerInfo {
-        version: server_version,
+        version: env!("CARGO_PKG_VERSION").to_string(),
         plugin_version,
         port,
         chat_model: chat_model_config,
@@ -446,7 +445,14 @@ async fn main() -> Result<(), ServerError> {
         .set(server_info)
         .map_err(|_| ServerError::Operation("Failed to set `SERVER_INFO`.".to_string()))?;
 
-    let new_service = make_service_fn(move |_| {
+    let new_service = make_service_fn(move |conn: &AddrStream| {
+        let value = json!({
+            "remote_addr": conn.remote_addr().to_string(),
+            "local_addr": conn.local_addr().to_string(),
+        });
+        log(value);
+
+        // web ui
         let web_ui = cli.web_ui.to_string_lossy().to_string();
 
         async move { Ok::<_, Error>(service_fn(move |req| handle_request(req, web_ui.clone()))) }
@@ -455,13 +461,16 @@ async fn main() -> Result<(), ServerError> {
     let server = Server::bind(&addr).serve(new_service);
 
     // log socket address
-    let message = format!(
-        "LlamaEdge API server listening on http://{}:{}",
-        addr.ip(),
-        addr.port()
-    );
-    let record = serde_json::to_string(&LogRecord::new(LogLevel::Info, None, message)).unwrap();
-    log!(target: LOG_TARGET, log::Level::Info, "{}", record);
+    let value = json!({
+        "socket_address": addr.to_string(),
+    });
+    log(value);
+
+    // println!(
+    //     "LlamaEdge API server listening on http://{}:{}",
+    //     addr.ip(),
+    //     addr.port()
+    // );
 
     match server.await {
         Ok(_) => Ok(()),
