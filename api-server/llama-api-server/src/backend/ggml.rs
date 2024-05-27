@@ -195,7 +195,6 @@ pub(crate) async fn embeddings_handler(
         info!(target: "embedding_request", "{}", message);
     }
 
-    println!("\n[+] Running embeddings handler ...");
     match llama_core::embeddings::embeddings(&embedding_request).await {
         Ok(embedding_response) => {
             // serialize embedding object
@@ -497,7 +496,22 @@ pub(crate) async fn chat_completions_handler(
         match result {
             Ok(response) => return Ok(response),
             Err(e) => {
-                return error::internal_server_error(e.to_string());
+                let err_msg = e.to_string();
+
+                // log
+                {
+                    let record = NewLogRecord::new(
+                        LogLevel::Error,
+                        None,
+                        json!({
+                            "message": &err_msg,
+                        }),
+                    );
+                    let message = serde_json::to_string(&record).unwrap();
+                    error!(target: "rag_query_handler", "{}", message);
+                }
+
+                return error::internal_server_error(err_msg);
             }
         }
     }
@@ -640,6 +654,20 @@ async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Res
     }
 
     let id = chat_request.user.clone().unwrap();
+
+    // log user id
+    {
+        let record = NewLogRecord::new(
+            LogLevel::Info,
+            None,
+            json!({
+                "user": &id,
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        info!(target: "chat_completions_stream", "{}", message);
+    }
+
     match llama_core::chat::chat_completions_stream(&mut chat_request).await {
         Ok(stream) => {
             let stream = stream.map_err(|e| e.to_string());
@@ -668,39 +696,52 @@ async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Res
                         let message = serde_json::to_string(&record).unwrap();
                         info!(target: "chat_completions_stream", "{}", message);
                     }
+
                     response
                 }
                 Err(e) => {
+                    let err_msg = format!(
+                        "Failed chat completions in stream mode. Reason: {}",
+                        e.to_string()
+                    );
+
                     // log
                     {
                         let record = NewLogRecord::new(
                             LogLevel::Error,
                             None,
                             json!({
-                                "message": format!("Failed chat completions in stream mode. Reason: {}", e.to_string()),
+                                "message": &err_msg,
                             }),
                         );
                         let message = serde_json::to_string(&record).unwrap();
                         error!(target: "chat_completions_stream", "{}", message);
                     }
-                    error::internal_server_error_new(e.to_string())
+
+                    error::internal_server_error_new(err_msg)
                 }
             }
         }
         Err(e) => {
+            let err_msg = format!(
+                "Failed chat completions in stream mode. Reason: {}",
+                e.to_string()
+            );
+
             // log
             {
                 let record = NewLogRecord::new(
                     LogLevel::Error,
                     None,
                     json!({
-                        "message": format!("Failed chat completions in stream mode. Reason: {}", e.to_string()),
+                        "message": &err_msg,
                     }),
                 );
                 let message = serde_json::to_string(&record).unwrap();
                 error!(target: "chat_completions_stream", "{}", message);
             }
-            error::internal_server_error_new(e.to_string())
+
+            error::internal_server_error_new(err_msg)
         }
     }
 }
@@ -727,25 +768,22 @@ async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<B
             let s = match serde_json::to_string(&chat_completion_object) {
                 Ok(s) => s,
                 Err(e) => {
+                    let err_msg = format!("Failed to serialize chat completion object. {}", e);
+
                     // log
                     {
                         let record = NewLogRecord::new(
                             LogLevel::Error,
                             None,
                             json!({
-                                "message": format!(
-                                    "Fail to serialize chat completion object. {}",
-                                    e
-                                ),
+                                "message": &err_msg,
                             }),
                         );
                         let message = serde_json::to_string(&record).unwrap();
                         error!(target: "chat_completions", "{}", message);
                     }
-                    return error::internal_server_error_new(format!(
-                        "Fail to serialize chat completion object. {}",
-                        e
-                    ));
+
+                    return error::internal_server_error_new(err_msg);
                 }
             };
 
@@ -772,39 +810,51 @@ async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<B
                         let message = serde_json::to_string(&record).unwrap();
                         info!(target: "chat_completions", "{}", message);
                     }
+
                     response
                 }
                 Err(e) => {
+                    let err_msg = format!(
+                        "Failed chat completions in non-stream mode. Reason: {}",
+                        e.to_string()
+                    );
+
                     // log
                     {
                         let record = NewLogRecord::new(
                             LogLevel::Error,
                             None,
                             json!({
-                                "message": format!("Failed chat completions in non-stream mode. Reason: {}", e.to_string()),
+                                "message": &err_msg,
                             }),
                         );
                         let message = serde_json::to_string(&record).unwrap();
                         error!(target: "chat_completions", "{}", message);
                     }
-                    error::internal_server_error_new(e.to_string())
+
+                    error::internal_server_error_new(err_msg)
                 }
             }
         }
         Err(e) => {
+            let err_msg = format!(
+                "Failed chat completions in non-stream mode. Reason: {}",
+                e.to_string()
+            );
+
             // log
             {
                 let record = NewLogRecord::new(
                     LogLevel::Error,
                     None,
                     json!({
-                        "message": format!("Failed chat completions in non-stream mode. Reason: {}", e.to_string()),
+                        "message": &err_msg,
                     }),
                 );
                 let message = serde_json::to_string(&record).unwrap();
                 error!(target: "chat_completions", "{}", message);
             }
-            error::internal_server_error_new(e.to_string())
+            error::internal_server_error_new(err_msg)
         }
     }
 }
@@ -940,10 +990,23 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, 
                 let mut file = match File::create(file_path.join(&filename)) {
                     Ok(file) => file,
                     Err(e) => {
-                        return error::internal_server_error(format!(
-                            "Failed to create archive document {}. {}",
-                            &filename, e
-                        ));
+                        let err_msg =
+                            format!("Failed to create archive document {}. {}", &filename, e);
+
+                        // log
+                        {
+                            let record = NewLogRecord::new(
+                                LogLevel::Error,
+                                None,
+                                json!({
+                                    "message": &err_msg,
+                                }),
+                            );
+                            let message = serde_json::to_string(&record).unwrap();
+                            error!(target: "files_handler", "{}", message);
+                        }
+
+                        return error::internal_server_error(err_msg);
                     }
                 };
                 file.write_all(&buffer[..]).unwrap();
@@ -1322,8 +1385,6 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Result<Response<Bo
                 chunks,
             };
 
-            println!("[+] File chunked successfully.\n");
-
             // serialize embedding object
             match serde_json::to_string(&chunks_response) {
                 Ok(s) => {
@@ -1435,7 +1496,7 @@ pub(crate) async fn server_info() -> Result<Response<Body>, hyper::Error> {
             LogLevel::Info,
             None,
             json!({
-                "message": "Handle server inforequest",
+                "message": "Handle server info request",
             }),
         );
         let message = serde_json::to_string(&record).unwrap();
