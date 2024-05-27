@@ -604,7 +604,7 @@ pub(crate) async fn chat_completions_handler(
         let response_is_client_error = status_code.is_client_error();
         let response_is_server_error = status_code.is_server_error();
         let record = NewLogRecord::new(
-            LogLevel::Error,
+            LogLevel::Info,
             None,
             json!({
                 "response_version": response_version,
