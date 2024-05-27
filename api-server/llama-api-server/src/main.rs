@@ -522,6 +522,19 @@ async fn main() -> Result<(), ServerError> {
         .map_err(|e| ServerError::SocketAddr(e.to_string()))?;
     let port = addr.port().to_string();
 
+    // log socket address
+    {
+        let record = NewLogRecord::new(
+            LogLevel::Info,
+            None,
+            json!({
+                "socket_address": addr.to_string(),
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        info!(target: "server_config", "{}", message);
+    }
+
     // create server info
     let server_info = ServerInfo {
         version: env!("CARGO_PKG_VERSION").to_string(),
@@ -556,19 +569,6 @@ async fn main() -> Result<(), ServerError> {
     });
 
     let server = Server::bind(&addr).serve(new_service);
-
-    // log socket address
-    {
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "socket_address": addr.to_string(),
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!(target: "server_config", "{}", message);
-    }
 
     // println!(
     //     "LlamaEdge API server listening on http://{}:{}",
