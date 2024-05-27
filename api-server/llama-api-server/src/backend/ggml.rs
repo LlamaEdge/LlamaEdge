@@ -1,8 +1,4 @@
-use crate::{
-    error,
-    utils::{gen_chat_id, LogLevel, NewLogRecord},
-    SERVER_INFO,
-};
+use crate::{error, utils::gen_chat_id, SERVER_INFO};
 use endpoints::{
     chat::ChatCompletionRequest,
     completions::CompletionRequest,
@@ -14,7 +10,6 @@ use futures_util::TryStreamExt;
 use hyper::{body::to_bytes, Body, Method, Request, Response};
 use multipart::server::{Multipart, ReadEntry, ReadEntryResult};
 use multipart_2021 as multipart;
-use serde_json::json;
 use std::{
     fs::{self, File},
     io::{Cursor, Read, Write},
@@ -25,35 +20,17 @@ use std::{
 /// List all models available.
 pub(crate) async fn models_handler() -> Response<Body> {
     // log
-    {
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "message": "Handle model list request",
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!(target: "models_handler", "{}", message);
-    }
+    info!(target: "models_handler", "Handle model list request");
 
     let list_models_response = match llama_core::models::models().await {
         Ok(list_models_response) => list_models_response,
         Err(e) => {
-            // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": format!("Failed to get model list. Reason: {}", e.to_string()),
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "models_handler", "{}", message);
-            }
+            let err_msg = format!("Failed to get model list. Reason: {}", e);
 
-            return error::internal_server_error(e.to_string());
+            // log
+            error!(target: "models_handler", "{}", &err_msg);
+
+            return error::internal_server_error(err_msg);
         }
     };
 
@@ -61,19 +38,12 @@ pub(crate) async fn models_handler() -> Response<Body> {
     let s = match serde_json::to_string(&list_models_response) {
         Ok(s) => s,
         Err(e) => {
+            let err_msg = format!("Failed to serialize the model list result. Reason: {}", e);
+
             // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": format!("Failed to serialize the model list result. Reason: {}", e.to_string()),
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "models_handler", "{}", message);
-            }
-            return error::internal_server_error(e.to_string());
+            error!(target: "models_handler", "{}", &err_msg);
+
+            return error::internal_server_error(err_msg);
         }
     };
 
@@ -90,17 +60,7 @@ pub(crate) async fn models_handler() -> Response<Body> {
             let err_msg = format!("Failed to get model list. Reason: {}", e);
 
             // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": &err_msg,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "models_handler", "{}", message);
-            }
+            error!(target: "models_handler", "{}", &err_msg);
 
             error::internal_server_error(err_msg)
         }
@@ -110,17 +70,7 @@ pub(crate) async fn models_handler() -> Response<Body> {
 /// Compute embeddings for the input text and return the embeddings object.
 pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body> {
     // log
-    {
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "message": "Handle embeddings request",
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!(target: "embeddings_handler", "{}", message);
-    }
+    info!(target: "embeddings_handler", "Handle embeddings request");
 
     // parse request
     let body_bytes = match to_bytes(req.body_mut()).await {
@@ -129,17 +79,7 @@ pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body>
             let err_msg = format!("Fail to read buffer from request body. {}", e);
 
             // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": &err_msg,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "embeddings_handler", "{}", message);
-            }
+            error!(target: "embeddings_handler", "{}", &err_msg);
 
             return error::internal_server_error(err_msg);
         }
@@ -150,17 +90,7 @@ pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body>
             let err_msg = format!("Fail to deserialize embedding request: {msg}", msg = e);
 
             // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": &err_msg,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "embeddings_handler", "{}", message);
-            }
+            error!(target: "embeddings_handler", "{}", &err_msg);
 
             return error::bad_request(err_msg);
         }
@@ -172,17 +102,7 @@ pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body>
     let id = embedding_request.user.clone().unwrap();
 
     // log user id
-    {
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "user": &id,
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!(target: "embeddings_handler", "{}", message);
-    }
+    info!(target: "embeddings_handler", "user: {}", &id);
 
     match llama_core::embeddings::embeddings(&embedding_request).await {
         Ok(embedding_response) => {
@@ -203,17 +123,7 @@ pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body>
                             let err_msg = e.to_string();
 
                             // log
-                            {
-                                let record = NewLogRecord::new(
-                                    LogLevel::Error,
-                                    None,
-                                    json!({
-                                        "message": &err_msg,
-                                    }),
-                                );
-                                let message = serde_json::to_string(&record).unwrap();
-                                error!(target: "embeddings_handler", "{}", message);
-                            }
+                            error!(target: "embeddings_handler", "{}", &err_msg);
 
                             error::internal_server_error(err_msg)
                         }
@@ -223,17 +133,7 @@ pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body>
                     let err_msg = format!("Fail to serialize embedding object. {}", e);
 
                     // log
-                    {
-                        let record = NewLogRecord::new(
-                            LogLevel::Error,
-                            None,
-                            json!({
-                                "message": &err_msg,
-                            }),
-                        );
-                        let message = serde_json::to_string(&record).unwrap();
-                        error!(target: "embeddings_handler", "{}", message);
-                    }
+                    error!(target: "embeddings_handler", "{}", &err_msg);
 
                     error::internal_server_error(err_msg)
                 }
@@ -243,17 +143,7 @@ pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body>
             let err_msg = e.to_string();
 
             // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": &err_msg,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "embeddings_handler", "{}", message);
-            }
+            error!(target: "embeddings_handler", "{}", &err_msg);
 
             error::internal_server_error(err_msg)
         }
@@ -262,17 +152,7 @@ pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body>
 
 pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body> {
     // log
-    {
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "message": "Handle completions request",
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!(target: "completions_handler", "{}", message);
-    }
+    info!(target: "completions_handler", "Handle completions request");
 
     // parse request
     let body_bytes = match to_bytes(req.body_mut()).await {
@@ -281,17 +161,7 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
             let err_msg = format!("Fail to read buffer from request body. {}", e);
 
             // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": &err_msg,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "completions_handler", "{}", message);
-            }
+            error!(target: "completions_handler", "{}", &err_msg);
 
             return error::internal_server_error(err_msg);
         }
@@ -302,17 +172,7 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
             let err_msg = format!("Fail to deserialize completions request: {msg}", msg = e);
 
             // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": &err_msg,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "completions_handler", "{}", message);
-            }
+            error!(target: "completions_handler", "{}", &err_msg);
 
             return error::bad_request(err_msg);
         }
@@ -324,17 +184,7 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
     let id = completion_request.user.clone().unwrap();
 
     // log user id
-    {
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "user": &id,
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!(target: "completions_handler", "{}", message);
-    }
+    info!(target: "completions_handler", "user: {}", &id);
 
     match llama_core::completions::completions(&completion_request).await {
         Ok(completion_object) => {
@@ -345,17 +195,7 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
                     let err_msg = format!("Fail to serialize completion object. {}", e);
 
                     // log
-                    {
-                        let record = NewLogRecord::new(
-                            LogLevel::Error,
-                            None,
-                            json!({
-                                "message": &err_msg,
-                            }),
-                        );
-                        let message = serde_json::to_string(&record).unwrap();
-                        error!(target: "completions_handler", "{}", message);
-                    }
+                    error!(target: "completions_handler", "{}", &err_msg);
 
                     return error::internal_server_error(err_msg);
                 }
@@ -375,17 +215,7 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
                     let err_msg = e.to_string();
 
                     // log
-                    {
-                        let record = NewLogRecord::new(
-                            LogLevel::Error,
-                            None,
-                            json!({
-                                "message": &err_msg,
-                            }),
-                        );
-                        let message = serde_json::to_string(&record).unwrap();
-                        error!(target: "completions_handler", "{}", message);
-                    }
+                    error!(target: "completions_handler", "{}", &err_msg);
 
                     error::internal_server_error(err_msg)
                 }
@@ -395,17 +225,7 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
             let err_msg = e.to_string();
 
             // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": &err_msg,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "completions_handler", "{}", message);
-            }
+            error!(target: "completions_handler", "{}", &err_msg);
 
             error::internal_server_error(err_msg)
         }
@@ -415,17 +235,7 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
 /// Process a chat-completion request and returns a chat-completion response with the answer from the model.
 pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response<Body> {
     // log
-    {
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "message": "Handle chat completion request",
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!(target: "chat_completions_handler", "{}", message);
-    }
+    info!(target: "chat_completions_handler", "Handle chat completion request");
 
     if req.method().eq(&hyper::http::Method::OPTIONS) {
         let result = Response::builder()
@@ -441,17 +251,7 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
                 let err_msg = e.to_string();
 
                 // log
-                {
-                    let record = NewLogRecord::new(
-                        LogLevel::Error,
-                        None,
-                        json!({
-                            "message": &err_msg,
-                        }),
-                    );
-                    let message = serde_json::to_string(&record).unwrap();
-                    error!(target: "rag_query_handler", "{}", message);
-                }
+                error!(target: "chat_completions_handler", "{}", &err_msg);
 
                 return error::internal_server_error(err_msg);
             }
@@ -465,17 +265,7 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
             let err_msg = format!("Fail to read buffer from request body. {}", e);
 
             // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": &err_msg,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "chat_completions_handler", "{}", message);
-            }
+            error!(target: "chat_completions_handler", "{}", &err_msg);
 
             return error::internal_server_error(err_msg);
         }
@@ -489,17 +279,7 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
             );
 
             // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": &err_msg,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "chat_completions_handler", "{}", message);
-            }
+            error!(target: "chat_completions_handler", "{}", &err_msg);
 
             return error::bad_request(err_msg);
         }
@@ -511,30 +291,10 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
     };
 
     // log user id
-    {
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "user": chat_request.user.clone().unwrap(),
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!(target: "chat_completions_handler", "{}", message);
-    }
+    info!(target: "chat_completions_handler", "user: {}", chat_request.user.clone().unwrap());
 
     // log
-    {
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "message": "Handle chat completion request",
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!(target: "chat_completions_handler", "{}", message);
-    }
+    info!(target: "chat_completions_handler", "Handle chat completion request");
 
     // handle chat request
     match chat_request.stream {
@@ -546,32 +306,12 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
 /// Process a chat-completion request in stream mode and returns a chat-completion response with the answer from the model.
 async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Response<Body> {
     // log
-    {
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "message": "start chat completions in stream mode",
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!(target: "chat_completions_stream", "{}", message);
-    }
+    info!(target: "chat_completions_stream", "start chat completions in stream mode");
 
     let id = chat_request.user.clone().unwrap();
 
     // log user id
-    {
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "user": &id,
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!(target: "chat_completions_stream", "{}", message);
-    }
+    info!(target: "chat_completions_stream", "user: {}", &id);
 
     match llama_core::chat::chat_completions_stream(&mut chat_request).await {
         Ok(stream) => {
@@ -590,17 +330,7 @@ async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Res
             match result {
                 Ok(response) => {
                     // log
-                    {
-                        let record = NewLogRecord::new(
-                            LogLevel::Info,
-                            None,
-                            json!({
-                                "message": "finish chat completions in stream mode",
-                            }),
-                        );
-                        let message = serde_json::to_string(&record).unwrap();
-                        info!(target: "chat_completions_stream", "{}", message);
-                    }
+                    info!(target: "chat_completions_stream", "finish chat completions in stream mode");
 
                     response
                 }
@@ -608,17 +338,7 @@ async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Res
                     let err_msg = format!("Failed chat completions in stream mode. Reason: {}", e);
 
                     // log
-                    {
-                        let record = NewLogRecord::new(
-                            LogLevel::Error,
-                            None,
-                            json!({
-                                "message": &err_msg,
-                            }),
-                        );
-                        let message = serde_json::to_string(&record).unwrap();
-                        error!(target: "chat_completions_stream", "{}", message);
-                    }
+                    error!(target: "chat_completions_stream", "{}", &err_msg);
 
                     error::internal_server_error(err_msg)
                 }
@@ -628,17 +348,7 @@ async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Res
             let err_msg = format!("Failed chat completions in stream mode. Reason: {}", e);
 
             // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": &err_msg,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "chat_completions_stream", "{}", message);
-            }
+            error!(target: "chat_completions_stream", "{}", &err_msg);
 
             error::internal_server_error(err_msg)
         }
@@ -648,17 +358,7 @@ async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Res
 /// Process a chat-completion request and returns a chat-completion response with the answer from the model.
 async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<Body> {
     // log
-    {
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "message": "start chat completions in non-stream mode",
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!(target: "chat_completions", "{}", message);
-    }
+    info!(target: "chat_completions", "start chat completions in non-stream mode");
 
     let id = chat_request.user.clone().unwrap();
     match llama_core::chat::chat_completions(&mut chat_request).await {
@@ -670,17 +370,7 @@ async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<B
                     let err_msg = format!("Failed to serialize chat completion object. {}", e);
 
                     // log
-                    {
-                        let record = NewLogRecord::new(
-                            LogLevel::Error,
-                            None,
-                            json!({
-                                "message": &err_msg,
-                            }),
-                        );
-                        let message = serde_json::to_string(&record).unwrap();
-                        error!(target: "chat_completions", "{}", message);
-                    }
+                    error!(target: "chat_completions", "{}", &err_msg);
 
                     return error::internal_server_error(err_msg);
                 }
@@ -698,17 +388,7 @@ async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<B
             match result {
                 Ok(response) => {
                     // log
-                    {
-                        let record = NewLogRecord::new(
-                            LogLevel::Info,
-                            None,
-                            json!({
-                                "message": "finish chat completions in non-stream mode",
-                            }),
-                        );
-                        let message = serde_json::to_string(&record).unwrap();
-                        info!(target: "chat_completions", "{}", message);
-                    }
+                    info!(target: "chat_completions", "finish chat completions in non-stream mode");
 
                     response
                 }
@@ -717,17 +397,7 @@ async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<B
                         format!("Failed chat completions in non-stream mode. Reason: {}", e);
 
                     // log
-                    {
-                        let record = NewLogRecord::new(
-                            LogLevel::Error,
-                            None,
-                            json!({
-                                "message": &err_msg,
-                            }),
-                        );
-                        let message = serde_json::to_string(&record).unwrap();
-                        error!(target: "chat_completions", "{}", message);
-                    }
+                    error!(target: "chat_completions", "{}", &err_msg);
 
                     error::internal_server_error(err_msg)
                 }
@@ -737,17 +407,8 @@ async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<B
             let err_msg = format!("Failed chat completions in non-stream mode. Reason: {}", e);
 
             // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": &err_msg,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "chat_completions", "{}", message);
-            }
+            error!(target: "chat_completions", "{}", &err_msg);
+
             error::internal_server_error(err_msg)
         }
     }
@@ -755,17 +416,7 @@ async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<B
 
 pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
     // log
-    {
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "message": "Handle files request",
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!(target: "files_handler", "{}", message);
-    }
+    info!(target: "files_handler", "Handle files request");
 
     if req.method() == Method::POST {
         let boundary = "boundary=";
@@ -783,17 +434,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
                 let err_msg = format!("Fail to read buffer from request body. {}", e);
 
                 // log
-                {
-                    let record = NewLogRecord::new(
-                        LogLevel::Error,
-                        None,
-                        json!({
-                            "message": &err_msg,
-                        }),
-                    );
-                    let message = serde_json::to_string(&record).unwrap();
-                    error!(target: "files_handler", "{}", message);
-                }
+                error!(target: "files_handler", "{}", &err_msg);
 
                 return error::internal_server_error(err_msg);
             }
@@ -813,17 +454,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
                             "Failed to upload the target file. The filename is not provided.";
 
                         // log
-                        {
-                            let record = NewLogRecord::new(
-                                LogLevel::Error,
-                                None,
-                                json!({
-                                    "message": &err_msg,
-                                }),
-                            );
-                            let message = serde_json::to_string(&record).unwrap();
-                            error!(target: "files_handler", "{}", message);
-                        }
+                        error!(target: "files_handler", "{}", &err_msg);
 
                         return error::internal_server_error(err_msg);
                     }
@@ -838,17 +469,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
                     );
 
                     // log
-                    {
-                        let record = NewLogRecord::new(
-                            LogLevel::Error,
-                            None,
-                            json!({
-                                "message": &err_msg,
-                            }),
-                        );
-                        let message = serde_json::to_string(&record).unwrap();
-                        error!(target: "files_handler", "{}", message);
-                    }
+                    error!(target: "files_handler", "{}", &err_msg);
 
                     return error::internal_server_error(err_msg);
                 }
@@ -860,17 +481,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
                         let err_msg = format!("Failed to read the target file. {}", e);
 
                         // log
-                        {
-                            let record = NewLogRecord::new(
-                                LogLevel::Error,
-                                None,
-                                json!({
-                                    "message": &err_msg,
-                                }),
-                            );
-                            let message = serde_json::to_string(&record).unwrap();
-                            error!(target: "files_handler", "{}", message);
-                        }
+                        error!(target: "files_handler", "{}", &err_msg);
 
                         return error::internal_server_error(err_msg);
                     }
@@ -895,17 +506,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
                             format!("Failed to create archive document {}. {}", &filename, e);
 
                         // log
-                        {
-                            let record = NewLogRecord::new(
-                                LogLevel::Error,
-                                None,
-                                json!({
-                                    "message": &err_msg,
-                                }),
-                            );
-                            let message = serde_json::to_string(&record).unwrap();
-                            error!(target: "files_handler", "{}", message);
-                        }
+                        error!(target: "files_handler", "{}", &err_msg);
 
                         return error::internal_server_error(err_msg);
                     }
@@ -913,18 +514,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
                 file.write_all(&buffer[..]).unwrap();
 
                 // log
-                {
-                    let record = NewLogRecord::new(
-                        LogLevel::Info,
-                        None,
-                        json!({
-                            "file_id": &id,
-                            "file_name": &filename,
-                        }),
-                    );
-                    let message = serde_json::to_string(&record).unwrap();
-                    info!(target: "files_handler", "{}", message);
-                }
+                info!(target: "files_handler", "file_id: {}, file_name: {}", &id, &filename);
 
                 let created_at = match SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
                     Ok(n) => n.as_secs(),
@@ -932,17 +522,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
                         let err_msg = "Failed to get the current time.";
 
                         // log
-                        {
-                            let record = NewLogRecord::new(
-                                LogLevel::Error,
-                                None,
-                                json!({
-                                    "message": &err_msg,
-                                }),
-                            );
-                            let message = serde_json::to_string(&record).unwrap();
-                            error!(target: "files_handler", "{}", message);
-                        }
+                        error!(target: "files_handler", "{}", &err_msg);
 
                         return error::internal_server_error(err_msg);
                     }
@@ -971,17 +551,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
                         let err_msg = format!("Failed to serialize file object. {}", e);
 
                         // log
-                        {
-                            let record = NewLogRecord::new(
-                                LogLevel::Error,
-                                None,
-                                json!({
-                                    "message": &err_msg,
-                                }),
-                            );
-                            let message = serde_json::to_string(&record).unwrap();
-                            error!(target: "files_handler", "{}", message);
-                        }
+                        error!(target: "files_handler", "{}", &err_msg);
 
                         return error::internal_server_error(err_msg);
                     }
@@ -1001,17 +571,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
                         let err_msg = e.to_string();
 
                         // log
-                        {
-                            let record = NewLogRecord::new(
-                                LogLevel::Error,
-                                None,
-                                json!({
-                                    "message": &err_msg,
-                                }),
-                            );
-                            let message = serde_json::to_string(&record).unwrap();
-                            error!(target: "files_handler", "{}", message);
-                        }
+                        error!(target: "files_handler", "{}", &err_msg);
 
                         error::internal_server_error(err_msg)
                     }
@@ -1021,17 +581,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
                 let err_msg = "Failed to upload the target file. Not found the target file.";
 
                 // log
-                {
-                    let record = NewLogRecord::new(
-                        LogLevel::Error,
-                        None,
-                        json!({
-                            "message": &err_msg,
-                        }),
-                    );
-                    let message = serde_json::to_string(&record).unwrap();
-                    error!(target: "files_handler", "{}", message);
-                }
+                error!(target: "files_handler", "{}", &err_msg);
 
                 error::internal_server_error(err_msg)
             }
@@ -1040,34 +590,14 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
         let err_msg = "Not implemented for listing files.";
 
         // log
-        {
-            let record = NewLogRecord::new(
-                LogLevel::Error,
-                None,
-                json!({
-                    "message": &err_msg,
-                }),
-            );
-            let message = serde_json::to_string(&record).unwrap();
-            error!(target: "files_handler", "{}", message);
-        }
+        error!(target: "files_handler", "{}", &err_msg);
 
         error::internal_server_error(err_msg)
     } else {
         let err_msg = "Invalid HTTP Method.";
 
         // log
-        {
-            let record = NewLogRecord::new(
-                LogLevel::Error,
-                None,
-                json!({
-                    "message": &err_msg,
-                }),
-            );
-            let message = serde_json::to_string(&record).unwrap();
-            error!(target: "files_handler", "{}", message);
-        }
+        error!(target: "files_handler", "{}", &err_msg);
 
         error::internal_server_error(err_msg)
     }
@@ -1075,17 +605,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
 
 pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
     // log
-    {
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "message": "Handle chunks request",
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!(target: "chunks_handler", "{}", message);
-    }
+    info!(target: "chunks_handler", "Handle chunks request");
 
     // parse request
     let body_bytes = match to_bytes(req.body_mut()).await {
@@ -1094,17 +614,7 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
             let err_msg = format!("Fail to read buffer from request body. {}", e);
 
             // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": &err_msg,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "chunks_handler", "{}", message);
-            }
+            error!(target: "chunks_handler", "{}", &err_msg);
 
             return error::internal_server_error(err_msg);
         }
@@ -1116,17 +626,7 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
             let err_msg = format!("Fail to deserialize chunks request: {msg}", msg = e);
 
             // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": &err_msg,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "chunks_handler", "{}", message);
-            }
+            error!(target: "chunks_handler", "{}", &err_msg);
 
             return error::bad_request(err_msg);
         }
@@ -1138,17 +638,7 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
         let err_msg = "The `archives` directory does not exist.";
 
         // log
-        {
-            let record = NewLogRecord::new(
-                LogLevel::Error,
-                None,
-                json!({
-                    "message": &err_msg,
-                }),
-            );
-            let message = serde_json::to_string(&record).unwrap();
-            error!(target: "chunks_handler", "{}", message);
-        }
+        error!(target: "chunks_handler", "{}", &err_msg);
 
         return error::internal_server_error(err_msg);
     }
@@ -1159,17 +649,7 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
         let err_msg = format!("Not found archive id: {}", &chunks_request.id);
 
         // log
-        {
-            let record = NewLogRecord::new(
-                LogLevel::Error,
-                None,
-                json!({
-                    "message": &err_msg,
-                }),
-            );
-            let message = serde_json::to_string(&record).unwrap();
-            error!(target: "chunks_handler", "{}", message);
-        }
+        error!(target: "chunks_handler", "{}", &err_msg);
 
         return error::internal_server_error(err_msg);
     }
@@ -1183,34 +663,13 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
         );
 
         // log
-        {
-            let record = NewLogRecord::new(
-                LogLevel::Error,
-                None,
-                json!({
-                    "message": &err_msg,
-                }),
-            );
-            let message = serde_json::to_string(&record).unwrap();
-            error!(target: "chunks_handler", "{}", message);
-        }
+        error!(target: "chunks_handler", "{}", &err_msg);
 
         return error::internal_server_error(err_msg);
     }
 
     // log
-    {
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "file_id": &chunks_request.id,
-                "file_name": &chunks_request.filename,
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!(target: "chunks_handler", "{}", message);
-    }
+    info!(target: "chunks_handler", "file_id: {}, file_name: {}", &chunks_request.id, &chunks_request.filename);
 
     // get the extension of the archived file
     let extension = match file_path.extension().and_then(std::ffi::OsStr::to_str) {
@@ -1222,17 +681,7 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
             );
 
             // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": &err_msg,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "chunks_handler", "{}", message);
-            }
+            error!(target: "chunks_handler", "{}", &err_msg);
 
             return error::internal_server_error(err_msg);
         }
@@ -1245,17 +694,7 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
             let err_msg = format!("Failed to open `{}`. {}", &chunks_request.filename, e);
 
             // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": &err_msg,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "chunks_handler", "{}", message);
-            }
+            error!(target: "chunks_handler", "{}", &err_msg);
 
             return error::internal_server_error(err_msg);
         }
@@ -1267,17 +706,7 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
         let err_msg = format!("Failed to read `{}`. {}", &chunks_request.filename, e);
 
         // log
-        {
-            let record = NewLogRecord::new(
-                LogLevel::Error,
-                None,
-                json!({
-                    "message": &err_msg,
-                }),
-            );
-            let message = serde_json::to_string(&record).unwrap();
-            error!(target: "chunks_handler", "{}", message);
-        }
+        error!(target: "chunks_handler", "{}", &err_msg);
 
         return error::internal_server_error(err_msg);
     }
@@ -1306,17 +735,7 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
                             let err_msg = e.to_string();
 
                             // log
-                            {
-                                let record = NewLogRecord::new(
-                                    LogLevel::Error,
-                                    None,
-                                    json!({
-                                        "message": &err_msg,
-                                    }),
-                                );
-                                let message = serde_json::to_string(&record).unwrap();
-                                error!(target: "chunks_handler", "{}", message);
-                            }
+                            error!(target: "chunks_handler", "{}", &err_msg);
 
                             error::internal_server_error(err_msg)
                         }
@@ -1326,17 +745,7 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
                     let err_msg = format!("Fail to serialize chunks response. {}", e);
 
                     // log
-                    {
-                        let record = NewLogRecord::new(
-                            LogLevel::Error,
-                            None,
-                            json!({
-                                "message": &err_msg,
-                            }),
-                        );
-                        let message = serde_json::to_string(&record).unwrap();
-                        error!(target: "chunks_handler", "{}", message);
-                    }
+                    error!(target: "chunks_handler", "{}", &err_msg);
 
                     error::internal_server_error(err_msg)
                 }
@@ -1346,36 +755,16 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
             let err_msg = e.to_string();
 
             // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": &err_msg,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "chunks_handler", "{}", message);
-            }
+            error!(target: "chunks_handler", "{}", &err_msg);
 
             error::internal_server_error(err_msg)
         }
     }
 }
 
-pub(crate) async fn server_info() -> Response<Body> {
+pub(crate) async fn server_info_handler() -> Response<Body> {
     // log
-    {
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "message": "Handle server info request",
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!(target: "server_info", "{}", message);
-    }
+    info!(target: "server_info", "Handle server info request");
 
     // get the server info
     let server_info = match SERVER_INFO.get() {
@@ -1384,17 +773,7 @@ pub(crate) async fn server_info() -> Response<Body> {
             let err_msg = "The server info is not set.";
 
             // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": &err_msg,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "chunks_handler", "{}", message);
-            }
+            error!(target: "server_info_handler", "{}", &err_msg);
 
             return error::internal_server_error("The server info is not set.");
         }
@@ -1407,17 +786,7 @@ pub(crate) async fn server_info() -> Response<Body> {
             let err_msg = format!("Fail to serialize server info. {}", e);
 
             // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": &err_msg,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "chunks_handler", "{}", message);
-            }
+            error!(target: "server_info_handler", "{}", &err_msg);
 
             return error::internal_server_error(err_msg);
         }
@@ -1436,17 +805,7 @@ pub(crate) async fn server_info() -> Response<Body> {
             let err_msg = e.to_string();
 
             // log
-            {
-                let record = NewLogRecord::new(
-                    LogLevel::Error,
-                    None,
-                    json!({
-                        "message": &err_msg,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                error!(target: "chunks_handler", "{}", message);
-            }
+            error!(target: "server_info_handler", "{}", &err_msg);
 
             error::internal_server_error(err_msg)
         }
