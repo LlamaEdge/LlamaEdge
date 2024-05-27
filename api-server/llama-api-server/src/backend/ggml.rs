@@ -37,7 +37,7 @@ pub(crate) async fn models_handler() -> Result<Response<Body>, hyper::Error> {
             }),
         );
         let message = serde_json::to_string(&record).unwrap();
-        info!("{}", &message);
+        info!(target: "models_handler", "{}", message);
     }
 
     let list_models_response = match llama_core::models::models().await {
@@ -53,7 +53,7 @@ pub(crate) async fn models_handler() -> Result<Response<Body>, hyper::Error> {
                     }),
                 );
                 let message = serde_json::to_string(&record).unwrap();
-                error!("{}", &message);
+                error!(target: "models_handler", "{}", message);
             }
             return error::internal_server_error(e.to_string());
         }
@@ -73,7 +73,7 @@ pub(crate) async fn models_handler() -> Result<Response<Body>, hyper::Error> {
                     }),
                 );
                 let message = serde_json::to_string(&record).unwrap();
-                error!("{}", &message);
+                error!(target: "models_handler", "{}", message);
             }
             return error::internal_server_error(e.to_string());
         }
@@ -114,7 +114,7 @@ pub(crate) async fn models_handler() -> Result<Response<Body>, hyper::Error> {
                     }),
                 );
                 let message = serde_json::to_string(&record).unwrap();
-                info!("{}", &message);
+                info!(target: "models_handler", "{}", message);
             }
             Ok(response)
         }
@@ -129,7 +129,7 @@ pub(crate) async fn models_handler() -> Result<Response<Body>, hyper::Error> {
                     }),
                 );
                 let message = serde_json::to_string(&record).unwrap();
-                error!("{}", &message);
+                error!(target: "models_handler", "{}", message);
             }
             error::internal_server_error(e.to_string())
         }
@@ -241,6 +241,19 @@ pub(crate) async fn completions_handler(
 pub(crate) async fn chat_completions_handler(
     mut req: Request<Body>,
 ) -> Result<Response<Body>, hyper::Error> {
+    // log request
+    {
+        let record = NewLogRecord::new(
+            LogLevel::Info,
+            None,
+            json!({
+                "message": "Handle chat completion request",
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        info!(target: "chat_completions_handler", "{}", message);
+    }
+
     if req.method().eq(&hyper::http::Method::OPTIONS) {
         let result = Response::builder()
             .header("Access-Control-Allow-Origin", "*")
@@ -257,33 +270,6 @@ pub(crate) async fn chat_completions_handler(
         }
     }
 
-    // log request
-    {
-        let method = hyper::http::Method::as_str(req.method()).to_string();
-        let path = req.uri().path().to_string();
-        let version = format!("{:?}", req.version());
-        let size: u64 = req
-            .headers()
-            .get("content-length")
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .parse()
-            .unwrap();
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "request_method": method,
-                "request_path": path,
-                "request_http_version": version,
-                "request_body_size": size,
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!("{}", &message);
-    }
-
     // log
     {
         let record = NewLogRecord::new(
@@ -294,7 +280,7 @@ pub(crate) async fn chat_completions_handler(
             }),
         );
         let message = serde_json::to_string(&record).unwrap();
-        info!("{}", &message);
+        info!(target: "chat_completions_handler", "{}", message);
     }
 
     // parse request
@@ -324,7 +310,7 @@ pub(crate) async fn chat_completions_handler(
             }),
         );
         let message = serde_json::to_string(&record).unwrap();
-        info!("{}", &message);
+        info!(target: "chat_completions_handler", "{}", message);
     }
 
     // log
@@ -337,7 +323,7 @@ pub(crate) async fn chat_completions_handler(
             }),
         );
         let message = serde_json::to_string(&record).unwrap();
-        info!("{}", &message);
+        info!(target: "chat_completions_handler", "{}", message);
     }
 
     // handle chat request
@@ -373,7 +359,7 @@ pub(crate) async fn chat_completions_handler(
             }),
         );
         let message = serde_json::to_string(&record).unwrap();
-        info!("{}", &message);
+        info!(target: "chat_completions_handler", "{}", message);
     } else {
         let response_version = format!("{:?}", response.version());
         let response_body_size: u64 = response.body().size_hint().lower();
@@ -398,7 +384,7 @@ pub(crate) async fn chat_completions_handler(
             }),
         );
         let message = serde_json::to_string(&record).unwrap();
-        error!("{}", &message);
+        info!(target: "chat_completions_handler", "{}", message);
     }
 
     Ok(response)
@@ -416,7 +402,7 @@ async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Res
             }),
         );
         let message = serde_json::to_string(&record).unwrap();
-        info!("{}", &message);
+        info!(target: "chat_completions_stream", "{}", message);
     }
 
     let id = chat_request.user.clone().unwrap();
@@ -446,7 +432,7 @@ async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Res
                             }),
                         );
                         let message = serde_json::to_string(&record).unwrap();
-                        info!("{}", &message);
+                        info!(target: "chat_completions_stream", "{}", message);
                     }
                     response
                 }
@@ -461,7 +447,7 @@ async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Res
                             }),
                         );
                         let message = serde_json::to_string(&record).unwrap();
-                        error!("{}", &message);
+                        error!(target: "chat_completions_stream", "{}", message);
                     }
                     error::internal_server_error_new(e.to_string())
                 }
@@ -478,7 +464,7 @@ async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Res
                     }),
                 );
                 let message = serde_json::to_string(&record).unwrap();
-                error!("{}", &message);
+                error!(target: "chat_completions_stream", "{}", message);
             }
             error::internal_server_error_new(e.to_string())
         }
@@ -497,7 +483,7 @@ async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<B
             }),
         );
         let message = serde_json::to_string(&record).unwrap();
-        info!("{}", &message);
+        info!(target: "chat_completions", "{}", message);
     }
 
     let id = chat_request.user.clone().unwrap();
@@ -520,7 +506,7 @@ async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<B
                             }),
                         );
                         let message = serde_json::to_string(&record).unwrap();
-                        error!("{}", &message);
+                        error!(target: "chat_completions", "{}", message);
                     }
                     return error::internal_server_error_new(format!(
                         "Fail to serialize chat completion object. {}",
@@ -550,7 +536,7 @@ async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<B
                             }),
                         );
                         let message = serde_json::to_string(&record).unwrap();
-                        info!("{}", &message);
+                        info!(target: "chat_completions", "{}", message);
                     }
                     response
                 }
@@ -565,7 +551,7 @@ async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<B
                             }),
                         );
                         let message = serde_json::to_string(&record).unwrap();
-                        error!("{}", &message);
+                        error!(target: "chat_completions", "{}", message);
                     }
                     error::internal_server_error_new(e.to_string())
                 }
@@ -582,7 +568,7 @@ async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<B
                     }),
                 );
                 let message = serde_json::to_string(&record).unwrap();
-                error!("{}", &message);
+                error!(target: "chat_completions", "{}", message);
             }
             error::internal_server_error_new(e.to_string())
         }

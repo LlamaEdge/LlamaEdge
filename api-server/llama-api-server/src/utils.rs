@@ -1,4 +1,3 @@
-use crate::LOG_TARGET;
 use serde::{Deserialize, Serialize};
 
 pub(crate) fn gen_chat_id() -> String {
@@ -6,17 +5,7 @@ pub(crate) fn gen_chat_id() -> String {
 }
 
 #[derive(
-    Debug,
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    clap::ValueEnum,
-    Serialize,
-    Deserialize,
-    Default,
+    Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum, Serialize, Deserialize,
 )]
 #[serde(rename_all = "lowercase")]
 pub(crate) enum LogLevel {
@@ -30,7 +19,6 @@ pub(crate) enum LogLevel {
 
     /// Describes messages likely to be of interest to someone monitoring a
     /// program.
-    #[default]
     Info,
 
     /// Describes messages indicating hazardous situations.
@@ -79,12 +67,6 @@ impl std::str::FromStr for LogLevel {
             _ => Err(format!("Invalid log level: {}", s)),
         }
     }
-}
-
-pub(crate) fn info(value: serde_json::Value) {
-    let record = NewLogRecord::new(LogLevel::Info, None, value);
-    let record = serde_json::to_string(&record).unwrap();
-    log!(target: LOG_TARGET, log::Level::Info, "{}", record.to_string());
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
