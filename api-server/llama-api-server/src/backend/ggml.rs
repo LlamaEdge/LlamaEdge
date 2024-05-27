@@ -700,10 +700,7 @@ async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Res
                     response
                 }
                 Err(e) => {
-                    let err_msg = format!(
-                        "Failed chat completions in stream mode. Reason: {}",
-                        e.to_string()
-                    );
+                    let err_msg = format!("Failed chat completions in stream mode. Reason: {}", e);
 
                     // log
                     {
@@ -723,10 +720,7 @@ async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Res
             }
         }
         Err(e) => {
-            let err_msg = format!(
-                "Failed chat completions in stream mode. Reason: {}",
-                e.to_string()
-            );
+            let err_msg = format!("Failed chat completions in stream mode. Reason: {}", e);
 
             // log
             {
@@ -814,10 +808,8 @@ async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<B
                     response
                 }
                 Err(e) => {
-                    let err_msg = format!(
-                        "Failed chat completions in non-stream mode. Reason: {}",
-                        e.to_string()
-                    );
+                    let err_msg =
+                        format!("Failed chat completions in non-stream mode. Reason: {}", e);
 
                     // log
                     {
@@ -837,10 +829,7 @@ async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<B
             }
         }
         Err(e) => {
-            let err_msg = format!(
-                "Failed chat completions in non-stream mode. Reason: {}",
-                e.to_string()
-            );
+            let err_msg = format!("Failed chat completions in non-stream mode. Reason: {}", e);
 
             // log
             {
