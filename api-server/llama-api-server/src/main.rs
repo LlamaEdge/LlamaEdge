@@ -87,15 +87,6 @@ struct Cli {
     /// Path to the multimodal projector file
     #[arg(long)]
     llava_mmproj: Option<String>,
-    /// Print prompt strings to stdout
-    #[arg(long)]
-    log_prompts: bool,
-    /// Print statistics to stdout
-    #[arg(long)]
-    log_stat: bool,
-    /// Print all log information to stdout
-    #[arg(long)]
-    log_all: bool,
     /// Socket address of LlamaEdge API Server instance
     #[arg(long, default_value = DEFAULT_SOCKET_ADDRESS)]
     socket_addr: String,
@@ -368,8 +359,6 @@ async fn main() -> Result<(), ServerError> {
                 )
                 .with_ctx_size(cli.ctx_size[0])
                 .with_batch_size(cli.batch_size[0])
-                .enable_prompts_log(cli.log_prompts || cli.log_all)
-                .enable_plugin_log(cli.log_stat || cli.log_all)
                 .enable_debug_log(plugin_debug)
                 .build();
 
@@ -404,8 +393,6 @@ async fn main() -> Result<(), ServerError> {
                 .with_frequency_penalty(cli.frequency_penalty)
                 .with_reverse_prompt(cli.reverse_prompt)
                 .with_mmproj(cli.llava_mmproj.clone())
-                .enable_prompts_log(cli.log_prompts || cli.log_all)
-                .enable_plugin_log(cli.log_stat || cli.log_all)
                 .enable_debug_log(plugin_debug)
                 .build();
 
@@ -449,8 +436,6 @@ async fn main() -> Result<(), ServerError> {
         .with_frequency_penalty(cli.frequency_penalty)
         .with_reverse_prompt(cli.reverse_prompt)
         .with_mmproj(cli.llava_mmproj.clone())
-        .enable_prompts_log(cli.log_prompts || cli.log_all)
-        .enable_plugin_log(cli.log_stat || cli.log_all)
         .enable_debug_log(plugin_debug)
         .build();
 
@@ -479,8 +464,6 @@ async fn main() -> Result<(), ServerError> {
         )
         .with_ctx_size(cli.ctx_size[1])
         .with_batch_size(cli.batch_size[1])
-        .enable_prompts_log(cli.log_prompts || cli.log_all)
-        .enable_plugin_log(cli.log_stat || cli.log_all)
         .enable_debug_log(plugin_debug)
         .build();
 
