@@ -4,7 +4,7 @@ use serde_json::json;
 use thiserror::Error;
 
 #[allow(dead_code)]
-pub(crate) fn not_implemented() -> Result<Response<Body>, hyper::Error> {
+pub(crate) fn not_implemented() -> Response<Body> {
     // log error
     {
         let record = NewLogRecord::new(
@@ -18,15 +18,13 @@ pub(crate) fn not_implemented() -> Result<Response<Body>, hyper::Error> {
         error!("{}", &message);
     }
 
-    let response = Response::builder()
+    Response::builder()
         .header("Access-Control-Allow-Origin", "*")
         .header("Access-Control-Allow-Methods", "*")
         .header("Access-Control-Allow-Headers", "*")
         .status(hyper::StatusCode::NOT_IMPLEMENTED)
         .body(Body::from("501 Not Implemented"))
-        .unwrap();
-
-    Ok(response)
+        .unwrap()
 }
 
 pub(crate) fn internal_server_error(msg: impl AsRef<str>) -> Response<Body> {
