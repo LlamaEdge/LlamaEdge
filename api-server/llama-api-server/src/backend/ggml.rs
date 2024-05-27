@@ -138,7 +138,7 @@ pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body>
                     }),
                 );
                 let message = serde_json::to_string(&record).unwrap();
-                error!(target: "completions_handler", "{}", message);
+                error!(target: "embeddings_handler", "{}", message);
             }
 
             return error::internal_server_error(err_msg);
@@ -879,20 +879,6 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
                 // create a unique file id
                 let id = format!("file_{}", uuid::Uuid::new_v4());
 
-                // log
-                {
-                    let record = NewLogRecord::new(
-                        LogLevel::Info,
-                        None,
-                        json!({
-                            "file_id": &id,
-                            "file_name": &filename,
-                        }),
-                    );
-                    let message = serde_json::to_string(&record).unwrap();
-                    info!(target: "files_handler", "{}", message);
-                }
-
                 // save the file
                 let path = Path::new("archives");
                 if !path.exists() {
@@ -925,6 +911,20 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
                     }
                 };
                 file.write_all(&buffer[..]).unwrap();
+
+                // log
+                {
+                    let record = NewLogRecord::new(
+                        LogLevel::Info,
+                        None,
+                        json!({
+                            "file_id": &id,
+                            "file_name": &filename,
+                        }),
+                    );
+                    let message = serde_json::to_string(&record).unwrap();
+                    info!(target: "files_handler", "{}", message);
+                }
 
                 let created_at = match SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
                     Ok(n) => n.as_secs(),
