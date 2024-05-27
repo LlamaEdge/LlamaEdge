@@ -68,28 +68,3 @@ impl std::str::FromStr for LogLevel {
         }
     }
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct NewLogRecord {
-    /// log level
-    level: LogLevel,
-    /// User id
-    #[serde(skip_serializing_if = "Option::is_none")]
-    user: Option<String>,
-    /// log message
-    #[serde(flatten)]
-    message: serde_json::Value,
-    /// time stamp
-    timestamp: String,
-}
-
-impl NewLogRecord {
-    pub(crate) fn new(level: LogLevel, user: Option<String>, message: serde_json::Value) -> Self {
-        Self {
-            level,
-            user,
-            message,
-            timestamp: chrono::Utc::now().to_rfc3339(),
-        }
-    }
-}
