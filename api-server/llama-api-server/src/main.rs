@@ -642,58 +642,60 @@ async fn handle_request(
     };
 
     // log response
-    let status_code = response.status();
-    if status_code.as_u16() < 400 {
-        // log response
-        let response_version = format!("{:?}", response.version());
-        let response_body_size: u64 = response.body().size_hint().lower();
-        let response_status = status_code.as_u16();
-        let response_is_informational = status_code.is_informational();
-        let response_is_success = status_code.is_success();
-        let response_is_redirection = status_code.is_redirection();
-        let response_is_client_error = status_code.is_client_error();
-        let response_is_server_error = status_code.is_server_error();
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "response_version": response_version,
-                "response_body_size": response_body_size,
-                "response_status": response_status,
-                "response_is_informational": response_is_informational,
-                "response_is_success": response_is_success,
-                "response_is_redirection": response_is_redirection,
-                "response_is_client_error": response_is_client_error,
-                "response_is_server_error": response_is_server_error,
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!(target: "response", "{}", message);
-    } else {
-        let response_version = format!("{:?}", response.version());
-        let response_body_size: u64 = response.body().size_hint().lower();
-        let response_status = status_code.as_u16();
-        let response_is_informational = status_code.is_informational();
-        let response_is_success = status_code.is_success();
-        let response_is_redirection = status_code.is_redirection();
-        let response_is_client_error = status_code.is_client_error();
-        let response_is_server_error = status_code.is_server_error();
-        let record = NewLogRecord::new(
-            LogLevel::Error,
-            None,
-            json!({
-                "response_version": response_version,
-                "response_body_size": response_body_size,
-                "response_status": response_status,
-                "response_is_informational": response_is_informational,
-                "response_is_success": response_is_success,
-                "response_is_redirection": response_is_redirection,
-                "response_is_client_error": response_is_client_error,
-                "response_is_server_error": response_is_server_error,
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        error!(target: "response", "{}", message);
+    {
+        let status_code = response.status();
+        if status_code.as_u16() < 400 {
+            // log response
+            let response_version = format!("{:?}", response.version());
+            let response_body_size: u64 = response.body().size_hint().lower();
+            let response_status = status_code.as_u16();
+            let response_is_informational = status_code.is_informational();
+            let response_is_success = status_code.is_success();
+            let response_is_redirection = status_code.is_redirection();
+            let response_is_client_error = status_code.is_client_error();
+            let response_is_server_error = status_code.is_server_error();
+            let record = NewLogRecord::new(
+                LogLevel::Info,
+                None,
+                json!({
+                    "response_version": response_version,
+                    "response_body_size": response_body_size,
+                    "response_status": response_status,
+                    "response_is_informational": response_is_informational,
+                    "response_is_success": response_is_success,
+                    "response_is_redirection": response_is_redirection,
+                    "response_is_client_error": response_is_client_error,
+                    "response_is_server_error": response_is_server_error,
+                }),
+            );
+            let message = serde_json::to_string(&record).unwrap();
+            info!(target: "response", "{}", message);
+        } else {
+            let response_version = format!("{:?}", response.version());
+            let response_body_size: u64 = response.body().size_hint().lower();
+            let response_status = status_code.as_u16();
+            let response_is_informational = status_code.is_informational();
+            let response_is_success = status_code.is_success();
+            let response_is_redirection = status_code.is_redirection();
+            let response_is_client_error = status_code.is_client_error();
+            let response_is_server_error = status_code.is_server_error();
+            let record = NewLogRecord::new(
+                LogLevel::Error,
+                None,
+                json!({
+                    "response_version": response_version,
+                    "response_body_size": response_body_size,
+                    "response_status": response_status,
+                    "response_is_informational": response_is_informational,
+                    "response_is_success": response_is_success,
+                    "response_is_redirection": response_is_redirection,
+                    "response_is_client_error": response_is_client_error,
+                    "response_is_server_error": response_is_server_error,
+                }),
+            );
+            let message = serde_json::to_string(&record).unwrap();
+            error!(target: "response", "{}", message);
+        }
     }
 
     Ok(response)
