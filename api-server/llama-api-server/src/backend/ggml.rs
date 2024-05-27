@@ -27,7 +27,7 @@ use std::{
 
 /// List all models available.
 pub(crate) async fn models_handler() -> Result<Response<Body>, hyper::Error> {
-    // log request
+    // log
     {
         let record = NewLogRecord::new(
             LogLevel::Info,
@@ -140,12 +140,40 @@ pub(crate) async fn models_handler() -> Result<Response<Body>, hyper::Error> {
 pub(crate) async fn embeddings_handler(
     mut req: Request<Body>,
 ) -> Result<Response<Body>, hyper::Error> {
+    // log
+    {
+        let record = NewLogRecord::new(
+            LogLevel::Info,
+            None,
+            json!({
+                "message": "Handle embeddings request",
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        info!(target: "embeddings_handler", "{}", message);
+    }
+
     // parse request
     let body_bytes = to_bytes(req.body_mut()).await?;
     let mut embedding_request: EmbeddingRequest = match serde_json::from_slice(&body_bytes) {
         Ok(embedding_request) => embedding_request,
         Err(e) => {
-            return error::bad_request(format!("Fail to parse embedding request: {msg}", msg = e));
+            let err_msg = format!("Fail to deserialize embedding request: {msg}", msg = e);
+
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": &err_msg,
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!(target: "embeddings_handler", "{}", message);
+            }
+
+            return error::bad_request(err_msg);
         }
     };
 
@@ -153,6 +181,19 @@ pub(crate) async fn embeddings_handler(
         embedding_request.user = Some(gen_chat_id())
     };
     let id = embedding_request.user.clone().unwrap();
+
+    // log user id
+    {
+        let record = NewLogRecord::new(
+            LogLevel::Info,
+            None,
+            json!({
+                "user": &id,
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        info!(target: "embedding_request", "{}", message);
+    }
 
     println!("\n[+] Running embeddings handler ...");
     match llama_core::embeddings::embeddings(&embedding_request).await {
@@ -169,32 +210,136 @@ pub(crate) async fn embeddings_handler(
                         .header("user", id)
                         .body(Body::from(s));
                     match result {
-                        Ok(response) => Ok(response),
-                        Err(e) => error::internal_server_error(e.to_string()),
+                        Ok(response) => {
+                            // log
+                            {
+                                let status_code = response.status();
+                                let response_version = format!("{:?}", response.version());
+                                let response_body_size: u64 = response.body().size_hint().lower();
+                                let response_status = status_code.as_u16();
+                                let response_is_informational = status_code.is_informational();
+                                let response_is_success = status_code.is_success();
+                                let response_is_redirection = status_code.is_redirection();
+                                let response_is_client_error = status_code.is_client_error();
+                                let response_is_server_error = status_code.is_server_error();
+                                let record = NewLogRecord::new(
+                                    LogLevel::Info,
+                                    None,
+                                    json!({
+                                        "response_version": response_version,
+                                        "response_body_size": response_body_size,
+                                        "response_status": response_status,
+                                        "response_is_informational": response_is_informational,
+                                        "response_is_success": response_is_success,
+                                        "response_is_redirection": response_is_redirection,
+                                        "response_is_client_error": response_is_client_error,
+                                        "response_is_server_error": response_is_server_error,
+                                    }),
+                                );
+                                let message = serde_json::to_string(&record).unwrap();
+                                info!(target: "embeddings_handler", "{}", message);
+                            }
+
+                            Ok(response)
+                        }
+                        Err(e) => {
+                            let err_msg = e.to_string();
+
+                            // log
+                            {
+                                let record = NewLogRecord::new(
+                                    LogLevel::Error,
+                                    None,
+                                    json!({
+                                        "message": &err_msg,
+                                    }),
+                                );
+                                let message = serde_json::to_string(&record).unwrap();
+                                error!(target: "embeddings_handler", "{}", message);
+                            }
+
+                            error::internal_server_error(err_msg)
+                        }
                     }
                 }
-                Err(e) => error::internal_server_error(format!(
-                    "Fail to serialize embedding object. {}",
-                    e
-                )),
+                Err(e) => {
+                    let err_msg = format!("Fail to serialize embedding object. {}", e);
+
+                    // log
+                    {
+                        let record = NewLogRecord::new(
+                            LogLevel::Error,
+                            None,
+                            json!({
+                                "message": &err_msg,
+                            }),
+                        );
+                        let message = serde_json::to_string(&record).unwrap();
+                        error!(target: "embeddings_handler", "{}", message);
+                    }
+
+                    error::internal_server_error(err_msg)
+                }
             }
         }
-        Err(e) => error::internal_server_error(e.to_string()),
+        Err(e) => {
+            let err_msg = e.to_string();
+
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": &err_msg,
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!(target: "embeddings_handler", "{}", message);
+            }
+
+            error::internal_server_error(err_msg)
+        }
     }
 }
 
 pub(crate) async fn completions_handler(
     mut req: Request<Body>,
 ) -> Result<Response<Body>, hyper::Error> {
+    // log
+    {
+        let record = NewLogRecord::new(
+            LogLevel::Info,
+            None,
+            json!({
+                "message": "Handle completions request",
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        info!(target: "completions_handler", "{}", message);
+    }
+
     // parse request
     let body_bytes = to_bytes(req.body_mut()).await?;
     let mut completion_request: CompletionRequest = match serde_json::from_slice(&body_bytes) {
         Ok(completion_request) => completion_request,
         Err(e) => {
-            return error::bad_request(format!(
-                "Failed to deserialize completion request. {msg}",
-                msg = e
-            ));
+            let err_msg = format!("Fail to deserialize completions request: {msg}", msg = e);
+
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": &err_msg,
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!(target: "completions_handler", "{}", message);
+            }
+
+            return error::bad_request(err_msg);
         }
     };
 
@@ -203,6 +348,19 @@ pub(crate) async fn completions_handler(
     };
     let id = completion_request.user.clone().unwrap();
 
+    // log user id
+    {
+        let record = NewLogRecord::new(
+            LogLevel::Info,
+            None,
+            json!({
+                "user": &id,
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        info!(target: "completions_handler", "{}", message);
+    }
+
     println!("\n[+] Running completions handler ...");
     match llama_core::completions::completions(&completion_request).await {
         Ok(completion_object) => {
@@ -210,10 +368,22 @@ pub(crate) async fn completions_handler(
             let s = match serde_json::to_string(&completion_object) {
                 Ok(s) => s,
                 Err(e) => {
-                    return error::internal_server_error(format!(
-                        "Failed to serialize completion object. {msg}",
-                        msg = e
-                    ));
+                    let err_msg = format!("Fail to serialize completion object. {}", e);
+
+                    // log
+                    {
+                        let record = NewLogRecord::new(
+                            LogLevel::Error,
+                            None,
+                            json!({
+                                "message": &err_msg,
+                            }),
+                        );
+                        let message = serde_json::to_string(&record).unwrap();
+                        error!(target: "completions_handler", "{}", message);
+                    }
+
+                    return error::internal_server_error(err_msg);
                 }
             };
 
@@ -226,14 +396,76 @@ pub(crate) async fn completions_handler(
                 .header("user", id)
                 .body(Body::from(s));
             match result {
-                Ok(response) => Ok(response),
+                Ok(response) => {
+                    // log
+                    {
+                        let status_code = response.status();
+                        let response_version = format!("{:?}", response.version());
+                        let response_body_size: u64 = response.body().size_hint().lower();
+                        let response_status = status_code.as_u16();
+                        let response_is_informational = status_code.is_informational();
+                        let response_is_success = status_code.is_success();
+                        let response_is_redirection = status_code.is_redirection();
+                        let response_is_client_error = status_code.is_client_error();
+                        let response_is_server_error = status_code.is_server_error();
+                        let record = NewLogRecord::new(
+                            LogLevel::Info,
+                            None,
+                            json!({
+                                "response_version": response_version,
+                                "response_body_size": response_body_size,
+                                "response_status": response_status,
+                                "response_is_informational": response_is_informational,
+                                "response_is_success": response_is_success,
+                                "response_is_redirection": response_is_redirection,
+                                "response_is_client_error": response_is_client_error,
+                                "response_is_server_error": response_is_server_error,
+                            }),
+                        );
+                        let message = serde_json::to_string(&record).unwrap();
+                        info!(target: "completions_handler", "{}", message);
+                    }
+
+                    Ok(response)
+                }
                 Err(e) => {
-                    println!("[*] Error: {}", e);
-                    error::internal_server_error(e.to_string())
+                    let err_msg = e.to_string();
+
+                    // log
+                    {
+                        let record = NewLogRecord::new(
+                            LogLevel::Error,
+                            None,
+                            json!({
+                                "message": &err_msg,
+                            }),
+                        );
+                        let message = serde_json::to_string(&record).unwrap();
+                        error!(target: "completions_handler", "{}", message);
+                    }
+
+                    error::internal_server_error(err_msg)
                 }
             }
         }
-        Err(e) => error::internal_server_error(e.to_string()),
+        Err(e) => {
+            let err_msg = e.to_string();
+
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": &err_msg,
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!(target: "completions_handler", "{}", message);
+            }
+
+            error::internal_server_error(err_msg)
+        }
     }
 }
 
@@ -241,7 +473,7 @@ pub(crate) async fn completions_handler(
 pub(crate) async fn chat_completions_handler(
     mut req: Request<Body>,
 ) -> Result<Response<Body>, hyper::Error> {
-    // log request
+    // log
     {
         let record = NewLogRecord::new(
             LogLevel::Info,
@@ -270,28 +502,30 @@ pub(crate) async fn chat_completions_handler(
         }
     }
 
-    // log
-    {
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "message": "Parse chat completion request body",
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!(target: "chat_completions_handler", "{}", message);
-    }
-
     // parse request
     let body_bytes = to_bytes(req.body_mut()).await?;
     let mut chat_request: ChatCompletionRequest = match serde_json::from_slice(&body_bytes) {
         Ok(chat_request) => chat_request,
         Err(e) => {
-            return error::bad_request(format!(
-                "Fail to parse chat completion request: {msg}",
+            let err_msg = format!(
+                "Fail to deserialize chat completion request: {msg}",
                 msg = e
-            ));
+            );
+
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": &err_msg,
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!(target: "chat_completions_handler", "{}", message);
+            }
+
+            return error::bad_request(err_msg);
         }
     };
 
@@ -576,9 +810,20 @@ async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<B
 }
 
 pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
-    if req.method() == Method::POST {
-        println!("\n[+] Running files handler ...");
+    // log
+    {
+        let record = NewLogRecord::new(
+            LogLevel::Info,
+            None,
+            json!({
+                "message": "Handle files request",
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        info!(target: "files_handler", "{}", message);
+    }
 
+    if req.method() == Method::POST {
         let boundary = "boundary=";
 
         let boundary = req.headers().get("content-type").and_then(|ct| {
@@ -599,35 +844,89 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, 
                 let filename = match field.headers.filename {
                     Some(filename) => filename,
                     None => {
-                        return error::internal_server_error(
-                            "Failed to upload the target file. The filename is not provided.",
-                        );
+                        let err_msg =
+                            "Failed to upload the target file. The filename is not provided.";
+
+                        // log
+                        {
+                            let record = NewLogRecord::new(
+                                LogLevel::Error,
+                                None,
+                                json!({
+                                    "message": &err_msg,
+                                }),
+                            );
+                            let message = serde_json::to_string(&record).unwrap();
+                            error!(target: "files_handler", "{}", message);
+                        }
+
+                        return error::internal_server_error(err_msg);
                     }
                 };
 
                 if !((filename).to_lowercase().ends_with(".txt")
                     || (filename).to_lowercase().ends_with(".md"))
                 {
-                    return error::internal_server_error(
-                        "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported.",
+                    let err_msg = format!(
+                        "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported. The file extension is {}.",
+                        &filename
                     );
+
+                    // log
+                    {
+                        let record = NewLogRecord::new(
+                            LogLevel::Error,
+                            None,
+                            json!({
+                                "message": &err_msg,
+                            }),
+                        );
+                        let message = serde_json::to_string(&record).unwrap();
+                        error!(target: "files_handler", "{}", message);
+                    }
+
+                    return error::internal_server_error(err_msg);
                 }
 
                 let mut buffer = Vec::new();
                 let size_in_bytes = match field.data.read_to_end(&mut buffer) {
                     Ok(size_in_bytes) => size_in_bytes,
                     Err(e) => {
-                        return error::internal_server_error(format!(
-                            "Failed to read the target file. {}",
-                            e
-                        ));
+                        let err_msg = format!("Failed to read the target file. {}", e);
+
+                        // log
+                        {
+                            let record = NewLogRecord::new(
+                                LogLevel::Error,
+                                None,
+                                json!({
+                                    "message": &err_msg,
+                                }),
+                            );
+                            let message = serde_json::to_string(&record).unwrap();
+                            error!(target: "files_handler", "{}", message);
+                        }
+
+                        return error::internal_server_error(err_msg);
                     }
                 };
 
                 // create a unique file id
                 let id = format!("file_{}", uuid::Uuid::new_v4());
 
-                println!("    * Saving to {}/{}", &id, &filename);
+                // log
+                {
+                    let record = NewLogRecord::new(
+                        LogLevel::Info,
+                        None,
+                        json!({
+                            "file_id": &id,
+                            "file_name": &filename,
+                        }),
+                    );
+                    let message = serde_json::to_string(&record).unwrap();
+                    info!(target: "files_handler", "{}", message);
+                }
 
                 // save the file
                 let path = Path::new("archives");
@@ -652,7 +951,22 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, 
                 let created_at = match SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
                     Ok(n) => n.as_secs(),
                     Err(_) => {
-                        return error::internal_server_error("Failed to get the current time.")
+                        let err_msg = "Failed to get the current time.";
+
+                        // log
+                        {
+                            let record = NewLogRecord::new(
+                                LogLevel::Error,
+                                None,
+                                json!({
+                                    "message": &err_msg,
+                                }),
+                            );
+                            let message = serde_json::to_string(&record).unwrap();
+                            error!(target: "files_handler", "{}", message);
+                        }
+
+                        return error::internal_server_error(err_msg);
                     }
                 };
 
@@ -670,17 +984,28 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, 
             }
         }
 
-        println!("[+] File uploaded successfully.\n");
         match file_object {
             Some(fo) => {
                 // serialize chat completion object
                 let s = match serde_json::to_string(&fo) {
                     Ok(s) => s,
                     Err(e) => {
-                        return error::internal_server_error(format!(
-                            "Fail to serialize file object. {}",
-                            e
-                        ));
+                        let err_msg = format!("Failed to serialize file object. {}", e);
+
+                        // log
+                        {
+                            let record = NewLogRecord::new(
+                                LogLevel::Error,
+                                None,
+                                json!({
+                                    "message": &err_msg,
+                                }),
+                            );
+                            let message = serde_json::to_string(&record).unwrap();
+                            error!(target: "files_handler", "{}", message);
+                        }
+
+                        return error::internal_server_error(err_msg);
                     }
                 };
 
@@ -693,69 +1018,255 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, 
                     .body(Body::from(s));
 
                 match result {
-                    Ok(response) => Ok(response),
-                    Err(e) => error::internal_server_error(e.to_string()),
+                    Ok(response) => {
+                        // log
+                        {
+                            let status_code = response.status();
+                            let response_version = format!("{:?}", response.version());
+                            let response_body_size: u64 = response.body().size_hint().lower();
+                            let response_status = status_code.as_u16();
+                            let response_is_informational = status_code.is_informational();
+                            let response_is_success = status_code.is_success();
+                            let response_is_redirection = status_code.is_redirection();
+                            let response_is_client_error = status_code.is_client_error();
+                            let response_is_server_error = status_code.is_server_error();
+                            let record = NewLogRecord::new(
+                                LogLevel::Info,
+                                None,
+                                json!({
+                                    "response_version": response_version,
+                                    "response_body_size": response_body_size,
+                                    "response_status": response_status,
+                                    "response_is_informational": response_is_informational,
+                                    "response_is_success": response_is_success,
+                                    "response_is_redirection": response_is_redirection,
+                                    "response_is_client_error": response_is_client_error,
+                                    "response_is_server_error": response_is_server_error,
+                                }),
+                            );
+                            let message = serde_json::to_string(&record).unwrap();
+                            info!(target: "files_handler", "{}", message);
+                        }
+
+                        Ok(response)
+                    }
+                    Err(e) => {
+                        let err_msg = e.to_string();
+
+                        // log
+                        {
+                            let record = NewLogRecord::new(
+                                LogLevel::Error,
+                                None,
+                                json!({
+                                    "message": &err_msg,
+                                }),
+                            );
+                            let message = serde_json::to_string(&record).unwrap();
+                            error!(target: "files_handler", "{}", message);
+                        }
+
+                        error::internal_server_error(err_msg)
+                    }
                 }
             }
-            None => error::internal_server_error(
-                "Failed to upload the target file. Not found the target file.",
-            ),
+            None => {
+                let err_msg = "Failed to upload the target file. Not found the target file.";
+
+                // log
+                {
+                    let record = NewLogRecord::new(
+                        LogLevel::Error,
+                        None,
+                        json!({
+                            "message": &err_msg,
+                        }),
+                    );
+                    let message = serde_json::to_string(&record).unwrap();
+                    error!(target: "files_handler", "{}", message);
+                }
+
+                error::internal_server_error(err_msg)
+            }
         }
     } else if req.method() == Method::GET {
-        error::internal_server_error("Not implemented for listing files.")
+        let err_msg = "Not implemented for listing files.";
+
+        // log
+        {
+            let record = NewLogRecord::new(
+                LogLevel::Error,
+                None,
+                json!({
+                    "message": &err_msg,
+                }),
+            );
+            let message = serde_json::to_string(&record).unwrap();
+            error!(target: "files_handler", "{}", message);
+        }
+
+        error::internal_server_error(err_msg)
     } else {
-        error::internal_server_error("Invalid HTTP Method.")
+        let err_msg = "Invalid HTTP Method.";
+
+        // log
+        {
+            let record = NewLogRecord::new(
+                LogLevel::Error,
+                None,
+                json!({
+                    "message": &err_msg,
+                }),
+            );
+            let message = serde_json::to_string(&record).unwrap();
+            error!(target: "files_handler", "{}", message);
+        }
+
+        error::internal_server_error(err_msg)
     }
 }
 
 pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
-    println!("\n[+] Running chunks handler ...");
+    // log
+    {
+        let record = NewLogRecord::new(
+            LogLevel::Info,
+            None,
+            json!({
+                "message": "Handle chunks request",
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        info!(target: "chunks_handler", "{}", message);
+    }
 
     // parse request
     let body_bytes = to_bytes(req.body_mut()).await?;
     let chunks_request: ChunksRequest = match serde_json::from_slice(&body_bytes) {
         Ok(chunks_request) => chunks_request,
         Err(e) => {
-            return error::bad_request(format!("Fail to parse chunks request: {msg}", msg = e));
+            let err_msg = format!("Fail to deserialize chunks request: {msg}", msg = e);
+
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": &err_msg,
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!(target: "chunks_handler", "{}", message);
+            }
+
+            return error::bad_request(err_msg);
         }
     };
 
-    println!("[+] Detecting the target file ...");
     // check if the archives directory exists
     let path = Path::new("archives");
     if !path.exists() {
-        return error::internal_server_error("The `archives` directory does not exist.");
+        let err_msg = "The `archives` directory does not exist.";
+
+        // log
+        {
+            let record = NewLogRecord::new(
+                LogLevel::Error,
+                None,
+                json!({
+                    "message": &err_msg,
+                }),
+            );
+            let message = serde_json::to_string(&record).unwrap();
+            error!(target: "chunks_handler", "{}", message);
+        }
+
+        return error::internal_server_error(err_msg);
     }
 
     // check if the archive id exists
     let archive_path = path.join(&chunks_request.id);
     if !archive_path.exists() {
-        let message = format!("Not found archive id: {}", &chunks_request.id);
-        return error::internal_server_error(message);
+        let err_msg = format!("Not found archive id: {}", &chunks_request.id);
+
+        // log
+        {
+            let record = NewLogRecord::new(
+                LogLevel::Error,
+                None,
+                json!({
+                    "message": &err_msg,
+                }),
+            );
+            let message = serde_json::to_string(&record).unwrap();
+            error!(target: "chunks_handler", "{}", message);
+        }
+
+        return error::internal_server_error(err_msg);
     }
 
     // check if the file exists
     let file_path = archive_path.join(&chunks_request.filename);
     if !file_path.exists() {
-        let message = format!(
+        let err_msg = format!(
             "Not found file: {} in archive id: {}",
             &chunks_request.filename, &chunks_request.id
         );
-        return error::internal_server_error(message);
+
+        // log
+        {
+            let record = NewLogRecord::new(
+                LogLevel::Error,
+                None,
+                json!({
+                    "message": &err_msg,
+                }),
+            );
+            let message = serde_json::to_string(&record).unwrap();
+            error!(target: "chunks_handler", "{}", message);
+        }
+
+        return error::internal_server_error(err_msg);
     }
-    println!(
-        "    * Found {}/{}",
-        &chunks_request.id, &chunks_request.filename
-    );
+
+    // log
+    {
+        let record = NewLogRecord::new(
+            LogLevel::Info,
+            None,
+            json!({
+                "file_id": &chunks_request.id,
+                "file_name": &chunks_request.filename,
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        info!(target: "chunks_handler", "{}", message);
+    }
 
     // get the extension of the archived file
     let extension = match file_path.extension().and_then(std::ffi::OsStr::to_str) {
         Some(extension) => extension,
         None => {
-            return error::internal_server_error(format!(
+            let err_msg = format!(
                 "Failed to get the extension of the archived `{}`.",
                 &chunks_request.filename
-            ));
+            );
+
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": &err_msg,
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!(target: "chunks_handler", "{}", message);
+            }
+
+            return error::internal_server_error(err_msg);
         }
     };
 
@@ -763,20 +1274,44 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Result<Response<Bo
     let mut file = match File::open(&file_path) {
         Ok(file) => file,
         Err(e) => {
-            return error::internal_server_error(format!(
-                "Failed to open `{}`. {}",
-                &chunks_request.filename, e
-            ));
+            let err_msg = format!("Failed to open `{}`. {}", &chunks_request.filename, e);
+
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": &err_msg,
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!(target: "chunks_handler", "{}", message);
+            }
+
+            return error::internal_server_error(err_msg);
         }
     };
 
     // read the file
     let mut contents = String::new();
     if let Err(e) = file.read_to_string(&mut contents) {
-        return error::internal_server_error(format!(
-            "Failed to read `{}`. {}",
-            &chunks_request.filename, e
-        ));
+        let err_msg = format!("Failed to read `{}`. {}", &chunks_request.filename, e);
+
+        // log
+        {
+            let record = NewLogRecord::new(
+                LogLevel::Error,
+                None,
+                json!({
+                    "message": &err_msg,
+                }),
+            );
+            let message = serde_json::to_string(&record).unwrap();
+            error!(target: "chunks_handler", "{}", message);
+        }
+
+        return error::internal_server_error(err_msg);
     }
 
     match llama_core::rag::chunk_text(&contents, extension, chunks_request.chunk_capacity) {
@@ -800,25 +1335,132 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Result<Response<Bo
                         .header("Content-Type", "application/json")
                         .body(Body::from(s));
                     match result {
-                        Ok(response) => Ok(response),
-                        Err(e) => error::internal_server_error(e.to_string()),
+                        Ok(response) => {
+                            // log
+                            {
+                                let status_code = response.status();
+                                let response_version = format!("{:?}", response.version());
+                                let response_body_size: u64 = response.body().size_hint().lower();
+                                let response_status = status_code.as_u16();
+                                let response_is_informational = status_code.is_informational();
+                                let response_is_success = status_code.is_success();
+                                let response_is_redirection = status_code.is_redirection();
+                                let response_is_client_error = status_code.is_client_error();
+                                let response_is_server_error = status_code.is_server_error();
+                                let record = NewLogRecord::new(
+                                    LogLevel::Info,
+                                    None,
+                                    json!({
+                                        "response_version": response_version,
+                                        "response_body_size": response_body_size,
+                                        "response_status": response_status,
+                                        "response_is_informational": response_is_informational,
+                                        "response_is_success": response_is_success,
+                                        "response_is_redirection": response_is_redirection,
+                                        "response_is_client_error": response_is_client_error,
+                                        "response_is_server_error": response_is_server_error,
+                                    }),
+                                );
+                                let message = serde_json::to_string(&record).unwrap();
+                                info!(target: "chunks_handler", "{}", message);
+                            }
+
+                            Ok(response)
+                        }
+                        Err(e) => {
+                            let err_msg = e.to_string();
+
+                            // log
+                            {
+                                let record = NewLogRecord::new(
+                                    LogLevel::Error,
+                                    None,
+                                    json!({
+                                        "message": &err_msg,
+                                    }),
+                                );
+                                let message = serde_json::to_string(&record).unwrap();
+                                error!(target: "chunks_handler", "{}", message);
+                            }
+
+                            error::internal_server_error(err_msg)
+                        }
                     }
                 }
-                Err(e) => error::internal_server_error(format!(
-                    "Fail to serialize chunks response. {}",
-                    e
-                )),
+                Err(e) => {
+                    let err_msg = format!("Fail to serialize chunks response. {}", e);
+
+                    // log
+                    {
+                        let record = NewLogRecord::new(
+                            LogLevel::Error,
+                            None,
+                            json!({
+                                "message": &err_msg,
+                            }),
+                        );
+                        let message = serde_json::to_string(&record).unwrap();
+                        error!(target: "chunks_handler", "{}", message);
+                    }
+
+                    error::internal_server_error(err_msg)
+                }
             }
         }
-        Err(e) => error::internal_server_error(e.to_string()),
+        Err(e) => {
+            let err_msg = e.to_string();
+
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": &err_msg,
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!(target: "chunks_handler", "{}", message);
+            }
+
+            error::internal_server_error(err_msg)
+        }
     }
 }
 
 pub(crate) async fn server_info() -> Result<Response<Body>, hyper::Error> {
+    // log
+    {
+        let record = NewLogRecord::new(
+            LogLevel::Info,
+            None,
+            json!({
+                "message": "Handle server inforequest",
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        info!(target: "server_info", "{}", message);
+    }
+
     // get the server info
     let server_info = match SERVER_INFO.get() {
         Some(server_info) => server_info,
         None => {
+            let err_msg = "The server info is not set.";
+
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": &err_msg,
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!(target: "chunks_handler", "{}", message);
+            }
+
             return error::internal_server_error("The server info is not set.");
         }
     };
@@ -827,7 +1469,22 @@ pub(crate) async fn server_info() -> Result<Response<Body>, hyper::Error> {
     let s = match serde_json::to_string(&server_info) {
         Ok(s) => s,
         Err(e) => {
-            return error::internal_server_error(format!("Fail to serialize server info. {}", e));
+            let err_msg = format!("Fail to serialize server info. {}", e);
+
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": &err_msg,
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!(target: "chunks_handler", "{}", message);
+            }
+
+            return error::internal_server_error(err_msg);
         }
     };
 
@@ -839,7 +1496,55 @@ pub(crate) async fn server_info() -> Result<Response<Body>, hyper::Error> {
         .header("Content-Type", "application/json")
         .body(Body::from(s));
     match result {
-        Ok(response) => Ok(response),
-        Err(e) => error::internal_server_error(e.to_string()),
+        Ok(response) => {
+            // log
+            {
+                let status_code = response.status();
+                let response_version = format!("{:?}", response.version());
+                let response_body_size: u64 = response.body().size_hint().lower();
+                let response_status = status_code.as_u16();
+                let response_is_informational = status_code.is_informational();
+                let response_is_success = status_code.is_success();
+                let response_is_redirection = status_code.is_redirection();
+                let response_is_client_error = status_code.is_client_error();
+                let response_is_server_error = status_code.is_server_error();
+                let record = NewLogRecord::new(
+                    LogLevel::Info,
+                    None,
+                    json!({
+                        "response_version": response_version,
+                        "response_body_size": response_body_size,
+                        "response_status": response_status,
+                        "response_is_informational": response_is_informational,
+                        "response_is_success": response_is_success,
+                        "response_is_redirection": response_is_redirection,
+                        "response_is_client_error": response_is_client_error,
+                        "response_is_server_error": response_is_server_error,
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                info!(target: "server_info", "{}", message);
+            }
+
+            Ok(response)
+        }
+        Err(e) => {
+            let err_msg = e.to_string();
+
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": &err_msg,
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!(target: "chunks_handler", "{}", message);
+            }
+
+            error::internal_server_error(err_msg)
+        }
     }
 }
