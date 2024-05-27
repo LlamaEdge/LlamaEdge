@@ -11,10 +11,7 @@ use endpoints::{
     rag::{ChunksRequest, ChunksResponse},
 };
 use futures_util::TryStreamExt;
-use hyper::{
-    body::{to_bytes, HttpBody},
-    Body, Method, Request, Response,
-};
+use hyper::{body::to_bytes, Body, Method, Request, Response};
 use multipart::server::{Multipart, ReadEntry, ReadEntryResult};
 use multipart_2021 as multipart;
 use serde_json::json;
@@ -26,7 +23,7 @@ use std::{
 };
 
 /// List all models available.
-pub(crate) async fn models_handler() -> Result<Response<Body>, hyper::Error> {
+pub(crate) async fn models_handler() -> Response<Body> {
     // log
     {
         let record = NewLogRecord::new(
@@ -55,6 +52,7 @@ pub(crate) async fn models_handler() -> Result<Response<Body>, hyper::Error> {
                 let message = serde_json::to_string(&record).unwrap();
                 error!(target: "models_handler", "{}", message);
             }
+
             return error::internal_server_error(e.to_string());
         }
     };
@@ -87,59 +85,30 @@ pub(crate) async fn models_handler() -> Result<Response<Body>, hyper::Error> {
         .header("Content-Type", "application/json")
         .body(Body::from(s));
     match result {
-        Ok(response) => {
-            // log
-            {
-                let status_code = response.status();
-                let response_version = format!("{:?}", response.version());
-                let response_body_size: u64 = response.body().size_hint().lower();
-                let response_status = status_code.as_u16();
-                let response_is_informational = status_code.is_informational();
-                let response_is_success = status_code.is_success();
-                let response_is_redirection = status_code.is_redirection();
-                let response_is_client_error = status_code.is_client_error();
-                let response_is_server_error = status_code.is_server_error();
-                let record = NewLogRecord::new(
-                    LogLevel::Info,
-                    None,
-                    json!({
-                        "response_version": response_version,
-                        "response_body_size": response_body_size,
-                        "response_status": response_status,
-                        "response_is_informational": response_is_informational,
-                        "response_is_success": response_is_success,
-                        "response_is_redirection": response_is_redirection,
-                        "response_is_client_error": response_is_client_error,
-                        "response_is_server_error": response_is_server_error,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                info!(target: "models_handler", "{}", message);
-            }
-            Ok(response)
-        }
+        Ok(response) => response,
         Err(e) => {
+            let err_msg = format!("Failed to get model list. Reason: {}", e);
+
             // log
             {
                 let record = NewLogRecord::new(
                     LogLevel::Error,
                     None,
                     json!({
-                        "message": format!("Failed to get model list. Reason: {}", e.to_string()),
+                        "message": &err_msg,
                     }),
                 );
                 let message = serde_json::to_string(&record).unwrap();
                 error!(target: "models_handler", "{}", message);
             }
-            error::internal_server_error(e.to_string())
+
+            error::internal_server_error(err_msg)
         }
     }
 }
 
 /// Compute embeddings for the input text and return the embeddings object.
-pub(crate) async fn embeddings_handler(
-    mut req: Request<Body>,
-) -> Result<Response<Body>, hyper::Error> {
+pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body> {
     // log
     {
         let record = NewLogRecord::new(
@@ -154,7 +123,27 @@ pub(crate) async fn embeddings_handler(
     }
 
     // parse request
-    let body_bytes = to_bytes(req.body_mut()).await?;
+    let body_bytes = match to_bytes(req.body_mut()).await {
+        Ok(body_bytes) => body_bytes,
+        Err(e) => {
+            let err_msg = format!("Fail to read buffer from request body. {}", e);
+
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": &err_msg,
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!(target: "completions_handler", "{}", message);
+            }
+
+            return error::internal_server_error(err_msg);
+        }
+    };
     let mut embedding_request: EmbeddingRequest = match serde_json::from_slice(&body_bytes) {
         Ok(embedding_request) => embedding_request,
         Err(e) => {
@@ -192,7 +181,7 @@ pub(crate) async fn embeddings_handler(
             }),
         );
         let message = serde_json::to_string(&record).unwrap();
-        info!(target: "embedding_request", "{}", message);
+        info!(target: "embeddings_handler", "{}", message);
     }
 
     match llama_core::embeddings::embeddings(&embedding_request).await {
@@ -209,38 +198,7 @@ pub(crate) async fn embeddings_handler(
                         .header("user", id)
                         .body(Body::from(s));
                     match result {
-                        Ok(response) => {
-                            // log
-                            {
-                                let status_code = response.status();
-                                let response_version = format!("{:?}", response.version());
-                                let response_body_size: u64 = response.body().size_hint().lower();
-                                let response_status = status_code.as_u16();
-                                let response_is_informational = status_code.is_informational();
-                                let response_is_success = status_code.is_success();
-                                let response_is_redirection = status_code.is_redirection();
-                                let response_is_client_error = status_code.is_client_error();
-                                let response_is_server_error = status_code.is_server_error();
-                                let record = NewLogRecord::new(
-                                    LogLevel::Info,
-                                    None,
-                                    json!({
-                                        "response_version": response_version,
-                                        "response_body_size": response_body_size,
-                                        "response_status": response_status,
-                                        "response_is_informational": response_is_informational,
-                                        "response_is_success": response_is_success,
-                                        "response_is_redirection": response_is_redirection,
-                                        "response_is_client_error": response_is_client_error,
-                                        "response_is_server_error": response_is_server_error,
-                                    }),
-                                );
-                                let message = serde_json::to_string(&record).unwrap();
-                                info!(target: "embeddings_handler", "{}", message);
-                            }
-
-                            Ok(response)
-                        }
+                        Ok(response) => response,
                         Err(e) => {
                             let err_msg = e.to_string();
 
@@ -302,9 +260,7 @@ pub(crate) async fn embeddings_handler(
     }
 }
 
-pub(crate) async fn completions_handler(
-    mut req: Request<Body>,
-) -> Result<Response<Body>, hyper::Error> {
+pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body> {
     // log
     {
         let record = NewLogRecord::new(
@@ -319,7 +275,27 @@ pub(crate) async fn completions_handler(
     }
 
     // parse request
-    let body_bytes = to_bytes(req.body_mut()).await?;
+    let body_bytes = match to_bytes(req.body_mut()).await {
+        Ok(body_bytes) => body_bytes,
+        Err(e) => {
+            let err_msg = format!("Fail to read buffer from request body. {}", e);
+
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": &err_msg,
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!(target: "completions_handler", "{}", message);
+            }
+
+            return error::internal_server_error(err_msg);
+        }
+    };
     let mut completion_request: CompletionRequest = match serde_json::from_slice(&body_bytes) {
         Ok(completion_request) => completion_request,
         Err(e) => {
@@ -360,7 +336,6 @@ pub(crate) async fn completions_handler(
         info!(target: "completions_handler", "{}", message);
     }
 
-    println!("\n[+] Running completions handler ...");
     match llama_core::completions::completions(&completion_request).await {
         Ok(completion_object) => {
             // serialize completion object
@@ -395,38 +370,7 @@ pub(crate) async fn completions_handler(
                 .header("user", id)
                 .body(Body::from(s));
             match result {
-                Ok(response) => {
-                    // log
-                    {
-                        let status_code = response.status();
-                        let response_version = format!("{:?}", response.version());
-                        let response_body_size: u64 = response.body().size_hint().lower();
-                        let response_status = status_code.as_u16();
-                        let response_is_informational = status_code.is_informational();
-                        let response_is_success = status_code.is_success();
-                        let response_is_redirection = status_code.is_redirection();
-                        let response_is_client_error = status_code.is_client_error();
-                        let response_is_server_error = status_code.is_server_error();
-                        let record = NewLogRecord::new(
-                            LogLevel::Info,
-                            None,
-                            json!({
-                                "response_version": response_version,
-                                "response_body_size": response_body_size,
-                                "response_status": response_status,
-                                "response_is_informational": response_is_informational,
-                                "response_is_success": response_is_success,
-                                "response_is_redirection": response_is_redirection,
-                                "response_is_client_error": response_is_client_error,
-                                "response_is_server_error": response_is_server_error,
-                            }),
-                        );
-                        let message = serde_json::to_string(&record).unwrap();
-                        info!(target: "completions_handler", "{}", message);
-                    }
-
-                    Ok(response)
-                }
+                Ok(response) => response,
                 Err(e) => {
                     let err_msg = e.to_string();
 
@@ -469,9 +413,7 @@ pub(crate) async fn completions_handler(
 }
 
 /// Process a chat-completion request and returns a chat-completion response with the answer from the model.
-pub(crate) async fn chat_completions_handler(
-    mut req: Request<Body>,
-) -> Result<Response<Body>, hyper::Error> {
+pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response<Body> {
     // log
     {
         let record = NewLogRecord::new(
@@ -494,7 +436,7 @@ pub(crate) async fn chat_completions_handler(
             .body(Body::empty());
 
         match result {
-            Ok(response) => return Ok(response),
+            Ok(response) => return response,
             Err(e) => {
                 let err_msg = e.to_string();
 
@@ -517,7 +459,27 @@ pub(crate) async fn chat_completions_handler(
     }
 
     // parse request
-    let body_bytes = to_bytes(req.body_mut()).await?;
+    let body_bytes = match to_bytes(req.body_mut()).await {
+        Ok(body_bytes) => body_bytes,
+        Err(e) => {
+            let err_msg = format!("Fail to read buffer from request body. {}", e);
+
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": &err_msg,
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!(target: "chat_completions_handler", "{}", message);
+            }
+
+            return error::internal_server_error(err_msg);
+        }
+    };
     let mut chat_request: ChatCompletionRequest = match serde_json::from_slice(&body_bytes) {
         Ok(chat_request) => chat_request,
         Err(e) => {
@@ -575,67 +537,10 @@ pub(crate) async fn chat_completions_handler(
     }
 
     // handle chat request
-    let response = match chat_request.stream {
+    match chat_request.stream {
         Some(true) => chat_completions_stream(chat_request).await,
         Some(false) | None => chat_completions(chat_request).await,
-    };
-
-    // log response
-    let status_code = response.status();
-    if status_code.as_u16() < 400 {
-        // log response
-        let response_version = format!("{:?}", response.version());
-        let response_body_size: u64 = response.body().size_hint().lower();
-        let response_status = status_code.as_u16();
-        let response_is_informational = status_code.is_informational();
-        let response_is_success = status_code.is_success();
-        let response_is_redirection = status_code.is_redirection();
-        let response_is_client_error = status_code.is_client_error();
-        let response_is_server_error = status_code.is_server_error();
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "response_version": response_version,
-                "response_body_size": response_body_size,
-                "response_status": response_status,
-                "response_is_informational": response_is_informational,
-                "response_is_success": response_is_success,
-                "response_is_redirection": response_is_redirection,
-                "response_is_client_error": response_is_client_error,
-                "response_is_server_error": response_is_server_error,
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!(target: "chat_completions_handler", "{}", message);
-    } else {
-        let response_version = format!("{:?}", response.version());
-        let response_body_size: u64 = response.body().size_hint().lower();
-        let response_status = status_code.as_u16();
-        let response_is_informational = status_code.is_informational();
-        let response_is_success = status_code.is_success();
-        let response_is_redirection = status_code.is_redirection();
-        let response_is_client_error = status_code.is_client_error();
-        let response_is_server_error = status_code.is_server_error();
-        let record = NewLogRecord::new(
-            LogLevel::Info,
-            None,
-            json!({
-                "response_version": response_version,
-                "response_body_size": response_body_size,
-                "response_status": response_status,
-                "response_is_informational": response_is_informational,
-                "response_is_success": response_is_success,
-                "response_is_redirection": response_is_redirection,
-                "response_is_client_error": response_is_client_error,
-                "response_is_server_error": response_is_server_error,
-            }),
-        );
-        let message = serde_json::to_string(&record).unwrap();
-        info!(target: "chat_completions_handler", "{}", message);
     }
-
-    Ok(response)
 }
 
 /// Process a chat-completion request in stream mode and returns a chat-completion response with the answer from the model.
@@ -715,7 +620,7 @@ async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Res
                         error!(target: "chat_completions_stream", "{}", message);
                     }
 
-                    error::internal_server_error_new(err_msg)
+                    error::internal_server_error(err_msg)
                 }
             }
         }
@@ -735,7 +640,7 @@ async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Res
                 error!(target: "chat_completions_stream", "{}", message);
             }
 
-            error::internal_server_error_new(err_msg)
+            error::internal_server_error(err_msg)
         }
     }
 }
@@ -777,7 +682,7 @@ async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<B
                         error!(target: "chat_completions", "{}", message);
                     }
 
-                    return error::internal_server_error_new(err_msg);
+                    return error::internal_server_error(err_msg);
                 }
             };
 
@@ -824,7 +729,7 @@ async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<B
                         error!(target: "chat_completions", "{}", message);
                     }
 
-                    error::internal_server_error_new(err_msg)
+                    error::internal_server_error(err_msg)
                 }
             }
         }
@@ -843,12 +748,12 @@ async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<B
                 let message = serde_json::to_string(&record).unwrap();
                 error!(target: "chat_completions", "{}", message);
             }
-            error::internal_server_error_new(err_msg)
+            error::internal_server_error(err_msg)
         }
     }
 }
 
-pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
     // log
     {
         let record = NewLogRecord::new(
@@ -872,7 +777,28 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, 
         });
 
         let req_body = req.into_body();
-        let body_bytes = to_bytes(req_body).await?;
+        let body_bytes = match to_bytes(req_body).await {
+            Ok(body_bytes) => body_bytes,
+            Err(e) => {
+                let err_msg = format!("Fail to read buffer from request body. {}", e);
+
+                // log
+                {
+                    let record = NewLogRecord::new(
+                        LogLevel::Error,
+                        None,
+                        json!({
+                            "message": &err_msg,
+                        }),
+                    );
+                    let message = serde_json::to_string(&record).unwrap();
+                    error!(target: "files_handler", "{}", message);
+                }
+
+                return error::internal_server_error(err_msg);
+            }
+        };
+
         let cursor = Cursor::new(body_bytes.to_vec());
 
         let mut multipart = Multipart::with_body(cursor, boundary.unwrap());
@@ -1070,38 +996,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, 
                     .body(Body::from(s));
 
                 match result {
-                    Ok(response) => {
-                        // log
-                        {
-                            let status_code = response.status();
-                            let response_version = format!("{:?}", response.version());
-                            let response_body_size: u64 = response.body().size_hint().lower();
-                            let response_status = status_code.as_u16();
-                            let response_is_informational = status_code.is_informational();
-                            let response_is_success = status_code.is_success();
-                            let response_is_redirection = status_code.is_redirection();
-                            let response_is_client_error = status_code.is_client_error();
-                            let response_is_server_error = status_code.is_server_error();
-                            let record = NewLogRecord::new(
-                                LogLevel::Info,
-                                None,
-                                json!({
-                                    "response_version": response_version,
-                                    "response_body_size": response_body_size,
-                                    "response_status": response_status,
-                                    "response_is_informational": response_is_informational,
-                                    "response_is_success": response_is_success,
-                                    "response_is_redirection": response_is_redirection,
-                                    "response_is_client_error": response_is_client_error,
-                                    "response_is_server_error": response_is_server_error,
-                                }),
-                            );
-                            let message = serde_json::to_string(&record).unwrap();
-                            info!(target: "files_handler", "{}", message);
-                        }
-
-                        Ok(response)
-                    }
+                    Ok(response) => response,
                     Err(e) => {
                         let err_msg = e.to_string();
 
@@ -1178,7 +1073,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, 
     }
 }
 
-pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
     // log
     {
         let record = NewLogRecord::new(
@@ -1193,7 +1088,28 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Result<Response<Bo
     }
 
     // parse request
-    let body_bytes = to_bytes(req.body_mut()).await?;
+    let body_bytes = match to_bytes(req.body_mut()).await {
+        Ok(body_bytes) => body_bytes,
+        Err(e) => {
+            let err_msg = format!("Fail to read buffer from request body. {}", e);
+
+            // log
+            {
+                let record = NewLogRecord::new(
+                    LogLevel::Error,
+                    None,
+                    json!({
+                        "message": &err_msg,
+                    }),
+                );
+                let message = serde_json::to_string(&record).unwrap();
+                error!(target: "chunks_handler", "{}", message);
+            }
+
+            return error::internal_server_error(err_msg);
+        }
+    };
+
     let chunks_request: ChunksRequest = match serde_json::from_slice(&body_bytes) {
         Ok(chunks_request) => chunks_request,
         Err(e) => {
@@ -1385,38 +1301,7 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Result<Response<Bo
                         .header("Content-Type", "application/json")
                         .body(Body::from(s));
                     match result {
-                        Ok(response) => {
-                            // log
-                            {
-                                let status_code = response.status();
-                                let response_version = format!("{:?}", response.version());
-                                let response_body_size: u64 = response.body().size_hint().lower();
-                                let response_status = status_code.as_u16();
-                                let response_is_informational = status_code.is_informational();
-                                let response_is_success = status_code.is_success();
-                                let response_is_redirection = status_code.is_redirection();
-                                let response_is_client_error = status_code.is_client_error();
-                                let response_is_server_error = status_code.is_server_error();
-                                let record = NewLogRecord::new(
-                                    LogLevel::Info,
-                                    None,
-                                    json!({
-                                        "response_version": response_version,
-                                        "response_body_size": response_body_size,
-                                        "response_status": response_status,
-                                        "response_is_informational": response_is_informational,
-                                        "response_is_success": response_is_success,
-                                        "response_is_redirection": response_is_redirection,
-                                        "response_is_client_error": response_is_client_error,
-                                        "response_is_server_error": response_is_server_error,
-                                    }),
-                                );
-                                let message = serde_json::to_string(&record).unwrap();
-                                info!(target: "chunks_handler", "{}", message);
-                            }
-
-                            Ok(response)
-                        }
+                        Ok(response) => response,
                         Err(e) => {
                             let err_msg = e.to_string();
 
@@ -1478,7 +1363,7 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Result<Response<Bo
     }
 }
 
-pub(crate) async fn server_info() -> Result<Response<Body>, hyper::Error> {
+pub(crate) async fn server_info() -> Response<Body> {
     // log
     {
         let record = NewLogRecord::new(
@@ -1546,38 +1431,7 @@ pub(crate) async fn server_info() -> Result<Response<Body>, hyper::Error> {
         .header("Content-Type", "application/json")
         .body(Body::from(s));
     match result {
-        Ok(response) => {
-            // log
-            {
-                let status_code = response.status();
-                let response_version = format!("{:?}", response.version());
-                let response_body_size: u64 = response.body().size_hint().lower();
-                let response_status = status_code.as_u16();
-                let response_is_informational = status_code.is_informational();
-                let response_is_success = status_code.is_success();
-                let response_is_redirection = status_code.is_redirection();
-                let response_is_client_error = status_code.is_client_error();
-                let response_is_server_error = status_code.is_server_error();
-                let record = NewLogRecord::new(
-                    LogLevel::Info,
-                    None,
-                    json!({
-                        "response_version": response_version,
-                        "response_body_size": response_body_size,
-                        "response_status": response_status,
-                        "response_is_informational": response_is_informational,
-                        "response_is_success": response_is_success,
-                        "response_is_redirection": response_is_redirection,
-                        "response_is_client_error": response_is_client_error,
-                        "response_is_server_error": response_is_server_error,
-                    }),
-                );
-                let message = serde_json::to_string(&record).unwrap();
-                info!(target: "server_info", "{}", message);
-            }
-
-            Ok(response)
-        }
+        Ok(response) => response,
         Err(e) => {
             let err_msg = e.to_string();
 

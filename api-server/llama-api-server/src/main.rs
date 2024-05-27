@@ -10,6 +10,7 @@ use chat_prompts::PromptTemplateType;
 use clap::Parser;
 use error::ServerError;
 use hyper::{
+    body::HttpBody,
     header,
     server::conn::AddrStream,
     service::{make_service_fn, service_fn},
@@ -634,11 +635,68 @@ async fn handle_request(
         }
     }
 
-    match root_path.as_str() {
-        "/echo" => Ok(Response::new(Body::from("echo test"))),
+    let response = match root_path.as_str() {
+        "/echo" => Response::new(Body::from("echo test")),
         "/v1" => backend::handle_llama_request(req).await,
-        _ => Ok(static_response(path_str, web_ui)),
+        _ => static_response(path_str, web_ui),
+    };
+
+    // log response
+    let status_code = response.status();
+    if status_code.as_u16() < 400 {
+        // log response
+        let response_version = format!("{:?}", response.version());
+        let response_body_size: u64 = response.body().size_hint().lower();
+        let response_status = status_code.as_u16();
+        let response_is_informational = status_code.is_informational();
+        let response_is_success = status_code.is_success();
+        let response_is_redirection = status_code.is_redirection();
+        let response_is_client_error = status_code.is_client_error();
+        let response_is_server_error = status_code.is_server_error();
+        let record = NewLogRecord::new(
+            LogLevel::Info,
+            None,
+            json!({
+                "response_version": response_version,
+                "response_body_size": response_body_size,
+                "response_status": response_status,
+                "response_is_informational": response_is_informational,
+                "response_is_success": response_is_success,
+                "response_is_redirection": response_is_redirection,
+                "response_is_client_error": response_is_client_error,
+                "response_is_server_error": response_is_server_error,
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        info!(target: "response", "{}", message);
+    } else {
+        let response_version = format!("{:?}", response.version());
+        let response_body_size: u64 = response.body().size_hint().lower();
+        let response_status = status_code.as_u16();
+        let response_is_informational = status_code.is_informational();
+        let response_is_success = status_code.is_success();
+        let response_is_redirection = status_code.is_redirection();
+        let response_is_client_error = status_code.is_client_error();
+        let response_is_server_error = status_code.is_server_error();
+        let record = NewLogRecord::new(
+            LogLevel::Error,
+            None,
+            json!({
+                "response_version": response_version,
+                "response_body_size": response_body_size,
+                "response_status": response_status,
+                "response_is_informational": response_is_informational,
+                "response_is_success": response_is_success,
+                "response_is_redirection": response_is_redirection,
+                "response_is_client_error": response_is_client_error,
+                "response_is_server_error": response_is_server_error,
+            }),
+        );
+        let message = serde_json::to_string(&record).unwrap();
+        error!(target: "response", "{}", message);
     }
+
+    Ok(response)
 }
 
 fn static_response(path_str: &str, root: String) -> Response<Body> {
