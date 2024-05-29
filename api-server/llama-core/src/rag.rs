@@ -266,17 +266,33 @@ pub fn chunk_text(
     ty: impl AsRef<str>,
     chunk_capacity: usize,
 ) -> Result<Vec<String>, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Chunk input text.");
+
     if ty.as_ref().to_lowercase().as_str() != "txt" && ty.as_ref().to_lowercase().as_str() != "md" {
-        return Err(LlamaCoreError::Operation(
-            "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported.".to_string(),
-        ));
+        let err_msg = "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported.";
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama-core", "{}", err_msg);
+
+        return Err(LlamaCoreError::Operation(err_msg.into()));
     }
 
     match ty.as_ref().to_lowercase().as_str() {
         "txt" => {
-            println!("[+] Chunking the text file ...");
+            #[cfg(feature = "logging")]
+            info!(target: "llama-core", "Chunk plain text contents.");
 
-            let tokenizer = cl100k_base().map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
+            let tokenizer = cl100k_base().map_err(|e| {
+                let err_msg = e.to_string();
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama-core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
+            })?;
+
+            // create a text splitter
             let splitter = TextSplitter::new(tokenizer).with_trim_chunks(true);
 
             let chunks = splitter
@@ -284,25 +300,44 @@ pub fn chunk_text(
                 .map(|s| s.to_string())
                 .collect::<Vec<_>>();
 
-            println!("    * Number of chunks: {}", chunks.len());
+            #[cfg(feature = "logging")]
+            info!(target: "llama-core", "Number of chunks: {}", chunks.len());
 
             Ok(chunks)
-        },
+        }
         "md" => {
-            println!("[+] Chunking the markdown file ...");
+            #[cfg(feature = "logging")]
+            info!(target: "llama-core", "Chunk markdown contents.");
 
-            let tokenizer = cl100k_base().map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
+            let tokenizer = cl100k_base().map_err(|e| {
+                let err_msg = e.to_string();
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama-core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
+            })?;
+
+            // create a markdown splitter
             let splitter = MarkdownSplitter::new(tokenizer).with_trim_chunks(true);
 
-            let chunks = splitter.chunks(text.as_ref(), chunk_capacity).map(|s| s.to_string())
-            .collect::<Vec<_>>();
+            let chunks = splitter
+                .chunks(text.as_ref(), chunk_capacity)
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>();
 
-            println!("    * Number of chunks: {}", chunks.len());
+            #[cfg(feature = "logging")]
+            info!(target: "llama-core", "Number of chunks: {}", chunks.len());
 
             Ok(chunks)
-        },
-        _ => Err(LlamaCoreError::Operation(
-            "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported.".to_string(),
-        )),
+        }
+        _ => {
+            let err_msg = "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama-core", "{}", err_msg);
+
+            Err(LlamaCoreError::Operation(err_msg.into()))
+        }
     }
 }
