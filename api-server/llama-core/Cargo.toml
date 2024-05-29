@@ -24,8 +24,11 @@ reqwest = { package = "reqwest_wasi", version = "0.11", features = ["json", "str
 qdrant_rest_client = { version = "0.0.4", default-features = false }
 text-splitter = { version = "^0.7", features = ["tiktoken-rs", "markdown"] }
 tiktoken-rs = "^0.5"
+wasi-logger = { workspace = true, optional = true }
+log = { workspace = true, optional = true }
 
 [features]
 default = []
 full = ["https"]
 https = ["reqwest/wasmedge-tls", "qdrant_rest_client/wasmedge-tls"]
+logging = ["wasi-logger", "log"]
