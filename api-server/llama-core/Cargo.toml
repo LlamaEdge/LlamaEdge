@@ -29,6 +29,6 @@ log = { workspace = true, optional = true }
 
 [features]
 default = []
-full = ["https"]
+full = ["https", "logging"]
 https = ["reqwest/wasmedge-tls", "qdrant_rest_client/wasmedge-tls"]
 logging = ["wasi-logger", "log"]
