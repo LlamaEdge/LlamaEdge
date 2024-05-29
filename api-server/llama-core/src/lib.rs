@@ -1,3 +1,7 @@
+#[cfg(feature = "logging")]
+#[macro_use]
+extern crate log;
+
 pub mod chat;
 pub mod completions;
 pub mod embeddings;
@@ -248,8 +252,15 @@ pub struct Graph {
 }
 impl Graph {
     /// Create a new computation graph from the given metadata.
-    pub fn new(metadata: &Metadata) -> Result<Self, String> {
-        let config = serde_json::to_string(&metadata).map_err(|e| e.to_string())?;
+    pub fn new(metadata: &Metadata) -> Result<Self, LlamaCoreError> {
+        let config = serde_json::to_string(&metadata).map_err(|e| {
+            let err_msg = e.to_string();
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama-core", "{}", &err_msg);
+
+            LlamaCoreError::Operation(err_msg)
+        })?;
 
         // load the model
         let graph = wasmedge_wasi_nn::GraphBuilder::new(
@@ -258,14 +269,35 @@ impl Graph {
         )
         .config(config)
         .build_from_cache(&metadata.model_alias)
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            let err_msg = e.to_string();
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama-core", "{}", &err_msg);
+
+            LlamaCoreError::Operation(err_msg)
+        })?;
 
         // initialize the execution context
-        let context = graph.init_execution_context().map_err(|e| e.to_string())?;
+        let context = graph.init_execution_context().map_err(|e| {
+            let err_msg = e.to_string();
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama-core", "{}", &err_msg);
+
+            LlamaCoreError::Operation(err_msg)
+        })?;
 
         let created = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| {
+                let err_msg = e.to_string();
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama-core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
+            })?;
 
         Ok(Self {
             created,
@@ -296,12 +328,15 @@ impl Graph {
         let config = match serde_json::to_string(&self.metadata) {
             Ok(config) => config,
             Err(e) => {
-                return Err(LlamaCoreError::Operation(format!(
-                    "Fail to serialize metadata to a JSON string. {}",
-                    e
-                )));
+                let err_msg = format!("Failed to update metadta. Reason: Fail to serialize metadata to a JSON string. {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama-core", "{}", &err_msg);
+
+                return Err(LlamaCoreError::Operation(err_msg));
             }
         };
+
         set_tensor_data_u8(self, 1, config.as_bytes())
     }
 
@@ -360,10 +395,16 @@ pub fn init_core_context(
     metadata_for_chats: Option<&[Metadata]>,
     metadata_for_embeddings: Option<&[Metadata]>,
 ) -> Result<(), LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Initializing the core context");
+
     if metadata_for_chats.is_none() && metadata_for_embeddings.is_none() {
-        return Err(LlamaCoreError::InitContext(
-            "Failed to initialize the core context. Please set metadata for chat completions and/or embeddings.".into(),
-        ));
+        let err_msg = "Failed to initialize the core context. Please set metadata for chat completions and/or embeddings.";
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama-core", "{}", err_msg);
+
+        return Err(LlamaCoreError::InitContext(err_msg.into()));
     }
 
     let mut mode = RunningMode::Embeddings;
@@ -371,16 +412,17 @@ pub fn init_core_context(
     if let Some(metadata_chats) = metadata_for_chats {
         let mut chat_graphs = HashMap::new();
         for metadata in metadata_chats {
-            let graph = Graph::new(metadata).map_err(|e| {
-                LlamaCoreError::InitContext(format!("Failed to create a chat graph. {}", e))
-            })?;
+            let graph = Graph::new(metadata)?;
 
             chat_graphs.insert(graph.name().to_string(), graph);
         }
         CHAT_GRAPHS.set(Mutex::new(chat_graphs)).map_err(|_| {
-            LlamaCoreError::InitContext(
-                "Failed to initialize the core context. Reason: the `CHAT_GRAPHS` has already been initialized".to_string(),
-            )
+            let err_msg = "Failed to initialize the core context. Reason: The `CHAT_GRAPHS` has already been initialized";
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama-core", "{}", err_msg);
+
+            LlamaCoreError::InitContext(err_msg.into())
         })?;
 
         mode = RunningMode::Chat
@@ -389,21 +431,19 @@ pub fn init_core_context(
     if let Some(metadata_embeddings) = metadata_for_embeddings {
         let mut embedding_graphs = HashMap::new();
         for metadata in metadata_embeddings {
-            let graph = Graph::new(metadata).map_err(|e| {
-                LlamaCoreError::InitContext(format!(
-                    "Failed to create a embedding graph. Reason: {}",
-                    e
-                ))
-            })?;
+            let graph = Graph::new(metadata)?;
 
             embedding_graphs.insert(graph.name().to_string(), graph);
         }
         EMBEDDING_GRAPHS
             .set(Mutex::new(embedding_graphs))
             .map_err(|_| {
-                LlamaCoreError::InitContext(
-                    "Failed to initialize the core context. Reason: The `EMBEDDING_GRAPHS` has already been initialized".to_string(),
-                )
+                let err_msg = "Failed to initialize the core context. Reason: The `EMBEDDING_GRAPHS` has already been initialized";
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama-core", "{}", err_msg);
+
+                LlamaCoreError::InitContext(err_msg.into())
             })?;
 
         if mode == RunningMode::Chat {
@@ -411,9 +451,20 @@ pub fn init_core_context(
         }
     }
 
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "running mode: {}", mode);
+
     RUNNING_MODE.set(RwLock::new(mode)).map_err(|_| {
-        LlamaCoreError::InitContext("Failed to initialize the core context. Reason: The `RUNNING_MODE` has already been initialized".to_string())
+        let err_msg = "Failed to initialize the core context. Reason: The `RUNNING_MODE` has already been initialized";
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama-core", "{}", err_msg);
+
+        LlamaCoreError::InitContext(err_msg.into())
     })?;
+
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "The core context has been initialized");
 
     Ok(())
 }
@@ -423,53 +474,76 @@ pub fn init_rag_core_context(
     metadata_for_chats: &[Metadata],
     metadata_for_embeddings: &[Metadata],
 ) -> Result<(), LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Initializing the core context for RAG scenarios");
+
     // chat models
     if metadata_for_chats.is_empty() {
-        return Err(LlamaCoreError::InitContext(
-            "The metadata for chat models is empty".to_string(),
-        ));
+        let err_msg = "The metadata for chat models is empty";
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama-core", "{}", err_msg);
+
+        return Err(LlamaCoreError::InitContext(err_msg.into()));
     }
     let mut chat_graphs = HashMap::new();
     for metadata in metadata_for_chats {
-        let graph = Graph::new(metadata).map_err(|e| {
-            LlamaCoreError::InitContext(format!("Failed to create a chat graph. {}", e))
-        })?;
+        let graph = Graph::new(metadata)?;
 
         chat_graphs.insert(graph.name().to_string(), graph);
     }
     CHAT_GRAPHS.set(Mutex::new(chat_graphs)).map_err(|_| {
-        LlamaCoreError::InitContext("The `CHAT_GRAPHS` has already been initialized".to_string())
+        let err_msg = "Failed to initialize the core context. Reason: The `CHAT_GRAPHS` has already been initialized";
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama-core", "{}", err_msg);
+
+        LlamaCoreError::InitContext(err_msg.into())
     })?;
 
     // embedding models
     if metadata_for_embeddings.is_empty() {
-        return Err(LlamaCoreError::InitContext(
-            "The metadata for embeddings is empty".to_string(),
-        ));
+        let err_msg = "The metadata for embeddings is empty";
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama-core", "{}", err_msg);
+
+        return Err(LlamaCoreError::InitContext(err_msg.into()));
     }
     let mut embedding_graphs = HashMap::new();
     for metadata in metadata_for_embeddings {
-        let graph = Graph::new(metadata).map_err(|e| {
-            LlamaCoreError::InitContext(format!(
-                "Failed to create a embedding graph. Reason: {}",
-                e
-            ))
-        })?;
+        let graph = Graph::new(metadata)?;
 
         embedding_graphs.insert(graph.name().to_string(), graph);
     }
     EMBEDDING_GRAPHS
         .set(Mutex::new(embedding_graphs))
         .map_err(|_| {
-            LlamaCoreError::InitContext(
-                "The `EMBEDDING_GRAPHS` has already been initialized".to_string(),
-            )
+            let err_msg = "Failed to initialize the core context. Reason: The `EMBEDDING_GRAPHS` has already been initialized";
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama-core", "{}", err_msg);
+
+            LlamaCoreError::InitContext(err_msg.into())
         })?;
 
+    let running_mode = RunningMode::Rag;
+
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "running mode: {}", running_mode);
+
     // set running mode
-    RUNNING_MODE.set(RwLock::new(RunningMode::Rag)).map_err(|_| {
-            LlamaCoreError::InitContext("Failed to initialize the core context. Reason: The `RUNNING_MODE` has already been initialized".to_string())
+    RUNNING_MODE.set(RwLock::new(running_mode)).map_err(|_| {
+            let err_msg = "Failed to initialize the core context. Reason: The `RUNNING_MODE` has already been initialized";
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama-core", "{}", err_msg);
+
+            LlamaCoreError::InitContext(err_msg.into())
         })?;
+
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "The core context for RAG scenarios has been initialized");
 
     Ok(())
 }
@@ -478,49 +552,79 @@ pub fn init_rag_core_context(
 ///
 /// Note that it is required to call `init_core_context` before calling this function.
 pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Getting the plugin info");
+
     match running_mode()? {
         RunningMode::Embeddings => {
-            let embedding_graphs =
-                EMBEDDING_GRAPHS
-                    .get()
-                    .ok_or(LlamaCoreError::Operation(String::from(
-                        "Fail to get the underlying value of `EMBEDDING_GRAPHS`.",
-                    )))?;
+            let embedding_graphs = match EMBEDDING_GRAPHS.get() {
+                Some(embedding_graphs) => embedding_graphs,
+                None => {
+                    let err_msg = "Fail to get the underlying value of `EMBEDDING_GRAPHS`.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama-core", "{}", err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                }
+            };
+
             let embedding_graphs = embedding_graphs.lock().map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}",
-                    e
-                ))
+                let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama-core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
             })?;
 
-            let graph = embedding_graphs
-                .values()
-                .next()
-                .ok_or(LlamaCoreError::Operation(String::from(
-                    "Fail to get the underlying value of `GRAPH`.",
-                )))?;
+            let graph = match embedding_graphs.values().next() {
+                Some(graph) => graph,
+                None => {
+                    let err_msg = "Fail to get the underlying value of `EMBEDDING_GRAPHS`.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama-core", "{}", err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                }
+            };
 
             get_plugin_info_by_graph(graph)
         }
         _ => {
-            let chat_graphs = CHAT_GRAPHS
-                .get()
-                .ok_or(LlamaCoreError::Operation(String::from(
-                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
-                )))?;
+            let chat_graphs = match CHAT_GRAPHS.get() {
+                Some(chat_graphs) => chat_graphs,
+                None => {
+                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama-core", "{}", err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                }
+            };
+
             let chat_graphs = chat_graphs.lock().map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
-                    e
-                ))
+                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama-core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
             })?;
 
-            let graph = chat_graphs
-                .values()
-                .next()
-                .ok_or(LlamaCoreError::Operation(String::from(
-                    "Fail to get the underlying value of `GRAPH`.",
-                )))?;
+            let graph = match chat_graphs.values().next() {
+                Some(graph) => graph,
+                None => {
+                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama-core", "{}", err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                }
+            };
 
             get_plugin_info_by_graph(graph)
         }
@@ -531,26 +635,59 @@ fn get_plugin_info_by_graph(graph: &Graph) -> Result<PluginInfo, LlamaCoreError>
     // get the plugin metadata
     let output_buffer = get_output_buffer(graph, PLUGIN_VERSION)?;
     let metadata: serde_json::Value = serde_json::from_slice(&output_buffer[..]).map_err(|e| {
-        LlamaCoreError::Operation(format!(
-            "Fail to deserialize the plugin metadata. {msg}",
-            msg = e
-        ))
+        let err_msg = format!("Fail to deserialize the plugin metadata. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama-core", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
     })?;
 
     // get build number of the plugin
-    let plugin_build_number =
-        metadata["llama_build_number"]
-            .as_u64()
-            .ok_or(LlamaCoreError::Operation(String::from(
-                "Failed to convert the build number of the plugin to u64",
-            )))?;
+    let plugin_build_number = match metadata.get("llama_build_number") {
+        Some(value) => match value.as_u64() {
+            Some(number) => number,
+            None => {
+                let err_msg = "Failed to convert the build number of the plugin to u64";
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama-core", "{}", err_msg);
+
+                return Err(LlamaCoreError::Operation(err_msg.into()));
+            }
+        },
+        None => {
+            let err_msg = "Metadata does not have the field `llama_build_number`.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama-core", "{}", err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.into()));
+        }
+    };
 
     // get commit id of the plugin
-    let plugin_commit = metadata["llama_commit"]
-        .as_str()
-        .ok_or(LlamaCoreError::Operation(String::from(
-            "Failed to convert the commit id of the plugin to string",
-        )))?;
+    let plugin_commit = match metadata.get("llama_commit") {
+        Some(value) => match value.as_str() {
+            Some(commit) => commit,
+            None => {
+                let err_msg = "Failed to convert the commit id of the plugin to string";
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama-core", "{}", err_msg);
+
+                return Err(LlamaCoreError::Operation(err_msg.into()));
+            }
+        },
+        None => {
+            let err_msg = "Metadata does not have the field `llama_commit`.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama-core", "{}", err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.into()));
+        }
+    };
 
     Ok(PluginInfo {
         build_number: plugin_build_number,
@@ -595,16 +732,30 @@ impl std::fmt::Display for RunningMode {
 
 /// Return the current running mode.
 pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
-    let mode = RUNNING_MODE
-        .get()
-        .ok_or(LlamaCoreError::Operation(String::from(
-            "Fail to get the underlying value of `RUNNING_MODE`.",
-        )))?
-        .read()
-        .map_err(|e| {
-            LlamaCoreError::Operation(format!("Fail to acquire the lock of `RUNNING_MODE`. {}", e))
-        })?
-        .to_owned();
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Getting the running mode");
+
+    let mode = match RUNNING_MODE.get() {
+        Some(mode) => match mode.read() {
+            Ok(mode) => mode.to_owned(),
+            Err(e) => {
+                let err_msg = format!("Fail to get the underlying value of `RUNNING_MODE`. {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama-core", "{}", err_msg);
+
+                return Err(LlamaCoreError::Operation(err_msg));
+            }
+        },
+        None => {
+            let err_msg = "Fail to get the underlying value of `RUNNING_MODE`.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama-core", "{}", err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.into()));
+        }
+    };
 
     Ok(mode.to_owned())
 }

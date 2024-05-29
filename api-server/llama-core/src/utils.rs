@@ -162,9 +162,12 @@ pub(crate) fn set_tensor_data_u8(
         .set_input(idx, wasmedge_wasi_nn::TensorType::U8, &[1], tensor_data)
         .is_err()
     {
-        return Err(LlamaCoreError::Operation(String::from(
-            "Fail to set input tensor",
-        )));
+        let err_msg = format!("Fail to set input tensor at index {}", idx);
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama-core", "{}", &err_msg);
+
+        return Err(LlamaCoreError::Operation(err_msg));
     };
 
     Ok(())
