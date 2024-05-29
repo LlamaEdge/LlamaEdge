@@ -324,6 +324,9 @@ impl Graph {
 
     /// Update metadata
     pub fn update_metadata(&mut self) -> Result<(), LlamaCoreError> {
+        #[cfg(feature = "logging")]
+        info!(target: "llama-core", "Update metadata for the model named {}", self.name());
+
         // update metadata
         let config = match serde_json::to_string(&self.metadata) {
             Ok(config) => config,
@@ -337,7 +340,12 @@ impl Graph {
             }
         };
 
-        set_tensor_data_u8(self, 1, config.as_bytes())
+        let res = set_tensor_data_u8(self, 1, config.as_bytes());
+
+        #[cfg(feature = "logging")]
+        info!(target: "llama-core", "Metadata updated successfully.");
+
+        res
     }
 
     /// Set input uses the data, not only [u8](https://doc.rust-lang.org/nightly/std/primitive.u8.html), but also [f32](https://doc.rust-lang.org/nightly/std/primitive.f32.html), [i32](https://doc.rust-lang.org/nightly/std/primitive.i32.html), etc.
