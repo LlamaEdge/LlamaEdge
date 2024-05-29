@@ -118,11 +118,20 @@ pub async fn rag_retrieve_context(
     limit: usize,
     score_threshold: Option<f32>,
 ) -> Result<RetrieveObject, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Retrieve context.");
+
     let running_mode = running_mode()?;
     if running_mode != RunningMode::Rag {
-        return Err(LlamaCoreError::Operation(format!(
-            "The context retrieval is not supported in the {running_mode} mode.",
-        )));
+        let err_msg = format!(
+            "The context retrieval is not supported in the {} mode.",
+            running_mode
+        );
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama-core", "{}", &err_msg);
+
+        return Err(LlamaCoreError::Operation(err_msg));
     }
 
     // create a Qdrant client
@@ -136,8 +145,7 @@ pub async fn rag_retrieve_context(
         limit,
         score_threshold,
     )
-    .await
-    .map_err(LlamaCoreError::Operation)?;
+    .await?;
 
     let ro = match scored_points.is_empty() {
         true => RetrieveObject {
@@ -157,6 +165,7 @@ pub async fn rag_retrieve_context(
                     }
                 }
             }
+
             RetrieveObject {
                 points: Some(points),
                 limit,
@@ -229,7 +238,10 @@ async fn qdrant_search_similar_points(
     query_vector: &[f32],
     limit: usize,
     score_threshold: Option<f32>,
-) -> Result<Vec<ScoredPoint>, String> {
+) -> Result<Vec<ScoredPoint>, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Search similar points from the qdrant instance.");
+
     match qdrant_client
         .search_points(
             collection_name.as_ref(),
@@ -239,8 +251,20 @@ async fn qdrant_search_similar_points(
         )
         .await
     {
-        Ok(search_result) => Ok(search_result),
-        Err(err) => Err(err.to_string()),
+        Ok(search_result) => {
+            #[cfg(feature = "logging")]
+            info!(target: "llama-core", "Number of similar points found: {}", search_result.len());
+
+            Ok(search_result)
+        }
+        Err(e) => {
+            let err_msg = e.to_string();
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama-core", "{}", &err_msg);
+
+            Err(LlamaCoreError::Operation(err_msg))
+        }
     }
 }
 
