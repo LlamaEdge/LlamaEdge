@@ -84,11 +84,17 @@ pub async fn rag_doc_chunks_to_embeddings(
 pub async fn rag_query_to_embeddings(
     rag_embedding_request: &RagEmbeddingRequest,
 ) -> Result<EmbeddingsResponse, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Convert a query to embeddings.");
+
     let running_mode = running_mode()?;
     if running_mode != RunningMode::Rag {
-        return Err(LlamaCoreError::Operation(format!(
-            "The RAG query is not supported in the {running_mode} mode.",
-        )));
+        let err_msg = format!("The RAG query is not supported in the {running_mode} mode.",);
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama-core", "{}", &err_msg);
+
+        return Err(LlamaCoreError::Operation(err_msg));
     }
 
     embeddings(&rag_embedding_request.embedding_request).await
