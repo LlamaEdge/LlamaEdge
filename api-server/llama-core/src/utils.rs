@@ -7,48 +7,34 @@ use crate::{
 use chat_prompts::PromptTemplateType;
 use serde_json::Value;
 
-pub(crate) fn print_log_begin_separator(
-    title: impl AsRef<str>,
-    ch: Option<&str>,
-    len: Option<usize>,
-) -> usize {
-    let title = format!(" [LOG: {}] ", title.as_ref());
-
-    let total_len: usize = len.unwrap_or(100);
-    let separator_len: usize = (total_len - title.len()) / 2;
-
-    let ch = ch.unwrap_or("-");
-    let mut separator = "\n\n".to_string();
-    separator.push_str(ch.repeat(separator_len).as_str());
-    separator.push_str(&title);
-    separator.push_str(ch.repeat(separator_len).as_str());
-    separator.push('\n');
-    println!("{}", separator);
-    total_len
-}
-
-pub(crate) fn print_log_end_separator(ch: Option<&str>, len: Option<usize>) {
-    let ch = ch.unwrap_or("-");
-    let mut separator = "\n\n".to_string();
-    separator.push_str(ch.repeat(len.unwrap_or(100)).as_str());
-    separator.push_str("\n\n");
-    println!("{}", separator);
-}
-
 pub(crate) fn gen_chat_id() -> String {
     format!("chatcmpl-{}", uuid::Uuid::new_v4())
 }
 
 /// Return the names of the chat models.
 pub fn chat_model_names() -> Result<Vec<String>, LlamaCoreError> {
-    let chat_graphs = CHAT_GRAPHS
-        .get()
-        .ok_or(LlamaCoreError::Operation(String::from(
-            "Fail to get the underlying value of `CHAT_GRAPHS`.",
-        )))?;
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Get the names of the chat models.");
+
+    let chat_graphs = match CHAT_GRAPHS.get() {
+        Some(chat_graphs) => chat_graphs,
+        None => {
+            let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama-core", "{}", err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.into()));
+        }
+    };
 
     let chat_graphs = chat_graphs.lock().map_err(|e| {
-        LlamaCoreError::Operation(format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e))
+        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama-core", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
     })?;
 
     let mut model_names = Vec::new();
@@ -61,19 +47,29 @@ pub fn chat_model_names() -> Result<Vec<String>, LlamaCoreError> {
 
 /// Return the names of the embedding models.
 pub fn embedding_model_names() -> Result<Vec<String>, LlamaCoreError> {
-    let embedding_graphs =
-        EMBEDDING_GRAPHS
-            .get()
-            .ok_or(LlamaCoreError::Operation(String::from(
-                "Fail to get the underlying value of `EMBEDDING_GRAPHS`.",
-            )))?;
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Get the names of the embedding models.");
 
-    let embedding_graphs = embedding_graphs.lock().map_err(|e| {
-        LlamaCoreError::Operation(format!(
-            "Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}",
-            e
-        ))
-    })?;
+    let embedding_graphs = match EMBEDDING_GRAPHS.get() {
+        Some(embedding_graphs) => embedding_graphs,
+        None => {
+            return Err(LlamaCoreError::Operation(String::from(
+                "Fail to get the underlying value of `EMBEDDING_GRAPHS`.",
+            )));
+        }
+    };
+
+    let embedding_graphs = match embedding_graphs.lock() {
+        Ok(embedding_graphs) => embedding_graphs,
+        Err(e) => {
+            let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}", e);
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama-core", "{}", &err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg));
+        }
+    };
 
     let mut model_names = Vec::new();
     for model_name in embedding_graphs.keys() {
@@ -85,42 +81,70 @@ pub fn embedding_model_names() -> Result<Vec<String>, LlamaCoreError> {
 
 /// Get the chat prompt template type from the given model name.
 pub fn chat_prompt_template(name: Option<&str>) -> Result<PromptTemplateType, LlamaCoreError> {
-    let chat_graphs = CHAT_GRAPHS
-        .get()
-        .ok_or(LlamaCoreError::Operation(String::from(
-            "Fail to get the underlying value of `CHAT_GRAPHS`.",
-        )))?;
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Get the chat prompt template type from the given model name.");
+
+    let chat_graphs = match CHAT_GRAPHS.get() {
+        Some(chat_graphs) => chat_graphs,
+        None => {
+            let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama-core", "{}", err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.into()));
+        }
+    };
 
     let chat_graphs = chat_graphs.lock().map_err(|e| {
-        LlamaCoreError::Operation(format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e))
+        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama-core", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
     })?;
 
     match name {
         Some(name) => match chat_graphs.get(name) {
             Some(graph) => Ok(graph.prompt_template()),
-            None => Err(LlamaCoreError::Operation(format!(
-                "Not found `{}` chat model.",
-                name
-            ))),
+            None => {
+                let err_msg = format!("Not found `{}` chat model.", name);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama-core", "{}", &err_msg);
+
+                Err(LlamaCoreError::Operation(err_msg))
+            }
         },
         None => match chat_graphs.iter().next() {
             Some((_, graph)) => Ok(graph.prompt_template()),
-            None => Err(LlamaCoreError::Operation(String::from(
-                "There is no model available in the chat graphs.",
-            ))),
+            None => {
+                let err_msg = "There is no model available in the chat graphs.";
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama-core", "{}", &err_msg);
+
+                Err(LlamaCoreError::Operation(err_msg.into()))
+            }
         },
     }
 }
 
 /// Get output buffer generated by model.
 pub(crate) fn get_output_buffer(graph: &Graph, index: usize) -> Result<Vec<u8>, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Get output buffer generated by model in the non-stream mode.");
+
     let mut output_buffer: Vec<u8> = Vec::with_capacity(MAX_BUFFER_SIZE);
 
     let output_size: usize = graph.get_output(index, &mut output_buffer).map_err(|e| {
-        LlamaCoreError::Backend(BackendError::GetOutput(format!(
-            "Fail to get plugin metadata. {msg}",
-            msg = e
-        )))
+        let err_msg = format!("Fail to get plugin metadata. {msg}", msg = e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama-core", "{}", &err_msg);
+
+        LlamaCoreError::Backend(BackendError::GetOutput(err_msg))
     })?;
 
     unsafe {
@@ -135,15 +159,20 @@ pub(crate) fn get_output_buffer_single(
     graph: &Graph,
     index: usize,
 ) -> Result<Vec<u8>, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Get output buffer generated by model in the stream mode.");
+
     let mut output_buffer: Vec<u8> = Vec::with_capacity(MAX_BUFFER_SIZE);
 
     let output_size: usize = graph
         .get_output_single(index, &mut output_buffer)
         .map_err(|e| {
-            LlamaCoreError::Backend(BackendError::GetOutput(format!(
-                "Fail to get plugin metadata. {msg}",
-                msg = e
-            )))
+            let err_msg = format!("Fail to get plugin metadata. {msg}", msg = e);
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama-core", "{}", &err_msg);
+
+            LlamaCoreError::Backend(BackendError::GetOutput(err_msg))
         })?;
 
     unsafe {
@@ -175,33 +204,48 @@ pub(crate) fn set_tensor_data_u8(
 
 /// Get the token information from the graph.
 pub(crate) fn get_token_info_by_graph(graph: &Graph) -> Result<TokenInfo, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Get token information from the graph.");
+
     let output_buffer = get_output_buffer(graph, 1)?;
     let token_info: Value = match serde_json::from_slice(&output_buffer[..]) {
         Ok(token_info) => token_info,
         Err(e) => {
-            return Err(LlamaCoreError::Operation(format!(
-                "Fail to deserialize token info: {msg}",
-                msg = e
-            )));
+            let err_msg = format!("Fail to deserialize token info: {msg}", msg = e);
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama-core", "{}", &err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg));
         }
     };
 
     let prompt_tokens = match token_info["input_tokens"].as_u64() {
         Some(prompt_tokens) => prompt_tokens,
         None => {
-            return Err(LlamaCoreError::Operation(String::from(
-                "Fail to convert `input_tokens` to u64.",
-            )));
+            let err_msg = "Fail to convert `input_tokens` to u64.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama-core", "{}", err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.into()));
         }
     };
     let completion_tokens = match token_info["output_tokens"].as_u64() {
         Some(completion_tokens) => completion_tokens,
         None => {
-            return Err(LlamaCoreError::Operation(String::from(
-                "Fail to convert `output_tokens` to u64.",
-            )));
+            let err_msg = "Fail to convert `output_tokens` to u64.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama-core", "{}", err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.into()));
         }
     };
+
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "prompt tokens: {}, comletion tokens: {}", prompt_tokens, completion_tokens);
+
     Ok(TokenInfo {
         prompt_tokens,
         completion_tokens,
@@ -212,52 +256,85 @@ pub(crate) fn get_token_info_by_graph(graph: &Graph) -> Result<TokenInfo, LlamaC
 pub(crate) fn get_token_info_by_graph_name(
     name: Option<&String>,
 ) -> Result<TokenInfo, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Get token information from the graph by the model name.");
+
     match name {
         Some(model_name) => {
-            let chat_graphs = CHAT_GRAPHS
-                .get()
-                .ok_or(LlamaCoreError::Operation(String::from(
-                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
-                )))?;
+            let chat_graphs = match CHAT_GRAPHS.get() {
+                Some(chat_graphs) => chat_graphs,
+                None => {
+                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama-core", "{}", err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                }
+            };
+
             let chat_graphs = chat_graphs.lock().map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
-                    e
-                ))
+                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama-core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
             })?;
+
             match chat_graphs.get(model_name) {
                 Some(graph) => get_token_info_by_graph(graph),
-                None => Err(LlamaCoreError::Operation(format!(
-                    "The model `{}` does not exist in the chat graphs.",
-                    &model_name
-                ))),
+                None => {
+                    let err_msg = format!(
+                        "The model `{}` does not exist in the chat graphs.",
+                        &model_name
+                    );
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama-core", "{}", &err_msg);
+
+                    Err(LlamaCoreError::Operation(err_msg))
+                }
             }
         }
         None => {
-            let chat_graphs = CHAT_GRAPHS
-                .get()
-                .ok_or(LlamaCoreError::Operation(String::from(
-                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
-                )))?;
+            let chat_graphs = match CHAT_GRAPHS.get() {
+                Some(chat_graphs) => chat_graphs,
+                None => {
+                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama-core", "{}", err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                }
+            };
+
             let chat_graphs = chat_graphs.lock().map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
-                    e
-                ))
+                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama-core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
             })?;
 
             match chat_graphs.iter().next() {
                 Some((_, graph)) => get_token_info_by_graph(graph),
-                None => Err(LlamaCoreError::Operation(String::from(
-                    "There is no model available in the chat graphs.",
-                ))),
+                None => {
+                    let err_msg = "There is no model available in the chat graphs.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama-core", "{}", &err_msg);
+
+                    Err(LlamaCoreError::Operation(err_msg.into()))
+                }
             }
         }
     }
 }
 
 #[derive(Debug)]
-
 pub(crate) struct TokenInfo {
     pub(crate) prompt_tokens: u64,
     pub(crate) completion_tokens: u64,
