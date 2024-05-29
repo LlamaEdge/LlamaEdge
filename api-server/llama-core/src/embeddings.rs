@@ -180,7 +180,7 @@ fn compute_embeddings(
                 usage.total_tokens = usage.prompt_tokens + usage.completion_tokens;
             }
             Err(e) => {
-                let err_msg = format!("Failed to compute embeddings. Reason: {}", e.to_string());
+                let err_msg = format!("Failed to compute embeddings. Reason: {}", e);
 
                 #[cfg(feature = "logging")]
                 error!(target: "llama-core", "{}", &err_msg);
