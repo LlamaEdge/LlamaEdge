@@ -229,7 +229,7 @@ pub fn dimension(name: Option<&str>) -> Result<u64, LlamaCoreError> {
         #[cfg(feature = "logging")]
         error!(target: "llama-core", "{}", &err_msg);
 
-        LlamaCoreError::Operation(err_ms)
+        LlamaCoreError::Operation(err_msg)
     })?;
 
     match name {
