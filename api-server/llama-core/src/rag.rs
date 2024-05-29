@@ -25,44 +25,49 @@ use tiktoken_rs::cl100k_base;
 pub async fn rag_doc_chunks_to_embeddings(
     rag_embedding_request: &RagEmbeddingRequest,
 ) -> Result<EmbeddingsResponse, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Convert document chunks to embeddings.");
+
     let running_mode = running_mode()?;
     if running_mode != RunningMode::Rag {
-        return Err(LlamaCoreError::Operation(format!(
-            "Creating knowledge base is not supported in the {running_mode} mode.",
-        )));
+        let err_msg = format!(
+            "Creating knowledge base is not supported in the {} mode.",
+            running_mode
+        );
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama-core", "{}", &err_msg);
+
+        return Err(LlamaCoreError::Operation(err_msg));
     }
 
     let embedding_request = &rag_embedding_request.embedding_request;
     let qdrant_url = rag_embedding_request.qdrant_url.as_str();
     let qdrant_collection_name = rag_embedding_request.qdrant_collection_name.as_str();
 
-    println!("[+] Computing embeddings for document chunks...");
-    if let Ok(request_str) = serde_json::to_string_pretty(&embedding_request) {
-        println!("    * embedding request (json):\n\n{}", request_str);
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Compute embeddings for document chunks.");
+
+    #[cfg(feature = "logging")]
+    if let Ok(request_str) = serde_json::to_string(&embedding_request) {
+        info!(target: "llama-core", "Embedding request: {}", request_str);
     }
 
     // compute embeddings for the document
     let response = embeddings(embedding_request).await?;
-
-    let chunks = match &embedding_request.input {
-        InputText::String(text) => vec![text.clone()],
-        InputText::Array(texts) => texts.clone(),
-    };
-    // let chunks = embedding_request.input.as_slice();
     let embeddings = response.data.as_slice();
     let dim = embeddings[0].embedding.len();
 
     // create a Qdrant client
     let qdrant_client = qdrant::Qdrant::new_with_url(qdrant_url.to_string());
 
-    println!("\n[+] Creating a Qdrant collection ...");
-    println!("    * Collection name: {}", qdrant_collection_name);
-    println!("    * Dimension: {}", dim);
-
     // create a collection
     qdrant_create_collection(&qdrant_client, qdrant_collection_name, dim).await?;
 
-    println!("\n[+] Upserting points ...");
+    let chunks = match &embedding_request.input {
+        InputText::String(text) => vec![text.clone()],
+        InputText::Array(texts) => texts.clone(),
+    };
 
     // create and upsert points
     qdrant_persist_embeddings(
@@ -182,12 +187,19 @@ async fn qdrant_create_collection(
     collection_name: impl AsRef<str>,
     dim: usize,
 ) -> Result<(), LlamaCoreError> {
-    if let Err(err) = qdrant_client
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Create a Qdrant collection named {} of {} dimensions.", collection_name.as_ref(), dim);
+
+    if let Err(e) = qdrant_client
         .create_collection(collection_name.as_ref(), dim as u32)
         .await
     {
-        println!("{}", err);
-        return Err(LlamaCoreError::Operation(err.to_string()));
+        let err_msg = e.to_string();
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama-core", "{}", &err_msg);
+
+        return Err(LlamaCoreError::Operation(err_msg));
     }
 
     Ok(())
@@ -199,6 +211,9 @@ async fn qdrant_persist_embeddings(
     embeddings: &[EmbeddingObject],
     chunks: &[String],
 ) -> Result<(), LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Persist embeddings to the Qdrant instance.");
+
     let mut points = Vec::<Point>::new();
     for embedding in embeddings {
         // convert the embedding to a vector
@@ -219,14 +234,19 @@ async fn qdrant_persist_embeddings(
         points.push(p);
     }
 
-    // upsert points
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Number of points to be upserted: {}", points.len());
 
-    if let Err(err) = qdrant_client
+    if let Err(e) = qdrant_client
         .upsert_points(collection_name.as_ref(), points)
         .await
     {
-        println!("Failed to upsert points. {}", err);
-        return Err(LlamaCoreError::Operation(err.to_string()));
+        let err_msg = format!("Failed to upsert points. Reason: {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama-core", "{}", &err_msg);
+
+        return Err(LlamaCoreError::Operation(err_msg));
     }
 
     Ok(())
