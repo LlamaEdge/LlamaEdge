@@ -640,6 +640,9 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
 }
 
 fn get_plugin_info_by_graph(graph: &Graph) -> Result<PluginInfo, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Getting the plugin info by the graph named {}", graph.name());
+
     // get the plugin metadata
     let output_buffer = get_output_buffer(graph, PLUGIN_VERSION)?;
     let metadata: serde_json::Value = serde_json::from_slice(&output_buffer[..]).map_err(|e| {
@@ -696,6 +699,9 @@ fn get_plugin_info_by_graph(graph: &Graph) -> Result<PluginInfo, LlamaCoreError>
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
     };
+
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Plugin info: b{}(commit {})", plugin_build_number, plugin_commit);
 
     Ok(PluginInfo {
         build_number: plugin_build_number,
@@ -764,6 +770,9 @@ pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
     };
+
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "running mode: {}", &mode);
 
     Ok(mode.to_owned())
 }
