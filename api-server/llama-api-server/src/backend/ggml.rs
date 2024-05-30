@@ -323,6 +323,9 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
 async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Response<Body> {
     info!(target: "chat_completions_stream", "Process the chat completions in stream mode.");
 
+    if chat_request.user.is_none() {
+        chat_request.user = Some(gen_chat_id())
+    };
     let id = chat_request.user.clone().unwrap();
 
     match llama_core::chat::chat_completions_stream(&mut chat_request).await {
@@ -371,6 +374,9 @@ async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Res
 async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<Body> {
     info!(target: "chat_completions", "Process the chat completions request in non-stream mode.");
 
+    if chat_request.user.is_none() {
+        chat_request.user = Some(gen_chat_id())
+    };
     let id = chat_request.user.clone().unwrap();
 
     match llama_core::chat::chat_completions(&mut chat_request).await {
