@@ -90,7 +90,7 @@ pub async fn rag_query_to_embeddings(
     rag_embedding_request: &RagEmbeddingRequest,
 ) -> Result<EmbeddingsResponse, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Convert a query to embeddings.");
+    info!(target: "llama-core", "Compute embeddings for the user query.");
 
     let running_mode = running_mode()?;
     if running_mode != RunningMode::Rag {
@@ -124,7 +124,11 @@ pub async fn rag_retrieve_context(
     score_threshold: Option<f32>,
 ) -> Result<RetrieveObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Retrieve context.");
+    {
+        info!(target: "llama-core", "Retrieve context.");
+
+        info!(target: "llama-core", "qdrant_url: {}, qdrant_collection_name: {}, limit: {}, score_threshold: {}", qdrant_url.as_ref(), qdrant_collection_name.as_ref(), limit, score_threshold.clone().unwrap_or_default());
+    }
 
     let running_mode = running_mode()?;
     if running_mode != RunningMode::Rag {
@@ -143,14 +147,25 @@ pub async fn rag_retrieve_context(
     let qdrant_client = qdrant::Qdrant::new_with_url(qdrant_url.as_ref().to_string());
 
     // search for similar points
-    let scored_points = qdrant_search_similar_points(
+    let scored_points = match qdrant_search_similar_points(
         &qdrant_client,
         qdrant_collection_name.as_ref(),
         query_embedding,
         limit,
         score_threshold,
     )
-    .await?;
+    .await
+    {
+        Ok(points) => points,
+        Err(e) => {
+            let err_msg = e.to_string();
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama-core", "{}", &err_msg);
+
+            return Err(e);
+        }
+    };
 
     let ro = match scored_points.is_empty() {
         true => RetrieveObject {
@@ -281,7 +296,7 @@ async fn qdrant_search_similar_points(
             let err_msg = e.to_string();
 
             #[cfg(feature = "logging")]
-            error!(target: "llama-core", "{}", &err_msg);
+            error!(target: "llama-core", "Fail to search similar points from the qdrant instance. Reason: {}", &err_msg);
 
             Err(LlamaCoreError::Operation(err_msg))
         }
