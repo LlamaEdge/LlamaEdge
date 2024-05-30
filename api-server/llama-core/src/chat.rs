@@ -1956,7 +1956,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
                     #[cfg(feature = "logging")]
                     error!(target: "llama_core", "{}", err_msg);
 
-                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                    return Err(LlamaCoreError::Operation(err_msg));
                 }
             };
 
