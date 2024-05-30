@@ -310,9 +310,6 @@ pub fn chunk_text(
     ty: impl AsRef<str>,
     chunk_capacity: usize,
 ) -> Result<Vec<String>, LlamaCoreError> {
-    #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Chunk input text.");
-
     if ty.as_ref().to_lowercase().as_str() != "txt" && ty.as_ref().to_lowercase().as_str() != "md" {
         let err_msg = "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported.";
 
@@ -325,7 +322,7 @@ pub fn chunk_text(
     match ty.as_ref().to_lowercase().as_str() {
         "txt" => {
             #[cfg(feature = "logging")]
-            info!(target: "llama-core", "Chunk plain text contents.");
+            info!(target: "llama-core", "Chunk the plain text contents.");
 
             let tokenizer = cl100k_base().map_err(|e| {
                 let err_msg = e.to_string();
@@ -351,7 +348,7 @@ pub fn chunk_text(
         }
         "md" => {
             #[cfg(feature = "logging")]
-            info!(target: "llama-core", "Chunk markdown contents.");
+            info!(target: "llama-core", "Chunk the markdown contents.");
 
             let tokenizer = cl100k_base().map_err(|e| {
                 let err_msg = e.to_string();
@@ -376,7 +373,8 @@ pub fn chunk_text(
             Ok(chunks)
         }
         _ => {
-            let err_msg = "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported.";
+            let err_msg =
+                "Failed to upload the target file. Only text and markdown files are supported.";
 
             #[cfg(feature = "logging")]
             error!(target: "llama-core", "{}", err_msg);
