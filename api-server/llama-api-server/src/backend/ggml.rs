@@ -20,7 +20,7 @@ use std::{
 /// List all models available.
 pub(crate) async fn models_handler() -> Response<Body> {
     // log
-    info!(target: "models_handler", "Handle model list request");
+    info!(target: "models_handler", "Handling the coming model list request.");
 
     let list_models_response = match llama_core::models::models().await {
         Ok(list_models_response) => list_models_response,
@@ -54,7 +54,7 @@ pub(crate) async fn models_handler() -> Response<Body> {
         .header("Access-Control-Allow-Headers", "*")
         .header("Content-Type", "application/json")
         .body(Body::from(s));
-    match result {
+    let res = match result {
         Ok(response) => response,
         Err(e) => {
             let err_msg = format!("Failed to get model list. Reason: {}", e);
@@ -64,13 +64,18 @@ pub(crate) async fn models_handler() -> Response<Body> {
 
             error::internal_server_error(err_msg)
         }
-    }
+    };
+
+    // log
+    info!(target: "models_handler", "Send the model list response.");
+
+    res
 }
 
 /// Compute embeddings for the input text and return the embeddings object.
 pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body> {
     // log
-    info!(target: "embeddings_handler", "Handle embeddings request");
+    info!(target: "embeddings_handler", "Handling the coming embeddings request");
 
     // parse request
     let body_bytes = match to_bytes(req.body_mut()).await {
@@ -104,7 +109,7 @@ pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body>
     // log user id
     info!(target: "embeddings_handler", "user: {}", &id);
 
-    match llama_core::embeddings::embeddings(&embedding_request).await {
+    let res = match llama_core::embeddings::embeddings(&embedding_request).await {
         Ok(embedding_response) => {
             // serialize embedding object
             match serde_json::to_string(&embedding_response) {
@@ -147,12 +152,16 @@ pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body>
 
             error::internal_server_error(err_msg)
         }
-    }
+    };
+
+    info!(target: "embeddings_handler", "Send the embeddings response");
+
+    res
 }
 
 pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body> {
     // log
-    info!(target: "completions_handler", "Handle completions request");
+    info!(target: "completions_handler", "Handling the coming completions request.");
 
     // parse request
     let body_bytes = match to_bytes(req.body_mut()).await {
@@ -186,7 +195,7 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
     // log user id
     info!(target: "completions_handler", "user: {}", &id);
 
-    match llama_core::completions::completions(&completion_request).await {
+    let res = match llama_core::completions::completions(&completion_request).await {
         Ok(completion_object) => {
             // serialize completion object
             let s = match serde_json::to_string(&completion_object) {
@@ -229,13 +238,16 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
 
             error::internal_server_error(err_msg)
         }
-    }
+    };
+
+    info!(target: "completions_handler", "Send the completions response.");
+
+    res
 }
 
 /// Process a chat-completion request and returns a chat-completion response with the answer from the model.
 pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response<Body> {
-    // log
-    info!(target: "chat_completions_handler", "Handle chat completion request");
+    info!(target: "chat_completions_handler", "Handling the coming chat completion request.");
 
     if req.method().eq(&hyper::http::Method::OPTIONS) {
         let result = Response::builder()
@@ -257,6 +269,8 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
             }
         }
     }
+
+    info!(target: "chat_completions_handler", "Prepare the chat completion request.");
 
     // parse request
     let body_bytes = match to_bytes(req.body_mut()).await {
@@ -293,25 +307,23 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
     // log user id
     info!(target: "chat_completions_handler", "user: {}", chat_request.user.clone().unwrap());
 
-    // log
-    info!(target: "chat_completions_handler", "Handle chat completion request");
-
     // handle chat request
-    match chat_request.stream {
+    let res = match chat_request.stream {
         Some(true) => chat_completions_stream(chat_request).await,
         Some(false) | None => chat_completions(chat_request).await,
-    }
+    };
+
+    // log
+    info!(target: "chat_completions_handler", "Send the chat completion response.");
+
+    res
 }
 
 /// Process a chat-completion request in stream mode and returns a chat-completion response with the answer from the model.
 async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Response<Body> {
-    // log
-    info!(target: "chat_completions_stream", "start chat completions in stream mode");
+    info!(target: "chat_completions_stream", "Process the chat completions in stream mode.");
 
     let id = chat_request.user.clone().unwrap();
-
-    // log user id
-    info!(target: "chat_completions_stream", "user: {}", &id);
 
     match llama_core::chat::chat_completions_stream(&mut chat_request).await {
         Ok(stream) => {
@@ -357,10 +369,10 @@ async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Res
 
 /// Process a chat-completion request and returns a chat-completion response with the answer from the model.
 async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<Body> {
-    // log
-    info!(target: "chat_completions", "start chat completions in non-stream mode");
+    info!(target: "chat_completions", "Process the chat completions request in non-stream mode.");
 
     let id = chat_request.user.clone().unwrap();
+
     match llama_core::chat::chat_completions(&mut chat_request).await {
         Ok(chat_completion_object) => {
             // serialize chat completion object
@@ -388,7 +400,7 @@ async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<B
             match result {
                 Ok(response) => {
                     // log
-                    info!(target: "chat_completions", "finish chat completions in non-stream mode");
+                    info!(target: "chat_completions", "Finish chat completions in non-stream mode");
 
                     response
                 }
@@ -416,9 +428,9 @@ async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<B
 
 pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
     // log
-    info!(target: "files_handler", "Handle files request");
+    info!(target: "files_handler", "Handling the coming files request");
 
-    if req.method() == Method::POST {
+    let res = if req.method() == Method::POST {
         let boundary = "boundary=";
 
         let boundary = req.headers().get("content-type").and_then(|ct| {
@@ -600,12 +612,16 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
         error!(target: "files_handler", "{}", &err_msg);
 
         error::internal_server_error(err_msg)
-    }
+    };
+
+    info!(target: "files_handler", "Send the files response");
+
+    res
 }
 
 pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
     // log
-    info!(target: "chunks_handler", "Handle chunks request");
+    info!(target: "chunks_handler", "Handling the coming chunks request");
 
     // parse request
     let body_bytes = match to_bytes(req.body_mut()).await {
@@ -711,7 +727,8 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
         return error::internal_server_error(err_msg);
     }
 
-    match llama_core::rag::chunk_text(&contents, extension, chunks_request.chunk_capacity) {
+    let res = match llama_core::rag::chunk_text(&contents, extension, chunks_request.chunk_capacity)
+    {
         Ok(chunks) => {
             let chunks_response = ChunksResponse {
                 id: chunks_request.id,
@@ -759,12 +776,16 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
 
             error::internal_server_error(err_msg)
         }
-    }
+    };
+
+    info!(target: "chunks_handler", "Send the chunks response.");
+
+    res
 }
 
 pub(crate) async fn server_info_handler() -> Response<Body> {
     // log
-    info!(target: "server_info", "Handle server info request");
+    info!(target: "server_info", "Handling the coming server info request.");
 
     // get the server info
     let server_info = match SERVER_INFO.get() {
@@ -799,7 +820,7 @@ pub(crate) async fn server_info_handler() -> Response<Body> {
         .header("Access-Control-Allow-Headers", "*")
         .header("Content-Type", "application/json")
         .body(Body::from(s));
-    match result {
+    let res = match result {
         Ok(response) => response,
         Err(e) => {
             let err_msg = e.to_string();
@@ -809,5 +830,9 @@ pub(crate) async fn server_info_handler() -> Response<Body> {
 
             error::internal_server_error(err_msg)
         }
-    }
+    };
+
+    info!(target: "server_info", "Send the server info response.");
+
+    res
 }
