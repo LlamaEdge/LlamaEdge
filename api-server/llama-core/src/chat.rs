@@ -75,7 +75,7 @@ pub async fn chat_completions_stream(
     info!(target: "llama_core", "include_usage: {}", include_usage);
 
     // update metadata
-    let mut metadata = update_metadata(chat_request).await?;
+    let mut metadata = check_model_metadata(chat_request).await?;
 
     // build prompt
     let (prompt, avaible_completion_tokens) = build_prompt(model_name.as_ref(), chat_request)?;
@@ -1165,7 +1165,7 @@ pub async fn chat_completions(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<ChatCompletionObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Process chat completion request in non-stream mode.");
+    info!(target: "llama_core", "Processing chat completion request in non-stream mode.");
 
     let running_mode = running_mode()?;
     if running_mode == RunningMode::Embeddings {
@@ -1190,18 +1190,21 @@ pub async fn chat_completions(
     info!(target: "llama_core", "user: {}", &id);
 
     // update metadata
-    let mut metadata = update_metadata(chat_request).await?;
+    let mut metadata = check_model_metadata(chat_request).await?;
 
     // build prompt
     let (prompt, avaible_completion_tokens) = build_prompt(model_name.as_ref(), chat_request)?;
 
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "prompt: {}, avaible_completion_tokens: {}", &prompt, avaible_completion_tokens);
+    {
+        info!(target: "llama_core", "prompt:\n{}", &prompt);
+        info!(target: "llama_core", "avaible_completion_tokens: {}", avaible_completion_tokens);
+    }
 
     // update metadata n_predict
     update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
 
-    // set prompt
+    // feed the prompt to the model
     set_prompt(model_name.as_ref(), &prompt)?;
 
     // compute
@@ -1300,7 +1303,7 @@ fn compute_by_graph(
     id: impl Into<String>,
 ) -> Result<ChatCompletionObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Compute chat completion by graph.");
+    info!(target: "llama_core", "Compute chat completion by the model named {}.", graph.name());
 
     match graph.compute() {
         Ok(_) => {
@@ -1506,12 +1509,14 @@ fn compute_by_graph(
     }
 }
 
-async fn update_metadata(chat_request: &ChatCompletionRequest) -> Result<Metadata, LlamaCoreError> {
+async fn check_model_metadata(
+    chat_request: &ChatCompletionRequest,
+) -> Result<Metadata, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Update metadata.");
+    info!(target: "llama_core", "Check model metadata.");
 
     let mut should_update = false;
-    let mut metadata = get_metadata(chat_request.model.as_ref())?;
+    let mut metadata = get_model_metadata(chat_request.model.as_ref())?;
 
     // check if necessary to update `image`
     #[cfg(feature = "https")]
@@ -1598,7 +1603,7 @@ async fn update_metadata(chat_request: &ChatCompletionRequest) -> Result<Metadat
 
     if should_update {
         // update the target graph with the new metadata
-        set_metadata(chat_request.model.as_ref(), &metadata)?;
+        update_model_metadata(chat_request.model.as_ref(), &metadata)?;
     }
 
     Ok(metadata)
@@ -1609,9 +1614,6 @@ async fn update_n_predict(
     metadata: &mut Metadata,
     available_completion_tokens: u64,
 ) -> Result<(), LlamaCoreError> {
-    #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Update n_predict.");
-
     let mut should_update = false;
 
     // check if necessary to update n_predict with max_tokens
@@ -1621,6 +1623,9 @@ async fn update_n_predict(
             false => max_tokens,
         };
 
+        #[cfg(feature = "logging")]
+        info!(target: "llama_core", "n_predict: current: {}, new: {}", metadata.n_predict, max_completion_tokens);
+
         // update n_predict
         metadata.n_predict = max_completion_tokens;
 
@@ -1628,6 +1633,9 @@ async fn update_n_predict(
             should_update = true;
         }
     } else if metadata.n_predict > available_completion_tokens {
+        #[cfg(feature = "logging")]
+        info!(target: "llama_core", "n_predict: current: {}, new: {}", metadata.n_predict, available_completion_tokens);
+
         // update n_predict
         metadata.n_predict = available_completion_tokens;
 
@@ -1636,12 +1644,9 @@ async fn update_n_predict(
         }
     }
 
-    #[cfg(feature = "logging")]
-    info!(target: "llama_core", "should update n_predict: {}", should_update);
-
     if should_update {
         // update the target graph with the new metadata
-        set_metadata(chat_request.model.as_ref(), metadata)?;
+        update_model_metadata(chat_request.model.as_ref(), metadata)?;
     }
 
     Ok(())
@@ -1775,9 +1780,9 @@ fn build_prompt(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<(String, u64), LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Build chat prompt.");
+    info!(target: "llama_core", "Build the chat prompt from the chat messages.");
 
-    let metadata = get_metadata(model_name)?;
+    let metadata = get_model_metadata(model_name)?;
     let ctx_size = metadata.ctx_size as u64;
     let chat_prompt = ChatPrompt::from(metadata.prompt_template);
 
@@ -1938,15 +1943,15 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
 }
 
 fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<(), LlamaCoreError> {
-    #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Set prompt.");
-
     match model_name {
         Some(model_name) => {
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "Set prompt to the chat model named {}.", model_name);
+
             let chat_graphs = match CHAT_GRAPHS.get() {
                 Some(chat_graphs) => chat_graphs,
                 None => {
-                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+                    let err_msg = format!("Fail to get the underlying value of `CHAT_GRAPHS` while trying to set prompt to the model named {}.", model_name);
 
                     #[cfg(feature = "logging")]
                     error!(target: "llama_core", "{}", err_msg);
@@ -1956,7 +1961,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
             };
 
             let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS` while trying to set prompt to the model named {}. Reason: {}", model_name, e);
 
                 #[cfg(feature = "logging")]
                 error!(target: "llama_core", "{}", &err_msg);
@@ -1971,7 +1976,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
                 }
                 None => {
                     let err_msg = format!(
-                        "The model `{}` does not exist in the chat graphs.",
+                        "The model `{}` does not exist in the chat graphs while trying to set prompt.",
                         &model_name
                     );
 
@@ -1983,10 +1988,13 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
             }
         }
         None => {
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "Set prompt to the default chat model.");
+
             let chat_graphs = match CHAT_GRAPHS.get() {
                 Some(chat_graphs) => chat_graphs,
                 None => {
-                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS` while trying to set prompt to the default model.";
 
                     #[cfg(feature = "logging")]
                     error!(target: "llama_core", "{}", err_msg);
@@ -1996,7 +2004,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
             };
 
             let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`while trying to set prompt to the default model. Reason: {}", e);
 
                 #[cfg(feature = "logging")]
                 error!(target: "llama_core", "{}", &err_msg);
@@ -2010,7 +2018,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
                     set_tensor_data_u8(graph, 0, &tensor_data)
                 }
                 None => {
-                    let err_msg = "There is no model available in the chat graphs.";
+                    let err_msg = "There is no model available in the chat graphs while trying to set prompt to the default model.";
 
                     #[cfg(feature = "logging")]
                     error!(target: "llama_core", "{}", err_msg);
@@ -2039,9 +2047,10 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
 //     Ok(())
 // }
 
-fn get_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCoreError> {
+/// Get a copy of the metadata of the model.
+fn get_model_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Get metadata.");
+    info!(target: "llama_core", "Get the model metadata.");
 
     match model_name {
         Some(model_name) => {
@@ -2118,9 +2127,12 @@ fn get_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCoreError>
     }
 }
 
-fn set_metadata(model_name: Option<&String>, metadata: &Metadata) -> Result<(), LlamaCoreError> {
+fn update_model_metadata(
+    model_name: Option<&String>,
+    metadata: &Metadata,
+) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Set metadata.");
+    info!(target: "llama_core", "Update the model metadata.");
 
     let config = match serde_json::to_string(metadata) {
         Ok(config) => config,
