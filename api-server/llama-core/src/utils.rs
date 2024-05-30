@@ -82,7 +82,14 @@ pub fn embedding_model_names() -> Result<Vec<String>, LlamaCoreError> {
 /// Get the chat prompt template type from the given model name.
 pub fn chat_prompt_template(name: Option<&str>) -> Result<PromptTemplateType, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Get the chat prompt template type from the given model name.");
+    match name {
+        Some(name) => {
+            info!(target: "llama-core", "Get the chat prompt template type from the chat model named {}.", name)
+        }
+        None => {
+            info!(target: "llama-core", "Get the chat prompt template type from the default chat model.")
+        }
+    }
 
     let chat_graphs = match CHAT_GRAPHS.get() {
         Some(chat_graphs) => chat_graphs,
@@ -107,7 +114,14 @@ pub fn chat_prompt_template(name: Option<&str>) -> Result<PromptTemplateType, Ll
 
     match name {
         Some(name) => match chat_graphs.get(name) {
-            Some(graph) => Ok(graph.prompt_template()),
+            Some(graph) => {
+                let prompt_template = graph.prompt_template();
+
+                #[cfg(feature = "logging")]
+                info!(target: "llama-core", "prompt_template: {}", &prompt_template);
+
+                Ok(prompt_template)
+            }
             None => {
                 let err_msg = format!("Not found `{}` chat model.", name);
 
@@ -118,7 +132,14 @@ pub fn chat_prompt_template(name: Option<&str>) -> Result<PromptTemplateType, Ll
             }
         },
         None => match chat_graphs.iter().next() {
-            Some((_, graph)) => Ok(graph.prompt_template()),
+            Some((_, graph)) => {
+                let prompt_template = graph.prompt_template();
+
+                #[cfg(feature = "logging")]
+                info!(target: "llama-core", "prompt_template: {}", &prompt_template);
+
+                Ok(prompt_template)
+            }
             None => {
                 let err_msg = "There is no model available in the chat graphs.";
 
