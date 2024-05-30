@@ -127,7 +127,7 @@ pub async fn rag_retrieve_context(
     {
         info!(target: "llama-core", "Retrieve context.");
 
-        info!(target: "llama-core", "qdrant_url: {}, qdrant_collection_name: {}, limit: {}, score_threshold: {}", qdrant_url.as_ref(), qdrant_collection_name.as_ref(), limit, score_threshold.clone().unwrap_or_default());
+        info!(target: "llama-core", "qdrant_url: {}, qdrant_collection_name: {}, limit: {}, score_threshold: {}", qdrant_url.as_ref(), qdrant_collection_name.as_ref(), limit, score_threshold.unwrap_or_default());
     }
 
     let running_mode = running_mode()?;
