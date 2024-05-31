@@ -50,6 +50,8 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf ll
             Number of tokens to predict [default: 1024]
     -g, --n-gpu-layers <N_GPU_LAYERS>
             Number of layers to run on the GPU [default: 100]
+        --no-mmap
+            Disable memory mapping for file access
     -b, --batch-size <BATCH_SIZE>
             Batch size for prompt processing [default: 4096]
     -r, --reverse-prompt <REVERSE_PROMPT>

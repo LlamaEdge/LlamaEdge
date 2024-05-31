@@ -433,6 +433,8 @@ Options:
           Number of tokens to predict [default: 1024]
   -g, --n-gpu-layers <N_GPU_LAYERS>
           Number of layers to run on the GPU [default: 100]
+      --no-mmap
+          Disable memory mapping for file access
       --temp <TEMP>
           Temperature for sampling [default: 1.0]
       --top-p <TOP_P>

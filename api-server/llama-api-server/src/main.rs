@@ -63,6 +63,9 @@ struct Cli {
     /// Number of layers to run on the GPU
     #[arg(short = 'g', long, default_value = "100")]
     n_gpu_layers: u64,
+    /// Disable memory mapping for file access
+    #[arg(long)]
+    no_mmap: bool,
     /// Temperature for sampling
     #[arg(long, default_value = "1.0")]
     temp: f64,
@@ -201,6 +204,10 @@ async fn main() -> Result<(), ServerError> {
         "[INFO] Number of layers to run on the GPU: {}",
         &cli.n_gpu_layers
     ));
+    log(format!(
+        "[INFO] Disable memory mapping for file access : {}",
+        &cli.no_mmap
+    ));
     log(format!("[INFO] Temperature for sampling: {}", &cli.temp));
     log(format!(
         "[INFO] Top-p sampling (1.0 = disabled): {}",
@@ -268,6 +275,7 @@ async fn main() -> Result<(), ServerError> {
                 .with_batch_size(cli.batch_size[0])
                 .with_n_predict(cli.n_predict)
                 .with_n_gpu_layers(cli.n_gpu_layers)
+                .disable_mmap(cli.no_mmap)
                 .with_temperature(cli.temp)
                 .with_top_p(cli.top_p)
                 .with_repeat_penalty(cli.repeat_penalty)
@@ -290,6 +298,7 @@ async fn main() -> Result<(), ServerError> {
                     n_predict: Some(metadata_chat.n_predict),
                     reverse_prompt: metadata_chat.reverse_prompt.clone(),
                     n_gpu_layers: Some(metadata_chat.n_gpu_layers),
+                    use_mmap: Some(metadata_chat.use_mmap),
                     temperature: Some(metadata_chat.temperature),
                     top_p: Some(metadata_chat.top_p),
                     repeat_penalty: Some(metadata_chat.repeat_penalty),
@@ -313,6 +322,7 @@ async fn main() -> Result<(), ServerError> {
         .with_batch_size(cli.batch_size[0])
         .with_n_predict(cli.n_predict)
         .with_n_gpu_layers(cli.n_gpu_layers)
+        .disable_mmap(cli.no_mmap)
         .with_temperature(cli.temp)
         .with_top_p(cli.top_p)
         .with_repeat_penalty(cli.repeat_penalty)
@@ -335,6 +345,7 @@ async fn main() -> Result<(), ServerError> {
             n_predict: Some(metadata_chat.n_predict),
             reverse_prompt: metadata_chat.reverse_prompt.clone(),
             n_gpu_layers: Some(metadata_chat.n_gpu_layers),
+            use_mmap: Some(metadata_chat.use_mmap),
             temperature: Some(metadata_chat.temperature),
             top_p: Some(metadata_chat.top_p),
             repeat_penalty: Some(metadata_chat.repeat_penalty),
@@ -494,6 +505,8 @@ pub(crate) struct ModelConfig {
     pub reverse_prompt: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub n_gpu_layers: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub use_mmap: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]

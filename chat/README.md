@@ -125,6 +125,8 @@ Options:
           Number of tokens to predict [default: 1024]
   -g, --n-gpu-layers <N_GPU_LAYERS>
           Number of layers to run on the GPU [default: 100]
+  --no-mmap
+          Disable memory mapping for file access
   -b, --batch-size <BATCH_SIZE>
           Batch size for prompt processing [default: 512]
       --temp <TEMP>
