@@ -20,6 +20,7 @@ LlamaEdge API server offers OpenAI-compatible REST APIs. It can accelerate devel
     - [`/v1/completions` endpoint](#v1completions-endpoint)
   - [Add a web UI](#add-a-web-ui)
   - [CLI options for the API server](#cli-options-for-the-api-server)
+  - [Set Log Level](#set-log-level)
 
 <!-- /code_chunk_output -->
 
@@ -462,3 +463,18 @@ Please guarantee that the port is not occupied by other processes. If the port s
 ```
 
 If the Web UI is ready, you can navigate to `http://127.0.0.1:8080` to open the chatbot, it will interact with the API of your server.
+
+## Set Log Level
+
+You can set the log level of the API server by setting the `LLAMA_LOG` environment variable. For example, to set the log level to `debug`, you can run the following command:
+
+```bash
+wasmedge --dir .:. --env LLAMA_LOG=debug \
+    --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf \
+    llama-api-server.wasm \
+    --model-name llama-2-7b-chat \
+    --prompt-template llama-2-chat \
+    --ctx-size 4096
+```
+
+The log level can be one of the following values: `trace`, `debug`, `info`, `warn`, `error`. The default log level is `info`.
