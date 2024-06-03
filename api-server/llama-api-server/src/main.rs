@@ -105,22 +105,21 @@ struct Cli {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), ServerError> {
+    let mut plugin_debug = false;
+
     // get the environment variable `LLAMA_LOG`
     let log_level: LogLevel = std::env::var("LLAMA_LOG")
         .unwrap_or("info".to_string())
         .parse()
         .unwrap_or(LogLevel::Info);
 
+    if log_level == LogLevel::Debug || log_level == LogLevel::Trace {
+        plugin_debug = true;
+    }
+
     // set global logger
     wasi_logger::Logger::install().expect("failed to install wasi_logger::Logger");
     log::set_max_level(log_level.into());
-
-    // get the environment variable `PLUGIN_DEBUG`
-    let plugin_debug = std::env::var("PLUGIN_DEBUG").unwrap_or_default();
-    let plugin_debug = match plugin_debug.is_empty() {
-        true => false,
-        false => plugin_debug.to_lowercase().parse::<bool>().unwrap_or(false),
-    };
 
     // parse the command line arguments
     let cli = Cli::parse();
@@ -247,6 +246,7 @@ async fn main() -> Result<(), ServerError> {
                 )
                 .with_ctx_size(cli.ctx_size[0])
                 .with_batch_size(cli.batch_size[0])
+                .enable_plugin_log(true)
                 .enable_debug_log(plugin_debug)
                 .build();
 
@@ -281,6 +281,7 @@ async fn main() -> Result<(), ServerError> {
                 .with_frequency_penalty(cli.frequency_penalty)
                 .with_reverse_prompt(cli.reverse_prompt)
                 .with_mmproj(cli.llava_mmproj.clone())
+                .enable_plugin_log(true)
                 .enable_debug_log(plugin_debug)
                 .build();
 
@@ -324,6 +325,7 @@ async fn main() -> Result<(), ServerError> {
         .with_frequency_penalty(cli.frequency_penalty)
         .with_reverse_prompt(cli.reverse_prompt)
         .with_mmproj(cli.llava_mmproj.clone())
+        .enable_plugin_log(true)
         .enable_debug_log(plugin_debug)
         .build();
 
@@ -352,6 +354,7 @@ async fn main() -> Result<(), ServerError> {
         )
         .with_ctx_size(cli.ctx_size[1])
         .with_batch_size(cli.batch_size[1])
+        .enable_plugin_log(true)
         .enable_debug_log(plugin_debug)
         .build();
 
