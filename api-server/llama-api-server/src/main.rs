@@ -92,6 +92,15 @@ struct Cli {
     /// Root path for the Web UI files
     #[arg(long, default_value = "chatbot-ui")]
     web_ui: PathBuf,
+    /// Deprecated. Print prompt strings to stdout
+    #[arg(long)]
+    log_prompts: bool,
+    /// Deprecated. Print statistics to stdout
+    #[arg(long)]
+    log_stat: bool,
+    /// Deprecated. Print all log information to stdout
+    #[arg(long)]
+    log_all: bool,
 }
 
 #[tokio::main(flavor = "current_thread")]
