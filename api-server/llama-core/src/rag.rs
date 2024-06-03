@@ -158,10 +158,8 @@ pub async fn rag_retrieve_context(
     {
         Ok(points) => points,
         Err(e) => {
-            let err_msg = e.to_string();
-
             #[cfg(feature = "logging")]
-            error!(target: "llama-core", "{}", &err_msg);
+            error!(target: "llama-core", "{}", e.to_string());
 
             return Err(e);
         }
