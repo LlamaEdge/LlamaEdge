@@ -96,8 +96,8 @@ struct Cli {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), ServerError> {
-    // get the environment variable `PLUGIN_DEBUG`
-    let log_level: LogLevel = std::env::var("LLAMA_DEBUG")
+    // get the environment variable `LLAMA_LOG`
+    let log_level: LogLevel = std::env::var("LLAMA_LOG")
         .unwrap_or("info".to_string())
         .parse()
         .unwrap_or(LogLevel::Info);
