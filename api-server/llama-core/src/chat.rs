@@ -1326,6 +1326,9 @@ fn compute_by_graph(
                 LlamaCoreError::Operation(format!("Failed to post-process the output. {}", e))
             })?;
 
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "post-processed generation: {}", &message);
+
             // retrieve the number of prompt and completion tokens
             let token_info = get_token_info_by_graph(graph)?;
 
