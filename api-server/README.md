@@ -90,20 +90,21 @@ source $HOME/.bashrc
 Run the API server with the following command:
 
 ```bash
-wasmedge --dir .:. \
-    --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf \
-    llama-api-server.wasm \
-    --prompt-template llama-2-chat \
-    --model-name llama-2-7b-chat
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Meta-Llama-3-8B-Instruct-Q5_K_M.gguf \
+  llama-api-server.wasm \
+  --prompt-template llama-3-chat \
+  --ctx-size 4096 \
+  --model-name llama-3-8b
+
 ```
 
 The command above starts the API server on the default socket address. Besides, there are also some other options specified in the command:
 
 - The `--dir .:.` option specifies the current directory as the root directory of the WASI file system.
 
-- The `--nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf` option specifies the Llama model to be used by the API server. The pattern of the argument is `<name>:<encoding>:<target>:<model path>`. Here, the model used is `llama-2-7b-chat.Q5_K_M.gguf`; and we give it an alias `default` as its name in the runtime environment. You can change the model name here if you're not using llama2-7b-chat
-- The `--prompt-template llama-2-chat` is the prompt template for the model.
-- The `--model-name llama-2-7b-chat` specifies the model name. It is used in the chat request.
+- The `--nn-preload default:GGML:AUTO:Meta-Llama-3-8B-Instruct-Q5_K_M.gguf` option specifies the Llama model to be used by the API server. The pattern of the argument is `<name>:<encoding>:<target>:<model path>`. Here, the model used is `Meta-Llama-3-8B-Instruct-Q5_K_M.gguf`; and we give it an alias `default` as its name in the runtime environment. You can change the model name here if you're not using llama-3-8b.
+- The `--prompt-template llama-3-chat` is the prompt template for the model.
+- The `--model-name llama-3-8b` specifies the model name. It is used in the chat request.
 
 ## Endpoints
 
@@ -126,7 +127,7 @@ If the command is successful, you should see the similar output as below in your
     "object":"list",
     "data":[
         {
-            "id":"llama-2-7b-chat",
+            "id":"llama-3-8b",
             "created":1697084821,
             "object":"model",
             "owned_by":"Not specified"
@@ -143,13 +144,13 @@ If the command is successful, you should see the similar output as below in your
 
 <details> <summary> Example </summary>
 
-The following command sends a chat request with a user's question to the LLM model named `llama-2-7b-chat`:
+The following command sends a chat request with a user's question to the LLM model named `llama-3-8b`:
 
 ```bash
 curl -X POST http://localhost:8080/v1/chat/completions \
     -H 'accept:application/json' \
     -H 'Content-Type: application/json' \
-    -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"llama-2-7b-chat"}'
+    -d '{"messages":[{"role":"system", "content": "You are a helpful assistant."}, {"role":"user", "content": "Who is Robert Oppenheimer?"}], "model":"llama-3-8b"}'
 ```
 
 Here is the response from LlamaEdge API server:
@@ -159,7 +160,7 @@ Here is the response from LlamaEdge API server:
     "id":"",
     "object":"chat.completion",
     "created":1697092593,
-    "model":"llama-2-7b-chat",
+    "model":"llama-3-8b",
     "choices":[
         {
             "index":0,
@@ -401,7 +402,11 @@ tar xzf chatbot-ui.tar.gz
 After that, you can use the same command line to create the API server
 
 ```bash
-wasmedge --dir .:. --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf llama-api-server.wasm -p llama-2-chat
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Meta-Llama-3-8B-Instruct-Q5_K_M.gguf \
+  llama-api-server.wasm \
+  --prompt-template llama-3-chat \
+  --ctx-size 4096 \
+  --model-name llama-3-8b
 ```
 
 Then, you will be asked to open `http://127.0.0.1:8080` from your browser.
@@ -470,10 +475,10 @@ You can set the log level of the API server by setting the `LLAMA_LOG` environme
 
 ```bash
 wasmedge --dir .:. --env LLAMA_LOG=debug \
-    --nn-preload default:GGML:AUTO:llama-2-7b-chat.Q5_K_M.gguf \
+    --nn-preload default:GGML:AUTO:Meta-Llama-3-8B-Instruct-Q5_K_M.gguf \
     llama-api-server.wasm \
-    --model-name llama-2-7b-chat \
-    --prompt-template llama-2-chat \
+    --model-name llama-3-8b \
+    --prompt-template llama-3-chat \
     --ctx-size 4096
 ```
 
