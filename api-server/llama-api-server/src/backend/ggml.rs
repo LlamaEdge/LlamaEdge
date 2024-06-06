@@ -18,11 +18,19 @@ use std::{
 };
 
 /// List all models available.
-pub(crate) async fn models_handler() -> Result<Response<Body>, hyper::Error> {
+pub(crate) async fn models_handler() -> Response<Body> {
+    // log
+    info!(target: "models_handler", "Handling the coming model list request.");
+
     let list_models_response = match llama_core::models::models().await {
         Ok(list_models_response) => list_models_response,
         Err(e) => {
-            return error::internal_server_error(e.to_string());
+            let err_msg = format!("Failed to get model list. Reason: {}", e);
+
+            // log
+            error!(target: "models_handler", "{}", &err_msg);
+
+            return error::internal_server_error(err_msg);
         }
     };
 
@@ -30,7 +38,12 @@ pub(crate) async fn models_handler() -> Result<Response<Body>, hyper::Error> {
     let s = match serde_json::to_string(&list_models_response) {
         Ok(s) => s,
         Err(e) => {
-            return error::internal_server_error(e.to_string());
+            let err_msg = format!("Failed to serialize the model list result. Reason: {}", e);
+
+            // log
+            error!(target: "models_handler", "{}", &err_msg);
+
+            return error::internal_server_error(err_msg);
         }
     };
 
@@ -41,22 +54,50 @@ pub(crate) async fn models_handler() -> Result<Response<Body>, hyper::Error> {
         .header("Access-Control-Allow-Headers", "*")
         .header("Content-Type", "application/json")
         .body(Body::from(s));
-    match result {
-        Ok(response) => Ok(response),
-        Err(e) => error::internal_server_error(e.to_string()),
-    }
+    let res = match result {
+        Ok(response) => response,
+        Err(e) => {
+            let err_msg = format!("Failed to get model list. Reason: {}", e);
+
+            // log
+            error!(target: "models_handler", "{}", &err_msg);
+
+            error::internal_server_error(err_msg)
+        }
+    };
+
+    // log
+    info!(target: "models_handler", "Send the model list response.");
+
+    res
 }
 
 /// Compute embeddings for the input text and return the embeddings object.
-pub(crate) async fn embeddings_handler(
-    mut req: Request<Body>,
-) -> Result<Response<Body>, hyper::Error> {
+pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body> {
+    // log
+    info!(target: "embeddings_handler", "Handling the coming embeddings request");
+
     // parse request
-    let body_bytes = to_bytes(req.body_mut()).await?;
+    let body_bytes = match to_bytes(req.body_mut()).await {
+        Ok(body_bytes) => body_bytes,
+        Err(e) => {
+            let err_msg = format!("Fail to read buffer from request body. {}", e);
+
+            // log
+            error!(target: "embeddings_handler", "{}", &err_msg);
+
+            return error::internal_server_error(err_msg);
+        }
+    };
     let mut embedding_request: EmbeddingRequest = match serde_json::from_slice(&body_bytes) {
         Ok(embedding_request) => embedding_request,
         Err(e) => {
-            return error::bad_request(format!("Fail to parse embedding request: {msg}", msg = e));
+            let err_msg = format!("Fail to deserialize embedding request: {msg}", msg = e);
+
+            // log
+            error!(target: "embeddings_handler", "{}", &err_msg);
+
+            return error::bad_request(err_msg);
         }
     };
 
@@ -65,8 +106,10 @@ pub(crate) async fn embeddings_handler(
     };
     let id = embedding_request.user.clone().unwrap();
 
-    println!("\n[+] Running embeddings handler ...");
-    match llama_core::embeddings::embeddings(&embedding_request).await {
+    // log user id
+    info!(target: "embeddings_handler", "user: {}", &id);
+
+    let res = match llama_core::embeddings::embeddings(&embedding_request).await {
         Ok(embedding_response) => {
             // serialize embedding object
             match serde_json::to_string(&embedding_response) {
@@ -80,32 +123,67 @@ pub(crate) async fn embeddings_handler(
                         .header("user", id)
                         .body(Body::from(s));
                     match result {
-                        Ok(response) => Ok(response),
-                        Err(e) => error::internal_server_error(e.to_string()),
+                        Ok(response) => response,
+                        Err(e) => {
+                            let err_msg = e.to_string();
+
+                            // log
+                            error!(target: "embeddings_handler", "{}", &err_msg);
+
+                            error::internal_server_error(err_msg)
+                        }
                     }
                 }
-                Err(e) => error::internal_server_error(format!(
-                    "Fail to serialize embedding object. {}",
-                    e
-                )),
+                Err(e) => {
+                    let err_msg = format!("Fail to serialize embedding object. {}", e);
+
+                    // log
+                    error!(target: "embeddings_handler", "{}", &err_msg);
+
+                    error::internal_server_error(err_msg)
+                }
             }
         }
-        Err(e) => error::internal_server_error(e.to_string()),
-    }
+        Err(e) => {
+            let err_msg = e.to_string();
+
+            // log
+            error!(target: "embeddings_handler", "{}", &err_msg);
+
+            error::internal_server_error(err_msg)
+        }
+    };
+
+    info!(target: "embeddings_handler", "Send the embeddings response");
+
+    res
 }
 
-pub(crate) async fn completions_handler(
-    mut req: Request<Body>,
-) -> Result<Response<Body>, hyper::Error> {
+pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body> {
+    // log
+    info!(target: "completions_handler", "Handling the coming completions request.");
+
     // parse request
-    let body_bytes = to_bytes(req.body_mut()).await?;
+    let body_bytes = match to_bytes(req.body_mut()).await {
+        Ok(body_bytes) => body_bytes,
+        Err(e) => {
+            let err_msg = format!("Fail to read buffer from request body. {}", e);
+
+            // log
+            error!(target: "completions_handler", "{}", &err_msg);
+
+            return error::internal_server_error(err_msg);
+        }
+    };
     let mut completion_request: CompletionRequest = match serde_json::from_slice(&body_bytes) {
         Ok(completion_request) => completion_request,
         Err(e) => {
-            return error::bad_request(format!(
-                "Failed to deserialize completion request. {msg}",
-                msg = e
-            ));
+            let err_msg = format!("Fail to deserialize completions request: {msg}", msg = e);
+
+            // log
+            error!(target: "completions_handler", "{}", &err_msg);
+
+            return error::bad_request(err_msg);
         }
     };
 
@@ -114,17 +192,21 @@ pub(crate) async fn completions_handler(
     };
     let id = completion_request.user.clone().unwrap();
 
-    println!("\n[+] Running completions handler ...");
-    match llama_core::completions::completions(&completion_request).await {
+    // log user id
+    info!(target: "completions_handler", "user: {}", &id);
+
+    let res = match llama_core::completions::completions(&completion_request).await {
         Ok(completion_object) => {
             // serialize completion object
             let s = match serde_json::to_string(&completion_object) {
                 Ok(s) => s,
                 Err(e) => {
-                    return error::internal_server_error(format!(
-                        "Failed to serialize completion object. {msg}",
-                        msg = e
-                    ));
+                    let err_msg = format!("Fail to serialize completion object. {}", e);
+
+                    // log
+                    error!(target: "completions_handler", "{}", &err_msg);
+
+                    return error::internal_server_error(err_msg);
                 }
             };
 
@@ -137,21 +219,36 @@ pub(crate) async fn completions_handler(
                 .header("user", id)
                 .body(Body::from(s));
             match result {
-                Ok(response) => Ok(response),
+                Ok(response) => response,
                 Err(e) => {
-                    println!("[*] Error: {}", e);
-                    error::internal_server_error(e.to_string())
+                    let err_msg = e.to_string();
+
+                    // log
+                    error!(target: "completions_handler", "{}", &err_msg);
+
+                    error::internal_server_error(err_msg)
                 }
             }
         }
-        Err(e) => error::internal_server_error(e.to_string()),
-    }
+        Err(e) => {
+            let err_msg = e.to_string();
+
+            // log
+            error!(target: "completions_handler", "{}", &err_msg);
+
+            error::internal_server_error(err_msg)
+        }
+    };
+
+    info!(target: "completions_handler", "Send the completions response.");
+
+    res
 }
 
 /// Process a chat-completion request and returns a chat-completion response with the answer from the model.
-pub(crate) async fn chat_completions_handler(
-    mut req: Request<Body>,
-) -> Result<Response<Body>, hyper::Error> {
+pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response<Body> {
+    info!(target: "chat_completions_handler", "Handling the coming chat completion request.");
+
     if req.method().eq(&hyper::http::Method::OPTIONS) {
         let result = Response::builder()
             .header("Access-Control-Allow-Origin", "*")
@@ -161,22 +258,44 @@ pub(crate) async fn chat_completions_handler(
             .body(Body::empty());
 
         match result {
-            Ok(response) => return Ok(response),
+            Ok(response) => return response,
             Err(e) => {
-                return error::internal_server_error(e.to_string());
+                let err_msg = e.to_string();
+
+                // log
+                error!(target: "chat_completions_handler", "{}", &err_msg);
+
+                return error::internal_server_error(err_msg);
             }
         }
     }
 
+    info!(target: "chat_completions_handler", "Prepare the chat completion request.");
+
     // parse request
-    let body_bytes = to_bytes(req.body_mut()).await?;
+    let body_bytes = match to_bytes(req.body_mut()).await {
+        Ok(body_bytes) => body_bytes,
+        Err(e) => {
+            let err_msg = format!("Fail to read buffer from request body. {}", e);
+
+            // log
+            error!(target: "chat_completions_handler", "{}", &err_msg);
+
+            return error::internal_server_error(err_msg);
+        }
+    };
     let mut chat_request: ChatCompletionRequest = match serde_json::from_slice(&body_bytes) {
         Ok(chat_request) => chat_request,
         Err(e) => {
-            return error::bad_request(format!(
-                "Fail to parse chat completion request: {msg}",
+            let err_msg = format!(
+                "Fail to deserialize chat completion request: {msg}",
                 msg = e
-            ));
+            );
+
+            // log
+            error!(target: "chat_completions_handler", "{}", &err_msg);
+
+            return error::bad_request(err_msg);
         }
     };
 
@@ -185,17 +304,30 @@ pub(crate) async fn chat_completions_handler(
         chat_request.user = Some(gen_chat_id())
     };
 
-    match chat_request.stream {
+    // log user id
+    info!(target: "chat_completions_handler", "user: {}", chat_request.user.clone().unwrap());
+
+    // handle chat request
+    let res = match chat_request.stream {
         Some(true) => chat_completions_stream(chat_request).await,
         Some(false) | None => chat_completions(chat_request).await,
-    }
+    };
+
+    // log
+    info!(target: "chat_completions_handler", "Send the chat completion response.");
+
+    res
 }
 
 /// Process a chat-completion request in stream mode and returns a chat-completion response with the answer from the model.
-async fn chat_completions_stream(
-    mut chat_request: ChatCompletionRequest,
-) -> Result<Response<Body>, hyper::Error> {
+async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Response<Body> {
+    info!(target: "chat_completions_stream", "Process the chat completions in stream mode.");
+
+    if chat_request.user.is_none() {
+        chat_request.user = Some(gen_chat_id())
+    };
     let id = chat_request.user.clone().unwrap();
+
     match llama_core::chat::chat_completions_stream(&mut chat_request).await {
         Ok(stream) => {
             let stream = stream.map_err(|e| e.to_string());
@@ -211,29 +343,54 @@ async fn chat_completions_stream(
                 .body(Body::wrap_stream(stream));
 
             match result {
-                Ok(response) => Ok(response),
-                Err(e) => error::internal_server_error(e.to_string()),
+                Ok(response) => {
+                    // log
+                    info!(target: "chat_completions_stream", "finish chat completions in stream mode");
+
+                    response
+                }
+                Err(e) => {
+                    let err_msg = format!("Failed chat completions in stream mode. Reason: {}", e);
+
+                    // log
+                    error!(target: "chat_completions_stream", "{}", &err_msg);
+
+                    error::internal_server_error(err_msg)
+                }
             }
         }
-        Err(e) => error::internal_server_error(e.to_string()),
+        Err(e) => {
+            let err_msg = format!("Failed chat completions in stream mode. Reason: {}", e);
+
+            // log
+            error!(target: "chat_completions_stream", "{}", &err_msg);
+
+            error::internal_server_error(err_msg)
+        }
     }
 }
 
 /// Process a chat-completion request and returns a chat-completion response with the answer from the model.
-async fn chat_completions(
-    mut chat_request: ChatCompletionRequest,
-) -> Result<Response<Body>, hyper::Error> {
+async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<Body> {
+    info!(target: "chat_completions", "Process the chat completions request in non-stream mode.");
+
+    if chat_request.user.is_none() {
+        chat_request.user = Some(gen_chat_id())
+    };
     let id = chat_request.user.clone().unwrap();
+
     match llama_core::chat::chat_completions(&mut chat_request).await {
         Ok(chat_completion_object) => {
             // serialize chat completion object
             let s = match serde_json::to_string(&chat_completion_object) {
                 Ok(s) => s,
                 Err(e) => {
-                    return error::internal_server_error(format!(
-                        "Fail to serialize chat completion object. {}",
-                        e
-                    ));
+                    let err_msg = format!("Failed to serialize chat completion object. {}", e);
+
+                    // log
+                    error!(target: "chat_completions", "{}", &err_msg);
+
+                    return error::internal_server_error(err_msg);
                 }
             };
 
@@ -247,18 +404,39 @@ async fn chat_completions(
                 .body(Body::from(s));
 
             match result {
-                Ok(response) => Ok(response),
-                Err(e) => error::internal_server_error(e.to_string()),
+                Ok(response) => {
+                    // log
+                    info!(target: "chat_completions", "Finish chat completions in non-stream mode");
+
+                    response
+                }
+                Err(e) => {
+                    let err_msg =
+                        format!("Failed chat completions in non-stream mode. Reason: {}", e);
+
+                    // log
+                    error!(target: "chat_completions", "{}", &err_msg);
+
+                    error::internal_server_error(err_msg)
+                }
             }
         }
-        Err(e) => error::internal_server_error(e.to_string()),
+        Err(e) => {
+            let err_msg = format!("Failed chat completions in non-stream mode. Reason: {}", e);
+
+            // log
+            error!(target: "chat_completions", "{}", &err_msg);
+
+            error::internal_server_error(err_msg)
+        }
     }
 }
 
-pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
-    if req.method() == Method::POST {
-        println!("\n[+] Running files handler ...");
+pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
+    // log
+    info!(target: "files_handler", "Handling the coming files request");
 
+    let res = if req.method() == Method::POST {
         let boundary = "boundary=";
 
         let boundary = req.headers().get("content-type").and_then(|ct| {
@@ -268,7 +446,18 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, 
         });
 
         let req_body = req.into_body();
-        let body_bytes = to_bytes(req_body).await?;
+        let body_bytes = match to_bytes(req_body).await {
+            Ok(body_bytes) => body_bytes,
+            Err(e) => {
+                let err_msg = format!("Fail to read buffer from request body. {}", e);
+
+                // log
+                error!(target: "files_handler", "{}", &err_msg);
+
+                return error::internal_server_error(err_msg);
+            }
+        };
+
         let cursor = Cursor::new(body_bytes.to_vec());
 
         let mut multipart = Multipart::with_body(cursor, boundary.unwrap());
@@ -279,35 +468,45 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, 
                 let filename = match field.headers.filename {
                     Some(filename) => filename,
                     None => {
-                        return error::internal_server_error(
-                            "Failed to upload the target file. The filename is not provided.",
-                        );
+                        let err_msg =
+                            "Failed to upload the target file. The filename is not provided.";
+
+                        // log
+                        error!(target: "files_handler", "{}", &err_msg);
+
+                        return error::internal_server_error(err_msg);
                     }
                 };
 
                 if !((filename).to_lowercase().ends_with(".txt")
                     || (filename).to_lowercase().ends_with(".md"))
                 {
-                    return error::internal_server_error(
-                        "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported.",
+                    let err_msg = format!(
+                        "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported. The file extension is {}.",
+                        &filename
                     );
+
+                    // log
+                    error!(target: "files_handler", "{}", &err_msg);
+
+                    return error::internal_server_error(err_msg);
                 }
 
                 let mut buffer = Vec::new();
                 let size_in_bytes = match field.data.read_to_end(&mut buffer) {
                     Ok(size_in_bytes) => size_in_bytes,
                     Err(e) => {
-                        return error::internal_server_error(format!(
-                            "Failed to read the target file. {}",
-                            e
-                        ));
+                        let err_msg = format!("Failed to read the target file. {}", e);
+
+                        // log
+                        error!(target: "files_handler", "{}", &err_msg);
+
+                        return error::internal_server_error(err_msg);
                     }
                 };
 
                 // create a unique file id
                 let id = format!("file_{}", uuid::Uuid::new_v4());
-
-                println!("    * Saving to {}/{}", &id, &filename);
 
                 // save the file
                 let path = Path::new("archives");
@@ -321,18 +520,29 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, 
                 let mut file = match File::create(file_path.join(&filename)) {
                     Ok(file) => file,
                     Err(e) => {
-                        return error::internal_server_error(format!(
-                            "Failed to create archive document {}. {}",
-                            &filename, e
-                        ));
+                        let err_msg =
+                            format!("Failed to create archive document {}. {}", &filename, e);
+
+                        // log
+                        error!(target: "files_handler", "{}", &err_msg);
+
+                        return error::internal_server_error(err_msg);
                     }
                 };
                 file.write_all(&buffer[..]).unwrap();
 
+                // log
+                info!(target: "files_handler", "file_id: {}, file_name: {}", &id, &filename);
+
                 let created_at = match SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
                     Ok(n) => n.as_secs(),
                     Err(_) => {
-                        return error::internal_server_error("Failed to get the current time.")
+                        let err_msg = "Failed to get the current time.";
+
+                        // log
+                        error!(target: "files_handler", "{}", &err_msg);
+
+                        return error::internal_server_error(err_msg);
                     }
                 };
 
@@ -350,17 +560,18 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, 
             }
         }
 
-        println!("[+] File uploaded successfully.\n");
         match file_object {
             Some(fo) => {
                 // serialize chat completion object
                 let s = match serde_json::to_string(&fo) {
                     Ok(s) => s,
                     Err(e) => {
-                        return error::internal_server_error(format!(
-                            "Fail to serialize file object. {}",
-                            e
-                        ));
+                        let err_msg = format!("Failed to serialize file object. {}", e);
+
+                        // log
+                        error!(target: "files_handler", "{}", &err_msg);
+
+                        return error::internal_server_error(err_msg);
                     }
                 };
 
@@ -373,69 +584,128 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Result<Response<Body>, 
                     .body(Body::from(s));
 
                 match result {
-                    Ok(response) => Ok(response),
-                    Err(e) => error::internal_server_error(e.to_string()),
+                    Ok(response) => response,
+                    Err(e) => {
+                        let err_msg = e.to_string();
+
+                        // log
+                        error!(target: "files_handler", "{}", &err_msg);
+
+                        error::internal_server_error(err_msg)
+                    }
                 }
             }
-            None => error::internal_server_error(
-                "Failed to upload the target file. Not found the target file.",
-            ),
+            None => {
+                let err_msg = "Failed to upload the target file. Not found the target file.";
+
+                // log
+                error!(target: "files_handler", "{}", &err_msg);
+
+                error::internal_server_error(err_msg)
+            }
         }
     } else if req.method() == Method::GET {
-        error::internal_server_error("Not implemented for listing files.")
+        let err_msg = "Not implemented for listing files.";
+
+        // log
+        error!(target: "files_handler", "{}", &err_msg);
+
+        error::internal_server_error(err_msg)
     } else {
-        error::internal_server_error("Invalid HTTP Method.")
-    }
+        let err_msg = "Invalid HTTP Method.";
+
+        // log
+        error!(target: "files_handler", "{}", &err_msg);
+
+        error::internal_server_error(err_msg)
+    };
+
+    info!(target: "files_handler", "Send the files response");
+
+    res
 }
 
-pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
-    println!("\n[+] Running chunks handler ...");
+pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
+    // log
+    info!(target: "chunks_handler", "Handling the coming chunks request");
 
     // parse request
-    let body_bytes = to_bytes(req.body_mut()).await?;
-    let chunks_request: ChunksRequest = match serde_json::from_slice(&body_bytes) {
-        Ok(chunks_request) => chunks_request,
+    let body_bytes = match to_bytes(req.body_mut()).await {
+        Ok(body_bytes) => body_bytes,
         Err(e) => {
-            return error::bad_request(format!("Fail to parse chunks request: {msg}", msg = e));
+            let err_msg = format!("Fail to read buffer from request body. {}", e);
+
+            // log
+            error!(target: "chunks_handler", "{}", &err_msg);
+
+            return error::internal_server_error(err_msg);
         }
     };
 
-    println!("[+] Detecting the target file ...");
+    let chunks_request: ChunksRequest = match serde_json::from_slice(&body_bytes) {
+        Ok(chunks_request) => chunks_request,
+        Err(e) => {
+            let err_msg = format!("Fail to deserialize chunks request: {msg}", msg = e);
+
+            // log
+            error!(target: "chunks_handler", "{}", &err_msg);
+
+            return error::bad_request(err_msg);
+        }
+    };
+
     // check if the archives directory exists
     let path = Path::new("archives");
     if !path.exists() {
-        return error::internal_server_error("The `archives` directory does not exist.");
+        let err_msg = "The `archives` directory does not exist.";
+
+        // log
+        error!(target: "chunks_handler", "{}", &err_msg);
+
+        return error::internal_server_error(err_msg);
     }
 
     // check if the archive id exists
     let archive_path = path.join(&chunks_request.id);
     if !archive_path.exists() {
-        let message = format!("Not found archive id: {}", &chunks_request.id);
-        return error::internal_server_error(message);
+        let err_msg = format!("Not found archive id: {}", &chunks_request.id);
+
+        // log
+        error!(target: "chunks_handler", "{}", &err_msg);
+
+        return error::internal_server_error(err_msg);
     }
 
     // check if the file exists
     let file_path = archive_path.join(&chunks_request.filename);
     if !file_path.exists() {
-        let message = format!(
+        let err_msg = format!(
             "Not found file: {} in archive id: {}",
             &chunks_request.filename, &chunks_request.id
         );
-        return error::internal_server_error(message);
+
+        // log
+        error!(target: "chunks_handler", "{}", &err_msg);
+
+        return error::internal_server_error(err_msg);
     }
-    println!(
-        "    * Found {}/{}",
-        &chunks_request.id, &chunks_request.filename
-    );
+
+    // log
+    info!(target: "chunks_handler", "file_id: {}, file_name: {}", &chunks_request.id, &chunks_request.filename);
 
     // get the extension of the archived file
     let extension = match file_path.extension().and_then(std::ffi::OsStr::to_str) {
         Some(extension) => extension,
         None => {
-            return error::internal_server_error(format!(
+            let err_msg = format!(
                 "Failed to get the extension of the archived `{}`.",
                 &chunks_request.filename
-            ));
+            );
+
+            // log
+            error!(target: "chunks_handler", "{}", &err_msg);
+
+            return error::internal_server_error(err_msg);
         }
     };
 
@@ -443,31 +713,34 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Result<Response<Bo
     let mut file = match File::open(&file_path) {
         Ok(file) => file,
         Err(e) => {
-            return error::internal_server_error(format!(
-                "Failed to open `{}`. {}",
-                &chunks_request.filename, e
-            ));
+            let err_msg = format!("Failed to open `{}`. {}", &chunks_request.filename, e);
+
+            // log
+            error!(target: "chunks_handler", "{}", &err_msg);
+
+            return error::internal_server_error(err_msg);
         }
     };
 
     // read the file
     let mut contents = String::new();
     if let Err(e) = file.read_to_string(&mut contents) {
-        return error::internal_server_error(format!(
-            "Failed to read `{}`. {}",
-            &chunks_request.filename, e
-        ));
+        let err_msg = format!("Failed to read `{}`. {}", &chunks_request.filename, e);
+
+        // log
+        error!(target: "chunks_handler", "{}", &err_msg);
+
+        return error::internal_server_error(err_msg);
     }
 
-    match llama_core::rag::chunk_text(&contents, extension, chunks_request.chunk_capacity) {
+    let res = match llama_core::rag::chunk_text(&contents, extension, chunks_request.chunk_capacity)
+    {
         Ok(chunks) => {
             let chunks_response = ChunksResponse {
                 id: chunks_request.id,
                 filename: chunks_request.filename,
                 chunks,
             };
-
-            println!("[+] File chunked successfully.\n");
 
             // serialize embedding object
             match serde_json::to_string(&chunks_response) {
@@ -480,25 +753,55 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Result<Response<Bo
                         .header("Content-Type", "application/json")
                         .body(Body::from(s));
                     match result {
-                        Ok(response) => Ok(response),
-                        Err(e) => error::internal_server_error(e.to_string()),
+                        Ok(response) => response,
+                        Err(e) => {
+                            let err_msg = e.to_string();
+
+                            // log
+                            error!(target: "chunks_handler", "{}", &err_msg);
+
+                            error::internal_server_error(err_msg)
+                        }
                     }
                 }
-                Err(e) => error::internal_server_error(format!(
-                    "Fail to serialize chunks response. {}",
-                    e
-                )),
+                Err(e) => {
+                    let err_msg = format!("Fail to serialize chunks response. {}", e);
+
+                    // log
+                    error!(target: "chunks_handler", "{}", &err_msg);
+
+                    error::internal_server_error(err_msg)
+                }
             }
         }
-        Err(e) => error::internal_server_error(e.to_string()),
-    }
+        Err(e) => {
+            let err_msg = e.to_string();
+
+            // log
+            error!(target: "chunks_handler", "{}", &err_msg);
+
+            error::internal_server_error(err_msg)
+        }
+    };
+
+    info!(target: "chunks_handler", "Send the chunks response.");
+
+    res
 }
 
-pub(crate) async fn server_info() -> Result<Response<Body>, hyper::Error> {
+pub(crate) async fn server_info_handler() -> Response<Body> {
+    // log
+    info!(target: "server_info", "Handling the coming server info request.");
+
     // get the server info
     let server_info = match SERVER_INFO.get() {
         Some(server_info) => server_info,
         None => {
+            let err_msg = "The server info is not set.";
+
+            // log
+            error!(target: "server_info_handler", "{}", &err_msg);
+
             return error::internal_server_error("The server info is not set.");
         }
     };
@@ -507,7 +810,12 @@ pub(crate) async fn server_info() -> Result<Response<Body>, hyper::Error> {
     let s = match serde_json::to_string(&server_info) {
         Ok(s) => s,
         Err(e) => {
-            return error::internal_server_error(format!("Fail to serialize server info. {}", e));
+            let err_msg = format!("Fail to serialize server info. {}", e);
+
+            // log
+            error!(target: "server_info_handler", "{}", &err_msg);
+
+            return error::internal_server_error(err_msg);
         }
     };
 
@@ -518,8 +826,19 @@ pub(crate) async fn server_info() -> Result<Response<Body>, hyper::Error> {
         .header("Access-Control-Allow-Headers", "*")
         .header("Content-Type", "application/json")
         .body(Body::from(s));
-    match result {
-        Ok(response) => Ok(response),
-        Err(e) => error::internal_server_error(e.to_string()),
-    }
+    let res = match result {
+        Ok(response) => response,
+        Err(e) => {
+            let err_msg = e.to_string();
+
+            // log
+            error!(target: "server_info_handler", "{}", &err_msg);
+
+            error::internal_server_error(err_msg)
+        }
+    };
+
+    info!(target: "server_info", "Send the server info response.");
+
+    res
 }

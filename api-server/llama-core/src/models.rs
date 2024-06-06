@@ -5,26 +5,30 @@ use endpoints::models::{ListModelsResponse, Model};
 
 /// Lists models available
 pub async fn models() -> Result<ListModelsResponse, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "List models");
+
     let mut models = vec![];
 
     {
-        let chat_graphs = CHAT_GRAPHS
-            .get()
-            .ok_or(LlamaCoreError::Operation(String::from(
-                "Fail to get the underlying value of `CHAT_GRAPHS`.",
-            )))?;
+        if let Some(chat_graphs) = CHAT_GRAPHS.get() {
+            let chat_graphs = chat_graphs.lock().map_err(|e| {
+                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
-        let chat_graphs = chat_graphs.lock().map_err(|e| {
-            LlamaCoreError::Operation(format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e))
-        })?;
+                #[cfg(feature = "logging")]
+                error!(target: "llama-core", "{}", &err_msg);
 
-        for (name, graph) in chat_graphs.iter() {
-            models.push(Model {
-                id: name.clone(),
-                created: graph.created.as_secs(),
-                object: String::from("model"),
-                owned_by: String::from("Not specified"),
-            });
+                LlamaCoreError::Operation(err_msg)
+            })?;
+
+            for (name, graph) in chat_graphs.iter() {
+                models.push(Model {
+                    id: name.clone(),
+                    created: graph.created.as_secs(),
+                    object: String::from("model"),
+                    owned_by: String::from("Not specified"),
+                });
+            }
         }
     }
 
