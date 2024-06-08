@@ -2,53 +2,56 @@ use hyper::{Body, Response};
 use thiserror::Error;
 
 #[allow(dead_code)]
-pub(crate) fn not_implemented() -> Result<Response<Body>, hyper::Error> {
-    let response = Response::builder()
+pub(crate) fn not_implemented() -> Response<Body> {
+    // log error
+    error!(target: "response", "501 Not Implemented");
+
+    Response::builder()
         .header("Access-Control-Allow-Origin", "*")
         .header("Access-Control-Allow-Methods", "*")
         .header("Access-Control-Allow-Headers", "*")
         .status(hyper::StatusCode::NOT_IMPLEMENTED)
         .body(Body::from("501 Not Implemented"))
-        .unwrap();
-
-    Ok(response)
+        .unwrap()
 }
 
-pub(crate) fn internal_server_error(msg: impl AsRef<str>) -> Result<Response<Body>, hyper::Error> {
+pub(crate) fn internal_server_error(msg: impl AsRef<str>) -> Response<Body> {
     let err_msg = match msg.as_ref().is_empty() {
         true => "500 Internal Server Error".to_string(),
         false => format!("500 Internal Server Error: {}", msg.as_ref()),
     };
 
-    let response = Response::builder()
+    // log error
+    error!(target: "response", "{}", &err_msg);
+
+    Response::builder()
         .header("Access-Control-Allow-Origin", "*")
         .header("Access-Control-Allow-Methods", "*")
         .header("Access-Control-Allow-Headers", "*")
         .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
         .body(Body::from(err_msg))
-        .unwrap();
-
-    Ok(response)
+        .unwrap()
 }
 
-pub(crate) fn bad_request(msg: impl AsRef<str>) -> Result<Response<Body>, hyper::Error> {
+pub(crate) fn bad_request(msg: impl AsRef<str>) -> Response<Body> {
     let err_msg = match msg.as_ref().is_empty() {
         true => "400 Bad Request".to_string(),
         false => format!("400 Bad Request: {}", msg.as_ref()),
     };
 
-    let response = Response::builder()
+    // log error
+    error!(target: "response", "{}", &err_msg);
+
+    Response::builder()
         .header("Access-Control-Allow-Origin", "*")
         .header("Access-Control-Allow-Methods", "*")
         .header("Access-Control-Allow-Headers", "*")
         .status(hyper::StatusCode::BAD_REQUEST)
         .body(Body::from(err_msg))
-        .unwrap();
-
-    Ok(response)
+        .unwrap()
 }
 
-pub(crate) fn invalid_endpoint(msg: impl AsRef<str>) -> Result<Response<Body>, hyper::Error> {
+pub(crate) fn invalid_endpoint(msg: impl AsRef<str>) -> Response<Body> {
     let err_msg = match msg.as_ref().is_empty() {
         true => "404 The requested service endpoint is not found".to_string(),
         false => format!(
@@ -57,15 +60,16 @@ pub(crate) fn invalid_endpoint(msg: impl AsRef<str>) -> Result<Response<Body>, h
         ),
     };
 
-    let response = Response::builder()
+    // log error
+    error!(target: "response", "{}", &err_msg);
+
+    Response::builder()
         .header("Access-Control-Allow-Origin", "*")
         .header("Access-Control-Allow-Methods", "*")
         .header("Access-Control-Allow-Headers", "*")
         .status(hyper::StatusCode::NOT_FOUND)
         .body(Body::from(err_msg))
-        .unwrap();
-
-    Ok(response)
+        .unwrap()
 }
 
 #[derive(Error, Clone, Debug, PartialEq, Eq)]

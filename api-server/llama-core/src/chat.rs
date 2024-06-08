@@ -4,8 +4,7 @@ use crate::{
     error, running_mode,
     utils::{
         gen_chat_id, get_output_buffer, get_output_buffer_single, get_token_info_by_graph,
-        get_token_info_by_graph_name, print_log_begin_separator, print_log_end_separator,
-        set_tensor_data_u8,
+        get_token_info_by_graph_name, set_tensor_data_u8,
     },
     Graph, Metadata, RunningMode, CACHED_UTF8_ENCODINGS, CHAT_GRAPHS, OUTPUT_TENSOR,
 };
@@ -39,11 +38,20 @@ use std::{
 pub async fn chat_completions_stream(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "Process chat completion request in stream mode.");
+
     let running_mode = running_mode()?;
     if running_mode == RunningMode::Embeddings {
-        return Err(LlamaCoreError::Operation(format!(
-            "The chat completion is not supported in the {running_mode} mode.",
-        )));
+        let err_msg = format!(
+            "The chat completion is not supported in the {} mode.",
+            running_mode
+        );
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama_core", "{}", &err_msg);
+
+        return Err(LlamaCoreError::Operation(err_msg));
     }
 
     let model_name = chat_request.model.clone();
@@ -51,6 +59,10 @@ pub async fn chat_completions_stream(
         Some(id) => id.clone(),
         None => gen_chat_id(),
     };
+
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "user: {}", &id);
+
     let ref_id = Arc::new(id.clone());
 
     // parse the `include_usage` option
@@ -59,18 +71,17 @@ pub async fn chat_completions_stream(
         None => false,
     };
 
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "include_usage: {}", include_usage);
+
     // update metadata
-    let mut metadata = update_metadata(chat_request).await?;
+    let mut metadata = check_model_metadata(chat_request).await?;
 
     // build prompt
-    let (prompt, avaible_completion_tokens) = build_prompt(model_name.as_ref(), chat_request)
-        .map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
+    let (prompt, avaible_completion_tokens) = build_prompt(model_name.as_ref(), chat_request)?;
 
-    if metadata.log_prompts {
-        print_log_begin_separator("PROMPT", Some("*"), None);
-        println!("\n{}", &prompt,);
-        print_log_end_separator(Some("*"), None);
-    }
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "prompt: {}, avaible_completion_tokens: {}", &prompt, avaible_completion_tokens);
 
     // update metadata n_predict
     update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
@@ -93,18 +104,28 @@ pub async fn chat_completions_stream(
         // get graph
         match &model_name {
             Some(model_name) => {
-                let chat_graphs =
-                    CHAT_GRAPHS
-                        .get()
-                        .ok_or(LlamaCoreError::Operation(String::from(
-                            "Fail to get the underlying value of `CHAT_GRAPHS`.",
-                        )))?;
+                let chat_graphs = match CHAT_GRAPHS
+                            .get() {
+                            Some(chat_graphs) => chat_graphs,
+                            None => {
+                                let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg.into()));
+                            }
+                        };
+
                 let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                    LlamaCoreError::Operation(format!(
-                        "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
-                        e
-                    ))
+                    let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    LlamaCoreError::Operation(err_msg)
                 })?;
+
                 match chat_graphs.get_mut(model_name) {
                     Some(graph) => {
                         // compute
@@ -120,10 +141,16 @@ pub async fn chat_completions_stream(
                                     Err(_) => {
                                         let mutex = CACHED_UTF8_ENCODINGS.get_or_init(|| Mutex::new(Vec::new()));
                                         let mut cached_encodings = mutex.lock().map_err(|e| {
-                                            LlamaCoreError::Operation(format!(
-                                                "Fail to acquire the lock of `UTF8_ENCODINGS`. {}",
+                                            let err_msg = format!(
+                                                "Fail to acquire the lock of `UTF8_ENCODINGS`. Reason: {}",
                                                 e
-                                            ))
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
+
+                                            LlamaCoreError::Operation(err_msg)
                                         })?;
 
                                         // cache the bytes for future decoding
@@ -137,11 +164,15 @@ pub async fn chat_completions_stream(
                                                 token
                                             }
                                             Err(_) => {
-                                                // ! This is a temp check. In case, infinite cached encodings happen.
+                                                // TODO This is a temp check. In case, infinite cached encodings happen.
                                                 if cached_encodings.len() > 3 {
-                                                    return Err(LlamaCoreError::Operation(String::from(
-                                                        "The length of the invalid utf8 bytes exceed 3.",
-                                                    )));
+
+                                                    let err_msg = "The length of the invalid utf8 bytes exceed 3.";
+
+                                                    #[cfg(feature = "logging")]
+                                                    error!(target: "llama_core", "{}", &err_msg);
+
+                                                    return Err(LlamaCoreError::Operation(err_msg.into()));
                                                 }
 
                                                 String::new()
@@ -153,10 +184,15 @@ pub async fn chat_completions_stream(
                                 let created = SystemTime::now()
                                     .duration_since(std::time::UNIX_EPOCH)
                                     .map_err(|e| {
-                                        LlamaCoreError::Operation(format!(
-                                            "Failed to get the current time. {}",
+                                        let err_msg = format!(
+                                            "Failed to get the current time. Reason: {}",
                                             e
-                                        ))
+                                        );
+
+                                        #[cfg(feature = "logging")]
+                                        error!(target: "llama_core", "{}", &err_msg);
+
+                                        LlamaCoreError::Operation(err_msg)
                                     })?;
 
                                 let chat_completion_chunk = ChatCompletionChunk {
@@ -182,10 +218,15 @@ pub async fn chat_completions_stream(
                                 // serialize chat completion chunk
                                 let chunk_str =
                                 serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                    LlamaCoreError::Operation(format!(
-                                        "Failed to serialize chat completion chunk. {}",
+                                    let err_msg = format!(
+                                        "Failed to serialize chat completion chunk. Reason: {}",
                                         e
-                                    ))
+                                    );
+
+                                    #[cfg(feature = "logging")]
+                                    error!(target: "llama_core", "{}", &err_msg);
+
+                                    LlamaCoreError::Operation(err_msg)
                                 })?;
 
                                 Ok(format!("data: {}\n\n", chunk_str))
@@ -205,15 +246,22 @@ pub async fn chat_completions_stream(
                                             completion_tokens: token_info.completion_tokens,
                                             total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
                                         });
-                                        println!("    * token_info: {:?}", token_info);
+
+                                        #[cfg(feature = "logging")]
+                                        info!(target: "llama_core", "token_info: {} prompt tokens, {} completion tokens", token_info.prompt_tokens, token_info.completion_tokens);
 
                                         let created = SystemTime::now()
                                         .duration_since(std::time::UNIX_EPOCH)
                                         .map_err(|e| {
-                                            LlamaCoreError::Operation(format!(
-                                                "Failed to get the current time. {}",
+                                            let err_msg = format!(
+                                                "Failed to get the current time. Reason: {}",
                                                 e
-                                            ))
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
+                                            LlamaCoreError::Operation(err_msg)
                                         })?;
 
                                         let chat_completion_chunk = ChatCompletionChunk {
@@ -229,10 +277,15 @@ pub async fn chat_completions_stream(
                                         // serialize chat completion chunk
                                         let chunk_str =
                                         serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                            LlamaCoreError::Operation(format!(
-                                                "Failed to serialize chat completion chunk. {}",
+                                            let err_msg = format!(
+                                                "Failed to serialize chat completion chunk. Reason: {}",
                                                 e
-                                            ))
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
+                                            LlamaCoreError::Operation(err_msg)
                                         })?;
 
                                         Ok(format!("data: {}\n\n", chunk_str))
@@ -245,8 +298,16 @@ pub async fn chat_completions_stream(
                                     StreamState::EndOfSequence => {
                                         // clear context
                                         if let Err(e) = graph.finish_single() {
+                                            let err_msg = format!(
+                                                "Failed to clean up the context. Reason: {}",
+                                                e
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
                                             return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
-                                                e.to_string(),
+                                                err_msg,
                                             )));
                                         }
 
@@ -267,10 +328,15 @@ pub async fn chat_completions_stream(
                                         let created = SystemTime::now()
                                             .duration_since(std::time::UNIX_EPOCH)
                                             .map_err(|e| {
-                                                LlamaCoreError::Operation(format!(
-                                                    "Failed to get the current time. {}",
+                                                let err_msg = format!(
+                                                    "Failed to get the current time. Reason: {}",
                                                     e
-                                                ))
+                                                );
+
+                                                #[cfg(feature = "logging")]
+                                                error!(target: "llama_core", "{}", &err_msg);
+
+                                                LlamaCoreError::Operation(err_msg)
                                             })?;
 
                                         let chat_completion_chunk = ChatCompletionChunk {
@@ -296,10 +362,15 @@ pub async fn chat_completions_stream(
                                         // serialize chat completion chunk
                                         let chunk_str =
                                             serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                                LlamaCoreError::Operation(format!(
-                                                    "Failed to serialize chat completion chunk. {}",
+                                                let err_msg = format!(
+                                                    "Failed to serialize chat completion chunk. Reason: {}",
                                                     e
-                                                ))
+                                                );
+
+                                                #[cfg(feature = "logging")]
+                                                error!(target: "llama_core", "{}", &err_msg);
+
+                                                LlamaCoreError::Operation(err_msg)
                                             })?;
 
                                         Ok(format!("data: {}\n\n", chunk_str))
@@ -319,10 +390,15 @@ pub async fn chat_completions_stream(
                                         let created = SystemTime::now()
                                         .duration_since(std::time::UNIX_EPOCH)
                                         .map_err(|e| {
-                                            LlamaCoreError::Operation(format!(
-                                                "Failed to get the current time. {}",
+                                            let err_msg = format!(
+                                                "Failed to get the current time. Reason: {}",
                                                 e
-                                            ))
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
+                                            LlamaCoreError::Operation(err_msg)
                                         })?;
 
                                         let chat_completion_chunk = ChatCompletionChunk {
@@ -338,10 +414,15 @@ pub async fn chat_completions_stream(
                                         // serialize chat completion chunk
                                         let chunk_str =
                                         serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                            LlamaCoreError::Operation(format!(
-                                                "Failed to serialize chat completion chunk. {}",
+                                            let err_msg = format!(
+                                                "Failed to serialize chat completion chunk. Reason: {}",
                                                 e
-                                            ))
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
+                                            LlamaCoreError::Operation(err_msg)
                                         })?;
 
                                         Ok(format!("data: {}\n\n", chunk_str))
@@ -355,8 +436,16 @@ pub async fn chat_completions_stream(
                                     ContextFullState::EndOfSequence => {
                                         // clear context
                                         if let Err(e) = graph.finish_single() {
+                                            let err_msg = format!(
+                                                "Failed to clean up the context. Reason: {}",
+                                                e
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
                                             return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
-                                                e.to_string(),
+                                                err_msg,
                                             )));
                                         }
 
@@ -377,10 +466,15 @@ pub async fn chat_completions_stream(
                                         let created = SystemTime::now()
                                             .duration_since(std::time::UNIX_EPOCH)
                                             .map_err(|e| {
-                                                LlamaCoreError::Operation(format!(
-                                                    "Failed to get the current time. {}",
+                                                let err_msg = format!(
+                                                    "Failed to get the current time. Reason: {}",
                                                     e
-                                                ))
+                                                );
+
+                                                #[cfg(feature = "logging")]
+                                                error!(target: "llama_core", "{}", &err_msg);
+
+                                                LlamaCoreError::Operation(err_msg)
                                             })?;
 
                                         let chat_completion_chunk = ChatCompletionChunk {
@@ -406,10 +500,15 @@ pub async fn chat_completions_stream(
                                         // serialize chat completion chunk
                                         let chunk_str =
                                         serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                            LlamaCoreError::Operation(format!(
-                                                "Failed to serialize chat completion chunk. {}",
+                                            let err_msg = format!(
+                                                "Failed to serialize chat completion chunk. Reason: {}",
                                                 e
-                                            ))
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
+                                            LlamaCoreError::Operation(err_msg)
                                         })?;
 
                                         Ok(format!("data: {}\n\n", chunk_str))
@@ -429,10 +528,15 @@ pub async fn chat_completions_stream(
                                         let created = SystemTime::now()
                                         .duration_since(std::time::UNIX_EPOCH)
                                         .map_err(|e| {
-                                            LlamaCoreError::Operation(format!(
-                                                "Failed to get the current time. {}",
+                                            let err_msg = format!(
+                                                "Failed to get the current time. Reason: {}",
                                                 e
-                                            ))
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
+                                            LlamaCoreError::Operation(err_msg)
                                         })?;
 
                                         let chat_completion_chunk = ChatCompletionChunk {
@@ -448,10 +552,15 @@ pub async fn chat_completions_stream(
                                         // serialize chat completion chunk
                                         let chunk_str =
                                         serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                            LlamaCoreError::Operation(format!(
-                                                "Failed to serialize chat completion chunk. {}",
+                                            let err_msg = format!(
+                                                "Failed to serialize chat completion chunk. Reason: {}",
                                                 e
-                                            ))
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
+                                            LlamaCoreError::Operation(err_msg)
                                         })?;
 
                                         Ok(format!("data: {}\n\n", chunk_str))
@@ -464,8 +573,16 @@ pub async fn chat_completions_stream(
                                     PromptTooLongState::EndOfSequence => {
                                         // clear context
                                         if let Err(e) = graph.finish_single() {
+                                            let err_msg = format!(
+                                                "Failed to clean up the context. Reason: {}",
+                                                e
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
                                             return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
-                                                e.to_string(),
+                                                err_msg,
                                             )));
                                         }
 
@@ -476,39 +593,64 @@ pub async fn chat_completions_stream(
                             Err(e) => {
                                 // clear context
                                 if let Err(e) = graph.finish_single() {
-                                    println!("Error: {:?}", &e);
+                                    let err_msg = format!(
+                                        "Failed to clean up the context. Reason: {}",
+                                        e
+                                    );
+
+                                    #[cfg(feature = "logging")]
+                                    error!(target: "llama_core", "{}", &err_msg);
+
                                     return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
-                                        e.to_string(),
+                                        err_msg,
                                     )));
                                 }
 
-                                println!("Error: {:?}", &e);
+                                let err_msg = format!("Failed to compute the chat completion. Reason: {}", e);
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
                                 Err(LlamaCoreError::Backend(BackendError::ComputeSingle(
-                                    e.to_string(),
+                                    err_msg,
                                 )))
                             }
                         }
                     }
                     None => {
-                        Err(LlamaCoreError::Operation(format!(
+                        let err_msg = format!(
                             "The model `{}` does not exist in the chat graphs.",
                             &model_name
-                        )))
+                        );
+
+                        #[cfg(feature = "logging")]
+                        error!(target: "llama_core", "{}", &err_msg);
+
+
+                        Err(LlamaCoreError::Operation(err_msg))
                     }
                 }
             }
             None => {
-                let chat_graphs =
-                    CHAT_GRAPHS
-                        .get()
-                        .ok_or(LlamaCoreError::Operation(String::from(
-                            "Fail to get the underlying value of `CHAT_GRAPHS`.",
-                        )))?;
+                let chat_graphs = match CHAT_GRAPHS.get() {
+                    Some(chat_graphs) => chat_graphs,
+                    None => {
+                        let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+                        #[cfg(feature = "logging")]
+                        error!(target: "llama_core", "{}", &err_msg);
+
+                        return Err(LlamaCoreError::Operation(err_msg.into()));
+                    }
+                };
+
                 let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                    LlamaCoreError::Operation(format!(
-                        "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
-                        e
-                    ))
+                    let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    LlamaCoreError::Operation(err_msg)
                 })?;
 
                 match chat_graphs.iter_mut().next() {
@@ -525,10 +667,15 @@ pub async fn chat_completions_stream(
                                     Err(_) => {
                                         let mutex = CACHED_UTF8_ENCODINGS.get_or_init(|| Mutex::new(Vec::new()));
                                         let mut cached_encodings = mutex.lock().map_err(|e| {
-                                            LlamaCoreError::Operation(format!(
-                                                "Fail to acquire the lock of `UTF8_ENCODINGS`. {}",
+                                            let err_msg = format!(
+                                                "Fail to acquire the lock of `UTF8_ENCODINGS`. Reason: {}",
                                                 e
-                                            ))
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
+                                            LlamaCoreError::Operation(err_msg)
                                         })?;
 
                                         cached_encodings.extend_from_slice(&output_buffer[..]);
@@ -541,11 +688,14 @@ pub async fn chat_completions_stream(
                                                 token
                                             }
                                             Err(_) => {
-                                                // ! This is a temp check. In case, infinite cached encodings happen.
+                                                // TODO This is a temp check. In case, infinite cached encodings happen.
                                                 if cached_encodings.len() > 3 {
-                                                    return Err(LlamaCoreError::Operation(String::from(
-                                                        "The length of the invalid utf8 bytes exceed 3.",
-                                                    )));
+                                                    let err_msg = "The length of the invalid utf8 bytes exceed 3.";
+
+                                                    #[cfg(feature = "logging")]
+                                                    error!(target: "llama_core", "{}", &err_msg);
+
+                                                    return Err(LlamaCoreError::Operation(err_msg.into()));
                                                 }
 
                                                 String::new()
@@ -557,10 +707,15 @@ pub async fn chat_completions_stream(
                                 let created = SystemTime::now()
                                     .duration_since(std::time::UNIX_EPOCH)
                                     .map_err(|e| {
-                                        LlamaCoreError::Operation(format!(
-                                            "Failed to get the current time. {}",
+                                        let err_msg = format!(
+                                            "Failed to get the current time. Reason: {}",
                                             e
-                                        ))
+                                        );
+
+                                        #[cfg(feature = "logging")]
+                                        error!(target: "llama_core", "{}", &err_msg);
+
+                                        LlamaCoreError::Operation(err_msg)
                                     })?;
 
                                 let chat_completion_chunk = ChatCompletionChunk {
@@ -586,10 +741,15 @@ pub async fn chat_completions_stream(
                                 // serialize chat completion chunk
                                 let chunk_str =
                                 serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                    LlamaCoreError::Operation(format!(
-                                        "Failed to serialize chat completion chunk. {}",
+                                    let err_msg = format!(
+                                        "Failed to serialize chat completion chunk. Reason: {}",
                                         e
-                                    ))
+                                    );
+
+                                    #[cfg(feature = "logging")]
+                                    error!(target: "llama_core", "{}", &err_msg);
+
+                                    LlamaCoreError::Operation(err_msg)
                                 })?;
 
                                 Ok(format!("data: {}\n\n", chunk_str))
@@ -609,15 +769,22 @@ pub async fn chat_completions_stream(
                                             completion_tokens: token_info.completion_tokens,
                                             total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
                                         });
-                                        println!("    * token_info: {:?}", token_info);
+
+                                        #[cfg(feature = "logging")]
+                                        info!(target: "llama_core", "token_info: {} prompt tokens, {} completion tokens", token_info.prompt_tokens, token_info.completion_tokens);
 
                                         let created = SystemTime::now()
                                         .duration_since(std::time::UNIX_EPOCH)
                                         .map_err(|e| {
-                                            LlamaCoreError::Operation(format!(
-                                                "Failed to get the current time. {}",
+                                            let err_msg = format!(
+                                                "Failed to get the current time. Reason: {}",
                                                 e
-                                            ))
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
+                                            LlamaCoreError::Operation(err_msg)
                                         })?;
 
                                         let chat_completion_chunk = ChatCompletionChunk {
@@ -633,10 +800,15 @@ pub async fn chat_completions_stream(
                                         // serialize chat completion chunk
                                         let chunk_str =
                                         serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                            LlamaCoreError::Operation(format!(
-                                                "Failed to serialize chat completion chunk. {}",
+                                            let err_msg = format!(
+                                                "Failed to serialize chat completion chunk. Reason: {}",
                                                 e
-                                            ))
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
+                                            LlamaCoreError::Operation(err_msg)
                                         })?;
 
                                         Ok(format!("data: {}\n\n", chunk_str))
@@ -649,8 +821,16 @@ pub async fn chat_completions_stream(
                                     StreamState::EndOfSequence => {
                                         // clear context
                                         if let Err(e) = graph.finish_single() {
+                                            let err_msg = format!(
+                                                "Failed to clean up the context. Reason: {}",
+                                                e
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
                                             return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
-                                                e.to_string(),
+                                                err_msg,
                                             )));
                                         }
 
@@ -671,10 +851,15 @@ pub async fn chat_completions_stream(
                                         let created = SystemTime::now()
                                             .duration_since(std::time::UNIX_EPOCH)
                                             .map_err(|e| {
-                                                LlamaCoreError::Operation(format!(
-                                                    "Failed to get the current time. {}",
+                                                let err_msg = format!(
+                                                    "Failed to get the current time. Reason: {}",
                                                     e
-                                                ))
+                                                );
+
+                                                #[cfg(feature = "logging")]
+                                                error!(target: "llama_core", "{}", &err_msg);
+
+                                                LlamaCoreError::Operation(err_msg)
                                             })?;
 
                                         let chat_completion_chunk = ChatCompletionChunk {
@@ -700,10 +885,15 @@ pub async fn chat_completions_stream(
                                         // serialize chat completion chunk
                                         let chunk_str =
                                             serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                                LlamaCoreError::Operation(format!(
-                                                    "Failed to serialize chat completion chunk. {}",
+                                                let err_msg = format!(
+                                                    "Failed to serialize chat completion chunk. Reason: {}",
                                                     e
-                                                ))
+                                                );
+
+                                                #[cfg(feature = "logging")]
+                                                error!(target: "llama_core", "{}", &err_msg);
+
+                                                LlamaCoreError::Operation(err_msg)
                                             })?;
 
                                         Ok(format!("data: {}\n\n", chunk_str))
@@ -723,10 +913,15 @@ pub async fn chat_completions_stream(
                                         let created = SystemTime::now()
                                         .duration_since(std::time::UNIX_EPOCH)
                                         .map_err(|e| {
-                                            LlamaCoreError::Operation(format!(
-                                                "Failed to get the current time. {}",
+                                            let err_msg = format!(
+                                                "Failed to get the current time. Reason: {}",
                                                 e
-                                            ))
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
+                                            LlamaCoreError::Operation(err_msg)
                                         })?;
 
                                         let chat_completion_chunk = ChatCompletionChunk {
@@ -742,10 +937,15 @@ pub async fn chat_completions_stream(
                                         // serialize chat completion chunk
                                         let chunk_str =
                                         serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                            LlamaCoreError::Operation(format!(
-                                                "Failed to serialize chat completion chunk. {}",
+                                            let err_msg = format!(
+                                                "Failed to serialize chat completion chunk. Reason: {}",
                                                 e
-                                            ))
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
+                                            LlamaCoreError::Operation(err_msg)
                                         })?;
 
                                         Ok(format!("data: {}\n\n", chunk_str))
@@ -759,8 +959,16 @@ pub async fn chat_completions_stream(
                                     ContextFullState::EndOfSequence => {
                                         // clear context
                                         if let Err(e) = graph.finish_single() {
+                                            let err_msg = format!(
+                                                "Failed to clean up the context. Reason: {}",
+                                                e
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
                                             return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
-                                                e.to_string(),
+                                                err_msg,
                                             )));
                                         }
 
@@ -781,10 +989,15 @@ pub async fn chat_completions_stream(
                                         let created = SystemTime::now()
                                             .duration_since(std::time::UNIX_EPOCH)
                                             .map_err(|e| {
-                                                LlamaCoreError::Operation(format!(
-                                                    "Failed to get the current time. {}",
+                                                let err_msg = format!(
+                                                    "Failed to get the current time. Reason: {}",
                                                     e
-                                                ))
+                                                );
+
+                                                #[cfg(feature = "logging")]
+                                                error!(target: "llama_core", "{}", &err_msg);
+
+                                                LlamaCoreError::Operation(err_msg)
                                             })?;
 
                                         let chat_completion_chunk = ChatCompletionChunk {
@@ -810,10 +1023,15 @@ pub async fn chat_completions_stream(
                                         // serialize chat completion chunk
                                         let chunk_str =
                                         serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                            LlamaCoreError::Operation(format!(
-                                                "Failed to serialize chat completion chunk. {}",
+                                            let err_msg = format!(
+                                                "Failed to serialize chat completion chunk. Reason: {}",
                                                 e
-                                            ))
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
+                                            LlamaCoreError::Operation(err_msg)
                                         })?;
 
                                         Ok(format!("data: {}\n\n", chunk_str))
@@ -833,10 +1051,15 @@ pub async fn chat_completions_stream(
                                         let created = SystemTime::now()
                                         .duration_since(std::time::UNIX_EPOCH)
                                         .map_err(|e| {
-                                            LlamaCoreError::Operation(format!(
-                                                "Failed to get the current time. {}",
+                                            let err_msg = format!(
+                                                "Failed to get the current time. Reason: {}",
                                                 e
-                                            ))
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
+                                            LlamaCoreError::Operation(err_msg)
                                         })?;
 
                                         let chat_completion_chunk = ChatCompletionChunk {
@@ -852,10 +1075,15 @@ pub async fn chat_completions_stream(
                                         // serialize chat completion chunk
                                         let chunk_str =
                                         serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                            LlamaCoreError::Operation(format!(
-                                                "Failed to serialize chat completion chunk. {}",
+                                            let err_msg = format!(
+                                                "Failed to serialize chat completion chunk. Reason: {}",
                                                 e
-                                            ))
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
+                                            LlamaCoreError::Operation(err_msg)
                                         })?;
 
                                         Ok(format!("data: {}\n\n", chunk_str))
@@ -868,8 +1096,16 @@ pub async fn chat_completions_stream(
                                     PromptTooLongState::EndOfSequence => {
                                         // clear context
                                         if let Err(e) = graph.finish_single() {
+                                            let err_msg = format!(
+                                                "Failed to clean up the context. Reason: {}",
+                                                e
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "llama_core", "{}", &err_msg);
+
                                             return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
-                                                e.to_string(),
+                                                err_msg,
                                             )));
                                         }
 
@@ -880,29 +1116,46 @@ pub async fn chat_completions_stream(
                             Err(e) => {
                                 // clear context
                                 if let Err(e) = graph.finish_single() {
-                                    println!("Error: {:?}", &e);
+                                    let err_msg = format!(
+                                        "Failed to clean up the context. Reason: {}",
+                                        e
+                                    );
+
+                                    #[cfg(feature = "logging")]
+                                    error!(target: "llama_core", "{}", &err_msg);
+
                                     return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
-                                        e.to_string(),
+                                        err_msg,
                                     )));
                                 }
 
-                                println!("Error: {:?}", &e);
+                                let err_msg = format!("Failed to compute the chat completion. Reason: {}", e);
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
                                 Err(LlamaCoreError::Backend(BackendError::ComputeSingle(
-                                    e.to_string(),
+                                    err_msg,
                                 )))
                             }
                         }
                     }
                     None => {
-                        Err(LlamaCoreError::Operation(String::from(
-                            "There is no model available in the chat graphs.",
-                        )))
+                        let err_msg = "There is no model available in the chat graphs.";
+
+                        #[cfg(feature = "logging")]
+                        error!(target: "llama_core", "{}", &err_msg);
+
+                        Err(LlamaCoreError::Operation(err_msg.into()))
                     }
                 }
             }
         }
     })
     .try_take_while(|x| future::ready(Ok(x != "[GGML] End of sequence" && !x.is_empty())));
+
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "End of the chat completion stream.");
 
     Ok(stream)
 }
@@ -911,11 +1164,20 @@ pub async fn chat_completions_stream(
 pub async fn chat_completions(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<ChatCompletionObject, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "Processing chat completion request in non-stream mode.");
+
     let running_mode = running_mode()?;
     if running_mode == RunningMode::Embeddings {
-        return Err(LlamaCoreError::Operation(format!(
-            "The chat completion is not supported in the {running_mode} mode.",
-        )));
+        let err_msg = format!(
+            "The chat completion is not supported in the {} mode.",
+            running_mode
+        );
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama_core", "{}", &err_msg);
+
+        return Err(LlamaCoreError::Operation(err_msg));
     }
 
     let model_name = chat_request.model.clone();
@@ -924,72 +1186,113 @@ pub async fn chat_completions(
         None => gen_chat_id(),
     };
 
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "user: {}", &id);
+
     // update metadata
-    let mut metadata = update_metadata(chat_request).await?;
+    let mut metadata = check_model_metadata(chat_request).await?;
 
     // build prompt
-    let (prompt, avaible_completion_tokens) = build_prompt(model_name.as_ref(), chat_request)
-        .map_err(|e| LlamaCoreError::Operation(format!("Failed to build prompt. {}", e)))?;
+    let (prompt, avaible_completion_tokens) = build_prompt(model_name.as_ref(), chat_request)?;
 
-    if metadata.log_prompts {
-        print_log_begin_separator("PROMPT", Some("*"), None);
-        println!("\n{}", &prompt,);
-        print_log_end_separator(Some("*"), None);
+    #[cfg(feature = "logging")]
+    {
+        info!(target: "llama_core", "prompt:\n{}", &prompt);
+        info!(target: "llama_core", "avaible_completion_tokens: {}", avaible_completion_tokens);
     }
 
     // update metadata n_predict
     update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
 
-    // set prompt
+    // feed the prompt to the model
     set_prompt(model_name.as_ref(), &prompt)?;
 
     // compute
-    compute(model_name.as_ref(), id)
+    let res = compute(model_name.as_ref(), id);
+
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "End of the chat completion.");
+
+    res
 }
 
 fn compute(
     model_name: Option<&String>,
     id: impl Into<String>,
 ) -> Result<ChatCompletionObject, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "Compute chat completion.");
+
     match model_name {
         Some(model_name) => {
-            let chat_graphs = CHAT_GRAPHS
-                .get()
-                .ok_or(LlamaCoreError::Operation(String::from(
-                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
-                )))?;
+            let chat_graphs = match CHAT_GRAPHS.get() {
+                Some(chat_graphs) => chat_graphs,
+                None => {
+                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                }
+            };
+
             let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
-                    e
-                ))
+                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
             })?;
+
             match chat_graphs.get_mut(model_name) {
                 Some(graph) => compute_by_graph(graph, id),
-                None => Err(LlamaCoreError::Operation(format!(
-                    "The model `{}` does not exist in the chat graphs.",
-                    &model_name
-                ))),
+                None => {
+                    let err_msg = format!(
+                        "The model `{}` does not exist in the chat graphs.",
+                        &model_name
+                    );
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    Err(LlamaCoreError::Operation(err_msg))
+                }
             }
         }
         None => {
-            let chat_graphs = CHAT_GRAPHS
-                .get()
-                .ok_or(LlamaCoreError::Operation(String::from(
-                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
-                )))?;
+            let chat_graphs = match CHAT_GRAPHS.get() {
+                Some(chat_graphs) => chat_graphs,
+                None => {
+                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                }
+            };
+
             let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
-                    e
-                ))
+                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
             })?;
 
             match chat_graphs.iter_mut().next() {
                 Some((_, graph)) => compute_by_graph(graph, id),
-                None => Err(LlamaCoreError::Operation(String::from(
-                    "There is no model available in the chat graphs.",
-                ))),
+                None => {
+                    let err_msg = "There is no model available in the chat graphs.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    Err(LlamaCoreError::Operation(err_msg.into()))
+                }
             }
         }
     }
@@ -999,15 +1302,23 @@ fn compute_by_graph(
     graph: &mut Graph,
     id: impl Into<String>,
 ) -> Result<ChatCompletionObject, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "Compute chat completion by the model named {}.", graph.name());
+
     match graph.compute() {
         Ok(_) => {
             // Retrieve the output.
             let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
             let output = std::str::from_utf8(&output_buffer[..]).map_err(|e| {
-                LlamaCoreError::Operation(format!(
+                let err_msg = format!(
                     "Failed to decode the buffer of the inference result to a utf-8 string. {}",
                     e
-                ))
+                );
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
             })?;
 
             // post-process
@@ -1015,21 +1326,24 @@ fn compute_by_graph(
                 LlamaCoreError::Operation(format!("Failed to post-process the output. {}", e))
             })?;
 
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "post-processed generation: {}", &message);
+
             // retrieve the number of prompt and completion tokens
             let token_info = get_token_info_by_graph(graph)?;
-            if graph.metadata.log_prompts {
-                print_log_begin_separator("PROMPT (Tokens)", Some("*"), None);
-                println!(
-                    "\nprompt tokens: {}, completion_tokens: {}",
-                    token_info.prompt_tokens, token_info.completion_tokens
-                );
-                print_log_end_separator(Some("*"), None);
-            }
+
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "prompt tokens: {}, completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
 
             let created = SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|e| {
-                    LlamaCoreError::Operation(format!("Failed to get the current time. {}", e))
+                    let err_msg = format!("Failed to get the current time. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    LlamaCoreError::Operation(err_msg)
                 })?;
 
             // create ChatCompletionResponse
@@ -1058,32 +1372,42 @@ fn compute_by_graph(
             // Retrieve the output.
             let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
             let output = std::str::from_utf8(&output_buffer[..]).map_err(|e| {
-                LlamaCoreError::Operation(format!(
+                let err_msg = format!(
                     "Failed to decode the buffer of the inference result to a utf-8 string. {}",
                     e
-                ))
+                );
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
             })?;
 
             // post-process
             let message = post_process(output, &graph.metadata.prompt_template).map_err(|e| {
-                LlamaCoreError::Operation(format!("Failed to post-process the output. {}", e))
+                let err_msg = format!("Failed to post-process the output. {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
             })?;
 
             // retrieve the number of prompt and completion tokens
             let token_info = get_token_info_by_graph(graph)?;
-            if graph.metadata.log_prompts {
-                print_log_begin_separator("PROMPT (Tokens)", Some("*"), None);
-                println!(
-                    "\nprompt tokens: {}, completion_tokens: {}",
-                    token_info.prompt_tokens, token_info.completion_tokens
-                );
-                print_log_end_separator(Some("*"), None);
-            }
+
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "prompt tokens: {}, completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
 
             let created = SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|e| {
-                    LlamaCoreError::Operation(format!("Failed to get the current time. {}", e))
+                    let err_msg = format!("Failed to get the current time. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    LlamaCoreError::Operation(err_msg)
                 })?;
 
             // create ChatCompletionResponse
@@ -1111,37 +1435,48 @@ fn compute_by_graph(
         Err(wasmedge_wasi_nn::Error::BackendError(
             wasmedge_wasi_nn::BackendError::PromptTooLong,
         )) => {
-            println!("\n\n[WARNING] The prompt is too long. Please reduce the length of your input and try again.\n");
+            #[cfg(feature = "logging")]
+            warn!(target: "llama_core", "The prompt is too long. Please reduce the length of your input and try again.");
 
             // Retrieve the output.
             let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
             let output = std::str::from_utf8(&output_buffer[..]).map_err(|e| {
-                LlamaCoreError::Operation(format!(
+                let err_msg = format!(
                     "Failed to decode the buffer of the inference result to a utf-8 string. {}",
                     e
-                ))
+                );
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
             })?;
 
             // post-process
             let message = post_process(output, &graph.metadata.prompt_template).map_err(|e| {
-                LlamaCoreError::Operation(format!("Failed to post-process the output. {}", e))
+                let err_msg = format!("Failed to post-process the output. {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
             })?;
 
             // retrieve the number of prompt and completion token
             let token_info = get_token_info_by_graph(graph)?;
-            if graph.metadata.log_prompts {
-                print_log_begin_separator("PROMPT (Tokens)", Some("*"), None);
-                println!(
-                    "\nprompt tokens: {}, completion_tokens: {}",
-                    token_info.prompt_tokens, token_info.completion_tokens
-                );
-                print_log_end_separator(Some("*"), None);
-            }
+
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "prompt tokens: {}, completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
 
             let created = SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|e| {
-                    LlamaCoreError::Operation(format!("Failed to get the current time. {}", e))
+                    let err_msg = format!("Failed to get the current time. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    LlamaCoreError::Operation(err_msg)
                 })?;
 
             // create ChatCompletionResponse
@@ -1166,15 +1501,25 @@ fn compute_by_graph(
                 },
             })
         }
-        Err(e) => Err(LlamaCoreError::Backend(BackendError::Compute(
-            e.to_string(),
-        ))),
+        Err(e) => {
+            let err_msg = format!("Failed to compute the chat completion. Reason: {}", e);
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama_core", "{}", &err_msg);
+
+            Err(LlamaCoreError::Backend(BackendError::Compute(err_msg)))
+        }
     }
 }
 
-async fn update_metadata(chat_request: &ChatCompletionRequest) -> Result<Metadata, LlamaCoreError> {
+async fn check_model_metadata(
+    chat_request: &ChatCompletionRequest,
+) -> Result<Metadata, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "Check model metadata.");
+
     let mut should_update = false;
-    let mut metadata = get_metadata(chat_request.model.as_ref())?;
+    let mut metadata = get_model_metadata(chat_request.model.as_ref())?;
 
     // check if necessary to update `image`
     #[cfg(feature = "https")]
@@ -1261,7 +1606,7 @@ async fn update_metadata(chat_request: &ChatCompletionRequest) -> Result<Metadat
 
     if should_update {
         // update the target graph with the new metadata
-        set_metadata(chat_request.model.as_ref(), &metadata)?;
+        update_model_metadata(chat_request.model.as_ref(), &metadata)?;
     }
 
     Ok(metadata)
@@ -1281,6 +1626,9 @@ async fn update_n_predict(
             false => max_tokens,
         };
 
+        #[cfg(feature = "logging")]
+        info!(target: "llama_core", "n_predict: current: {}, new: {}", metadata.n_predict, max_completion_tokens);
+
         // update n_predict
         metadata.n_predict = max_completion_tokens;
 
@@ -1288,6 +1636,9 @@ async fn update_n_predict(
             should_update = true;
         }
     } else if metadata.n_predict > available_completion_tokens {
+        #[cfg(feature = "logging")]
+        info!(target: "llama_core", "n_predict: current: {}, new: {}", metadata.n_predict, available_completion_tokens);
+
         // update n_predict
         metadata.n_predict = available_completion_tokens;
 
@@ -1298,7 +1649,7 @@ async fn update_n_predict(
 
     if should_update {
         // update the target graph with the new metadata
-        set_metadata(chat_request.model.as_ref(), metadata)?;
+        update_model_metadata(chat_request.model.as_ref(), metadata)?;
     }
 
     Ok(())
@@ -1308,6 +1659,9 @@ fn post_process(
     output: impl AsRef<str>,
     template_ty: &PromptTemplateType,
 ) -> Result<String, String> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "Post-process the generated output.");
+
     let output = if *template_ty == PromptTemplateType::Baichuan2 {
         if output.as_ref().contains("用户:") {
             output.as_ref().trim_end_matches("用户:").trim().to_owned()
@@ -1428,7 +1782,10 @@ fn build_prompt(
     // template: &ChatPrompt,
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<(String, u64), LlamaCoreError> {
-    let metadata = get_metadata(model_name)?;
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "Build the chat prompt from the chat messages.");
+
+    let metadata = get_model_metadata(model_name)?;
     let ctx_size = metadata.ctx_size as u64;
     let chat_prompt = ChatPrompt::from(metadata.prompt_template);
 
@@ -1440,10 +1797,12 @@ fn build_prompt(
         let prompt = match chat_prompt.build(&mut chat_request.messages) {
             Ok(prompt) => prompt,
             Err(e) => {
-                return Err(LlamaCoreError::Operation(format!(
-                    "Fail to build chat prompts: {msg}",
-                    msg = e
-                )))
+                let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                return Err(LlamaCoreError::Operation(err_msg));
             }
         };
 
@@ -1469,6 +1828,9 @@ fn build_prompt(
                         {
                             chat_request.messages.remove(1);
                         } else {
+                            #[cfg(feature = "logging")]
+                            info!(target: "llama_core", "prompt: {}", &prompt);
+
                             return Ok((prompt, ctx_size - max_prompt_tokens));
                         }
                     }
@@ -1485,10 +1847,23 @@ fn build_prompt(
                         {
                             chat_request.messages.remove(0);
                         } else {
+                            #[cfg(feature = "logging")]
+                            info!(target: "llama_core", "prompt: {}", &prompt);
+
                             return Ok((prompt, ctx_size - max_prompt_tokens));
                         }
                     }
-                    _ => panic!("Found a unsupported chat message role!"),
+                    _ => {
+                        let err_msg = format!(
+                            "Found a unsupported chat message role: {:?}",
+                            chat_request.messages[0].role()
+                        );
+
+                        #[cfg(feature = "logging")]
+                        error!(target: "llama_core", "{}", &err_msg);
+
+                        panic!("{}", err_msg)
+                    }
                 }
 
                 continue;
@@ -1501,12 +1876,30 @@ fn build_prompt(
 /// Downloads an image from the given URL and returns the file name.
 #[cfg(feature = "https")]
 async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "Download image from the URL.");
+
     let image_url = image_url.as_ref();
-    let url =
-        reqwest::Url::parse(image_url).map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
-    let response = reqwest::get(url)
-        .await
-        .map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
+    let url = reqwest::Url::parse(image_url).map_err(|e| {
+        let err_msg = format!("Fail to parse the image URL: {}. Reason: {}", image_url, e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama_core", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
+
+    let response = reqwest::get(url).await.map_err(|e| {
+        let err_msg = format!(
+            "Fail to download the image from the URL: {}. Reason: {}",
+            image_url, e
+        );
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama_core", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
 
     let fname = response
         .url()
@@ -1519,14 +1912,35 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
         )))?
         .to_string();
 
-    let mut dest =
-        std::fs::File::create(&fname).map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
+    let mut dest = std::fs::File::create(&fname).map_err(|e| {
+        let err_msg = format!(
+            "Fail to create the file to save the image: {}. Reason: {}",
+            &fname, e
+        );
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama_core", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
 
     let mut content = response.bytes_stream();
     while let Some(item) = content.try_next().await.unwrap() {
-        std::io::copy(&mut item.as_ref(), &mut dest)
-            .map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
+        std::io::copy(&mut item.as_ref(), &mut dest).map_err(|e| {
+            let err_msg = format!(
+                "Fail to write the image content to the file: {}. Reason: {}",
+                &fname, e
+            );
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama_core", "{}", &err_msg);
+
+            LlamaCoreError::Operation(err_msg)
+        })?;
     }
+
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "The image is downloaded successfully.");
 
     Ok(fname)
 }
@@ -1534,39 +1948,71 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
 fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<(), LlamaCoreError> {
     match model_name {
         Some(model_name) => {
-            let chat_graphs = CHAT_GRAPHS
-                .get()
-                .ok_or(LlamaCoreError::Operation(String::from(
-                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
-                )))?;
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "Set prompt to the chat model named {}.", model_name);
+
+            let chat_graphs = match CHAT_GRAPHS.get() {
+                Some(chat_graphs) => chat_graphs,
+                None => {
+                    let err_msg = format!("Fail to get the underlying value of `CHAT_GRAPHS` while trying to set prompt to the model named {}.", model_name);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg));
+                }
+            };
+
             let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
-                    e
-                ))
+                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS` while trying to set prompt to the model named {}. Reason: {}", model_name, e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
             })?;
+
             match chat_graphs.get_mut(model_name) {
                 Some(graph) => {
                     let tensor_data = prompt.as_ref().as_bytes().to_vec();
                     set_tensor_data_u8(graph, 0, &tensor_data)
                 }
-                None => Err(LlamaCoreError::Operation(format!(
-                    "The model `{}` does not exist in the chat graphs.",
-                    &model_name
-                ))),
+                None => {
+                    let err_msg = format!(
+                        "The model `{}` does not exist in the chat graphs while trying to set prompt.",
+                        &model_name
+                    );
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    Err(LlamaCoreError::Operation(err_msg))
+                }
             }
         }
         None => {
-            let chat_graphs = CHAT_GRAPHS
-                .get()
-                .ok_or(LlamaCoreError::Operation(String::from(
-                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
-                )))?;
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "Set prompt to the default chat model.");
+
+            let chat_graphs = match CHAT_GRAPHS.get() {
+                Some(chat_graphs) => chat_graphs,
+                None => {
+                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS` while trying to set prompt to the default model.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                }
+            };
+
             let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
-                    e
-                ))
+                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`while trying to set prompt to the default model. Reason: {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
             })?;
 
             match chat_graphs.iter_mut().next() {
@@ -1574,9 +2020,14 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
                     let tensor_data = prompt.as_ref().as_bytes().to_vec();
                     set_tensor_data_u8(graph, 0, &tensor_data)
                 }
-                None => Err(LlamaCoreError::Operation(String::from(
-                    "There is no model available in the chat graphs.",
-                ))),
+                None => {
+                    let err_msg = "There is no model available in the chat graphs while trying to set prompt to the default model.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", err_msg);
+
+                    Err(LlamaCoreError::Operation(err_msg.into()))
+                }
             }
         }
     }
@@ -1599,97 +2050,166 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
 //     Ok(())
 // }
 
-fn get_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCoreError> {
+/// Get a copy of the metadata of the model.
+fn get_model_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "Get the model metadata.");
+
     match model_name {
         Some(model_name) => {
-            let chat_graphs = CHAT_GRAPHS
-                .get()
-                .ok_or(LlamaCoreError::Operation(String::from(
-                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
-                )))?;
+            let chat_graphs = match CHAT_GRAPHS.get() {
+                Some(chat_graphs) => chat_graphs,
+                None => {
+                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                }
+            };
+
             let chat_graphs = chat_graphs.lock().map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
-                    e
-                ))
+                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
             })?;
+
             match chat_graphs.get(model_name) {
                 Some(graph) => Ok(graph.metadata.clone()),
-                None => Err(LlamaCoreError::Operation(format!(
-                    "The model `{}` does not exist in the chat graphs.",
-                    &model_name
-                ))),
+                None => {
+                    let err_msg = format!(
+                        "The model `{}` does not exist in the chat graphs.",
+                        &model_name
+                    );
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    Err(LlamaCoreError::Operation(err_msg))
+                }
             }
         }
         None => {
-            let chat_graphs = CHAT_GRAPHS
-                .get()
-                .ok_or(LlamaCoreError::Operation(String::from(
-                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
-                )))?;
+            let chat_graphs = match CHAT_GRAPHS.get() {
+                Some(chat_graphs) => chat_graphs,
+                None => {
+                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                }
+            };
+
             let chat_graphs = chat_graphs.lock().map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
-                    e
-                ))
+                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
             })?;
 
             match chat_graphs.iter().next() {
                 Some((_, graph)) => Ok(graph.metadata.clone()),
-                None => Err(LlamaCoreError::Operation(String::from(
-                    "There is no model available in the chat graphs.",
-                ))),
+                None => {
+                    let err_msg = "There is no model available in the chat graphs.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", err_msg);
+
+                    Err(LlamaCoreError::Operation(err_msg.into()))
+                }
             }
         }
     }
 }
 
-fn set_metadata(model_name: Option<&String>, metadata: &Metadata) -> Result<(), LlamaCoreError> {
+fn update_model_metadata(
+    model_name: Option<&String>,
+    metadata: &Metadata,
+) -> Result<(), LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "Update the model metadata.");
+
     let config = match serde_json::to_string(metadata) {
         Ok(config) => config,
         Err(e) => {
-            return Err(LlamaCoreError::Operation(format!(
-                "Fail to serialize metadata to a JSON string. {}",
-                e
-            )));
+            let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama_core", "{}", &err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg));
         }
     };
 
     match model_name {
         Some(model_name) => {
-            let chat_graphs = CHAT_GRAPHS
-                .get()
-                .ok_or(LlamaCoreError::Operation(String::from(
-                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
-                )))?;
+            let chat_graphs = match CHAT_GRAPHS.get() {
+                Some(chat_graphs) => chat_graphs,
+                None => {
+                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                }
+            };
+
             let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
-                    e
-                ))
+                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. Reason: {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
             })?;
+
             match chat_graphs.get_mut(model_name) {
                 Some(graph) => {
                     // update metadata
                     set_tensor_data_u8(graph, 1, config.as_bytes())
                 }
-                None => Err(LlamaCoreError::Operation(format!(
-                    "The model `{}` does not exist in the chat graphs.",
-                    &model_name
-                ))),
+                None => {
+                    let err_msg = format!(
+                        "The model `{}` does not exist in the chat graphs.",
+                        &model_name
+                    );
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    Err(LlamaCoreError::Operation(err_msg))
+                }
             }
         }
         None => {
-            let chat_graphs = CHAT_GRAPHS
-                .get()
-                .ok_or(LlamaCoreError::Operation(String::from(
-                    "Fail to get the underlying value of `CHAT_GRAPHS`.",
-                )))?;
+            let chat_graphs = match CHAT_GRAPHS.get() {
+                Some(chat_graphs) => chat_graphs,
+                None => {
+                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                }
+            };
+
             let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                LlamaCoreError::Operation(format!(
-                    "Fail to acquire the lock of `CHAT_GRAPHS`. {}",
-                    e
-                ))
+                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. Reason: {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
             })?;
 
             match chat_graphs.iter_mut().next() {
@@ -1697,9 +2217,14 @@ fn set_metadata(model_name: Option<&String>, metadata: &Metadata) -> Result<(), 
                     // update metadata
                     set_tensor_data_u8(graph, 1, config.as_bytes())
                 }
-                None => Err(LlamaCoreError::Operation(String::from(
-                    "There is no model available in the chat graphs.",
-                ))),
+                None => {
+                    let err_msg = "There is no model available in the chat graphs.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", err_msg);
+
+                    Err(LlamaCoreError::Operation(err_msg.into()))
+                }
             }
         }
     }

@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate log;
+
 mod backend;
 mod error;
 mod utils;
@@ -7,7 +10,9 @@ use chat_prompts::PromptTemplateType;
 use clap::Parser;
 use error::ServerError;
 use hyper::{
+    body::HttpBody,
     header,
+    server::conn::AddrStream,
     service::{make_service_fn, service_fn},
     Body, Request, Response, Server, StatusCode,
 };
@@ -15,7 +20,7 @@ use llama_core::MetadataBuilder;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, path::PathBuf};
-use utils::log;
+use utils::LogLevel;
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -84,38 +89,46 @@ struct Cli {
     /// Path to the multimodal projector file
     #[arg(long)]
     llava_mmproj: Option<String>,
-    /// Print prompt strings to stdout
-    #[arg(long)]
-    log_prompts: bool,
-    /// Print statistics to stdout
-    #[arg(long)]
-    log_stat: bool,
-    /// Print all log information to stdout
-    #[arg(long)]
-    log_all: bool,
     /// Socket address of LlamaEdge API Server instance
     #[arg(long, default_value = DEFAULT_SOCKET_ADDRESS)]
     socket_addr: String,
     /// Root path for the Web UI files
     #[arg(long, default_value = "chatbot-ui")]
     web_ui: PathBuf,
+    /// Deprecated. Print prompt strings to stdout
+    #[arg(long)]
+    log_prompts: bool,
+    /// Deprecated. Print statistics to stdout
+    #[arg(long)]
+    log_stat: bool,
+    /// Deprecated. Print all log information to stdout
+    #[arg(long)]
+    log_all: bool,
 }
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), ServerError> {
-    // get the environment variable `PLUGIN_DEBUG`
-    let plugin_debug = std::env::var("PLUGIN_DEBUG").unwrap_or_default();
-    let plugin_debug = match plugin_debug.is_empty() {
-        true => false,
-        false => plugin_debug.to_lowercase().parse::<bool>().unwrap_or(false),
-    };
+    let mut plugin_debug = false;
+
+    // get the environment variable `LLAMA_LOG`
+    let log_level: LogLevel = std::env::var("LLAMA_LOG")
+        .unwrap_or("info".to_string())
+        .parse()
+        .unwrap_or(LogLevel::Info);
+
+    if log_level == LogLevel::Debug || log_level == LogLevel::Trace {
+        plugin_debug = true;
+    }
+
+    // set global logger
+    wasi_logger::Logger::install().expect("failed to install wasi_logger::Logger");
+    log::set_max_level(log_level.into());
 
     // parse the command line arguments
     let cli = Cli::parse();
 
     // log the version of the server
-    let server_version = env!("CARGO_PKG_VERSION").to_string();
-    log(format!("\n[INFO] LlamaEdge version: {}", &server_version));
+    info!(target: "server_config", "server version: {}", env!("CARGO_PKG_VERSION"));
 
     // log model names
     if cli.model_name.is_empty() && cli.model_name.len() > 2 {
@@ -123,18 +136,23 @@ async fn main() -> Result<(), ServerError> {
             "Invalid setting for model name. For running chat or embedding model, please specify a single model name. For running both chat and embedding models, please specify two model names: the first one for chat model, the other for embedding model.".to_owned(),
         ));
     }
-    log(format!(
-        "[INFO] Model names: {names}",
-        names = &cli.model_name.join(",")
-    ));
+    info!(target: "server_config", "model_name: {}", cli.model_name.join(",").to_string());
 
-    // context size
+    // log model alias
+    let mut model_alias = String::new();
+    if cli.model_name.len() == 1 {
+        model_alias.clone_from(&cli.model_alias[0]);
+    } else if cli.model_alias.len() == 2 {
+        model_alias = cli.model_alias.join(",").to_string();
+    }
+    info!(target: "server_config", "model_alias: {}", model_alias);
+
+    // log context size
     if cli.ctx_size.is_empty() && cli.ctx_size.len() > 2 {
         return Err(ServerError::ArgumentError(
             "Invalid setting for context size. For running chat or embedding model, please specify a single context size. For running both chat and embedding models, please specify two context sizes: the first one for chat model, the other for embedding model.".to_owned(),
         ));
     }
-
     let mut ctx_sizes_str = String::new();
     if cli.model_name.len() == 1 {
         ctx_sizes_str = cli.ctx_size[0].to_string();
@@ -146,12 +164,9 @@ async fn main() -> Result<(), ServerError> {
             .collect::<Vec<String>>()
             .join(",");
     }
-    log(format!(
-        "[INFO] Context size: {ctx_sizes}",
-        ctx_sizes = ctx_sizes_str
-    ));
+    info!(target: "server_config", "ctx_size: {}", ctx_sizes_str);
 
-    // batch size
+    // log batch size
     if cli.batch_size.is_empty() && cli.batch_size.len() > 2 {
         return Err(ServerError::ArgumentError(
             "Invalid setting for batch size. For running chat or embedding model, please specify a single batch size. For running both chat and embedding models, please specify two batch sizes: the first one for chat model, the other for embedding model.".to_owned(),
@@ -168,12 +183,9 @@ async fn main() -> Result<(), ServerError> {
             .collect::<Vec<String>>()
             .join(",");
     }
-    log(format!(
-        "[INFO] Batch size: {batch_sizes}",
-        batch_sizes = batch_sizes_str
-    ));
+    info!(target: "server_config", "batch_size: {}", batch_sizes_str);
 
-    // prompt template
+    // log prompt template
     if cli.prompt_template.is_empty() && cli.prompt_template.len() > 2 {
         return Err(ServerError::ArgumentError(
             "LlamaEdge API server requires prompt templates. For running chat or embedding model, please specify a single prompt template. For running both chat and embedding models, please specify two prompt templates: the first one for chat model, the other for embedding model.".to_owned(),
@@ -185,52 +197,46 @@ async fn main() -> Result<(), ServerError> {
         .map(|n| n.to_string())
         .collect::<Vec<String>>()
         .join(",");
-    log(format!("[INFO] Prompt template: {prompt_template_str}"));
+    info!(target: "server_config", "prompt_template: {}", prompt_template_str);
     if cli.model_name.len() != cli.prompt_template.len() {
         return Err(ServerError::ArgumentError(
             "The number of model names and prompt templates must be the same.".to_owned(),
         ));
     }
 
-    // log other settings
+    // log reverse prompt
     if let Some(reverse_prompt) = &cli.reverse_prompt {
-        log(format!("[INFO] reverse prompt: {}", reverse_prompt));
+        info!(target: "server_config", "reverse_prompt: {}", reverse_prompt);
     }
-    log(format!(
-        "[INFO] Number of tokens to predict: {}",
-        &cli.n_predict
-    ));
-    log(format!(
-        "[INFO] Number of layers to run on the GPU: {}",
-        &cli.n_gpu_layers
-    ));
-    log(format!(
-        "[INFO] Disable memory mapping for file access : {}",
-        &cli.no_mmap
-    ));
-    log(format!("[INFO] Temperature for sampling: {}", &cli.temp));
-    log(format!(
-        "[INFO] Top-p sampling (1.0 = disabled): {}",
-        &cli.top_p
-    ));
-    log(format!(
-        "[INFO] Penalize repeat sequence of tokens: {}",
-        &cli.repeat_penalty
-    ));
-    log(format!(
-        "[INFO] Presence penalty (0.0 = disabled): {}",
-        &cli.presence_penalty
-    ));
-    log(format!(
-        "[INFO] Frequency penalty (0.0 = disabled): {}",
-        &cli.frequency_penalty
-    ));
+
+    // log n_predict
+    info!(target: "server_config", "n_predict: {}", cli.n_predict);
+
+    // log n_gpu_layers
+    info!(target: "server_config", "n_gpu_layers: {}", cli.n_gpu_layers);
+  
+    // log no_mmap
+    info!(target: "server_config", "no_mmap: {}", cli.no_mmap);
+
+    // log temperature
+    info!(target: "server_config", "temp: {}", cli.temp);
+
+    // log top-p sampling
+    info!(target: "server_config", "top_p: {}", cli.top_p);
+
+    // repeat penalty
+    info!(target: "server_config", "repeat_penalty: {}", cli.repeat_penalty);
+
+    // log presence penalty
+    info!(target: "server_config", "presence_penalty: {}", cli.presence_penalty);
+
+    // log frequency penalty
+    info!(target: "server_config", "frequency_penalty: {}", cli.frequency_penalty);
+
+    // log multimodal projector
     if let Some(llava_mmproj) = &cli.llava_mmproj {
-        log(format!("[INFO] Multimodal projector: {}", llava_mmproj));
+        info!(target: "server_config", "llava_mmproj: {}", llava_mmproj.clone());
     }
-    log(format!("[INFO] Enable prompt log: {}", &cli.log_prompts));
-    log(format!("[INFO] Enable plugin log: {}", &cli.log_stat));
-    log(format!("[INFO] Socket address: {}", &cli.socket_addr));
 
     // initialize the core context
     let mut chat_model_config = None;
@@ -246,8 +252,7 @@ async fn main() -> Result<(), ServerError> {
                 )
                 .with_ctx_size(cli.ctx_size[0])
                 .with_batch_size(cli.batch_size[0])
-                .enable_prompts_log(cli.log_prompts || cli.log_all)
-                .enable_plugin_log(cli.log_stat || cli.log_all)
+                .enable_plugin_log(true)
                 .enable_debug_log(plugin_debug)
                 .build();
 
@@ -283,8 +288,7 @@ async fn main() -> Result<(), ServerError> {
                 .with_frequency_penalty(cli.frequency_penalty)
                 .with_reverse_prompt(cli.reverse_prompt)
                 .with_mmproj(cli.llava_mmproj.clone())
-                .enable_prompts_log(cli.log_prompts || cli.log_all)
-                .enable_plugin_log(cli.log_stat || cli.log_all)
+                .enable_plugin_log(true)
                 .enable_debug_log(plugin_debug)
                 .build();
 
@@ -330,8 +334,7 @@ async fn main() -> Result<(), ServerError> {
         .with_frequency_penalty(cli.frequency_penalty)
         .with_reverse_prompt(cli.reverse_prompt)
         .with_mmproj(cli.llava_mmproj.clone())
-        .enable_prompts_log(cli.log_prompts || cli.log_all)
-        .enable_plugin_log(cli.log_stat || cli.log_all)
+        .enable_plugin_log(true)
         .enable_debug_log(plugin_debug)
         .build();
 
@@ -361,8 +364,7 @@ async fn main() -> Result<(), ServerError> {
         )
         .with_ctx_size(cli.ctx_size[1])
         .with_batch_size(cli.batch_size[1])
-        .enable_prompts_log(cli.log_prompts || cli.log_all)
-        .enable_plugin_log(cli.log_stat || cli.log_all)
+        .enable_plugin_log(true)
         .enable_debug_log(plugin_debug)
         .build();
 
@@ -380,7 +382,7 @@ async fn main() -> Result<(), ServerError> {
             .map_err(|e| ServerError::Operation(format!("{}", e)))?;
     }
 
-    // get the plugin version info
+    // log plugin version
     let plugin_info =
         llama_core::get_plugin_info().map_err(|e| ServerError::Operation(e.to_string()))?;
     let plugin_version = format!(
@@ -388,7 +390,7 @@ async fn main() -> Result<(), ServerError> {
         build_number = plugin_info.build_number,
         commit_id = plugin_info.commit_id,
     );
-    log(format!("[INFO] Wasi-nn-ggml plugin: {}", &plugin_version));
+    info!(target: "server_config", "plugin_ggml_version: {}", plugin_version);
 
     // socket address
     let addr = cli
@@ -397,9 +399,12 @@ async fn main() -> Result<(), ServerError> {
         .map_err(|e| ServerError::SocketAddr(e.to_string()))?;
     let port = addr.port().to_string();
 
+    // log socket address
+    info!(target: "server_config", "socket_address: {}", addr.to_string());
+
     // create server info
     let server_info = ServerInfo {
-        version: server_version,
+        version: env!("CARGO_PKG_VERSION").to_string(),
         plugin_version,
         port,
         chat_model: chat_model_config,
@@ -409,7 +414,11 @@ async fn main() -> Result<(), ServerError> {
         .set(server_info)
         .map_err(|_| ServerError::Operation("Failed to set `SERVER_INFO`.".to_string()))?;
 
-    let new_service = make_service_fn(move |_| {
+    let new_service = make_service_fn(move |conn: &AddrStream| {
+        // log socket address
+        info!(target: "connection", "remote_addr: {}, local_addr: {}", conn.remote_addr().to_string(), conn.local_addr().to_string());
+
+        // web ui
         let web_ui = cli.web_ui.to_string_lossy().to_string();
 
         async move { Ok::<_, Error>(service_fn(move |req| handle_request(req, web_ui.clone()))) }
@@ -417,11 +426,11 @@ async fn main() -> Result<(), ServerError> {
 
     let server = Server::bind(&addr).serve(new_service);
 
-    log(format!(
-        "[INFO] LlamaEdge API server listening on http://{}:{}",
-        addr.ip(),
-        addr.port()
-    ));
+    // println!(
+    //     "LlamaEdge API server listening on http://{}:{}",
+    //     addr.ip(),
+    //     addr.port()
+    // );
 
     match server.await {
         Ok(_) => Ok(()),
@@ -440,11 +449,63 @@ async fn handle_request(
     let root_path = path_iter.next().unwrap_or_default();
     let root_path = "/".to_owned() + root_path.to_str().unwrap_or_default();
 
-    match root_path.as_str() {
-        "/echo" => Ok(Response::new(Body::from("echo test"))),
-        "/v1" => backend::handle_llama_request(req).await,
-        _ => Ok(static_response(path_str, web_ui)),
+    // log request
+    {
+        let method = hyper::http::Method::as_str(req.method()).to_string();
+        let path = req.uri().path().to_string();
+        let version = format!("{:?}", req.version());
+        if req.method() == hyper::http::Method::POST {
+            let size: u64 = req
+                .headers()
+                .get("content-length")
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .parse()
+                .unwrap();
+
+            info!(target: "request", "method: {}, endpoint: {}, http_version: {}, size: {}", method, path, version, size);
+        } else {
+            info!(target: "request", "method: {}, endpoint: {}, http_version: {}", method, path, version);
+        }
     }
+
+    let response = match root_path.as_str() {
+        "/echo" => Response::new(Body::from("echo test")),
+        "/v1" => backend::handle_llama_request(req).await,
+        _ => static_response(path_str, web_ui),
+    };
+
+    // log response
+    {
+        let status_code = response.status();
+        if status_code.as_u16() < 400 {
+            // log response
+            let response_version = format!("{:?}", response.version());
+            let response_body_size: u64 = response.body().size_hint().lower();
+            let response_status = status_code.as_u16();
+            let response_is_informational = status_code.is_informational();
+            let response_is_success = status_code.is_success();
+            let response_is_redirection = status_code.is_redirection();
+            let response_is_client_error = status_code.is_client_error();
+            let response_is_server_error = status_code.is_server_error();
+
+            info!(target: "response", "version: {}, body_size: {}, status: {}, is_informational: {}, is_success: {}, is_redirection: {}, is_client_error: {}, is_server_error: {}", response_version, response_body_size, response_status, response_is_informational, response_is_success, response_is_redirection, response_is_client_error, response_is_server_error);
+        } else {
+            let response_version = format!("{:?}", response.version());
+            let response_body_size: u64 = response.body().size_hint().lower();
+            let response_status = status_code.as_u16();
+            let response_is_informational = status_code.is_informational();
+            let response_is_success = status_code.is_success();
+            let response_is_redirection = status_code.is_redirection();
+            let response_is_client_error = status_code.is_client_error();
+            let response_is_server_error = status_code.is_server_error();
+
+            error!(target: "response", "version: {}, body_size: {}, status: {}, is_informational: {}, is_success: {}, is_redirection: {}, is_client_error: {}, is_server_error: {}", response_version, response_body_size, response_status, response_is_informational, response_is_success, response_is_redirection, response_is_client_error, response_is_server_error);
+        }
+    }
+
+    Ok(response)
 }
 
 fn static_response(path_str: &str, root: String) -> Response<Body> {
