@@ -118,7 +118,7 @@ fn main() -> Result<(), String> {
     // no_mmap
     let no_mmap = matches.get_flag("no_mmap");
     println!("[INFO] no mmap: {nommap}", nommap = !no_mmap);
-    options.use_mmap = !no_mmap;
+    options.use_mmap = Some(!no_mmap);
 
     // batch size
     let batch_size = matches.get_one::<u32>("batch_size").unwrap();
