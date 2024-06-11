@@ -1,6 +1,19 @@
 # Getting started with Docker
 
-> For Nvidia devices: replace the `latest` tag with `cuda12` or `cuda11`. If you need to build the images yourself, replace `Dockerfile` with `Dockerfile.cuda11` or `Dockerfile.cuda12`.
+## Why running LlamaEdge in Docker?
+
+* Support LLMs, embedding models and [multimodal](https://www.secondstate.io/articles/llava-v1.6-vicuna-7b/) models
+  * [text-to-image](https://github.com/WasmEdge/WasmEdge/issues/3369), [vision](https://github.com/Charles-Schleich/WasmEdge-WASINN-examples/tree/master/pytorch-yolo-image) and [voice](https://github.com/WasmEdge/WasmEdge/issues/3170) models coming soon
+* OpenAI compatibility for [agent frameworks and apps](https://llamaedge.com/docs/category/drop-in-replacement-for-openai)
+* Smaller than PyTorch or Ollama
+* Multiple runtimes for CPUs and GPUs to choose from
+  * Default: GGML and llama.cpp for Mac (Apple Silicon), Nvidia, and CPUs
+  * [MLX](https://github.com/WasmEdge/WasmEdge/issues/3266) for advanced Apple Silicon
+  * TensorRT for advanced Nvidia
+  * [Intel Neural Speed](https://github.com/second-state/WasmEdge-WASINN-examples/pull/135) for advanced Intel CPUs
+* LlamaEdge is a [developer platform](https://llamaedge.com/docs/user-guide/server-side-rag/quick-start) that enables you to build [complete inference apps in a single container](https://docs.gaianet.ai/)
+
+> For Nvidia devices: replace the `latest` tag with `cuda12` or `cuda11`. If you need to build the images yourself, replace `Dockerfile` with `Dockerfile.cuda12` or `Dockerfile.cuda11`.
 
 ## Start a chatbot server
 
