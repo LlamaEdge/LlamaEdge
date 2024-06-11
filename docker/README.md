@@ -1,5 +1,7 @@
 # Getting started with Docker
 
+> For Nvidia devices: replace the `latest` tag with `cuda12` or `cuda11`. If you need to build the images yourself, replace `Dockerfile` with `Dockerfile.cuda11` or `Dockerfile.cuda12`.
+
 ## Start a chatbot server
 
 First, download an LLM chat model file. You can find many of them [here](https://huggingface.co/second-state).
@@ -17,7 +19,7 @@ the prompt template for this model,
 and the context size you would like to support (limited by the max context size of this model).
 
 ```
-docker run --rm -p 8080:8080 -v $(pwd):/models:z --name llamaedge secondstate/llamaedge Qwen2-0.5B-Instruct-Q5_K_M.gguf chatml 1024
+docker run --rm -p 8080:8080 -v $(pwd):/models:z --name llamaedge secondstate/llamaedge:latest Qwen2-0.5B-Instruct-Q5_K_M.gguf chatml 1024
 ```
 
 Go to http://localhost:8080 from your browser to chat with the model!
@@ -42,7 +44,7 @@ the embedding model file name (also in GGUF),
 and the context size for the embedding model.
 
 ```
-docker run --rm -p 8080:8080 -v $(pwd):/models:z --name llamaedge secondstate/llamaedge Qwen2-0.5B-Instruct-Q5_K_M.gguf chatml 1024 nomic-embed-text-v1.5-f16.gguf 512
+docker run --rm -p 8080:8080 -v $(pwd):/models:z --name llamaedge secondstate/llamaedge:latest Qwen2-0.5B-Instruct-Q5_K_M.gguf chatml 1024 nomic-embed-text-v1.5-f16.gguf 512
 ```
 
 You can still access the server as a chatbot at http://localhost:8080. You can also make an OpenAI style API
@@ -64,13 +66,13 @@ docker container stop llamaedge
 ## Build your own Docker image locally
 
 ```
-docker build --tag secondstate/llamaedge .
+docker build . --tag secondstate/llamaedge:latest -f Dockerfile
 ```
 
 Cross-platform build.
 
 ```
-docker buildx build --platform linux/arm64,linux/amd64 --tag secondstate/llamaedge:latest .
+docker buildx build . --platform linux/arm64,linux/amd64 --tag secondstate/llamaedge:latest -f Dockerfile
 ```
 
 Publish to Docker hub.
