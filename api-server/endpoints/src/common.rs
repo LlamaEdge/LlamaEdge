@@ -20,13 +20,13 @@ pub struct Usage {
 }
 
 /// The reason the model stopped generating tokens.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy)]
 #[allow(non_camel_case_types)]
 pub enum FinishReason {
     /// `stop` if the model hit a natural stop point or a provided stop sequence.
     stop,
     /// `length` if the maximum number of tokens specified in the request was reached.
     length,
-    /// `function_call` if the model called a function.
-    function_call,
+    /// `tool_calls` if the model called a tool.
+    tool_calls,
 }
