@@ -32,10 +32,20 @@ use vicuna::*;
 use wizard::*;
 use zephyr::*;
 
+use endpoints::chat::Tool;
+
 /// Trait for building prompts for chat completions.
 #[enum_dispatch::enum_dispatch]
 pub trait BuildChatPrompt: Send {
     fn build(&self, messages: &mut Vec<ChatCompletionRequestMessage>) -> Result<String>;
+
+    fn build_with_tools(
+        &self,
+        _messages: &mut Vec<ChatCompletionRequestMessage>,
+        _tools: Option<&[Tool]>,
+    ) -> Result<String> {
+        Ok(String::from("Not implemented"))
+    }
 }
 
 #[enum_dispatch::enum_dispatch(BuildChatPrompt)]
@@ -43,6 +53,7 @@ pub enum ChatPrompt {
     Llama2ChatPrompt,
     Llama3ChatPrompt,
     MistralInstructPrompt,
+    MistralChatPrompt,
     MistralLitePrompt,
     OpenChatPrompt,
     CodeLlamaInstructPrompt,
@@ -77,6 +88,7 @@ impl From<PromptTemplateType> for ChatPrompt {
             PromptTemplateType::MistralInstruct => {
                 ChatPrompt::MistralInstructPrompt(MistralInstructPrompt)
             }
+            PromptTemplateType::MistralChat => ChatPrompt::MistralChatPrompt(MistralChatPrompt),
             PromptTemplateType::MistralLite => ChatPrompt::MistralLitePrompt(MistralLitePrompt),
             PromptTemplateType::OpenChat => ChatPrompt::OpenChatPrompt(OpenChatPrompt),
             PromptTemplateType::CodeLlama => {
