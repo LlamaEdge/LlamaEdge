@@ -26,6 +26,7 @@ text-splitter = { version = "^0.7", features = ["tiktoken-rs", "markdown"] }
 tiktoken-rs = "^0.5"
 wasi-logger = { workspace = true, optional = true }
 log = { workspace = true, optional = true }
+regex = "1"
 
 [features]
 default = []
