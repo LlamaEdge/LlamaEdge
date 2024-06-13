@@ -118,17 +118,24 @@ to support these content sizes.
 docker run --rm -p 8080:8080 --name api-server secondstate/llama-3-8b-nomic-1.5:latest ctx-size 8192 8192
 ```
 
-## Why running LlamaEdge in Docker?
+## Why LlamaEdge?
 
-* Support LLMs, embedding models and [multimodal](https://www.secondstate.io/articles/llava-v1.6-vicuna-7b/) models
-  * [text-to-image](https://github.com/WasmEdge/WasmEdge/issues/3369), [vision](https://github.com/Charles-Schleich/WasmEdge-WASINN-examples/tree/master/pytorch-yolo-image) and [voice](https://github.com/WasmEdge/WasmEdge/issues/3170) models coming soon
-* OpenAI compatibility for [agent frameworks and apps](https://llamaedge.com/docs/category/drop-in-replacement-for-openai)
-* Smaller than PyTorch or Ollama
-* Multiple runtimes for CPUs and GPUs to choose from
-  * Default: GGML and llama.cpp for Mac (Apple Silicon), Nvidia, and CPUs
-  * [MLX](https://github.com/WasmEdge/WasmEdge/issues/3266) for advanced Apple Silicon
-  * TensorRT for advanced Nvidia
-  * [Intel Neural Speed](https://github.com/second-state/WasmEdge-WASINN-examples/pull/135) for advanced Intel CPUs
-* LlamaEdge is a [developer platform](https://llamaedge.com/docs/user-guide/server-side-rag/quick-start) that enables you to build [complete inference apps in a single container](https://docs.gaianet.ai/)
+LlamaEdge supports multiple types of models and their corresponding OpenAI-compatible APIs. 
+We have seen LLM chat and embedding APIs here. 
+It also supports multimodal vision models like [Llava](https://www.secondstate.io/articles/llava-v1.6-vicuna-7b/), 
+[voice-to-text](https://github.com/WasmEdge/WasmEdge/issues/3170) models like Whisper, and text-to-image models like Stable Diffusion.
 
+LlamaEdge supports multiple underlying GPU or CPU drivers and execution frameworks.
+
+* GGML for generic Mac (Apple Silicon), Nvidia, and all CPUs
+* [MLX](https://github.com/WasmEdge/WasmEdge/issues/3266) for advanced Apple Silicon
+* TensorRT for advanced Nvidia
+* [Intel Neural Speed](https://github.com/second-state/WasmEdge-WASINN-examples/pull/135) for advanced Intel CPUs
+* Experimental WebGPU support in Docker
+
+Finally, LlamaEdge enables developers to create applications on top of its component APIs. 
+For example, [GaiaNet](https://docs.gaianet.ai/) built personalized and decentralized RAG services. 
+The [Moxin](https://github.com/moxin-org/moxin) project is a rich Chatbot UI. Both projects are based on the LlamaEdge Rust SDK. 
+The [OpenInterpreter](https://github.com/OpenInterpreter/01) project embeds LlamaEdge as an LLM provider in their Python app.
+You can use model-specific Docker images as base images for your own apps.
 
