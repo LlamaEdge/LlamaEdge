@@ -47,6 +47,14 @@ source $HOME/.bashrc
 
 </details>
 
+<details> <summary> For nixos </summary>
+
+```console
+nix-shell -p wasmedge 
+```
+
+</details>
+
 <details> <summary> For General Linux </summary>
 
 ```console
