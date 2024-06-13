@@ -4,8 +4,11 @@ version = "0.11.3"
 edition = "2021"
 
 [dependencies]
-llama-core = { path = "../llama-core", features = ["logging"] }
-futures = { version = "0.3.6", default-features = false, features = ["async-await", "std"] }
+llama-core = { path = "../llama-core" }
+futures = { version = "0.3.6", default-features = false, features = [
+    "async-await",
+    "std",
+] }
 serde.workspace = true
 serde_json = "1.0"
 endpoints.workspace = true
@@ -21,10 +24,16 @@ mime_guess = "2.0.4"
 futures-util = "0.3"
 anyhow = "1.0.80"
 multipart-2021 = "0.19.0"
-wasi-logger.workspace = true
+wasi-logger = { workspace = true, optional = true }
+env_logger = { version = "0.11", optional = true }
+chrono = { version = "0.4", optional = true }
 log.workspace = true
 
 [features]
-default = []
+# default = ["default-logger"]
+default = ["_env_logger"]
+default-logger = ["_wasi_logger"]
+_wasi_logger = ["wasi-logger", "llama-core/logging"]
+_env_logger = ["env_logger", "chrono", "llama-core/logging"]
 full = ["https"]
 https = ["llama-core/https"]

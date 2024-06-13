@@ -117,9 +117,29 @@ async fn main() -> Result<(), ServerError> {
         plugin_debug = true;
     }
 
-    // set global logger
-    wasi_logger::Logger::install().expect("failed to install wasi_logger::Logger");
-    log::set_max_level(log_level.into());
+    #[cfg(feature = "_wasi_logger")]
+    {
+        // set global logger
+        wasi_logger::Logger::install().expect("failed to install wasi_logger::Logger");
+        log::set_max_level(log_level.into());
+    }
+
+    #[cfg(feature = "_env_logger")]
+    env_logger::builder()
+        .default_format()
+        .format(|buf, record| {
+            use std::io::Write;
+            writeln!(
+                buf,
+                "[{}] [{}] [{}] : {}",
+                chrono::Local::now().format("%Y-%m-%d %H:%M:%S.%3f"),
+                record.level(),
+                record.target(),
+                record.args()
+            )
+        })
+        .filter_level(log_level.into())
+        .init();
 
     // parse the command line arguments
     let cli = Cli::parse();
