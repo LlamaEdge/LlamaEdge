@@ -51,6 +51,8 @@ docker run --rm -p 8080:8080 --name api-server secondstate/qwen-2-0.5b-allminilm
 
 Each model comes with a maximum context size it can support. Your custom context size should not exceed that. Please refer to model documentation for this information. 
 
+> If you set the embedding context size (i.e., the last argument in the above command) to 0, the container would load the chat LLM only.
+
 ## Build your own image
 
 You can build nad publish a Docker image to use any models you like. First, download the model files (must be in GGUF format) you want from Huggingface. 
@@ -78,7 +80,7 @@ docker login
 docker push secondstate/qwen-2-0.5b-allminilm-2:latest
 ```
 
-## What next
+## What's next
 
 Use the container as a drop-in replacement for the OpenAI API for your favorite agent app or framework! [See some examples here](https://llamaedge.com/docs/category/drop-in-replacement-for-openai). 
 
