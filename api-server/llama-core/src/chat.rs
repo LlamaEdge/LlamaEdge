@@ -1602,7 +1602,6 @@ fn compute_stream(
                                     delta: ChatCompletionChunkChoiceDelta {
                                         role: Some(ChatCompletionRole::Assistant),
                                         content: Some(output),
-                                        function_call: None,
                                         tool_calls: None,
                                     },
                                     logprobs: None,
@@ -1749,7 +1748,6 @@ fn compute_stream(
                                                 content: Some(
                                                     "<|WASMEDGE-GGML-CONTEXT-FULL|>".to_string(),
                                                 ),
-                                                function_call: None,
                                                 tool_calls: None,
                                             },
                                             logprobs: None,
@@ -1887,7 +1885,6 @@ fn compute_stream(
                                             delta: ChatCompletionChunkChoiceDelta {
                                                 role: Some(ChatCompletionRole::Assistant),
                                                 content: None,
-                                                function_call: None,
                                                 tool_calls: None,
                                             },
                                             logprobs: None,
@@ -2127,7 +2124,6 @@ fn compute_stream(
                                     delta: ChatCompletionChunkChoiceDelta {
                                         role: Some(ChatCompletionRole::Assistant),
                                         content: Some(output),
-                                        function_call: None,
                                         tool_calls: None,
                                     },
                                     logprobs: None,
@@ -2274,7 +2270,6 @@ fn compute_stream(
                                                 content: Some(
                                                     "<|WASMEDGE-GGML-CONTEXT-FULL|>".to_string(),
                                                 ),
-                                                function_call: None,
                                                 tool_calls: None,
                                             },
                                             logprobs: None,
@@ -2412,7 +2407,6 @@ fn compute_stream(
                                             delta: ChatCompletionChunkChoiceDelta {
                                                 role: Some(ChatCompletionRole::Assistant),
                                                 content: None,
-                                                function_call: None,
                                                 tool_calls: None,
                                             },
                                             logprobs: None,
