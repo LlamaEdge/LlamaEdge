@@ -43,6 +43,27 @@ fn compute_stream_by_graph(
     stream_state: &mut StreamState,
 ) -> Result<String, LlamaCoreError> {
     // compute
+
+    match (*prompt_too_long_state, *context_full_state, *stream_state) {
+        (PromptTooLongState::EndOfSequence, _, _)
+        | (_, ContextFullState::EndOfSequence, _)
+        | (_, _, StreamState::EndOfSequence) => {
+            // clear context
+            if let Err(e) = graph.finish_single() {
+                let err_msg = format!("Failed to clean up the context. Reason: {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                return Err(LlamaCoreError::Backend(BackendError::FinishSingle(err_msg)));
+            }
+
+            return Ok("[GGML] End of sequence".to_string());
+        }
+
+        _ => {}
+    }
+
     match graph.compute_single() {
         Ok(_) => {
             // Retrieve the output
@@ -526,9 +547,10 @@ pub async fn chat_completions_stream(
     set_prompt(chat_request.model.as_ref(), &prompt)?;
 
     // init state machine
-    let mut stream_state = match include_usage {
-        true => StreamState::Usage,
-        false => StreamState::Done,
+    let mut stream_state = if include_usage {
+        StreamState::Usage
+    } else {
+        StreamState::Done
     };
     let mut context_full_state = ContextFullState::Message;
     let mut prompt_too_long_state = PromptTooLongState::Message;
@@ -1710,7 +1732,7 @@ fn update_model_metadata(
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum ContextFullState {
     Message,
     Usage,
@@ -1718,14 +1740,14 @@ enum ContextFullState {
     EndOfSequence,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum StreamState {
     Usage,
     Done,
     EndOfSequence,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum PromptTooLongState {
     Message,
     Usage,
