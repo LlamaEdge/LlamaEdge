@@ -160,7 +160,7 @@ pub(crate) fn get_output_buffer(graph: &Graph, index: usize) -> Result<Vec<u8>, 
     let mut output_buffer: Vec<u8> = Vec::with_capacity(MAX_BUFFER_SIZE);
 
     let output_size: usize = graph.get_output(index, &mut output_buffer).map_err(|e| {
-        let err_msg = format!("Fail to get plugin metadata. {msg}", msg = e);
+        let err_msg = format!("Fail to get the generated output tensor. {msg}", msg = e);
 
         #[cfg(feature = "logging")]
         error!(target: "llama-core", "{}", &err_msg);
