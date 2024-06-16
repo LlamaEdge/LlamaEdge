@@ -1,6 +1,10 @@
 # Getting started with Docker
 
-> For Nvidia devices: replace the `latest` tag with `cuda12` or `cuda11`. If you need to build the images yourself, replace `Dockerfile` with `Dockerfile.cuda12` or `Dockerfile.cuda11`.
+You can run all the commands in this document without any change on any machine with the latest Docker and at least 8GB of RAM available to the container.
+By default, the container uses the CPU to peform computations, which could be slow for large LLMs. For GPUs,
+
+* Mac: Everything here works on [Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/). However, the Apple GPU cores will not be available inside Docker containers until [WebGPU is supported by Docker](webgpu.md) later in 2024.
+* Windows and Linux with Nvidia GPU: You will need to install [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html#installation) for Docker. In the instructions below, replace the `latest` tag with `cuda12` or `cuda11` to use take advantage of the GPU. If you need to build the images yourself, replace `Dockerfile` with `Dockerfile.cuda12` or `Dockerfile.cuda11`.
 
 ## Quick start
 
