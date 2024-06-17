@@ -42,70 +42,91 @@ pub async fn embeddings(
 
     let model_name = &embedding_request.model;
 
+    let f = |graph: &mut Graph| {
+        // check if the `embedding` option of metadata is enabled
+        if !graph.metadata.embeddings {
+            graph.metadata.embeddings = true;
+            graph.update_metadata()?;
+        }
+
+        // compute embeddings
+        let (data, usage) = match &embedding_request.input {
+            InputText::String(text) => compute_embeddings(graph, &[text.to_owned()])?,
+            InputText::Array(texts) => compute_embeddings(graph, texts.as_slice())?,
+        };
+
+        let embedding_reponse = EmbeddingsResponse {
+            object: String::from("list"),
+            data,
+            model: embedding_request.model.clone(),
+            usage,
+        };
+
+        #[cfg(feature = "logging")]
+        info!(target: "llama-core", "Embeddings computed successfully.");
+
+        Ok(embedding_reponse)
+    };
+
     // For general embedding scenario, the embedding model is the same as the chat model.
     // For RAG scenario, the embedding model is different from the chat model.
-    let embedding_graphs = match EMBEDDING_GRAPHS.get() {
-        Some(embedding_graphs) => embedding_graphs,
+    match EMBEDDING_GRAPHS.get() {
+        Some(embedding_graphs) => {
+            let mut embedding_graphs = embedding_graphs.lock().map_err(|e| {
+                let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama-core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
+            })?;
+
+            let graph = match embedding_graphs.get_mut(model_name) {
+                Some(graph) => graph,
+                None => {
+                    let err_msg = format!(
+                        "The model `{}` does not exist in the embedding graphs.",
+                        model_name
+                    );
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama-core", "{}", &err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg));
+                }
+            };
+
+            f(graph)
+        }
         None => match CHAT_GRAPHS.get() {
-            Some(chat_graphs) => chat_graphs,
+            Some(chat_graphs) => {
+                let mut graph = match chat_graphs.get(model_name) {
+                    Some((_, graph)) => graph.lock().await,
+                    None => {
+                        let err_msg = format!(
+                            "The model `{}` does not exist in the chat graphs.",
+                            model_name
+                        );
+
+                        #[cfg(feature = "logging")]
+                        error!(target: "llama-core", "{}", &err_msg);
+
+                        return Err(LlamaCoreError::Operation(err_msg));
+                    }
+                };
+
+                f(&mut graph)
+            }
             None => {
                 let err_msg = "No embedding model is available.";
 
                 #[cfg(feature = "logging")]
                 error!(target: "llama-core", "{}", err_msg);
 
-                return Err(LlamaCoreError::Operation(err_msg.into()));
+                Err(LlamaCoreError::Operation(err_msg.into()))
             }
         },
-    };
-
-    let mut embedding_graphs = embedding_graphs.lock().map_err(|e| {
-        let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}", e);
-
-        #[cfg(feature = "logging")]
-        error!(target: "llama-core", "{}", &err_msg);
-
-        LlamaCoreError::Operation(err_msg)
-    })?;
-
-    let graph = match embedding_graphs.get_mut(model_name) {
-        Some(graph) => graph,
-        None => {
-            let err_msg = format!(
-                "The model `{}` does not exist in the embedding graphs.",
-                model_name
-            );
-
-            #[cfg(feature = "logging")]
-            error!(target: "llama-core", "{}", &err_msg);
-
-            return Err(LlamaCoreError::Operation(err_msg));
-        }
-    };
-
-    // check if the `embedding` option of metadata is enabled
-    if !graph.metadata.embeddings {
-        graph.metadata.embeddings = true;
-        graph.update_metadata()?;
     }
-
-    // compute embeddings
-    let (data, usage) = match &embedding_request.input {
-        InputText::String(text) => compute_embeddings(graph, &[text.to_owned()])?,
-        InputText::Array(texts) => compute_embeddings(graph, texts.as_slice())?,
-    };
-
-    let embedding_reponse = EmbeddingsResponse {
-        object: String::from("list"),
-        data,
-        model: embedding_request.model.clone(),
-        usage,
-    };
-
-    #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Embeddings computed successfully.");
-
-    Ok(embedding_reponse)
 }
 
 fn compute_embeddings(

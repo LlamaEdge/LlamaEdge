@@ -12,19 +12,10 @@ pub async fn models() -> Result<ListModelsResponse, LlamaCoreError> {
 
     {
         if let Some(chat_graphs) = CHAT_GRAPHS.get() {
-            let chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
-
-                #[cfg(feature = "logging")]
-                error!(target: "llama-core", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
-            for (name, graph) in chat_graphs.iter() {
+            for (name, (created, _graph)) in chat_graphs.iter() {
                 models.push(Model {
                     id: name.clone(),
-                    created: graph.created.as_secs(),
+                    created: created.as_secs(),
                     object: String::from("model"),
                     owned_by: String::from("Not specified"),
                 });

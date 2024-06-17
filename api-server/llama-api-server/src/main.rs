@@ -373,8 +373,10 @@ async fn main() -> Result<(), ServerError> {
     }
 
     // log plugin version
-    let plugin_info =
-        llama_core::get_plugin_info().map_err(|e| ServerError::Operation(e.to_string()))?;
+    let plugin_info = llama_core::get_plugin_info()
+        .await
+        .map_err(|e| ServerError::Operation(e.to_string()))?;
+
     let plugin_version = format!(
         "b{build_number} (commit {commit_id})",
         build_number = plugin_info.build_number,
