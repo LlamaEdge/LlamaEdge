@@ -308,28 +308,30 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
     info!(target: "chat_completions_handler", "user: {}", chat_request.user.clone().unwrap());
 
     // ! debug
-    if let Some(tools) = &chat_request.tools {
-        if tools.len() > 0 {
-            info!(target: "chat_completions_handler", "available tools: {:?}", tools);
-
-            if chat_request.tool_choice.is_none() {
-                chat_request.tool_choice = Some(ToolChoice::Auto);
-                info!(target: "chat_completions_handler", "Update tool choice to 'auto'.");
+    // update stream mode according to the tool choice and tools
+    if chat_request.stream == Some(true) {
+        match chat_request.tool_choice.as_ref() {
+            Some(tool_choice) => match tool_choice {
+                ToolChoice::None => {
+                    chat_request.stream = Some(false);
+                }
+                _ => {
+                    if let Some(tools) = chat_request.tools.as_ref() {
+                        if !tools.is_empty() {
+                            chat_request.stream = Some(false);
+                        }
+                    }
+                }
+            },
+            None => {
+                chat_request.stream = Some(false);
             }
-
-            // let tool_choice = chat_request.tool_choice.as_ref().clone().unwrap();
-            // match *tool_choice {
-            //     ToolChoice::None => chat_request.stream = Some(true),
-            //     _ => chat_request.stream = Some(false),
-            // }
-
-            chat_request.stream = Some(false);
-
-            // TODO: should remove tools and tool_choice from the chat request if the stream mode is enabled.
-
-            info!(target: "chat_completions_handler", "stream mode: {:?}", chat_request.stream);
         }
     }
+
+    info!(target: "chat_completions_handler", "tool choice: {:?}", chat_request.tool_choice.as_ref());
+    info!(target: "chat_completions_handler", "tools: {:?}", chat_request.tools.as_ref());
+    info!(target: "chat_completions_handler", "stream mode: {:?}", chat_request.stream);
 
     // handle chat request
     let res = match chat_request.stream {
