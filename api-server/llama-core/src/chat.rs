@@ -1411,7 +1411,6 @@ fn compute_stream(
 
             match chat_graphs.get_mut(model_name) {
                 Some(graph) => {
-                    info!(target: "llama_core", "Compute the chat completion by the model named {}.", graph.name());
                     // compute
                     match graph.compute_single() {
                         Ok(_) => {
