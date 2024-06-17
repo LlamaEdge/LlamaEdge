@@ -1,9 +1,9 @@
-//! Types for turning audio into text.
+//! Define types for audio transcription.
 
 use crate::files::FileObject;
 use serde::{Deserialize, Serialize};
 
-/// Transcribes audio into the input language.
+/// Represents a rquest for audio transcription into the input language.
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct TranscriptionRequest {
     /// The audio file object (not file name) to transcribe, in one of these formats: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm.
@@ -104,6 +104,7 @@ fn test_serialize_verbose_transcription_request() {
     );
 }
 
+/// Represents a word and its corresponding timestamps.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Word {
     /// The text content of the word.
@@ -114,6 +115,7 @@ pub struct Word {
     pub end: f64,
 }
 
+/// Represents a segment of the transcribed text and its corresponding details.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Segment {
     /// Unique identifier of the segment.
