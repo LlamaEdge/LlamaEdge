@@ -25,14 +25,8 @@ use endpoints::{
     common::{FinishReason, Usage},
 };
 use error::{BackendError, LlamaCoreError};
-use futures::{
-    future,
-    stream::{self, TryStreamExt},
-};
-use std::{
-    sync::{Arc, Mutex},
-    time::SystemTime,
-};
+use futures::lock::MutexGuard;
+use std::{sync::Mutex, time::SystemTime};
 
 fn compute_stream_by_graph(
     graph: &mut Graph,
@@ -48,16 +42,6 @@ fn compute_stream_by_graph(
         (PromptTooLongState::EndOfSequence, _, _)
         | (_, ContextFullState::EndOfSequence, _)
         | (_, _, StreamState::EndOfSequence) => {
-            // clear context
-            if let Err(e) = graph.finish_single() {
-                let err_msg = format!("Failed to clean up the context. Reason: {}", e);
-
-                #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
-
-                return Err(LlamaCoreError::Backend(BackendError::FinishSingle(err_msg)));
-            }
-
             return Ok("[GGML] End of sequence".to_string());
         }
 
@@ -491,6 +475,78 @@ fn compute_stream_by_graph(
     }
 }
 
+pub struct ChatStream {
+    id: String,
+    include_usage: bool,
+    context_full_state: ContextFullState,
+    prompt_too_long_state: PromptTooLongState,
+    stream_state: StreamState,
+    graph: MutexGuard<'static, Graph>,
+}
+
+impl Drop for ChatStream {
+    fn drop(&mut self) {
+        // clear context
+        if let Err(e) = self.graph.finish_single() {
+            #[cfg(feature = "logging")]
+            {
+                let err_msg = format!("Failed to clean up the context. Reason: {}", e);
+                error!(target: "llama_core", "{}", &err_msg);
+            }
+            #[cfg(not(feature = "logging"))]
+            let _ = e;
+        }
+    }
+}
+
+impl ChatStream {
+    fn new(graph: MutexGuard<'static, Graph>, id: String, include_usage: bool) -> Self {
+        let stream_state = if include_usage {
+            StreamState::Usage
+        } else {
+            StreamState::Done
+        };
+
+        ChatStream {
+            id,
+            include_usage,
+            context_full_state: ContextFullState::Message,
+            prompt_too_long_state: PromptTooLongState::Message,
+            stream_state,
+            graph,
+        }
+    }
+}
+
+impl futures::Stream for ChatStream {
+    type Item = Result<String, LlamaCoreError>;
+
+    fn poll_next(
+        self: std::pin::Pin<&mut Self>,
+        _cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
+        let this = self.get_mut();
+        let x = compute_stream_by_graph(
+            &mut this.graph,
+            this.id.clone(),
+            this.include_usage,
+            &mut this.prompt_too_long_state,
+            &mut this.context_full_state,
+            &mut this.stream_state,
+        );
+
+        match x {
+            Ok(x) => {
+                if x != "[GGML] End of sequence" && !x.is_empty() {
+                    std::task::Poll::Ready(Some(Ok(x)))
+                } else {
+                    std::task::Poll::Ready(None)
+                }
+            }
+            Err(e) => std::task::Poll::Ready(Some(Err(e))),
+        }
+    }
+}
 /// Processes a chat-completion request and returns ChatCompletionChunk instances in stream.
 pub async fn chat_completions_stream(
     chat_request: &mut ChatCompletionRequest,
@@ -520,8 +576,6 @@ pub async fn chat_completions_stream(
     #[cfg(feature = "logging")]
     info!(target: "llama_core", "user: {}", &id);
 
-    let ref_id = Arc::new(id.clone());
-
     // parse the `include_usage` option
     let include_usage = match chat_request.stream_options {
         Some(ref stream_options) => stream_options.include_usage.unwrap_or_default(),
@@ -535,7 +589,8 @@ pub async fn chat_completions_stream(
     let mut metadata = check_model_metadata(chat_request).await?;
 
     // build prompt
-    let (prompt, avaible_completion_tokens) = build_prompt(model_name.as_ref(), chat_request)?;
+    let (prompt, avaible_completion_tokens) =
+        build_prompt(model_name.as_ref(), chat_request).await?;
 
     #[cfg(feature = "logging")]
     info!(target: "llama_core", "prompt: {}, avaible_completion_tokens: {}", &prompt, avaible_completion_tokens);
@@ -544,122 +599,76 @@ pub async fn chat_completions_stream(
     update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
 
     // set prompt
-    set_prompt(chat_request.model.as_ref(), &prompt)?;
+    set_prompt(chat_request.model.as_ref(), &prompt).await?;
 
-    // init state machine
-    let mut stream_state = if include_usage {
-        StreamState::Usage
-    } else {
-        StreamState::Done
-    };
-    let mut context_full_state = ContextFullState::Message;
-    let mut prompt_too_long_state = PromptTooLongState::Message;
-
-    let stream = stream::repeat_with(move || {
-        let id_cloned = ref_id.clone();
-        let id = (*id_cloned).clone();
-
-        // get graph
-        match &model_name {
-            Some(model_name) => {
-                let chat_graphs = match CHAT_GRAPHS.get() {
-                    Some(chat_graphs) => chat_graphs,
-                    None => {
-                        let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
-
-                        #[cfg(feature = "logging")]
-                        error!(target: "llama_core", "{}", &err_msg);
-
-                        return Err(LlamaCoreError::Operation(err_msg.into()));
-                    }
-                };
-
-                let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                    let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+    let chat_stream = match &model_name {
+        Some(model_name) => {
+            let chat_graphs = match CHAT_GRAPHS.get() {
+                Some(chat_graphs) => chat_graphs,
+                None => {
+                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                     #[cfg(feature = "logging")]
                     error!(target: "llama_core", "{}", &err_msg);
 
-                    LlamaCoreError::Operation(err_msg)
-                })?;
-
-                match chat_graphs.get_mut(model_name) {
-                    Some(graph) => {
-                        // compute
-                        compute_stream_by_graph(
-                            graph,
-                            id,
-                            include_usage,
-                            &mut prompt_too_long_state,
-                            &mut context_full_state,
-                            &mut stream_state,
-                        )
-                    }
-                    None => {
-                        let err_msg = format!(
-                            "The model `{}` does not exist in the chat graphs.",
-                            &model_name
-                        );
-
-                        #[cfg(feature = "logging")]
-                        error!(target: "llama_core", "{}", &err_msg);
-
-                        Err(LlamaCoreError::Operation(err_msg))
-                    }
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
                 }
-            }
-            None => {
-                let chat_graphs = match CHAT_GRAPHS.get() {
-                    Some(chat_graphs) => chat_graphs,
-                    None => {
-                        let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+            };
 
-                        #[cfg(feature = "logging")]
-                        error!(target: "llama_core", "{}", &err_msg);
-
-                        return Err(LlamaCoreError::Operation(err_msg.into()));
-                    }
-                };
-
-                let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                    let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+            match chat_graphs.get(model_name) {
+                Some((_, graph)) => {
+                    // compute
+                    let graph = graph.lock().await;
+                    ChatStream::new(graph, id, include_usage)
+                }
+                None => {
+                    let err_msg = format!(
+                        "The model `{}` does not exist in the chat graphs.",
+                        &model_name
+                    );
 
                     #[cfg(feature = "logging")]
                     error!(target: "llama_core", "{}", &err_msg);
 
-                    LlamaCoreError::Operation(err_msg)
-                })?;
-
-                match chat_graphs.iter_mut().next() {
-                    Some((_, graph)) => {
-                        // compute
-                        compute_stream_by_graph(
-                            graph,
-                            id,
-                            include_usage,
-                            &mut prompt_too_long_state,
-                            &mut context_full_state,
-                            &mut stream_state,
-                        )
-                    }
-                    None => {
-                        let err_msg = "There is no model available in the chat graphs.";
-
-                        #[cfg(feature = "logging")]
-                        error!(target: "llama_core", "{}", &err_msg);
-
-                        Err(LlamaCoreError::Operation(err_msg.into()))
-                    }
+                    return Err(LlamaCoreError::Operation(err_msg));
                 }
             }
         }
-    })
-    .try_take_while(|x| future::ready(Ok(x != "[GGML] End of sequence" && !x.is_empty())));
+        None => {
+            let chat_graphs = match CHAT_GRAPHS.get() {
+                Some(chat_graphs) => chat_graphs,
+                None => {
+                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                }
+            };
+
+            match chat_graphs.iter().next() {
+                Some((_, (_, graph))) => {
+                    // compute
+                    let graph = graph.lock().await;
+                    ChatStream::new(graph, id, include_usage)
+                }
+                None => {
+                    let err_msg = "There is no model available in the chat graphs.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                }
+            }
+        }
+    };
 
     #[cfg(feature = "logging")]
     info!(target: "llama_core", "End of the chat completion stream.");
 
-    Ok(stream)
+    Ok(chat_stream)
 }
 
 /// Processes a chat-completion request and returns a ChatCompletionObject instance.
@@ -695,7 +704,8 @@ pub async fn chat_completions(
     let mut metadata = check_model_metadata(chat_request).await?;
 
     // build prompt
-    let (prompt, avaible_completion_tokens) = build_prompt(model_name.as_ref(), chat_request)?;
+    let (prompt, avaible_completion_tokens) =
+        build_prompt(model_name.as_ref(), chat_request).await?;
 
     #[cfg(feature = "logging")]
     {
@@ -707,10 +717,10 @@ pub async fn chat_completions(
     update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
 
     // feed the prompt to the model
-    set_prompt(model_name.as_ref(), &prompt)?;
+    set_prompt(model_name.as_ref(), &prompt).await?;
 
     // compute
-    let res = compute(model_name.as_ref(), id);
+    let res = compute(model_name.as_ref(), id).await;
 
     #[cfg(feature = "logging")]
     info!(target: "llama_core", "End of the chat completion.");
@@ -718,7 +728,7 @@ pub async fn chat_completions(
     res
 }
 
-fn compute(
+async fn compute(
     model_name: Option<&String>,
     id: impl Into<String>,
 ) -> Result<ChatCompletionObject, LlamaCoreError> {
@@ -739,17 +749,11 @@ fn compute(
                 }
             };
 
-            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
-
-                #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
-            match chat_graphs.get_mut(model_name) {
-                Some(graph) => compute_by_graph(graph, id),
+            match chat_graphs.get(model_name) {
+                Some((_, graph)) => {
+                    let mut graph = graph.lock().await;
+                    compute_by_graph(&mut graph, id)
+                }
                 None => {
                     let err_msg = format!(
                         "The model `{}` does not exist in the chat graphs.",
@@ -776,17 +780,11 @@ fn compute(
                 }
             };
 
-            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
-
-                #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
-            match chat_graphs.iter_mut().next() {
-                Some((_, graph)) => compute_by_graph(graph, id),
+            match chat_graphs.iter().next() {
+                Some((_, (_, graph))) => {
+                    let mut graph = graph.lock().await;
+                    compute_by_graph(&mut graph, id)
+                }
                 None => {
                     let err_msg = "There is no model available in the chat graphs.";
 
@@ -1021,7 +1019,7 @@ async fn check_model_metadata(
     info!(target: "llama_core", "Check model metadata.");
 
     let mut should_update = false;
-    let mut metadata = get_model_metadata(chat_request.model.as_ref())?;
+    let mut metadata = get_model_metadata(chat_request.model.as_ref()).await?;
 
     // check if necessary to update `image`
     #[cfg(feature = "https")]
@@ -1108,7 +1106,7 @@ async fn check_model_metadata(
 
     if should_update {
         // update the target graph with the new metadata
-        update_model_metadata(chat_request.model.as_ref(), &metadata)?;
+        update_model_metadata(chat_request.model.as_ref(), &metadata).await?;
     }
 
     Ok(metadata)
@@ -1151,7 +1149,7 @@ async fn update_n_predict(
 
     if should_update {
         // update the target graph with the new metadata
-        update_model_metadata(chat_request.model.as_ref(), metadata)?;
+        update_model_metadata(chat_request.model.as_ref(), metadata).await?;
     }
 
     Ok(())
@@ -1279,7 +1277,7 @@ fn post_process(
     Ok(output)
 }
 
-fn build_prompt(
+async fn build_prompt(
     model_name: Option<&String>,
     // template: &ChatPrompt,
     chat_request: &mut ChatCompletionRequest,
@@ -1287,7 +1285,7 @@ fn build_prompt(
     #[cfg(feature = "logging")]
     info!(target: "llama_core", "Build the chat prompt from the chat messages.");
 
-    let metadata = get_model_metadata(model_name)?;
+    let metadata = get_model_metadata(model_name).await?;
     let ctx_size = metadata.ctx_size as u64;
     let chat_prompt = ChatPrompt::from(metadata.prompt_template);
 
@@ -1309,10 +1307,10 @@ fn build_prompt(
         };
 
         // set prompt
-        set_prompt(model_name, &prompt)?;
+        set_prompt(model_name, &prompt).await?;
 
         // Retrieve the number of prompt tokens.
-        let token_info = get_token_info_by_graph_name(model_name)?;
+        let token_info = get_token_info_by_graph_name(model_name).await?;
 
         match token_info.prompt_tokens > max_prompt_tokens {
             true => {
@@ -1447,7 +1445,10 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
     Ok(fname)
 }
 
-fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<(), LlamaCoreError> {
+async fn set_prompt(
+    model_name: Option<&String>,
+    prompt: impl AsRef<str>,
+) -> Result<(), LlamaCoreError> {
     match model_name {
         Some(model_name) => {
             #[cfg(feature = "logging")]
@@ -1465,19 +1466,12 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
                 }
             };
 
-            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS` while trying to set prompt to the model named {}. Reason: {}", model_name, e);
-
-                #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
-            match chat_graphs.get_mut(model_name) {
-                Some(graph) => {
+            match chat_graphs.get(model_name) {
+                Some((_, graph)) => {
                     let tensor_data = prompt.as_ref().as_bytes().to_vec();
-                    set_tensor_data_u8(graph, 0, &tensor_data)
+                    let mut graph = graph.lock().await;
+
+                    set_tensor_data_u8(&mut graph, 0, &tensor_data)
                 }
                 None => {
                     let err_msg = format!(
@@ -1508,19 +1502,11 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
                 }
             };
 
-            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`while trying to set prompt to the default model. Reason: {}", e);
-
-                #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
-            match chat_graphs.iter_mut().next() {
-                Some((_, graph)) => {
+            match chat_graphs.iter().next() {
+                Some((_, (_, graph))) => {
+                    let mut graph = graph.lock().await;
                     let tensor_data = prompt.as_ref().as_bytes().to_vec();
-                    set_tensor_data_u8(graph, 0, &tensor_data)
+                    set_tensor_data_u8(&mut graph, 0, &tensor_data)
                 }
                 None => {
                     let err_msg = "There is no model available in the chat graphs while trying to set prompt to the default model.";
@@ -1553,7 +1539,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
 // }
 
 /// Get a copy of the metadata of the model.
-fn get_model_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCoreError> {
+async fn get_model_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "llama_core", "Get the model metadata.");
 
@@ -1571,17 +1557,11 @@ fn get_model_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCore
                 }
             };
 
-            let chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
-
-                #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
             match chat_graphs.get(model_name) {
-                Some(graph) => Ok(graph.metadata.clone()),
+                Some((_, graph)) => {
+                    let graph = graph.lock().await;
+                    Ok(graph.metadata.clone())
+                }
                 None => {
                     let err_msg = format!(
                         "The model `{}` does not exist in the chat graphs.",
@@ -1608,17 +1588,11 @@ fn get_model_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCore
                 }
             };
 
-            let chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
-
-                #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
             match chat_graphs.iter().next() {
-                Some((_, graph)) => Ok(graph.metadata.clone()),
+                Some((_, (_, graph))) => {
+                    let graph = graph.lock().await;
+                    Ok(graph.metadata.clone())
+                }
                 None => {
                     let err_msg = "There is no model available in the chat graphs.";
 
@@ -1632,7 +1606,7 @@ fn get_model_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCore
     }
 }
 
-fn update_model_metadata(
+async fn update_model_metadata(
     model_name: Option<&String>,
     metadata: &Metadata,
 ) -> Result<(), LlamaCoreError> {
@@ -1665,19 +1639,11 @@ fn update_model_metadata(
                 }
             };
 
-            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. Reason: {}", e);
-
-                #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
-            match chat_graphs.get_mut(model_name) {
-                Some(graph) => {
+            match chat_graphs.get(model_name) {
+                Some((_, graph)) => {
+                    let mut graph = graph.lock().await;
                     // update metadata
-                    set_tensor_data_u8(graph, 1, config.as_bytes())
+                    set_tensor_data_u8(&mut graph, 1, config.as_bytes())
                 }
                 None => {
                     let err_msg = format!(
@@ -1705,19 +1671,11 @@ fn update_model_metadata(
                 }
             };
 
-            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. Reason: {}", e);
-
-                #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
-            match chat_graphs.iter_mut().next() {
-                Some((_, graph)) => {
+            match chat_graphs.iter().next() {
+                Some((_, (_, graph))) => {
+                    let mut graph = graph.lock().await;
                     // update metadata
-                    set_tensor_data_u8(graph, 1, config.as_bytes())
+                    set_tensor_data_u8(&mut graph, 1, config.as_bytes())
                 }
                 None => {
                     let err_msg = "There is no model available in the chat graphs.";
