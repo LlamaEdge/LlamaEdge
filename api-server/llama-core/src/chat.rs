@@ -25,6 +25,8 @@ use endpoints::{
     common::{FinishReason, Usage},
 };
 use error::{BackendError, LlamaCoreError};
+#[cfg(feature = "https")]
+use futures::StreamExt;
 use std::{
     pin::Pin,
     sync::Mutex,
@@ -859,7 +861,7 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
     })?;
 
     let mut content = response.bytes_stream();
-    while let Some(item) = content.try_next().await.unwrap() {
+    while let Ok(item) = content.next().await.unwrap() {
         std::io::copy(&mut item.as_ref(), &mut dest).map_err(|e| {
             let err_msg = format!(
                 "Fail to write the image content to the file: {}. Reason: {}",
