@@ -20,7 +20,7 @@ use endpoints::{
     chat::{
         ChatCompletionChunk, ChatCompletionChunkChoice, ChatCompletionChunkChoiceDelta,
         ChatCompletionObject, ChatCompletionObjectChoice, ChatCompletionObjectMessage,
-        ChatCompletionRequest, ChatCompletionRole, Function, ToolCall,
+        ChatCompletionRequest, ChatCompletionRole, Function, ToolCall, ToolChoice,
     },
     common::{FinishReason, Usage},
 };
@@ -76,10 +76,15 @@ pub async fn chat_completions_stream(
     let mut metadata = check_model_metadata(chat_request).await?;
 
     // build prompt
-    let (prompt, avaible_completion_tokens) = build_prompt(model_name.as_ref(), chat_request)?;
+    let (prompt, avaible_completion_tokens, tool_use) =
+        build_prompt(model_name.as_ref(), chat_request)?;
 
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "prompt: {}, avaible_completion_tokens: {}", &prompt, avaible_completion_tokens);
+    {
+        info!(target: "llama_core", "prompt:\n{}", &prompt);
+        info!(target: "llama_core", "avaible_completion_tokens: {}", avaible_completion_tokens);
+        info!(target: "llama_core", "tool_use: {}", tool_use);
+    }
 
     // update metadata n_predict
     update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
@@ -125,18 +130,18 @@ pub async fn chat_completions(
     #[cfg(feature = "logging")]
     info!(target: "llama_core", "user: {}", &id);
 
-    let tool_use = chat_request.tools.is_some();
-
     // update metadata
     let mut metadata = check_model_metadata(chat_request).await?;
 
     // build prompt
-    let (prompt, avaible_completion_tokens) = build_prompt(model_name.as_ref(), chat_request)?;
+    let (prompt, avaible_completion_tokens, tool_use) =
+        build_prompt(model_name.as_ref(), chat_request)?;
 
     #[cfg(feature = "logging")]
     {
         info!(target: "llama_core", "prompt:\n{}", &prompt);
         info!(target: "llama_core", "avaible_completion_tokens: {}", avaible_completion_tokens);
+        info!(target: "llama_core", "tool_use: {}", tool_use);
     }
 
     // update metadata n_predict
@@ -801,7 +806,7 @@ fn post_process(
 fn build_prompt(
     model_name: Option<&String>,
     chat_request: &mut ChatCompletionRequest,
-) -> Result<(String, u64), LlamaCoreError> {
+) -> Result<(String, u64, bool), LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "llama_core", "Build the chat prompt from the chat messages.");
 
@@ -827,22 +832,52 @@ fn build_prompt(
         // };
 
         // ! debug
-        let prompt = match chat_request.tools.as_ref() {
-            Some(tools) => match chat_prompt
-                .build_with_tools(&mut chat_request.messages, Some(tools.as_slice()))
-            {
-                Ok(prompt) => prompt,
-                Err(e) => {
-                    let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
+        let (prompt, tool_use) = match chat_request.tool_choice.as_ref() {
+            Some(tool_choice) => match tool_choice {
+                ToolChoice::None => match chat_prompt.build(&mut chat_request.messages) {
+                    Ok(prompt) => (prompt, false),
+                    Err(e) => {
+                        let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
 
-                    #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                        #[cfg(feature = "logging")]
+                        error!(target: "llama_core", "{}", &err_msg);
 
-                    return Err(LlamaCoreError::Operation(err_msg));
-                }
+                        return Err(LlamaCoreError::Operation(err_msg));
+                    }
+                },
+                _ => match chat_request.tools.as_ref() {
+                    Some(tools) => match chat_prompt
+                        .build_with_tools(&mut chat_request.messages, Some(tools.as_slice()))
+                    {
+                        Ok(prompt) => (prompt, true),
+                        Err(e) => {
+                            let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
+
+                            #[cfg(feature = "logging")]
+                            error!(target: "llama_core", "{}", &err_msg);
+
+                            return Err(LlamaCoreError::Operation(err_msg));
+                        }
+                    },
+                    None => {
+                        warn!(target: "llama_core", "The tool choice is not supported without tools.");
+
+                        match chat_prompt.build(&mut chat_request.messages) {
+                            Ok(prompt) => (prompt, false),
+                            Err(e) => {
+                                let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            }
+                        }
+                    }
+                },
             },
             None => match chat_prompt.build(&mut chat_request.messages) {
-                Ok(prompt) => prompt,
+                Ok(prompt) => (prompt, false),
                 Err(e) => {
                     let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
 
@@ -879,7 +914,7 @@ fn build_prompt(
                             #[cfg(feature = "logging")]
                             info!(target: "llama_core", "prompt: {}", &prompt);
 
-                            return Ok((prompt, ctx_size - max_prompt_tokens));
+                            return Ok((prompt, ctx_size - max_prompt_tokens, tool_use));
                         }
                     }
                     ChatCompletionRole::User => {
@@ -898,7 +933,7 @@ fn build_prompt(
                             #[cfg(feature = "logging")]
                             info!(target: "llama_core", "prompt: {}", &prompt);
 
-                            return Ok((prompt, ctx_size - max_prompt_tokens));
+                            return Ok((prompt, ctx_size - max_prompt_tokens, tool_use));
                         }
                     }
                     _ => {
@@ -916,7 +951,7 @@ fn build_prompt(
 
                 continue;
             }
-            false => return Ok((prompt, ctx_size - max_prompt_tokens)),
+            false => return Ok((prompt, ctx_size - max_prompt_tokens, tool_use)),
         }
     }
 }
