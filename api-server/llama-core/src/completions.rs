@@ -32,10 +32,10 @@ pub async fn completions(request: &CompletionRequest) -> Result<CompletionObject
 
     let prompt = request.prompt.join(" ");
 
-    compute(prompt.trim(), request.model.as_ref())
+    compute(prompt.trim(), request.model.as_ref()).await
 }
 
-fn compute(
+async fn compute(
     prompt: impl AsRef<str>,
     model_name: Option<&String>,
 ) -> std::result::Result<CompletionObject, LlamaCoreError> {
@@ -59,17 +59,12 @@ fn compute(
                 }
             };
 
-            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+            match chat_graphs.get(model_name) {
+                Some((_, graph)) => {
+                    let mut graph = graph.lock().await;
 
-                #[cfg(feature = "logging")]
-                error!(target: "llama-core", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
-            match chat_graphs.get_mut(model_name) {
-                Some(graph) => compute_by_graph(graph, prompt),
+                    compute_by_graph(&mut graph, prompt)
+                }
                 None => {
                     let err_msg = format!(
                         "The model `{}` does not exist in the chat graphs.",
@@ -96,17 +91,12 @@ fn compute(
                 }
             };
 
-            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+            match chat_graphs.iter().next() {
+                Some((_, (_, graph))) => {
+                    let mut graph = graph.lock().await;
 
-                #[cfg(feature = "logging")]
-                error!(target: "llama-core", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
-            match chat_graphs.iter_mut().next() {
-                Some((_, graph)) => compute_by_graph(graph, prompt),
+                    compute_by_graph(&mut graph, prompt)
+                }
                 None => {
                     let err_msg = "There is no model available in the chat graphs.";
 

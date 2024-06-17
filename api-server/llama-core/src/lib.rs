@@ -17,15 +17,17 @@ use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
-    sync::{Mutex, RwLock},
+    sync::{Arc, Mutex, RwLock},
 };
 use utils::{get_output_buffer, set_tensor_data_u8};
 use wasmedge_wasi_nn::{
     Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext, TensorType,
 };
 
-// key: model_name, value: Graph
-pub(crate) static CHAT_GRAPHS: OnceCell<Mutex<HashMap<String, Graph>>> = OnceCell::new();
+// key: model_name, value: (created,Graph)
+pub(crate) static CHAT_GRAPHS: OnceCell<
+    HashMap<String, (std::time::Duration, Arc<futures::lock::Mutex<Graph>>)>,
+> = OnceCell::new();
 // key: model_name, value: Graph
 pub(crate) static EMBEDDING_GRAPHS: OnceCell<Mutex<HashMap<String, Graph>>> = OnceCell::new();
 // cache bytes for decoding utf8
@@ -421,10 +423,14 @@ pub fn init_core_context(
         let mut chat_graphs = HashMap::new();
         for metadata in metadata_chats {
             let graph = Graph::new(metadata)?;
+            let created = graph.created;
 
-            chat_graphs.insert(graph.name().to_string(), graph);
+            chat_graphs.insert(
+                graph.name().to_string(),
+                (created, Arc::new(futures::lock::Mutex::new(graph))),
+            );
         }
-        CHAT_GRAPHS.set(Mutex::new(chat_graphs)).map_err(|_| {
+        CHAT_GRAPHS.set(chat_graphs).map_err(|_| {
             let err_msg = "Failed to initialize the core context. Reason: The `CHAT_GRAPHS` has already been initialized";
 
             #[cfg(feature = "logging")]
@@ -497,10 +503,14 @@ pub fn init_rag_core_context(
     let mut chat_graphs = HashMap::new();
     for metadata in metadata_for_chats {
         let graph = Graph::new(metadata)?;
+        let created = graph.created;
 
-        chat_graphs.insert(graph.name().to_string(), graph);
+        chat_graphs.insert(
+            graph.name().to_string(),
+            (created, Arc::new(futures::lock::Mutex::new(graph))),
+        );
     }
-    CHAT_GRAPHS.set(Mutex::new(chat_graphs)).map_err(|_| {
+    CHAT_GRAPHS.set(chat_graphs).map_err(|_| {
         let err_msg = "Failed to initialize the core context. Reason: The `CHAT_GRAPHS` has already been initialized";
 
         #[cfg(feature = "logging")]
@@ -559,7 +569,7 @@ pub fn init_rag_core_context(
 /// Get the plugin info
 ///
 /// Note that it is required to call `init_core_context` before calling this function.
-pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
+pub async fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "llama-core", "Getting the plugin info");
 
@@ -613,17 +623,11 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
                 }
             };
 
-            let chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
-
-                #[cfg(feature = "logging")]
-                error!(target: "llama-core", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
-            let graph = match chat_graphs.values().next() {
-                Some(graph) => graph,
+            let graph = match chat_graphs.iter().next() {
+                Some((_name, (_, graph))) => {
+                    let graph = graph.lock().await;
+                    graph
+                }
                 None => {
                     let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
@@ -634,7 +638,7 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
                 }
             };
 
-            get_plugin_info_by_graph(graph)
+            get_plugin_info_by_graph(&graph)
         }
     }
 }
