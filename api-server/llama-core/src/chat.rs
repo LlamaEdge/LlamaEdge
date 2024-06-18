@@ -76,14 +76,13 @@ pub async fn chat_completions_stream(
     let mut metadata = check_model_metadata(chat_request).await?;
 
     // build prompt
-    let (prompt, avaible_completion_tokens, tool_use) =
+    let (prompt, avaible_completion_tokens, _tool_use) =
         build_prompt(model_name.as_ref(), chat_request)?;
 
     #[cfg(feature = "logging")]
     {
         info!(target: "llama_core", "prompt:\n{}", &prompt);
         info!(target: "llama_core", "avaible_completion_tokens: {}", avaible_completion_tokens);
-        info!(target: "llama_core", "tool_use: {}", tool_use);
     }
 
     // update metadata n_predict
@@ -860,6 +859,7 @@ fn build_prompt(
                         }
                     },
                     None => {
+                        #[cfg(feature = "logging")]
                         warn!(target: "llama_core", "The tool choice is not supported without tools.");
 
                         match chat_prompt.build(&mut chat_request.messages) {
