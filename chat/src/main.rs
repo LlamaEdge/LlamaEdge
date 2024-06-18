@@ -286,7 +286,11 @@ async fn main() -> anyhow::Result<()> {
             Some(false) | None => {
                 let chat_completion =
                     match llama_core::chat::chat_completions(&mut chat_request).await {
-                        Ok(completion) => completion.choices[0].message.content.to_owned(),
+                        Ok(completion) => completion.choices[0]
+                            .message
+                            .content
+                            .to_owned()
+                            .unwrap_or_default(),
                         Err(e) => bail!("Fail to generate completion. Reason: {msg}", msg = e),
                     };
                 println!("{chat_completion}");
