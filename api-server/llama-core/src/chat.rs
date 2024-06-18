@@ -307,10 +307,10 @@ fn compute_by_graph(
                     println!("{:?}", value);
 
                     let func_name = value[0].get("name").unwrap();
-                    println!("name: {}", func_name.to_string());
+                    println!("name: {}", func_name);
 
                     let args = value[0].get("arguments").unwrap();
-                    println!("arguments: {}", args.to_string());
+                    println!("arguments: {}", args);
 
                     let function = Function {
                         name: func_name.to_string(),
@@ -1635,9 +1635,9 @@ fn compute_stream(
                                 choices: vec![ChatCompletionChunkChoice {
                                     index: 0,
                                     delta: ChatCompletionChunkChoiceDelta {
-                                        role: Some(ChatCompletionRole::Assistant),
+                                        role: ChatCompletionRole::Assistant,
                                         content: Some(output),
-                                        tool_calls: None,
+                                        tool_calls: vec![],
                                     },
                                     logprobs: None,
                                     finish_reason: None,
@@ -1779,11 +1779,11 @@ fn compute_stream(
                                         choices: vec![ChatCompletionChunkChoice {
                                             index: 0,
                                             delta: ChatCompletionChunkChoiceDelta {
-                                                role: Some(ChatCompletionRole::Assistant),
+                                                role: ChatCompletionRole::Assistant,
                                                 content: Some(
                                                     "<|WASMEDGE-GGML-CONTEXT-FULL|>".to_string(),
                                                 ),
-                                                tool_calls: None,
+                                                tool_calls: vec![],
                                             },
                                             logprobs: None,
                                             finish_reason: Some(FinishReason::length),
@@ -1918,9 +1918,9 @@ fn compute_stream(
                                         choices: vec![ChatCompletionChunkChoice {
                                             index: 0,
                                             delta: ChatCompletionChunkChoiceDelta {
-                                                role: Some(ChatCompletionRole::Assistant),
+                                                role: ChatCompletionRole::Assistant,
                                                 content: None,
-                                                tool_calls: None,
+                                                tool_calls: vec![],
                                             },
                                             logprobs: None,
                                             finish_reason: Some(FinishReason::length),
@@ -2157,9 +2157,9 @@ fn compute_stream(
                                 choices: vec![ChatCompletionChunkChoice {
                                     index: 0,
                                     delta: ChatCompletionChunkChoiceDelta {
-                                        role: Some(ChatCompletionRole::Assistant),
+                                        role: ChatCompletionRole::Assistant,
                                         content: Some(output),
-                                        tool_calls: None,
+                                        tool_calls: vec![],
                                     },
                                     logprobs: None,
                                     finish_reason: None,
@@ -2301,11 +2301,11 @@ fn compute_stream(
                                         choices: vec![ChatCompletionChunkChoice {
                                             index: 0,
                                             delta: ChatCompletionChunkChoiceDelta {
-                                                role: Some(ChatCompletionRole::Assistant),
+                                                role: ChatCompletionRole::Assistant,
                                                 content: Some(
                                                     "<|WASMEDGE-GGML-CONTEXT-FULL|>".to_string(),
                                                 ),
-                                                tool_calls: None,
+                                                tool_calls: vec![],
                                             },
                                             logprobs: None,
                                             finish_reason: Some(FinishReason::length),
@@ -2440,9 +2440,9 @@ fn compute_stream(
                                         choices: vec![ChatCompletionChunkChoice {
                                             index: 0,
                                             delta: ChatCompletionChunkChoiceDelta {
-                                                role: Some(ChatCompletionRole::Assistant),
+                                                role: ChatCompletionRole::Assistant,
                                                 content: None,
-                                                tool_calls: None,
+                                                tool_calls: vec![],
                                             },
                                             logprobs: None,
                                             finish_reason: Some(FinishReason::length),
