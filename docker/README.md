@@ -4,7 +4,7 @@ You can run all the commands in this document without any change on any machine 
 By default, the container uses the CPU to peform computations, which could be slow for large LLMs. For GPUs,
 
 * Mac: Everything here works on [Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/). However, the Apple GPU cores will not be available inside Docker containers until [WebGPU is supported by Docker](webgpu.md) later in 2024.
-* Windows and Linux with Nvidia GPU: You will need to install [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html#installation) for Docker. In the instructions below, replace the `latest` tag with `cuda12` or `cuda11` to use take advantage of the GPU. If you need to build the images yourself, replace `Dockerfile` with `Dockerfile.cuda12` or `Dockerfile.cuda11`.
+* Windows and Linux with Nvidia GPU: You will need to install [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html#installation) for Docker. In the instructions below, replace the `latest` tag with `cuda12` or `cuda11`, and add the `--device nvidia.com/gpu=all` flag, to use take advantage of the GPU. If you need to build the images yourself, replace `Dockerfile` with `Dockerfile.cuda12` or `Dockerfile.cuda11`.
 
 ## Quick start
 
@@ -20,6 +20,12 @@ This container starts two models Qwen-2-0.5B is a very small but highly capable 
 a widely used embedding model. 
 That allows the API server to support both `/chat` and `/embeddings` endpoints, which are crucial for most
 LLM agent apps and frameworks based on OpenAI.
+
+Alternatively, you can use the command below to start a server on an Nvidia CUDA 12 machine.
+
+```
+docker run --rm -p 8080:8080 --device nvidia.com/gpu=all --name api-server secondstate/qwen-2-0.5b-allminilm-2:cuda12
+```
 
 You can make an OpenAI style API request as follows.
 
