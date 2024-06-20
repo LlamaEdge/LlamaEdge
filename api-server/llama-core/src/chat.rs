@@ -760,6 +760,7 @@ fn post_process(
         }
     } else if *template_ty == PromptTemplateType::Zephyr
         || *template_ty == PromptTemplateType::MistralLite
+        || *template_ty == PromptTemplateType::MistralChat
     {
         if output.as_ref().contains("</s><") {
             output.as_ref().trim_end_matches("</s><").trim().to_owned()
@@ -864,17 +865,19 @@ fn build_prompt(
         // ! debug
         let (prompt, tool_use) = match chat_request.tool_choice.as_ref() {
             Some(tool_choice) => match tool_choice {
-                ToolChoice::None => match chat_prompt.build(&mut chat_request.messages) {
-                    Ok(prompt) => (prompt, false),
-                    Err(e) => {
-                        let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
+                ToolChoice::None => {
+                    match chat_prompt.build_with_tools(&mut chat_request.messages, None) {
+                        Ok(prompt) => (prompt, false),
+                        Err(e) => {
+                            let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
 
-                        #[cfg(feature = "logging")]
-                        error!(target: "llama_core", "{}", &err_msg);
+                            #[cfg(feature = "logging")]
+                            error!(target: "llama_core", "{}", &err_msg);
 
-                        return Err(LlamaCoreError::Operation(err_msg));
+                            return Err(LlamaCoreError::Operation(err_msg));
+                        }
                     }
-                },
+                }
                 _ => match chat_request.tools.as_ref() {
                     Some(tools) => match chat_prompt
                         .build_with_tools(&mut chat_request.messages, Some(tools.as_slice()))
@@ -893,7 +896,7 @@ fn build_prompt(
                         #[cfg(feature = "logging")]
                         warn!(target: "llama_core", "The tool choice is not supported without tools.");
 
-                        match chat_prompt.build(&mut chat_request.messages) {
+                        match chat_prompt.build_with_tools(&mut chat_request.messages, None) {
                             Ok(prompt) => (prompt, false),
                             Err(e) => {
                                 let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
@@ -907,7 +910,7 @@ fn build_prompt(
                     }
                 },
             },
-            None => match chat_prompt.build(&mut chat_request.messages) {
+            None => match chat_prompt.build_with_tools(&mut chat_request.messages, None) {
                 Ok(prompt) => (prompt, false),
                 Err(e) => {
                     let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
