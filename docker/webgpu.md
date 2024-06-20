@@ -26,35 +26,22 @@ In this article, we will showcase an [OpenAI-compatible speech-to-text API serve
 
 Download the preview Docker Desktop software:
 
-* Mac with Apple Silicon (M series): https://desktop-stage.docker.com/mac/main/arm64/155028/Docker.dmg
+* Mac with Apple Silicon (M series): https://desktop-stage.docker.com/mac/main/arm64/155220/Docker.dmg
 * Linux with x86 CPU and any GPU:
-  * https://desktop-stage.docker.com/linux/main/amd64/155028/docker-desktop-amd64.deb
-  * https://desktop-stage.docker.com/linux/main/amd64/155028/docker-desktop-x86_64.rpm
+  * https://desktop-stage.docker.com/linux/main/amd64/155220/docker-desktop-amd64.deb
+  * https://desktop-stage.docker.com/linux/main/amd64/155220/docker-desktop-x86_64.rpm
 
-Also download the `wasmedge.tar` file for your platform. It contains a new WasmEdge shim with WASI-NN support.
+Go to Settings,
 
-```
-# For Mac or Arm devices
-curl -L https://www.dropbox.com/scl/fi/d9gbn50fmo4vbvu46wpi6/wasmedge-arm64.tar?rlkey=0izqtj4hzhctxeezk107bbjha&dl=0 -o wasmedge.tar
-
-# Or, for x86 devices
-curl -L https://www.dropbox.com/scl/fi/fpbdt6h2h3nedxvur152p/wasmedge-x86_64.tar?rlkey=lxx402wyf350wj5te9cnxa049&dl=0 -o wasmedge.tar
-```
-
-Turn on `containerd` support in the Settings. 
-Start Docker Desktop, and install the downloaded `wasmedge.tar` file.
-
-```
-alias dd-shim-mngr="docker run --rm -i --privileged --pid=host jorgeprendes420/docker-desktop-shim-manager:latest"
-cat wasmedge.tar | dd-shim-mngr install -
-```
+* In "General", turn on `containerd` support
+* In "Features in development", turn on "Enable Wasm"
 
 #### Install and run Docker Desktop on Linux servers using CLI only
 
 The following example is on Ubuntu / Debian Linux servers.
 
 ```
-curl -LO https://desktop-stage.docker.com/linux/main/amd64/155028/docker-desktop-amd64.deb
+curl -LO https://desktop-stage.docker.com/linux/main/amd64/155220/docker-desktop-amd64.deb
 sudo apt install ./docker-desktop-amd64.deb
 ```
 
@@ -65,6 +52,14 @@ Start Docker Desktop without the UI.
 ```
 /opt/docker-desktop/bin/com.docker.backend --with-frontend=false --accept-license=true
 ```
+
+Turn on "Enable Wasm" with the following command.
+
+```
+curl --unix-socket ~/.docker/desktop/lifecycle-server.sock  -XPOST http://localhost/wasm/runtimes
+```
+
+Restart Docker Desktop.
 
 ## Run the API server as a container
 
