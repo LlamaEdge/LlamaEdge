@@ -1016,7 +1016,7 @@ impl ChatCompletionRequestMessage {
     }
 
     /// Creates a new tool message.
-    pub fn new_tool_message(content: impl Into<String>, tool_call_id: impl Into<String>) -> Self {
+    pub fn new_tool_message(content: impl Into<String>, tool_call_id: Option<String>) -> Self {
         ChatCompletionRequestMessage::Tool(ChatCompletionToolMessage::new(content, tool_call_id))
     }
 
@@ -1067,7 +1067,7 @@ fn test_chat_serialize_request_message() {
 
     let message = ChatCompletionRequestMessage::Tool(ChatCompletionToolMessage::new(
         "Hello, world!",
-        "tool-call-id",
+        Some("tool-call-id".into()),
     ));
     let json = serde_json::to_string(&message).unwrap();
     assert_eq!(
@@ -1284,7 +1284,8 @@ pub struct ChatCompletionToolMessage {
     /// The contents of the tool message.
     content: String,
     /// Tool call that this message is responding to.
-    tool_call_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tool_call_id: Option<String>,
 }
 impl ChatCompletionToolMessage {
     /// Creates a new tool message.
@@ -1294,10 +1295,10 @@ impl ChatCompletionToolMessage {
     /// * `content` - The contents of the tool message.
     ///
     /// * `tool_call_id` - Tool call that this message is responding to.
-    pub fn new(content: impl Into<String>, tool_call_id: impl Into<String>) -> Self {
+    pub fn new(content: impl Into<String>, tool_call_id: Option<String>) -> Self {
         Self {
             content: content.into(),
-            tool_call_id: tool_call_id.into(),
+            tool_call_id,
         }
     }
 
@@ -1312,8 +1313,8 @@ impl ChatCompletionToolMessage {
     }
 
     /// Tool call that this message is responding to.
-    pub fn tool_call_id(&self) -> &str {
-        &self.tool_call_id
+    pub fn tool_call_id(&self) -> Option<String> {
+        self.tool_call_id.clone()
     }
 }
 
