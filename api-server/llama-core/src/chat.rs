@@ -301,50 +301,81 @@ fn compute_by_graph(
                         return Err(LlamaCoreError::Operation(err_msg.into()));
                     }
 
-                    let json_str = extract_json_content(&message).unwrap();
-                    let value: Vec<serde_json::Value> = serde_json::from_str(&json_str).unwrap();
-                    println!("{:?}", value);
+                    match extract_json_content(&message) {
+                        Some(tool_call_message) => {
+                            let value: Vec<serde_json::Value> =
+                                serde_json::from_str(&tool_call_message).unwrap();
+                            println!("{:?}", value);
 
-                    let func_name = value[0].get("name").unwrap();
-                    println!("name: {}", func_name);
+                            let func_name = value[0].get("name").unwrap();
+                            println!("name: {}", func_name);
 
-                    let args = value[0].get("arguments").unwrap();
-                    println!("arguments: {}", args);
+                            let args = value[0].get("arguments").unwrap();
+                            println!("arguments: {}", args);
 
-                    let function = Function {
-                        name: func_name.to_string(),
-                        arguments: args.to_string(),
-                    };
+                            let function = Function {
+                                name: func_name.to_string(),
+                                arguments: args.to_string(),
+                            };
 
-                    let tool_calls = vec![ToolCall {
-                        id: "call_abc123".to_string(),
-                        ty: "function".to_string(),
-                        function,
-                    }];
+                            let tool_calls = vec![ToolCall {
+                                id: "call_abc123".to_string(),
+                                ty: "function".to_string(),
+                                function,
+                            }];
 
-                    // create ChatCompletionResponse
-                    Ok(ChatCompletionObject {
-                        id: id.into(),
-                        object: String::from("chat.completion"),
-                        created: created.as_secs(),
-                        model: graph.name().to_owned(),
-                        choices: vec![ChatCompletionObjectChoice {
-                            index: 0,
-                            message: ChatCompletionObjectMessage {
-                                role: ChatCompletionRole::Assistant,
-                                content: None,
-                                tool_calls,
-                                function_call: None,
-                            },
-                            finish_reason: FinishReason::tool_calls,
-                            logprobs: None,
-                        }],
-                        usage: Usage {
-                            prompt_tokens: token_info.prompt_tokens,
-                            completion_tokens: token_info.completion_tokens,
-                            total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
-                        },
-                    })
+                            // create ChatCompletionResponse
+                            Ok(ChatCompletionObject {
+                                id: id.into(),
+                                object: String::from("chat.completion"),
+                                created: created.as_secs(),
+                                model: graph.name().to_owned(),
+                                choices: vec![ChatCompletionObjectChoice {
+                                    index: 0,
+                                    message: ChatCompletionObjectMessage {
+                                        role: ChatCompletionRole::ToolCall,
+                                        content: Some(tool_call_message),
+                                        tool_calls,
+                                        function_call: None,
+                                    },
+                                    finish_reason: FinishReason::tool_calls,
+                                    logprobs: None,
+                                }],
+                                usage: Usage {
+                                    prompt_tokens: token_info.prompt_tokens,
+                                    completion_tokens: token_info.completion_tokens,
+                                    total_tokens: token_info.prompt_tokens
+                                        + token_info.completion_tokens,
+                                },
+                            })
+                        }
+                        None => {
+                            // create ChatCompletionResponse
+                            Ok(ChatCompletionObject {
+                                id: id.into(),
+                                object: String::from("chat.completion"),
+                                created: created.as_secs(),
+                                model: graph.name().to_owned(),
+                                choices: vec![ChatCompletionObjectChoice {
+                                    index: 0,
+                                    message: ChatCompletionObjectMessage {
+                                        role: ChatCompletionRole::Assistant,
+                                        content: Some(message),
+                                        tool_calls: vec![],
+                                        function_call: None,
+                                    },
+                                    finish_reason: FinishReason::stop,
+                                    logprobs: None,
+                                }],
+                                usage: Usage {
+                                    prompt_tokens: token_info.prompt_tokens,
+                                    completion_tokens: token_info.completion_tokens,
+                                    total_tokens: token_info.prompt_tokens
+                                        + token_info.completion_tokens,
+                                },
+                            })
+                        }
+                    }
                 }
                 false => {
                     // create ChatCompletionResponse
