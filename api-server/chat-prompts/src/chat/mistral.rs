@@ -1,8 +1,9 @@
 use super::BuildChatPrompt;
 use crate::error::{PromptError, Result};
 use endpoints::chat::{
-    ChatCompletionAssistantMessage, ChatCompletionRequestMessage, ChatCompletionUserMessage,
-    ChatCompletionUserMessageContent, ContentPart, Tool,
+    ChatCompletionAssistantMessage, ChatCompletionRequestMessage, ChatCompletionToolCallMessage,
+    ChatCompletionToolResultMessage, ChatCompletionUserMessage, ChatCompletionUserMessageContent,
+    ContentPart, Tool,
 };
 
 /// Generate prompts for the `Mistral-instruct` model.
@@ -299,6 +300,36 @@ impl MistralChatPrompt {
             assistant_message = content.trim(),
         ))
     }
+
+    fn append_tool_call_message(
+        &self,
+        chat_history: impl AsRef<str>,
+        message: &ChatCompletionToolCallMessage,
+    ) -> String {
+        match message.content() {
+            Some(content) => {
+                let content = content.to_string();
+                format!(
+                    "{chat_history}[TOOL_CALLS]{tool_call}</s>",
+                    chat_history = chat_history.as_ref().trim(),
+                    tool_call = content.trim(),
+                )
+            }
+            None => chat_history.as_ref().to_string(),
+        }
+    }
+
+    fn append_tool_result_message(
+        &self,
+        chat_history: impl AsRef<str>,
+        message: &ChatCompletionToolResultMessage,
+    ) -> String {
+        format!(
+            "{chat_history}[TOOL_RESULTS]{tool_result}</s>",
+            chat_history = chat_history.as_ref().trim(),
+            tool_result = message.content().trim()
+        )
+    }
 }
 impl BuildChatPrompt for MistralChatPrompt {
     fn build(&self, messages: &mut Vec<ChatCompletionRequestMessage>) -> Result<String> {
@@ -315,6 +346,12 @@ impl BuildChatPrompt for MistralChatPrompt {
                 }
                 ChatCompletionRequestMessage::Assistant(message) => {
                     prompt = self.append_assistant_message(&prompt, message)?;
+                }
+                ChatCompletionRequestMessage::ToolCall(message) => {
+                    prompt = self.append_tool_call_message(&prompt, message);
+                }
+                ChatCompletionRequestMessage::ToolResult(message) => {
+                    prompt = self.append_tool_result_message(&prompt, message);
                 }
                 _ => continue,
             }
@@ -341,6 +378,12 @@ impl BuildChatPrompt for MistralChatPrompt {
                 }
                 ChatCompletionRequestMessage::Assistant(message) => {
                     prompt = self.append_assistant_message_new(&prompt, message, tools)?;
+                }
+                ChatCompletionRequestMessage::ToolCall(message) => {
+                    prompt = self.append_tool_call_message(&prompt, message);
+                }
+                ChatCompletionRequestMessage::ToolResult(message) => {
+                    prompt = self.append_tool_result_message(&prompt, message);
                 }
                 _ => continue,
             }
