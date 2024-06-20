@@ -292,8 +292,10 @@ fn compute_by_graph(
 
             match tool_use {
                 true => {
-                    if graph.metadata.prompt_template != PromptTemplateType::MistralChat {
-                        let err_msg = "The tool use is only supported for the Mistral chat model.";
+                    if graph.metadata.prompt_template != PromptTemplateType::MistralChat
+                        && graph.metadata.prompt_template != PromptTemplateType::ChatML
+                    {
+                        let err_msg = "The tool use is only supported for 'mistral-chat' and 'chatml' prompt templates.";
 
                         #[cfg(feature = "logging")]
                         error!(target: "llama_core", "{}", &err_msg);
