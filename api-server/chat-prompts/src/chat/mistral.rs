@@ -213,11 +213,12 @@ impl MistralChatPrompt {
     }
 
     /// Create a user prompt from a chat completion request message.
-    fn append_user_message_new(
+    fn append_user_message_tool(
         &self,
         chat_history: impl AsRef<str>,
         message: &ChatCompletionUserMessage,
         tools: Option<&[Tool]>,
+        last_user_message: bool,
     ) -> String {
         let content = match message.content() {
             ChatCompletionUserMessageContent::Text(text) => text.to_string(),
@@ -234,26 +235,52 @@ impl MistralChatPrompt {
         };
 
         match chat_history.as_ref().is_empty() {
-            true => match tools {
-                Some(tools) => {
-                    let json = serde_json::to_string(tools).unwrap();
+            true => match last_user_message {
+                true => match tools {
+                    Some(tools) => {
+                        let json = serde_json::to_string(tools).unwrap();
 
-                    format!(
-                        "<s>[AVAILABLE_TOOLS] {available_tools}[/AVAILABLE_TOOLS][INST] {user_message}[/INST]",
-                        available_tools = json,
+                        format!(
+                            "<s>[AVAILABLE_TOOLS] {available_tools}[/AVAILABLE_TOOLS][INST] {user_message}[/INST]",
+                            available_tools = json,
+                            user_message = content.trim(),
+                        )
+                    }
+                    None => format!(
+                        "<s>[INST] {user_message} [/INST]",
                         user_message = content.trim(),
-                    )
-                }
-                None => format!(
-                    "<s>[INST] {user_message} [/INST]",
+                    ),
+                },
+                false => format!(
+                    "{chat_history}[INST] {user_message} [/INST]",
+                    chat_history = chat_history.as_ref().trim(),
                     user_message = content.trim(),
                 ),
             },
-            false => format!(
-                "{chat_history}[INST] {user_message} [/INST]",
-                chat_history = chat_history.as_ref().trim(),
-                user_message = content.trim(),
-            ),
+            false => match last_user_message {
+                true => match tools {
+                    Some(tools) => {
+                        let json = serde_json::to_string(tools).unwrap();
+
+                        format!(
+                            "{chat_history}[AVAILABLE_TOOLS] {available_tools}[/AVAILABLE_TOOLS][INST] {user_message}[/INST]",
+                            chat_history = chat_history.as_ref().trim(),
+                            available_tools = json,
+                            user_message = content.trim(),
+                        )
+                    }
+                    None => format!(
+                        "{chat_history}[INST] {user_message} [/INST]",
+                        chat_history = chat_history.as_ref().trim(),
+                        user_message = content.trim(),
+                    ),
+                },
+                false => format!(
+                    "{chat_history}[INST] {user_message} [/INST]",
+                    chat_history = chat_history.as_ref().trim(),
+                    user_message = content.trim(),
+                ),
+            },
         }
     }
 
@@ -279,7 +306,7 @@ impl MistralChatPrompt {
         ))
     }
 
-    fn append_assistant_message_new(
+    fn append_assistant_message_tool(
         &self,
         chat_history: impl AsRef<str>,
         message: &ChatCompletionAssistantMessage,
@@ -325,7 +352,7 @@ impl MistralChatPrompt {
         message: &ChatCompletionToolResultMessage,
     ) -> String {
         format!(
-            "{chat_history}[TOOL_RESULTS]{tool_result}</s>",
+            "{chat_history}[TOOL_RESULTS]{tool_result}[/TOOL_RESULTS]",
             chat_history = chat_history.as_ref().trim(),
             tool_result = message.content().trim()
         )
@@ -371,13 +398,14 @@ impl BuildChatPrompt for MistralChatPrompt {
 
         // append user/assistant messages
         let mut prompt = String::new();
-        for message in messages {
+        for (idx, message) in messages.iter().enumerate() {
             match message {
                 ChatCompletionRequestMessage::User(message) => {
-                    prompt = self.append_user_message_new(&prompt, message, tools);
+                    let last = idx == messages.len() - 1;
+                    prompt = self.append_user_message_tool(&prompt, message, tools, last);
                 }
                 ChatCompletionRequestMessage::Assistant(message) => {
-                    prompt = self.append_assistant_message_new(&prompt, message, tools)?;
+                    prompt = self.append_assistant_message_tool(&prompt, message, tools)?;
                 }
                 ChatCompletionRequestMessage::ToolCall(message) => {
                     prompt = self.append_tool_call_message(&prompt, message);
