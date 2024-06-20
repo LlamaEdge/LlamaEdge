@@ -36,7 +36,7 @@ Go to Settings,
 * In "General", turn on `containerd` support
 * In "Features in development", turn on "Enable Wasm"
 
-#### Install and run Docker Desktop on Linux servers using CLI only
+#### Install and run Docker Desktop on headless Linux servers
 
 The following example is on Ubuntu / Debian Linux servers.
 
