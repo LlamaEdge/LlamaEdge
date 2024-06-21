@@ -23,6 +23,7 @@ anyhow = "1.0.80"
 multipart-2021 = "0.19.0"
 wasi-logger.workspace = true
 log.workspace = true
+either.workspace = true
 
 [features]
 default = []
