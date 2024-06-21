@@ -315,9 +315,7 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
                 if let Some(tools) = chat_request.tools.as_ref() {
                     if !tools.is_empty() && !chat_request.messages.is_empty() {
                         let role = chat_request.messages.last().unwrap().role();
-                        if !(role == ChatCompletionRole::Tool
-                            || role == ChatCompletionRole::ToolResult)
-                        {
+                        if role != ChatCompletionRole::Tool {
                             chat_request.stream = Some(false);
                         }
                     }
