@@ -58,9 +58,12 @@ pub async fn chat(
         }
     }
 
-    info!(target: "llama-core", "tool choice: {:?}", chat_request.tool_choice.as_ref());
-    info!(target: "llama-core", "tools: {:?}", chat_request.tools.as_ref());
-    info!(target: "llama-core", "stream mode: {:?}", chat_request.stream);
+    #[cfg(feature = "logging")]
+    {
+        info!(target: "llama-core", "tool choice: {:?}", chat_request.tool_choice.as_ref());
+        info!(target: "llama-core", "tools: {:?}", chat_request.tools.as_ref());
+        info!(target: "llama-core", "stream mode: {:?}", chat_request.stream);
+    }
 
     match chat_request.stream {
         Some(true) => match chat_completions_stream(chat_request).await {
