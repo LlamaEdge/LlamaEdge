@@ -313,14 +313,12 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
         if let Some(tool_choice) = chat_request.tool_choice.as_ref() {
             if *tool_choice != ToolChoice::None {
                 if let Some(tools) = chat_request.tools.as_ref() {
-                    if !tools.is_empty() {
-                        if !chat_request.messages.is_empty() {
-                            let role = chat_request.messages.last().unwrap().role();
-                            if !(role == ChatCompletionRole::Tool
-                                || role == ChatCompletionRole::ToolResult)
-                            {
-                                chat_request.stream = Some(false);
-                            }
+                    if !tools.is_empty() && !chat_request.messages.is_empty() {
+                        let role = chat_request.messages.last().unwrap().role();
+                        if !(role == ChatCompletionRole::Tool
+                            || role == ChatCompletionRole::ToolResult)
+                        {
+                            chat_request.stream = Some(false);
                         }
                     }
                 }
