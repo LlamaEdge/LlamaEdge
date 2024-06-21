@@ -894,6 +894,7 @@ fn build_prompt(
     let max_prompt_tokens = ctx_size * 4 / 5;
 
     loop {
+        // ! DO NOT REMOVE
         // build prompt
         // let prompt = match chat_prompt.build(&mut chat_request.messages) {
         //     Ok(prompt) => prompt,
@@ -907,7 +908,6 @@ fn build_prompt(
         //     }
         // };
 
-        // ! debug
         let (prompt, tool_use) = match chat_request.tool_choice.as_ref() {
             Some(tool_choice) => match tool_choice {
                 ToolChoice::None => {
