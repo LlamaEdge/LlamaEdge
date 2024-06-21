@@ -27,6 +27,7 @@ tiktoken-rs = "^0.5"
 wasi-logger = { workspace = true, optional = true }
 log = { workspace = true, optional = true }
 regex = "1"
+either.workspace = true
 
 [features]
 default = []
