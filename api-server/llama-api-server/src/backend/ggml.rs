@@ -1,6 +1,6 @@
 use crate::{error, utils::gen_chat_id, SERVER_INFO};
 use endpoints::{
-    chat::{ChatCompletionRequest, ToolChoice},
+    chat::{ChatCompletionRequest, ChatCompletionRole, ToolChoice},
     completions::CompletionRequest,
     embeddings::EmbeddingRequest,
     files::FileObject,
@@ -310,21 +310,20 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
     // ! debug
     // update stream mode according to the tool choice and tools
     if chat_request.stream == Some(true) {
-        match chat_request.tool_choice.as_ref() {
-            Some(tool_choice) => match tool_choice {
-                ToolChoice::None => {
-                    chat_request.stream = Some(false);
-                }
-                _ => {
-                    if let Some(tools) = chat_request.tools.as_ref() {
-                        if !tools.is_empty() {
-                            chat_request.stream = Some(false);
+        if let Some(tool_choice) = chat_request.tool_choice.as_ref() {
+            if *tool_choice != ToolChoice::None {
+                if let Some(tools) = chat_request.tools.as_ref() {
+                    if !tools.is_empty() {
+                        if !chat_request.messages.is_empty() {
+                            let role = chat_request.messages.last().unwrap().role();
+                            if !(role == ChatCompletionRole::Tool
+                                || role == ChatCompletionRole::ToolResult)
+                            {
+                                chat_request.stream = Some(false);
+                            }
                         }
                     }
                 }
-            },
-            None => {
-                chat_request.stream = Some(false);
             }
         }
     }
