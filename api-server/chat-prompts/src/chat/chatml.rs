@@ -140,14 +140,12 @@ impl ChatMLPrompt {
         &self,
         chat_history: impl AsRef<str>,
         message: &ChatCompletionToolMessage,
-    ) -> Result<String> {
-        let content = message.content();
-
-        Ok(format!(
+    ) -> String {
+        format!(
             "{chat_history}\n<|im_start|>tool\n{tool_message}<|im_end|>",
             chat_history = chat_history.as_ref().trim(),
-            tool_message = content.trim(),
-        ))
+            tool_message = message.content().trim(),
+        )
     }
 }
 impl BuildChatPrompt for ChatMLPrompt {
@@ -173,7 +171,7 @@ impl BuildChatPrompt for ChatMLPrompt {
                     prompt = self.append_assistant_message(&prompt, message)?;
                 }
                 ChatCompletionRequestMessage::Tool(message) => {
-                    prompt = self.append_tool_message(&prompt, message)?;
+                    prompt = self.append_tool_message(&prompt, message);
                 }
                 _ => continue,
             }
@@ -227,7 +225,7 @@ impl BuildChatPrompt for ChatMLPrompt {
                     prompt = self.append_assistant_message(&prompt, message)?;
                 }
                 ChatCompletionRequestMessage::Tool(message) => {
-                    prompt = self.append_tool_message(&prompt, message)?;
+                    prompt = self.append_tool_message(&prompt, message);
                 }
                 _ => continue,
             }
