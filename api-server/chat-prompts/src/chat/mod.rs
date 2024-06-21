@@ -41,10 +41,10 @@ pub trait BuildChatPrompt: Send {
 
     fn build_with_tools(
         &self,
-        _messages: &mut Vec<ChatCompletionRequestMessage>,
+        messages: &mut Vec<ChatCompletionRequestMessage>,
         _tools: Option<&[Tool]>,
     ) -> Result<String> {
-        Ok(String::from("Not implemented"))
+        self.build(messages)
     }
 }
 
