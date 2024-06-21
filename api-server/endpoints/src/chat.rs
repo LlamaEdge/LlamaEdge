@@ -971,8 +971,6 @@ pub enum ChatCompletionRequestMessage {
     Tool(ChatCompletionToolMessage),
     #[serde(rename = "tool_call")]
     ToolCall(ChatCompletionToolCallMessage),
-    #[serde(rename = "tool_result")]
-    ToolResult(ChatCompletionToolResultMessage),
 }
 impl ChatCompletionRequestMessage {
     /// Creates a new system message.
@@ -1024,15 +1022,25 @@ impl ChatCompletionRequestMessage {
         ChatCompletionRequestMessage::Tool(ChatCompletionToolMessage::new(content, tool_call_id))
     }
 
+    /// Creates a new tool call message.
+    pub fn new_tool_call_message(
+        content: Option<String>,
+        tool_calls: Option<Vec<ToolCall>>,
+        name: Option<String>,
+    ) -> Self {
+        ChatCompletionRequestMessage::ToolCall(ChatCompletionToolCallMessage::new(
+            content, tool_calls, name,
+        ))
+    }
+
     /// The role of the messages author.
     pub fn role(&self) -> ChatCompletionRole {
         match self {
-            ChatCompletionRequestMessage::System(message) => message.role(),
-            ChatCompletionRequestMessage::User(message) => message.role(),
-            ChatCompletionRequestMessage::Assistant(message) => message.role(),
-            ChatCompletionRequestMessage::Tool(message) => message.role(),
+            ChatCompletionRequestMessage::System(_) => ChatCompletionRole::System,
+            ChatCompletionRequestMessage::User(_) => ChatCompletionRole::User,
+            ChatCompletionRequestMessage::Assistant(_) => ChatCompletionRole::Assistant,
+            ChatCompletionRequestMessage::Tool(_) => ChatCompletionRole::Tool,
             ChatCompletionRequestMessage::ToolCall(_) => ChatCompletionRole::ToolCall,
-            ChatCompletionRequestMessage::ToolResult(_) => ChatCompletionRole::ToolResult,
         }
     }
 
@@ -1044,7 +1052,6 @@ impl ChatCompletionRequestMessage {
             ChatCompletionRequestMessage::Assistant(message) => message.name(),
             ChatCompletionRequestMessage::Tool(_) => None,
             ChatCompletionRequestMessage::ToolCall(message) => message.name(),
-            ChatCompletionRequestMessage::ToolResult(message) => message.name(),
         }
     }
 }
@@ -1173,52 +1180,6 @@ fn test_chat_serialize_tool_call_message() {
         json,
         r#"{"content":"Hello, world!","tool_calls":[{"id":"tool-call-id","type":"function","function":{"name":"get_current_weather","arguments":"{\"location\":\"Beijing\",\"unit\":\"celsius\"}"}}]}"#
     );
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub struct ChatCompletionToolResultMessage {
-    /// The result of the tool call.
-    content: String,
-    /// An optional name for the participant. Provides the model information to differentiate between participants of the same role.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    name: Option<String>,
-}
-impl ChatCompletionToolResultMessage {
-    /// Creates a new tool result message.
-    ///
-    /// # Arguments
-    ///
-    /// * `content` - The result of the tool call.
-    ///
-    /// * `name` - An optional name for the participant. Provides the model information to differentiate between participants of the same role.
-    pub fn new(content: impl Into<String>, name: Option<String>) -> Self {
-        Self {
-            content: content.into(),
-            name,
-        }
-    }
-
-    pub fn role(&self) -> ChatCompletionRole {
-        ChatCompletionRole::ToolResult
-    }
-
-    pub fn content(&self) -> &str {
-        &self.content
-    }
-
-    pub fn name(&self) -> Option<&String> {
-        self.name.as_ref()
-    }
-}
-
-#[test]
-fn test_chat_serialize_tool_result_message() {
-    let message = ChatCompletionToolResultMessage {
-        content: "Hello, world!".to_string(),
-        name: None,
-    };
-    let json = serde_json::to_string(&message).unwrap();
-    assert_eq!(json, r#"{"content":"Hello, world!"}"#);
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -1773,8 +1734,6 @@ pub enum ChatCompletionRole {
     Tool,
     #[serde(rename = "tool_call")]
     ToolCall,
-    #[serde(rename = "tool_result")]
-    ToolResult,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
