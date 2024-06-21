@@ -12,6 +12,7 @@ use chat_prompts::{
     chat::{BuildChatPrompt, ChatPrompt},
     PromptTemplateType,
 };
+use either::{Either, Left, Right};
 #[cfg(feature = "https")]
 use endpoints::chat::{
     ChatCompletionRequestMessage, ChatCompletionUserMessageContent, ContentPart,
@@ -33,6 +34,45 @@ use std::{
     task::{Context, Poll},
     time::SystemTime,
 };
+
+/// Processes a chat-completion request and returns either a stream of ChatCompletionChunk instances or a ChatCompletionObject instance.
+pub async fn chat(
+    chat_request: &mut ChatCompletionRequest,
+) -> Result<
+    Either<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, ChatCompletionObject>,
+    LlamaCoreError,
+> {
+    // * update stream mode according to the tool choice and tools
+    if chat_request.stream == Some(true) {
+        if let Some(tool_choice) = chat_request.tool_choice.as_ref() {
+            if *tool_choice != ToolChoice::None {
+                if let Some(tools) = chat_request.tools.as_ref() {
+                    if !tools.is_empty() && !chat_request.messages.is_empty() {
+                        let role = chat_request.messages.last().unwrap().role();
+                        if role != ChatCompletionRole::Tool {
+                            chat_request.stream = Some(false);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    info!(target: "llama-core", "tool choice: {:?}", chat_request.tool_choice.as_ref());
+    info!(target: "llama-core", "tools: {:?}", chat_request.tools.as_ref());
+    info!(target: "llama-core", "stream mode: {:?}", chat_request.stream);
+
+    match chat_request.stream {
+        Some(true) => match chat_completions_stream(chat_request).await {
+            Ok(stream) => Ok(Left(stream)),
+            Err(e) => Err(e),
+        },
+        Some(false) | None => match chat_completions(chat_request).await {
+            Ok(chat_completion_object) => Ok(Right(chat_completion_object)),
+            Err(e) => Err(e),
+        },
+    }
+}
 
 /// Processes a chat-completion request and returns ChatCompletionChunk instances in stream.
 pub async fn chat_completions_stream(
