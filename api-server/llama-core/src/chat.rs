@@ -165,9 +165,9 @@ pub async fn chat_completions_stream(
                                             }
                                             Err(_) => {
                                                 // TODO This is a temp check. In case, infinite cached encodings happen.
-                                                if cached_encodings.len() > 3 {
+                                                if cached_encodings.len() > 4 {
 
-                                                    let err_msg = "The length of the invalid utf8 bytes exceed 3.";
+                                                    let err_msg = "The length of the invalid utf8 bytes exceed 4.";
 
                                                     #[cfg(feature = "logging")]
                                                     error!(target: "llama_core", "{}", &err_msg);
@@ -689,8 +689,8 @@ pub async fn chat_completions_stream(
                                             }
                                             Err(_) => {
                                                 // TODO This is a temp check. In case, infinite cached encodings happen.
-                                                if cached_encodings.len() > 3 {
-                                                    let err_msg = "The length of the invalid utf8 bytes exceed 3.";
+                                                if cached_encodings.len() > 4 {
+                                                    let err_msg = "The length of the invalid utf8 bytes exceed 4.";
 
                                                     #[cfg(feature = "logging")]
                                                     error!(target: "llama_core", "{}", &err_msg);
