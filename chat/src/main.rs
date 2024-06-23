@@ -30,7 +30,7 @@ struct Cli {
     n_gpu_layers: u64,
     /// Disable memory mapping for file access
     #[arg(long)]
-    no_mmap: bool,
+    no_mmap: Option<bool>,
     /// Batch size for prompt processing
     #[arg(short, long, default_value = "512")]
     batch_size: u64,
@@ -116,10 +116,12 @@ async fn main() -> anyhow::Result<()> {
         &cli.n_gpu_layers
     ));
     // no_mmap
-    log(format!(
-        "[INFO] Disable memory mapping for file access : {}",
-        &cli.no_mmap
-    ));
+    if let Some(no_mmap) = &cli.no_mmap {
+        log(format!(
+            "[INFO] Disable memory mapping for file access : {}",
+            &no_mmap
+        ));
+    }
     // batch size
     log(format!(
         "[INFO] Batch size for prompt processing: {}",

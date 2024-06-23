@@ -70,7 +70,7 @@ struct Cli {
     n_gpu_layers: u64,
     /// Disable memory mapping for file access
     #[arg(long)]
-    no_mmap: bool,
+    no_mmap: Option<bool>,
     /// Temperature for sampling
     #[arg(long, default_value = "1.0")]
     temp: f64,
@@ -214,9 +214,14 @@ async fn main() -> Result<(), ServerError> {
 
     // log n_gpu_layers
     info!(target: "server_config", "n_gpu_layers: {}", cli.n_gpu_layers);
-  
+
     // log no_mmap
-    info!(target: "server_config", "no_mmap: {}", cli.no_mmap);
+    if let Some(no_mmap) = &cli.no_mmap {
+        info!(
+            "[INFO] Disable memory mapping for file access : {}",
+            no_mmap.clone()
+        );
+    }
 
     // log temperature
     info!(target: "server_config", "temp: {}", cli.temp);
@@ -302,7 +307,7 @@ async fn main() -> Result<(), ServerError> {
                     n_predict: Some(metadata_chat.n_predict),
                     reverse_prompt: metadata_chat.reverse_prompt.clone(),
                     n_gpu_layers: Some(metadata_chat.n_gpu_layers),
-                    use_mmap: Some(metadata_chat.use_mmap),
+                    use_mmap: metadata_chat.use_mmap,
                     temperature: Some(metadata_chat.temperature),
                     top_p: Some(metadata_chat.top_p),
                     repeat_penalty: Some(metadata_chat.repeat_penalty),
@@ -348,7 +353,7 @@ async fn main() -> Result<(), ServerError> {
             n_predict: Some(metadata_chat.n_predict),
             reverse_prompt: metadata_chat.reverse_prompt.clone(),
             n_gpu_layers: Some(metadata_chat.n_gpu_layers),
-            use_mmap: Some(metadata_chat.use_mmap),
+            use_mmap: metadata_chat.use_mmap,
             temperature: Some(metadata_chat.temperature),
             top_p: Some(metadata_chat.top_p),
             repeat_penalty: Some(metadata_chat.repeat_penalty),
