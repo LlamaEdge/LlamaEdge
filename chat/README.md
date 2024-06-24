@@ -126,7 +126,7 @@ Options:
   -g, --n-gpu-layers <N_GPU_LAYERS>
           Number of layers to run on the GPU [default: 100]
   --no-mmap
-          Disable memory mapping for file access
+          Disable memory mapping for file access of chat models
   -b, --batch-size <BATCH_SIZE>
           Batch size for prompt processing [default: 512]
       --temp <TEMP>

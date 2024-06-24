@@ -55,7 +55,7 @@ fn main() -> Result<(), String> {
             Arg::new("no_mmap")
                 .long("no-mmap")
                 .value_name("NO_MMAP")
-                .help("Disable memory mapping for file access")
+                .help("Disable memory mapping for file access of chat models")
                 .action(ArgAction::SetFalse),
         )
         .arg(

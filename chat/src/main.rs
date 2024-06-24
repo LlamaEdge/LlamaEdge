@@ -28,7 +28,7 @@ struct Cli {
     /// Number of layers to run on the GPU
     #[arg(short = 'g', long, default_value = "100")]
     n_gpu_layers: u64,
-    /// Disable memory mapping for file access
+    /// Disable memory mapping for file access of chat models
     #[arg(long)]
     no_mmap: Option<bool>,
     /// Batch size for prompt processing
@@ -118,7 +118,7 @@ async fn main() -> anyhow::Result<()> {
     // no_mmap
     if let Some(no_mmap) = &cli.no_mmap {
         log(format!(
-            "[INFO] Disable memory mapping for file access : {}",
+            "[INFO] Disable memory mapping for file access of chat models : {}",
             &no_mmap
         ));
     }
