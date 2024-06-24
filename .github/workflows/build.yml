@@ -42,13 +42,13 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: nightly
-          target: wasm32-wasi
+          target: wasm32-wasi, wasm32-wasip1
           components: rustfmt, clippy
 
       - name: Install Rust-stable
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          target: wasm32-wasi
+          target: wasm32-wasi, wasm32-wasip1
 
       - name: Build simple
         id: build_simple
