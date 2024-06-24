@@ -1,9 +1,8 @@
 use super::BuildChatPrompt;
 use crate::error::{PromptError, Result};
 use endpoints::chat::{
-    ChatCompletionAssistantMessage, ChatCompletionRequestMessage, ChatCompletionToolCallMessage,
-    ChatCompletionToolMessage, ChatCompletionUserMessage, ChatCompletionUserMessageContent,
-    ContentPart, Tool,
+    ChatCompletionAssistantMessage, ChatCompletionRequestMessage, ChatCompletionToolMessage,
+    ChatCompletionUserMessage, ChatCompletionUserMessageContent, ContentPart, Tool,
 };
 
 /// Generate prompts for the `Mistral-instruct` model.
@@ -177,8 +176,8 @@ impl BuildChatPrompt for MistralLitePrompt {
 
 /// Generate prompts for the `Mistral-instruct` model.
 #[derive(Debug, Default, Clone)]
-pub struct MistralChatPrompt;
-impl MistralChatPrompt {
+pub struct MistralToolPrompt;
+impl MistralToolPrompt {
     /// Create a user prompt from a chat completion request message.
     fn append_user_message(
         &self,
@@ -299,51 +298,13 @@ impl MistralChatPrompt {
             },
         };
 
-        Ok(format!(
-            "{chat_history}{assistant_message}</s>",
-            chat_history = chat_history.as_ref().trim(),
-            assistant_message = content.trim(),
-        ))
-    }
-
-    fn append_assistant_message_tool(
-        &self,
-        chat_history: impl AsRef<str>,
-        message: &ChatCompletionAssistantMessage,
-        _tools: Option<&[Tool]>,
-    ) -> Result<String> {
-        let content = match message.content() {
-            Some(content) => content.to_string(),
-            // Note that the content is optional if `tool_calls` is specified.
-            None => match message.tool_calls().is_some() {
-                true => String::new(),
-                false => return Err(PromptError::NoAssistantMessage),
-            },
-        };
+        let content = content.split("\n").next().unwrap_or_default();
 
         Ok(format!(
             "{chat_history}{assistant_message}</s>",
             chat_history = chat_history.as_ref().trim(),
             assistant_message = content.trim(),
         ))
-    }
-
-    fn append_tool_call_message(
-        &self,
-        chat_history: impl AsRef<str>,
-        message: &ChatCompletionToolCallMessage,
-    ) -> String {
-        match message.content() {
-            Some(content) => {
-                let content = content.to_string();
-                format!(
-                    "{chat_history}[TOOL_CALLS]{tool_call}</s>",
-                    chat_history = chat_history.as_ref().trim(),
-                    tool_call = content.trim(),
-                )
-            }
-            None => chat_history.as_ref().to_string(),
-        }
     }
 
     fn append_tool_message(
@@ -358,7 +319,7 @@ impl MistralChatPrompt {
         )
     }
 }
-impl BuildChatPrompt for MistralChatPrompt {
+impl BuildChatPrompt for MistralToolPrompt {
     fn build(&self, messages: &mut Vec<ChatCompletionRequestMessage>) -> Result<String> {
         if messages.is_empty() {
             return Err(crate::error::PromptError::NoMessages);
@@ -373,9 +334,6 @@ impl BuildChatPrompt for MistralChatPrompt {
                 }
                 ChatCompletionRequestMessage::Assistant(message) => {
                     prompt = self.append_assistant_message(&prompt, message)?;
-                }
-                ChatCompletionRequestMessage::ToolCall(message) => {
-                    prompt = self.append_tool_call_message(&prompt, message);
                 }
                 ChatCompletionRequestMessage::Tool(message) => {
                     prompt = self.append_tool_message(&prompt, message);
@@ -405,10 +363,7 @@ impl BuildChatPrompt for MistralChatPrompt {
                     prompt = self.append_user_message_tool(&prompt, message, tools, last);
                 }
                 ChatCompletionRequestMessage::Assistant(message) => {
-                    prompt = self.append_assistant_message_tool(&prompt, message, tools)?;
-                }
-                ChatCompletionRequestMessage::ToolCall(message) => {
-                    prompt = self.append_tool_call_message(&prompt, message);
+                    prompt = self.append_assistant_message(&prompt, message)?;
                 }
                 ChatCompletionRequestMessage::Tool(message) => {
                     prompt = self.append_tool_message(&prompt, message);
