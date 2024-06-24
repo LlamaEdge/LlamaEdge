@@ -2,14 +2,13 @@
 
 ## Introduction
 
-Fig.1 shows the basic interactions between three roles (front end, LLM and toolkit) in the scenario of tool use.
+The following diagram shows the basic interactions between three roles (front end, LLM and toolkit) in the scenario of tool use.
 
-<figure style="text-align: center;">
-  <img src="image/image.png" alt="Interactions in the senario of tool use" width="60%" />
-  <figcaption>Fig.1 Interactions in the senario of tool use</figcaption>
-</figure>
+<div align=center>
+<img src="image/tool_use.png" alt="Interactions in the senario of tool use" width="60%" />
+</div>
 
-## Explanation and Examples
+### Explanation and Examples
 
 - Step 1: Send a request with user query and available tools
   The following shows the JSON format of a user request. The request includes a `user query`, available `tools`, and the `tool choice`. The tool choice can be `auto` (the model can pick between generating a message or calling one or more tools), `none` (the model will not call any tool and instead generates a message), or `required` (the model must call one or more tools).
