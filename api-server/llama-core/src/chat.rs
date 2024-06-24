@@ -308,6 +308,9 @@ fn compute_by_graph(
                 LlamaCoreError::Operation(err_msg)
             })?;
 
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "raw generation: {}", output);
+
             // post-process
             let message = post_process(output, &graph.metadata.prompt_template).map_err(|e| {
                 LlamaCoreError::Operation(format!("Failed to post-process the output. {}", e))
@@ -335,8 +338,8 @@ fn compute_by_graph(
 
             match tool_use {
                 true => {
-                    if graph.metadata.prompt_template != PromptTemplateType::MistralChat
-                        && graph.metadata.prompt_template != PromptTemplateType::ChatML
+                    if graph.metadata.prompt_template != PromptTemplateType::MistralTool
+                        && graph.metadata.prompt_template != PromptTemplateType::ChatMLTool
                     {
                         let err_msg = "The tool use is only supported for 'mistral-chat' and 'chatml' prompt templates.";
 
@@ -346,7 +349,12 @@ fn compute_by_graph(
                         return Err(LlamaCoreError::Operation(err_msg.into()));
                     }
 
-                    match extract_json_content(&message) {
+                    let extracted = extract_json_content(&message, graph.metadata.prompt_template);
+
+                    #[cfg(feature = "logging")]
+                    info!(target: "llama_core", "extracted: {:?}", &extracted);
+
+                    match extracted {
                         Some(tool_call_message) => {
                             let value: Vec<serde_json::Value> =
                                 serde_json::from_str(&tool_call_message).unwrap();
@@ -378,8 +386,8 @@ fn compute_by_graph(
                                 choices: vec![ChatCompletionObjectChoice {
                                     index: 0,
                                     message: ChatCompletionObjectMessage {
-                                        role: ChatCompletionRole::ToolCall,
-                                        content: Some(tool_call_message),
+                                        role: ChatCompletionRole::Assistant,
+                                        content: Some(message),
                                         tool_calls,
                                         function_call: None,
                                     },
@@ -597,13 +605,29 @@ fn compute_by_graph(
     }
 }
 
-fn extract_json_content(input: &str) -> Option<String> {
-    let pattern = r"\[TOOL_CALLS\] (\[.*?\])";
-    // let pattern = r"\[TOOL_CALLS\]\s*(\[.*?\])\s*</s>";
-    let re = regex::Regex::new(pattern).unwrap();
-    re.captures(input)
-        .and_then(|caps| caps.get(1))
-        .map(|match_| match_.as_str().to_string())
+fn extract_json_content(input: &str, prompt_template: PromptTemplateType) -> Option<String> {
+    match prompt_template {
+        PromptTemplateType::MistralTool => {
+            let pattern = r"\[TOOL_CALLS\] (\[.*?\])";
+            let re = regex::Regex::new(pattern).unwrap();
+            re.captures(input)
+                .and_then(|caps| caps.get(1))
+                .map(|match_| match_.as_str().to_string())
+        }
+        PromptTemplateType::ChatMLTool => {
+            let pattern = r"<tool_call>([\s\S]*?)</tool_call>";
+            let re = regex::Regex::new(pattern).unwrap();
+
+            if let Some(caps) = re.captures(input) {
+                let s = &caps[1];
+                let trimmed = s[0..s.len() - 2].to_string();
+                Some(format!("[{}]", trimmed))
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
 }
 
 async fn check_model_metadata(
@@ -779,7 +803,9 @@ fn post_process(
         } else {
             s.to_owned()
         }
-    } else if *template_ty == PromptTemplateType::ChatML {
+    } else if *template_ty == PromptTemplateType::ChatML
+        || *template_ty == PromptTemplateType::ChatMLTool
+    {
         if output.as_ref().contains("<|im_start|>") && output.as_ref().contains("<|im_end|>") {
             let idx_start = output.as_ref().find("<|im_start|>").unwrap();
             let idx_end = output.as_ref().find("<|im_end|>").unwrap();
@@ -805,7 +831,7 @@ fn post_process(
         }
     } else if *template_ty == PromptTemplateType::Zephyr
         || *template_ty == PromptTemplateType::MistralLite
-        || *template_ty == PromptTemplateType::MistralChat
+        || *template_ty == PromptTemplateType::MistralTool
     {
         if output.as_ref().contains("</s><") {
             output.as_ref().trim_end_matches("</s><").trim().to_owned()
