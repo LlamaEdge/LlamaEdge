@@ -6,7 +6,7 @@ Fig.1 shows the basic interactions between three roles (front end, LLM and toolk
 
 <figure style="text-align: center;">
   <img src="image/image.png" alt="Interactions in the senario of tool use" width="60%" />
-  <figcaption>Fig.1 Diagram of Tool Use.</figcaption>
+  <figcaption>Fig.1 Interactions in the senario of tool use</figcaption>
 </figure>
 
 ## Explanation and Examples
