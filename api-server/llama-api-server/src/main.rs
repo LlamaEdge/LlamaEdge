@@ -19,7 +19,7 @@ use hyper::{
 use llama_core::MetadataBuilder;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
-use std::{net::SocketAddr, path::PathBuf};
+use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
 use utils::LogLevel;
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
@@ -407,13 +407,26 @@ async fn main() -> Result<(), ServerError> {
     // log socket address
     info!(target: "server_config", "socket_address: {}", addr.to_string());
 
+    // get the environment variable `NODE_VERSION`
+    // Note that this is for satisfying the requirement of `gaianet-node` project.
+    let node = std::env::var("NODE_VERSION").ok();
+    if node.is_some() {
+        // log node version
+        info!(target: "server_config", "gaianet_node_version: {}", node.as_ref().unwrap());
+    }
+
     // create server info
     let server_info = ServerInfo {
-        version: env!("CARGO_PKG_VERSION").to_string(),
-        plugin_version,
-        port,
+        node,
+        server: ApiServer {
+            ty: "llama".to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            plugin_version,
+            port,
+        },
         chat_model: chat_model_config,
         embedding_model: embedding_model_config,
+        extras: HashMap::new(),
     };
     SERVER_INFO
         .set(server_info)
@@ -545,15 +558,26 @@ pub struct AppState {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct ServerInfo {
-    #[serde(rename = "api_server_version")]
-    version: String,
-    #[serde(rename = "ggml_plugin_version")]
-    plugin_version: String,
-    port: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "node_version")]
+    node: Option<String>,
+    #[serde(rename = "api_server")]
+    server: ApiServer,
     #[serde(skip_serializing_if = "Option::is_none")]
     chat_model: Option<ModelConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     embedding_model: Option<ModelConfig>,
+    extras: HashMap<String, String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) struct ApiServer {
+    #[serde(rename = "type")]
+    ty: String,
+    version: String,
+    #[serde(rename = "ggml_plugin_version")]
+    plugin_version: String,
+    port: String,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
