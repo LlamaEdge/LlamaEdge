@@ -545,7 +545,9 @@ pub struct AppState {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct ServerInfo {
+    #[serde(rename = "api_server_version")]
     version: String,
+    #[serde(rename = "ggml_plugin_version")]
     plugin_version: String,
     port: String,
     #[serde(skip_serializing_if = "Option::is_none")]
