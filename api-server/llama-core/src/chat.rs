@@ -584,11 +584,11 @@ fn parse_tool_calls(input: &str, prompt_template: PromptTemplateType) -> Option<
         PromptTemplateType::MistralTool => match regex::Regex::new(r"\[\{.*?\}\]") {
             Ok(re) => {
                 let mut values: Vec<serde_json::Value> = vec![];
-                for (idx, cap) in re.captures_iter(input).enumerate() {
+                for cap in re.captures_iter(input) {
                     let matched = &cap[0];
 
                     #[cfg(feature = "logging")]
-                    info!(target: "llama_core", "captured_{}: {}", idx, matched);
+                    info!(target: "llama_core", "captured: {}", matched);
 
                     if let Ok(group) = serde_json::from_str::<Vec<serde_json::Value>>(matched) {
                         values.extend(group);
@@ -616,11 +616,9 @@ fn parse_tool_calls(input: &str, prompt_template: PromptTemplateType) -> Option<
 
                 Some(tool_calls)
             }
-            Err(e) => {
-                let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
-
+            Err(_e) => {
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "llama_core", "Failed to create a regex pattern. Reason: {}", _e);
 
                 None
             }
@@ -629,11 +627,11 @@ fn parse_tool_calls(input: &str, prompt_template: PromptTemplateType) -> Option<
             match regex::Regex::new(r"<tool_call>(.*?)</tool_call>") {
                 Ok(re) => {
                     let mut values: Vec<serde_json::Value> = vec![];
-                    for (idx, cap) in re.captures_iter(input).enumerate() {
+                    for cap in re.captures_iter(input) {
                         let cleaned = cap[1].replace("\\n", ""); // Remove "\\n" from the captured group
 
                         #[cfg(feature = "logging")]
-                        info!(target: "llama_core", "captured_{}: {}", idx, cleaned);
+                        info!(target: "llama_core", "captured: {}", cleaned);
 
                         if let Ok(value) = serde_json::from_str::<serde_json::Value>(&cleaned) {
                             values.push(value);
@@ -661,11 +659,9 @@ fn parse_tool_calls(input: &str, prompt_template: PromptTemplateType) -> Option<
 
                     Some(tool_calls)
                 }
-                Err(e) => {
-                    let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
-
+                Err(_e) => {
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "llama_core", "Failed to create a regex pattern. Reason: {}", _e);
 
                     None
                 }
