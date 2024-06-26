@@ -349,34 +349,8 @@ fn compute_by_graph(
                         return Err(LlamaCoreError::Operation(err_msg.into()));
                     }
 
-                    let extracted = extract_json_content(&message, graph.metadata.prompt_template);
-
-                    #[cfg(feature = "logging")]
-                    info!(target: "llama_core", "extracted: {:?}", &extracted);
-
-                    match extracted {
-                        Some(tool_call_message) => {
-                            let value: Vec<serde_json::Value> =
-                                serde_json::from_str(&tool_call_message).unwrap();
-                            println!("{:?}", value);
-
-                            let func_name = value[0].get("name").unwrap();
-                            println!("name: {}", func_name);
-
-                            let args = value[0].get("arguments").unwrap();
-                            println!("arguments: {}", args);
-
-                            let function = Function {
-                                name: func_name.to_string(),
-                                arguments: args.to_string(),
-                            };
-
-                            let tool_calls = vec![ToolCall {
-                                id: "call_abc123".to_string(),
-                                ty: "function".to_string(),
-                                function,
-                            }];
-
+                    match parse_tool_calls(&message, graph.metadata.prompt_template) {
+                        Some(tool_calls) => {
                             // create ChatCompletionResponse
                             Ok(ChatCompletionObject {
                                 id: id.into(),
@@ -605,25 +579,96 @@ fn compute_by_graph(
     }
 }
 
-fn extract_json_content(input: &str, prompt_template: PromptTemplateType) -> Option<String> {
+fn parse_tool_calls(input: &str, prompt_template: PromptTemplateType) -> Option<Vec<ToolCall>> {
     match prompt_template {
-        PromptTemplateType::MistralTool => {
-            let pattern = r"\[TOOL_CALLS\] (\[.*?\])";
-            let re = regex::Regex::new(pattern).unwrap();
-            re.captures(input)
-                .and_then(|caps| caps.get(1))
-                .map(|match_| match_.as_str().to_string())
-        }
-        PromptTemplateType::ChatMLTool => {
-            let pattern = r"<tool_call>([\s\S]*?)</tool_call>";
-            let re = regex::Regex::new(pattern).unwrap();
+        PromptTemplateType::MistralTool => match regex::Regex::new(r"\[\{.*?\}\]") {
+            Ok(re) => {
+                let mut values: Vec<serde_json::Value> = vec![];
+                for (idx, cap) in re.captures_iter(input).enumerate() {
+                    let matched = &cap[0];
 
-            if let Some(caps) = re.captures(input) {
-                let s = &caps[1];
-                let trimmed = s[0..s.len() - 2].to_string();
-                Some(format!("[{}]", trimmed))
-            } else {
+                    #[cfg(feature = "logging")]
+                    info!(target: "llama_core", "captured_{}: {}", idx, matched);
+
+                    if let Ok(group) = serde_json::from_str::<Vec<serde_json::Value>>(matched) {
+                        values.extend(group);
+                    }
+                }
+
+                let mut tool_calls: Vec<ToolCall> = vec![];
+                for value in values.iter() {
+                    let function = Function {
+                        name: value.get("name").unwrap().to_string(),
+                        arguments: value.get("arguments").unwrap().to_string(),
+                    };
+
+                    let tool_call = ToolCall {
+                        id: "call_abc123".to_string(),
+                        ty: "function".to_string(),
+                        function,
+                    };
+
+                    tool_calls.push(tool_call);
+                }
+
+                #[cfg(feature = "logging")]
+                info!(target: "llama_core", "extracted {} tool calls: {:?}", tool_calls.len(),&tool_calls);
+
+                Some(tool_calls)
+            }
+            Err(e) => {
+                let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
                 None
+            }
+        },
+        PromptTemplateType::ChatMLTool => {
+            match regex::Regex::new(r"<tool_call>(.*?)</tool_call>") {
+                Ok(re) => {
+                    let mut values: Vec<serde_json::Value> = vec![];
+                    for (idx, cap) in re.captures_iter(input).enumerate() {
+                        let cleaned = cap[1].replace("\\n", ""); // Remove "\\n" from the captured group
+
+                        #[cfg(feature = "logging")]
+                        info!(target: "llama_core", "captured_{}: {}", idx, cleaned);
+
+                        if let Ok(value) = serde_json::from_str::<serde_json::Value>(&cleaned) {
+                            values.push(value);
+                        }
+                    }
+
+                    let mut tool_calls: Vec<ToolCall> = vec![];
+                    for value in values.iter() {
+                        let function = Function {
+                            name: value.get("name").unwrap().to_string(),
+                            arguments: value.get("arguments").unwrap().to_string(),
+                        };
+
+                        let tool_call = ToolCall {
+                            id: "call_abc123".to_string(),
+                            ty: "function".to_string(),
+                            function,
+                        };
+
+                        tool_calls.push(tool_call);
+                    }
+
+                    #[cfg(feature = "logging")]
+                    info!(target: "llama_core", "extracted {} tool calls: {:?}", tool_calls.len(),&tool_calls);
+
+                    Some(tool_calls)
+                }
+                Err(e) => {
+                    let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    None
+                }
             }
         }
         _ => None,
