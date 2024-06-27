@@ -28,6 +28,9 @@ struct Cli {
     /// Number of layers to run on the GPU
     #[arg(short = 'g', long, default_value = "100")]
     n_gpu_layers: u64,
+    /// Disable memory mapping for file access of chat models
+    #[arg(long)]
+    no_mmap: Option<bool>,
     /// Batch size for prompt processing
     #[arg(short, long, default_value = "512")]
     batch_size: u64,
@@ -112,6 +115,13 @@ async fn main() -> anyhow::Result<()> {
         "[INFO] Number of layers to run on the GPU: {}",
         &cli.n_gpu_layers
     ));
+    // no_mmap
+    if let Some(no_mmap) = &cli.no_mmap {
+        log(format!(
+            "[INFO] Disable memory mapping for file access of chat models : {}",
+            &no_mmap
+        ));
+    }
     // batch size
     log(format!(
         "[INFO] Batch size for prompt processing: {}",
@@ -151,6 +161,7 @@ async fn main() -> anyhow::Result<()> {
         .with_ctx_size(cli.ctx_size)
         .with_n_predict(cli.n_predict)
         .with_n_gpu_layers(cli.n_gpu_layers)
+        .disable_mmap(cli.no_mmap)
         .with_batch_size(cli.batch_size)
         .with_repeat_penalty(cli.repeat_penalty)
         .with_presence_penalty(cli.presence_penalty)
@@ -382,6 +393,8 @@ pub struct Metadata {
     // pub main_gpu: u64,
     // #[serde(rename = "tensor-split")]
     // pub tensor_split: String,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "use-mmap")]
+    use_mmap: Option<bool>,
 
     // * Context parameters (used by the llama context):
     #[serde(rename = "ctx-size")]

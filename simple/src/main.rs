@@ -52,6 +52,13 @@ fn main() -> Result<(), String> {
                 .default_value("100"),
         )
         .arg(
+            Arg::new("no_mmap")
+                .long("no-mmap")
+                .value_name("NO_MMAP")
+                .help("Disable memory mapping for file access of chat models")
+                .action(ArgAction::SetFalse),
+        )
+        .arg(
             Arg::new("batch_size")
                 .short('b')
                 .long("batch-size")
@@ -107,6 +114,11 @@ fn main() -> Result<(), String> {
         n = n_gpu_layers
     );
     options.n_gpu_layers = *n_gpu_layers as u64;
+
+    // no_mmap
+    let no_mmap = matches.get_flag("no_mmap");
+    println!("[INFO] no mmap: {nommap}", nommap = !no_mmap);
+    options.use_mmap = Some(!no_mmap);
 
     // batch size
     let batch_size = matches.get_one::<u32>("batch_size").unwrap();
@@ -183,6 +195,8 @@ struct Options {
     n_predict: u64,
     #[serde(rename = "n-gpu-layers")]
     n_gpu_layers: u64,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "use-mmap")]
+    use_mmap: Option<bool>,
     #[serde(rename = "batch-size")]
     batch_size: u64,
     #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]

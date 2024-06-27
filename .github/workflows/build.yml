@@ -42,42 +42,42 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: nightly
-          target: wasm32-wasi
+          target: wasm32-wasip1
           components: rustfmt, clippy
 
       - name: Install Rust-stable
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          target: wasm32-wasi
+          target: wasm32-wasip1
 
       - name: Build simple
         id: build_simple
         run: |
           cd simple
           cargo +nightly fmt --all -- --check
-          cargo +nightly clippy --target wasm32-wasi -- -D warnings
-          cargo build --target wasm32-wasi --release
+          cargo +nightly clippy --target wasm32-wasip1 -- -D warnings
+          cargo build --target wasm32-wasip1 --release
 
       - name: Build chat
         id: build_chat
         run: |
           cd chat
           cargo +nightly fmt --all -- --check
-          cargo +nightly clippy --target wasm32-wasi -- -D warnings
-          cargo build --target wasm32-wasi --release
+          cargo +nightly clippy --target wasm32-wasip1 -- -D warnings
+          cargo build --target wasm32-wasip1 --release
 
       - name: Build api-server
         id: build_api_server
         run: |
           cd api-server
           cargo +nightly fmt --all -- --check
-          cargo +nightly clippy --target wasm32-wasi -- -D warnings
-          cargo build --target wasm32-wasi --release
+          cargo +nightly clippy --target wasm32-wasip1 -- -D warnings
+          cargo build --target wasm32-wasip1 --release
 
       - name: Build api-server-full
         id: build_api_server_full
         run: |
           cd api-server
           cargo +nightly fmt --all -- --check
-          cargo +nightly clippy --target wasm32-wasi --features full -- -D warnings
-          cargo build --target wasm32-wasi --release --features full
+          cargo +nightly clippy --target wasm32-wasip1 --features full -- -D warnings
+          cargo build --target wasm32-wasip1 --release --features full

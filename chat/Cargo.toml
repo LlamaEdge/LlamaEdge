@@ -1,13 +1,13 @@
 [package]
 name = "llama-chat"
-version = "0.11.3"
+version = "0.12.0"
 edition = "2021"
 
 [dependencies]
 chat-prompts = { path = "../api-server/chat-prompts" }
 endpoints = { path = "../api-server/endpoints" }
 llama-core = { path = "../api-server/llama-core" }
-wasmedge-wasi-nn = "0.7.0"
+wasmedge-wasi-nn = "0.7.1"
 clap = { version = "4.4.6", features = ["cargo"] }
 once_cell = "1.18"
 serde = { version = "1.0", features = ["derive"] }

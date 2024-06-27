@@ -1,13 +1,13 @@
 [package]
 name = "llama-api-server"
-version = "0.11.3"
+version = "0.12.0"
 edition = "2021"
 
 [dependencies]
 llama-core = { path = "../llama-core", features = ["logging"] }
 futures = { version = "0.3.6", default-features = false, features = ["async-await", "std"] }
 serde.workspace = true
-serde_json = "1.0"
+serde_json.workspace = true
 endpoints.workspace = true
 chat-prompts.workspace = true
 serde_yaml = "0.9"
