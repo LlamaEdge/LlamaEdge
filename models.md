@@ -1,6 +1,8 @@
 # GGUF Models
 
-**To catch up the latest model, please visit [Second State's Huggingface page](https://huggingface.co/second-state), which includes different kinds of auantized models.**
+**This Documentation is out of date. To catch up on the latest model, please visit [Second State's Huggingface page](https://huggingface.co/second-state), which includes different quantized models.**
+
+---
 
 You can find the model download link, the command to run the model, the command to create an OpenAI compatible API server for the model, and the sha256sum of the model.
 
