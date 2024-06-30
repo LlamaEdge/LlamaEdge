@@ -109,7 +109,7 @@ for wt in "${wtypes[@]}"; do
 done
 
 ss_urls=(
-    "https://huggingface.co/second-state/Gemma-2b-it-GGUF/resolve/main/gemma-2b-it-Q5_K_M.gguf"
+    "https://huggingface.co/second-state/gemma-2-9b-it-GGUF/resolve/main/gemma-2-9b-it-Q5_K_M.gguf"
     "https://huggingface.co/second-state/Yi-1.5-9B-Chat-GGUF/resolve/main/Yi-1.5-9B-Chat-Q5_K_M.gguf"
     "https://huggingface.co/second-state/Phi-3-mini-4k-instruct-GGUF/resolve/main/Phi-3-mini-4k-instruct-Q5_K_M.gguf"
     "https://huggingface.co/second-state/Llama-3-8B-Instruct-GGUF/resolve/main/Meta-Llama-3-8B-Instruct-Q5_K_M.gguf"
@@ -129,7 +129,7 @@ ss_urls=(
 
 # sample models
 ss_models=(
-    "gemma-2b-it"
+    "gemma-2-9b-it"
     "yi-1.5-9b-chat"
     "phi-3-mini-4k"
     "llama-3-8b-instruct"
