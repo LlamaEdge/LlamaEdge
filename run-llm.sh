@@ -378,7 +378,7 @@ elif [ "$interactive" -eq 0 ]; then
     printf "\n"
 
     # * start llama-api-server
-    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:gemma-2b-it-Q5_K_M.gguf llama-api-server.wasm -p gemma-instruct -c 4096 --model-name gemma-2b-it --socket-addr 0.0.0.0:${port}"
+    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:gemma-2-9b-it-Q5_K_M.gguf llama-api-server.wasm -p gemma-instruct -c 4096 --model-name gemma-2b-it --socket-addr 0.0.0.0:${port}"
 
     printf "[+] Will run the following command to start the server:\n\n"
     printf "    %s\n\n" "$cmd"
