@@ -348,8 +348,8 @@ elif [ "$interactive" -eq 0 ]; then
 
     printf "\n"
 
-    # * download gemma-2b-it-Q5_K_M.gguf
-    ss_url="https://huggingface.co/second-state/Gemma-2b-it-GGUF/resolve/main/gemma-2b-it-Q5_K_M.gguf"
+    # * download gemma-2-9b-it-Q5_K_M.gguf
+    ss_url="https://huggingface.co/second-state/gemma-2-9b-it-GGUF/resolve/main/gemma-2-9b-it-Q5_K_M.gguf"
     wfile=$(basename "$ss_url")
     if [ -f "$wfile" ]; then
         printf "[+] Using cached model %s \n" "$wfile"
