@@ -91,14 +91,14 @@ The available prompt templates are listed below:
 
     ```text
     {system}
-    \### Instruction:
+    ### Instruction:
     {question_1}
-    \### Response:
+    ### Response:
     {answer_1}
     <|EOT|>
-    \### Instruction:
+    ### Instruction:
     {question_2}
-    \### Response:
+    ### Response:
     ```
 
   - Example: [second-state/Deepseek-Coder-6.7B-Instruct-GGUF](https://huggingface.co/second-state/Deepseek-Coder-6.7B-Instruct-GGUF)
@@ -149,11 +149,11 @@ The available prompt templates are listed below:
   - Prompt string
 
     ```text
-    \### System:
+    ### System:
     {system}
-    \### User:
+    ### User:
     {usr}
-    \### Assistant:
+    ### Assistant:
     ```
 
   - Example: [second-state/Neural-Chat-7B-v3-3-GGUF](https://huggingface.co/second-state/Neural-Chat-7B-v3-3-GGUF)
