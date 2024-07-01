@@ -331,7 +331,7 @@ impl BuildChatPrompt for CodeLlamaSuperInstructPrompt {
 
 /// Generate prompts for the `Llama-3-chat` model.
 ///
-/// Reference: https://llama.meta.com/docs/model-cards-and-prompt-formats/meta-llama-3/
+/// Reference: <https://llama.meta.com/docs/model-cards-and-prompt-formats/meta-llama-3/>
 #[derive(Debug, Default, Clone)]
 pub struct Llama3ChatPrompt;
 impl Llama3ChatPrompt {

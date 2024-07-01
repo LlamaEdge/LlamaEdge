@@ -6,6 +6,7 @@ use endpoints::chat::ChatCompletionRequestMessage;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
+/// Define the chat prompt template types.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
 pub enum PromptTemplateType {
     #[value(name = "llama-2-chat")]
