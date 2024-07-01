@@ -1,6 +1,6 @@
 [package]
 name = "llama-core"
-version = "0.11.3"
+version = "0.11.4"
 edition = "2021"
 readme = "README.md"
 repository = "https://github.com/LlamaEdge/LlamaEdge"
@@ -12,7 +12,7 @@ description = "The core component of LlamaEdge"
 [dependencies]
 endpoints.workspace = true
 chat-prompts.workspace = true
-wasmedge-wasi-nn = "0.7.1"
+wasmedge-wasi-nn = "0.8.0"
 thiserror.workspace = true
 serde.workspace = true
 serde_json.workspace = true
