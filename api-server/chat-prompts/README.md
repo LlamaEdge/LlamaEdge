@@ -1,6 +1,6 @@
 # Prompt Templates for LLMs
 
-`chat-prompts` is part of [LlamaEdge API Server](https://github.com/LlamaEdge/LlamaEdge/tree/main/api-server) project. It provides a collection of prompt templates for various LLMs. The prompt templates are used to generate prompts for the LLMs. The prompt templates are in the form of string formats that can be used to generate prompts for the LLMs.
+`chat-prompts` is part of [LlamaEdge API Server](https://github.com/LlamaEdge/LlamaEdge/tree/main/api-server) project. It provides a collection of prompt templates for various LLMs. The prompt templates are used to generate prompts for the LLMs (See models in [huggingface.co/second-state](https://huggingface.co/second-state)). The prompt templates are in the form of string formats that can be used to generate prompts for the LLMs.
 
 ## Prompt Templates
 
