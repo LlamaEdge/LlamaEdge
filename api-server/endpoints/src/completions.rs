@@ -1,41 +1,8 @@
+//! Define types for the `completions` endpoint.
+
 use super::common::{FinishReason, Usage};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
-// pub struct CompletionRequestBuilder {
-//     req: CompletionRequest,
-// }
-// impl CompletionRequestBuilder {
-//     pub fn new(model: impl Into<String>, prompt: Vec<String>) -> Self {
-//         Self {
-//             req: CompletionRequest {
-//                 model: model.into(),
-//                 prompt,
-//                 suffix: None,
-//                 max_tokens: None,
-//                 temperature: None,
-//                 top_p: None,
-//                 n_choice: None,
-//                 stream: None,
-//                 logprobs: None,
-//                 echo: None,
-//                 stop: None,
-//                 presence_penalty: None,
-//                 frequency_penalty: None,
-//                 best_of: None,
-//                 logit_bias: None,
-//                 user: None,
-//                 llama_cpp_top_k: 0,
-//                 llama_cpp_repeat_penalty: 0.0,
-//                 llama_cpp_logit_bias_type: None,
-//             },
-//         }
-//     }
-
-//     pub fn build(self) -> CompletionRequest {
-//         self.req
-//     }
-// }
 
 /// Creates a completion for the provided prompt and parameters.
 #[derive(Debug, Deserialize, Serialize)]

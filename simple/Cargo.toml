@@ -1,10 +1,10 @@
 [package]
 name = "llama-simple"
-version = "0.12.0"
+version = "0.12.1"
 edition = "2021"
 
 [dependencies]
-wasmedge-wasi-nn = "0.7.0"
+wasmedge-wasi-nn = "0.8.0"
 chat-prompts = { path = "../api-server/chat-prompts" }
 endpoints = { path = "../api-server/endpoints" }
 clap = { version = "4.4.6", features = ["cargo"] }

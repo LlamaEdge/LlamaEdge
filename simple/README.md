@@ -5,7 +5,7 @@
 Install the latest wasmedge with plugins:
 
 ```bash
-curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugins wasi_nn-ggml
+curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s
 ```
 
 ## Get the compiled wasm binary program

@@ -109,7 +109,7 @@ for wt in "${wtypes[@]}"; do
 done
 
 ss_urls=(
-    "https://huggingface.co/second-state/Gemma-2b-it-GGUF/resolve/main/gemma-2b-it-Q5_K_M.gguf"
+    "https://huggingface.co/second-state/gemma-2-9b-it-GGUF/resolve/main/gemma-2-9b-it-Q5_K_M.gguf"
     "https://huggingface.co/second-state/Yi-1.5-9B-Chat-GGUF/resolve/main/Yi-1.5-9B-Chat-Q5_K_M.gguf"
     "https://huggingface.co/second-state/Phi-3-mini-4k-instruct-GGUF/resolve/main/Phi-3-mini-4k-instruct-Q5_K_M.gguf"
     "https://huggingface.co/second-state/Llama-3-8B-Instruct-GGUF/resolve/main/Meta-Llama-3-8B-Instruct-Q5_K_M.gguf"
@@ -129,7 +129,7 @@ ss_urls=(
 
 # sample models
 ss_models=(
-    "gemma-2b-it"
+    "gemma-2-9b-it"
     "yi-1.5-9b-chat"
     "phi-3-mini-4k"
     "llama-3-8b-instruct"
@@ -348,8 +348,8 @@ elif [ "$interactive" -eq 0 ]; then
 
     printf "\n"
 
-    # * download gemma-2b-it-Q5_K_M.gguf
-    ss_url="https://huggingface.co/second-state/Gemma-2b-it-GGUF/resolve/main/gemma-2b-it-Q5_K_M.gguf"
+    # * download gemma-2-9b-it-Q5_K_M.gguf
+    ss_url="https://huggingface.co/second-state/gemma-2-9b-it-GGUF/resolve/main/gemma-2-9b-it-Q5_K_M.gguf"
     wfile=$(basename "$ss_url")
     if [ -f "$wfile" ]; then
         printf "[+] Using cached model %s \n" "$wfile"
@@ -378,7 +378,7 @@ elif [ "$interactive" -eq 0 ]; then
     printf "\n"
 
     # * start llama-api-server
-    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:gemma-2b-it-Q5_K_M.gguf llama-api-server.wasm -p gemma-instruct -c 4096 --model-name gemma-2b-it --socket-addr 0.0.0.0:${port}"
+    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:gemma-2-9b-it-Q5_K_M.gguf llama-api-server.wasm -p gemma-instruct -c 4096 --model-name gemma-2-9b-it --socket-addr 0.0.0.0:${port}"
 
     printf "[+] Will run the following command to start the server:\n\n"
     printf "    %s\n\n" "$cmd"

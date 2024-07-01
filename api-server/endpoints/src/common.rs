@@ -1,3 +1,4 @@
+//! Define common types used by other types.
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -7,6 +8,7 @@ pub enum LlamaCppLogitBiasType {
     tokens,
 }
 
+/// Token usage
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Usage {
     /// Number of tokens in the prompt.
