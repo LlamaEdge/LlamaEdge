@@ -408,6 +408,7 @@ impl Graph {
     }
 }
 
+/// Initialize the core context
 pub fn init_core_context(
     metadata_for_chats: Option<&[Metadata]>,
     metadata_for_embeddings: Option<&[Metadata]>,
