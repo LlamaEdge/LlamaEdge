@@ -1,4 +1,4 @@
-//! Define types for chat completion.
+//! Define types for the `chat completions` endpoint.
 
 use crate::common::{FinishReason, Usage};
 use indexmap::IndexMap;

@@ -1,3 +1,5 @@
+//! Define types for the `rag` endpoint.
+
 use crate::{
     chat::{
         ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRequestSampling,

@@ -1,4 +1,4 @@
-//! Files are used to upload documents that can be used with features
+//! Define types for the `files` endpoint.
 
 use serde::{Deserialize, Serialize};
 
