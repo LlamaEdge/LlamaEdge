@@ -1,244 +1,341 @@
-# Prompt Template Table
+# Prompt Templates for LLMs
 
-You can learn the prompt template name and its associated string format, and models that LlamaEdge supports from the following table.
+`chat-prompts` is part of [LlamaEdge API Server](https://github.com/LlamaEdge/LlamaEdge/tree/main/api-server) project. It provides a collection of prompt templates for various LLMs. The prompt templates are used to generate prompts for the LLMs. The prompt templates are in the form of string formats that can be used to generate prompts for the LLMs.
 
-<table>
-  
-<tr>
-<td>Prompt type</td>
-<td>Format</td>
-<td>Models using this template</td>
-</tr>
+## Prompt Templates
 
-<tr>
-<td>llama-2-chat</td>
-<td>
-  
-```
-<s>[INST] <<SYS>>
-{{ system_prompt }}
-<</SYS>>
+The available prompt templates are listed below:
 
-{{ user_msg_1 }} [/INST] {{ model_answer_1 }} </s><s>[INST] {{ user_msg_2 }}   [/INST]
-```
+- `baichuan-2`
+  - Prompt string
 
-</td>
-<td>Llama-2-7B-Chat, Llama-2-13B-Chat</td>
-</tr>
-    
-<tr>
-<td>chatml</td>
-<td>
-        
-```text
-<|im_start|>system
-{system_message}<|im_end|>
-<|im_start|>user
-{prompt}<|im_end|>
-<|im_start|>assistant
-```
-</td>
-<td>TinyLlama-1.1B-Chat, i-34B-Chat, OpenHermes-2.5-Mistral-7B, Qwen, Dolphin-2.2-Yi-34B, Dolphin-2.6-Mistral-7B, Samantha-1.2-Mistral-7B, Orca-2-13B, Nous-Hermes-2-Mixtral-8x7B-DPO</td>
-</tr>
+    ```text
+    以下内容为人类用户与与一位智能助手的对话。
 
-<tr>
-<td>openchat</td>
-<td>
-  
-```text
-GPT4 User: {prompt}<|end_of_turn|>GPT4 Assistant:
-```
+    用户:你好！
+    助手:
+    ```
 
-</td>
-<td>OpenChat-3.5 series of models</td>
-</tr>
+  - Example: [second-state/Baichuan2-13B-Chat-GGUF](https://huggingface.co/second-state/Baichuan2-13B-Chat-GGUF)
 
-<tr>
-<td>zephyr</td>
-<td>
-  
-```text
-<|system|>
-{system_prompt}</s>
-<|user|>
-{prompt}</s>
-<|assistant|>
-```
-</td>
-<td>Zephyr-7B-Alpha</td>
-</tr>
+- `codellama-instruct`
+  - Prompt string
 
-<tr>
-<td>codellama-instruct</td>
-<td>
+    ```text
+    <s>[INST] <<SYS>>
+    Write code to solve the following coding problem that obeys the constraints and passes the example test cases. Please wrap your code answer using ```: <</SYS>>
 
-```text
-[INST] Write code to solve the following coding problem that obeys the constraints and passes the example test cases. Please wrap your code answer using ```:
-{prompt}
-[/INST]
-```
+    {prompt} [/INST]
+    ```
 
-</td>
-<td>Code-llama</td>
-</tr>
-    
-<tr>
-<td>mistral-instruct</td>
-<td>
+  - Example: [second-state/CodeLlama-13B-Instruct-GGUF](https://huggingface.co/second-state/CodeLlama-13B-Instruct-GGUF)
 
-```text
-<s>[INST] {prompt} [/INST]
-```
+- `codellama-super-instruct`
+  - Prompt string
 
-</td>
-<td>Mistral-7B-Instruct-v0.1, Mistral-7B-Instruct-v0.2, Mixtral-8x7B-Instruct-v0.1, miqu-2-70b</td>
-</tr>
+    ```text
+    <s>Source: system\n\n {system_prompt} <step> Source: user\n\n {user_message_1} <step> Source: assistant\n\n {ai_message_1} <step> Source: user\n\n {user_message_2} <step> Source: assistant\nDestination: user\n\n
+    ```
 
-<tr>
-<td>stabllm-zephyr</td>
-<td>
+  - Example: [second-state/CodeLlama-70b-Instruct-hf-GGUF](https://huggingface.co/second-state/CodeLlama-70b-Instruct-hf-GGUF)
 
-```text
-<|user|>
-{prompt}<|endoftext|>
-<|assistant|>
-```
+- `chatml`
+  - Prompt string
 
-</td>
-<td>stablelm-2-zephyr-1.6b</td>
-</tr>
+    ```text
+    <|im_start|>system
+    {system_message}<|im_end|>
+    <|im_start|>user
+    {prompt}<|im_end|>
+    <|im_start|>assistant
+    ```
 
-<tr>
-<td>mistrallite</td>
-<td>
+  - Example: [second-state/Yi-34B-Chat-GGUF](https://huggingface.co/second-state/Yi-34B-Chat-GGUF)
 
-```text
-<|prompter|>{prompt}</s><|assistant|>
-```
+- `chatml-tool`
+  - Prompt string
 
-</td>
-<td>MistralLite-7B</td>
-</tr>
+    ```text
+    <|im_start|>system\n{system_message} Here are the available tools: <tools> [{tool_1}, {tool_2}] </tools> Use the following pydantic model json schema for each tool call you will make: {"properties": {"arguments": {"title": "Arguments", "type": "object"}, "name": {"title": "Name", "type": "string"}}, "required": ["arguments", "name"], "title": "FunctionCall", "type": "object"} For each function call return a json object with function name and arguments within <tool_call></tool_call> XML tags as follows:\n<tool_call>\n{"arguments": <args-dict>, "name": <function-name>}\n</tool_call><|im_end|>
+    <|im_start|>user
+    {user_message}<|im_end|>
+    <|im_start|>assistant
+    ```
 
-<tr>
-<td>vicuna-1.0-chat</td>
-<td>
-  
-```text
-{system} USER: {prompt} ASSISTANT:
-```
-  
-</td>
-<td>Wizard-Vicuna-13B-Uncensored, Samantha-1.11-CodeLlama-34B, WizardLM-13B-V1.0-Uncensored</td>
-</tr>
+    - Example
 
-<tr>
-<td>vicuna-1.1-chat</td>
-<td>
+      ```text
+      <|im_start|>system\nYou are a function calling AI model. You are provided with function signatures within <tools></tools> XML tags. You may call one or more functions to assist with the user query. Don't make assumptions about what values to plug into functions. Here are the available tools: <tools> [{"type":"function","function":{"name":"get_current_weather","description":"Get the current weather in a given location","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"format":{"type":"string","description":"The temperature unit to use. Infer this from the users location.","enum":["celsius","fahrenheit"]}},"required":["location","format"]}}},{"type":"function","function":{"name":"predict_weather","description":"Predict the weather in 24 hours","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"format":{"type":"string","description":"The temperature unit to use. Infer this from the users location.","enum":["celsius","fahrenheit"]}},"required":["location","format"]}}}] </tools> Use the following pydantic model json schema for each tool call you will make: {"properties": {"arguments": {"title": "Arguments", "type": "object"}, "name": {"title": "Name", "type": "string"}}, "required": ["arguments", "name"], "title": "FunctionCall", "type": "object"} For each function call return a json object with function name and arguments within <tool_call></tool_call> XML tags as follows:\n<tool_call>\n{"arguments": <args-dict>, "name": <function-name>}\n</tool_call><|im_end|>
+      <|im_start|>user
+      Hey! What is the weather like in Beijing?<|im_end|>
+      <|im_start|>assistant
+      ```
 
-```text
-USER: {prompt}
-ASSISTANT:
-```
+  - Example: [second-state/Hermes-2-Pro-Llama-3-8B-GGUF](https://huggingface.co/second-state/Hermes-2-Pro-Llama-3-8B-GGUF)
 
-</td>
-<td>CALM2-7B-Chat, Samantha-1.2-Mistral-7b</td>
-</tr>
+- `deepseek-chat`
+  - Prompt string
 
-<tr>
-<td>wizard-coder</td>
-<td>
+    ```text
+    User: {user_message_1}
 
-```text
-{system}
+    Assistant: {assistant_message_1}<｜end▁of▁sentence｜>User: {user_message_2}
 
-### Instruction:
-{instruction}
+    Assistant:
+    ```
 
-### Response:
-```
+  - Example: [second-state/Deepseek-LLM-7B-Chat-GGUF](https://huggingface.co/second-state/Deepseek-LLM-7B-Chat-GGUF)
 
-</td>
-<td>WizardCoder-Python-7B-V1.0</td>
-</tr>
+- `deepseek-coder`
+  - Prompt string
 
-<tr>
-<td>deepseek-chat</td>
-<td>
+    ```text
+    {system}
+    \### Instruction:
+    {question_1}
+    \### Response:
+    {answer_1}
+    <|EOT|>
+    \### Instruction:
+    {question_2}
+    \### Response:
+    ```
 
-```text
-User: {user_message_1}
+  - Example: [second-state/Deepseek-Coder-6.7B-Instruct-GGUF](https://huggingface.co/second-state/Deepseek-Coder-6.7B-Instruct-GGUF)
 
-Assistant: {assistant_message_1}<｜end▁of▁sentence｜>User: {user_message_2}
+- `deepseek-coder-2`
+  - Prompt string
 
-Assistant:
-```
+    ```text
+    <｜begin▁of▁sentence｜>{system_message}
 
-</td>
-<td>DeepSeek-LLM-7B-Chat</td>
-</tr>
+    User: {user_message_1}
 
-<tr>
-<td>deepseek-coder</td>
-<td>
-  
-```text
-{system}
-### Instruction:
-{question_1}
-### Response:
-{answer_1}
-<|EOT|>
-### Instruction:
-{question_2}
-### Response:
-```
+    Assistant: {assistant_message_1}<｜end▁of▁sentence｜>User: {user_message_2}
 
-</td>
-<td>DeepSeek-Coder-6.7B</td>
-</tr>
+    Assistant:
+    ```
 
-<tr>
-<td>solar-instruct</td>
-<td>
+  - Example: [second-state/DeepSeek-Coder-V2-Lite-Instruct-GGUF](https://huggingface.co/second-state/DeepSeek-Coder-V2-Lite-Instruct-GGUF)
 
-```text
-### User:
-{prompt}
+- `embedding`
+  - Prompt string
+    This prompt template is only used for embedding models. It works as a placeholder, therefore, it has no concrete prompt string.
 
-### Assistant:
-```
+  - Example: [second-state/E5-Mistral-7B-Instruct-Embedding-GGUF](https://huggingface.co/second-state/E5-Mistral-7B-Instruct-Embedding-GGUF)
 
-</td>
-<td>SOLAR-10.7B-Instruct-v1.0</td>
-</tr>
+- `gemma-instruct`
+  - Prompt string
 
-<tr>
-<td>intel-neural</td>
-<td>
+    ```text
+    <bos><start_of_turn>user
+    {user_message}<end_of_turn>
+    <start_of_turn>model
+    {model_message}<end_of_turn>model
+    ```
 
-```text
-### System:
-{system}
-### User:
-{usr}
-### Assistant:
-```
-  
-</td>
-<td>Intel Nerual series of models</td>
-</tr>
+  - Example: [second-state/gemma-2-27b-it-GGUF](https://huggingface.co/second-state/gemma-2-27b-it-GGUF)
 
-<tr>
-<td>human-assistant</td>
-<td>
+- `human-assistant`
+  - Prompt string
 
-```text
-Human: {input_1}\n\nAssistant:{output_1}Human: {input_2}\n\nAssistant:
-```
-  
-</td>
-<td>Belle-Llama-2-Chat</td>
-</tr>
+    ```text
+    Human: {input_1}\n\nAssistant:{output_1}Human: {input_2}\n\nAssistant:
+    ```
 
-</table>
+  - Example: [second-state/OrionStar-Yi-34B-Chat-Llama-GGUF](https://huggingface.co/second-state/OrionStar-Yi-34B-Chat-Llama-GGUF)
+
+- `intel-neural`
+  - Prompt string
+
+    ```text
+    \### System:
+    {system}
+    \### User:
+    {usr}
+    \### Assistant:
+    ```
+
+  - Example: [second-state/Neural-Chat-7B-v3-3-GGUF](https://huggingface.co/second-state/Neural-Chat-7B-v3-3-GGUF)
+
+- `llama-2-chat`
+  - Prompt string
+
+    ```text
+    <s>[INST] <<SYS>>
+    {system_message}
+    <</SYS>>
+
+    {user_message_1} [/INST] {assistant_message} </s><s>[INST] {user_message_2} [/INST]
+    ```
+
+- `llama-3-chat`
+  - Prompt string
+
+    ```text
+    <|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+    {{ system_prompt }}<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+    {{ user_message_1 }}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+    {{ model_answer_1 }}<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+    {{ user_message_2 }}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+    ```
+
+- `mistral-instruct`
+  - Prompt string
+
+    ```text
+    <s>[INST] {user_message_1} [/INST]{assistant_message_1}</s>[INST] {user_message_2} [/INST]{assistant_message_2}</s>
+    ```
+
+  - Example: [second-state/Mistral-7B-Instruct-v0.3-GGUF](https://huggingface.co/second-state/Mistral-7B-Instruct-v0.3-GGUF)
+
+- `mistrallite`
+  - Prompt string
+
+    ```text
+    <|prompter|>{user_message}</s><|assistant|>{assistant_message}</s>
+    ```
+
+  - Example: [second-state/MistralLite-7B-GGUF](https://huggingface.co/second-state/MistralLite-7B-GGUF)
+
+- `mistral-tool`
+  - Prompt string
+
+    ```text
+    [INST] {user_message_1} [/INST][TOOL_CALLS] [{tool_call_1}]</s>[TOOL_RESULTS]{tool_result_1}[/TOOL_RESULTS]{assistant_message_1}</s>[AVAILABLE_TOOLS] [{tool_1},{tool_2}][/AVAILABLE_TOOLS][INST] {user_message_2} [/INST]
+    ```
+
+    - Example
+
+      ```text
+      [INST] Hey! What is the weather like in Beijing and Tokyo? [/INST][TOOL_CALLS] [{"name":"get_current_weather","arguments":{"location": "Beijing, CN", "format": "celsius"}}]</s>[TOOL_RESULTS]Fine, with a chance of showers.[/TOOL_RESULTS]Today in Auckland, the weather is expected to be partly cloudy with a high chance of showers. Be prepared for possible rain and carry an umbrella if you're venturing outside. Have a great day!</s>[AVAILABLE_TOOLS] [{"type":"function","function":{"name":"get_current_weather","description":"Get the current weather in a given location","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}},{"type":"function","function":{"name":"predict_weather","description":"Predict the weather in 24 hours","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}][/AVAILABLE_TOOLS][INST] What is the weather like in Beijing now?[/INST]
+      ```
+
+  - Example: [second-state/Mistral-7B-Instruct-v0.3-GGUF](https://huggingface.co/second-state/Mistral-7B-Instruct-v0.3-GGUF)
+
+- `octopus`
+  - Prompt string
+
+    ```text
+    {system_prompt}\n\nQuery: {input_text} \n\nResponse:
+    ```
+
+  - Example: [second-state/Octopus-v2-GGUF](https://huggingface.co/second-state/Octopus-v2-GGUF)
+
+- `openchat`
+  - Prompt string
+
+    ```text
+    GPT4 User: {prompt}<|end_of_turn|>GPT4 Assistant:
+    ```
+
+  - Example: [second-state/OpenChat-3.5-0106-GGUF](https://huggingface.co/second-state/OpenChat-3.5-0106-GGUF)
+
+- `phi-2-instruct`
+  - Prompt string
+
+    ```text
+    Instruct: <prompt>\nOutput:
+    ```
+
+  - Example: [second-state/phi-2-GGUF](https://huggingface.co/second-state/phi-2-GGUF)
+
+- `phi-3-chat`
+  - Prompt string
+
+    ```text
+    <|system|>
+    {system_message}<|end|>
+    <|user|>
+    {user_message_1}<|end|>
+    <|assistant|>
+    {assistant_message_1}<|end|>
+    <|user|>
+    {user_message_2}<|end|>
+    <|assistant|>
+    ```
+
+  - Example: [second-state/Phi-3-medium-4k-instruct-GGUF](https://huggingface.co/second-state/Phi-3-medium-4k-instruct-GGUF)
+
+- `solar-instruct`
+  - Prompt string
+
+    ```text
+    <s> ### User:
+    {user_message}
+
+    \### Assistant:
+    {assistant_message}</s>
+    ```
+
+  - Example: [second-state/SOLAR-10.7B-Instruct-v1.0-GGUF](https://huggingface.co/second-state/SOLAR-10.7B-Instruct-v1.0-GGUF)
+
+- `stablelm-zephyr`
+  - Prompt string
+
+    ```text
+    <|user|>
+    {prompt}<|endoftext|>
+    <|assistant|>
+    ```
+
+  - Example: [second-state/stablelm-2-zephyr-1.6b-GGUF](https://huggingface.co/second-state/stablelm-2-zephyr-1.6b-GGUF)
+
+- `vicuna-1.0-chat`
+  - Prompt string
+
+    ```text
+    {system} USER: {prompt} ASSISTANT:
+    ```
+
+  - Example: [second-state/Wizard-Vicuna-13B-Uncensored-GGUF](https://huggingface.co/second-state/Wizard-Vicuna-13B-Uncensored-GGUF)
+
+- `vicuna-1.1-chat`
+  - Prompt string
+
+    ```text
+    USER: {prompt}
+    ASSISTANT:
+    ```
+
+  - Example: [second-state/ChatAllInOne-Yi-34B-200K-V1-GGUF](https://huggingface.co/second-state/ChatAllInOne-Yi-34B-200K-V1-GGUF)
+
+- `vicuna-llava`
+  - Prompt string
+
+    ```text
+    <system_prompt>\nUSER:<image_embeddings>\n<textual_prompt>\nASSISTANT:
+    ```
+
+  - Example: [second-state/Llava-v1.6-Vicuna-7B-GGUF](https://huggingface.co/second-state/Llava-v1.6-Vicuna-7B-GGUF)
+
+- `wizard-coder`
+  - Prompt string
+
+    ```text
+    {system}
+
+    ### Instruction:
+    {instruction}
+
+    ### Response:
+    ```
+
+  - Example: [second-state/WizardCoder-Python-7B-v1.0-GGUF](https://huggingface.co/second-state/WizardCoder-Python-7B-v1.0-GGUF)
+
+- `zephyr`
+  - Prompt string
+
+    ```text
+    <|system|>
+    {system_prompt}</s>
+    <|user|>
+    {prompt}</s>
+    <|assistant|>
+    ```
+
+  - Example: [second-state/Zephyr-7B-Beta-GGUF](https://huggingface.co/second-state/Zephyr-7B-Beta-GGUF)
