@@ -36,31 +36,6 @@ Go to Settings,
 * In "General", turn on `containerd` support
 * In "Features in development", turn on "Enable Wasm"
 
-#### Install and run Docker Desktop on headless Linux servers
-
-The following example is on Ubuntu / Debian Linux servers.
-
-```
-curl -LO https://desktop-stage.docker.com/linux/main/amd64/155220/docker-desktop-amd64.deb
-sudo apt install ./docker-desktop-amd64.deb
-```
-
-Edit the `~/.docker/desktop/settings.json` file and change the `useContainerdSnapshotter` field to `true`.
-
-Start Docker Desktop without the UI.
-
-```
-/opt/docker-desktop/bin/com.docker.backend --with-frontend=false --accept-license=true
-```
-
-Turn on "Enable Wasm" with the following command.
-
-```
-curl --unix-socket ~/.docker/desktop/lifecycle-server.sock  -XPOST http://localhost/wasm/runtimes
-```
-
-Restart Docker Desktop.
-
 ## Run the API server as a container
 
 Pull the pre-made container image from Docker hub and run it.
