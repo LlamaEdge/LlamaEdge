@@ -1,0 +1,41 @@
+name: Release llama-core API documentation
+
+on:
+  workflow_dispatch: # manual trigger release
+    inputs:
+      create_release:
+        description: 'Create new release'
+        required: true
+        type: boolean
+      release_version:
+        description: "Version (e.g. 1.0.0)"
+        required: true
+        type: string
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone project
+        id: checkout
+        uses: actions/checkout@v3
+
+      - name: Setup rustup
+        id: rustup
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: wasm32-wasip1
+
+      - name: Build API document
+        run: |
+          cd api-server
+          RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc -p llama-core --no-deps --target wasm32-wasi --features full --target-dir=./target
+
+      - name: Deploy API document
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: api-server/target/doc
+          force_orphan: true
