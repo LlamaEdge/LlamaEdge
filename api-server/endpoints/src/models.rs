@@ -1,3 +1,5 @@
+//! Define types for the `models` endpoint.
+
 use serde::{Deserialize, Serialize};
 
 /// Lists the currently available models, and provides basic information about each one such as the owner and availability.

@@ -1,3 +1,5 @@
+//! Define types for the `embeddings` endpoint.
+
 use crate::common::Usage;
 use serde::{Deserialize, Serialize};
 
