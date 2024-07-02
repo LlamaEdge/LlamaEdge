@@ -31,6 +31,8 @@ Download the preview Docker Desktop software:
   * https://desktop-stage.docker.com/linux/main/amd64/155220/docker-desktop-amd64.deb
   * https://desktop-stage.docker.com/linux/main/amd64/155220/docker-desktop-x86_64.rpm
 
+> On Linux follow steps 1 and 3 from https://docs.docker.com/desktop/install/ubuntu/#install-docker-desktop to install the downloaded package.
+
 Go to Settings,
 
 * In "General", turn on `containerd` support
