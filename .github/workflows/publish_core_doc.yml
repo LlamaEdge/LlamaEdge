@@ -24,7 +24,7 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: nightly
-          target: wasm32-wasip1,nightly-x86_64-unknown-linux-gnu
+          target: wasm32-wasip1
 
       - name: Build API document
         run: |
