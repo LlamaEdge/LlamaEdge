@@ -20,10 +20,10 @@ jobs:
         id: checkout
         uses: actions/checkout@v3
 
-      - name: Setup rustup
-        id: rustup
+      - name: Install Rust-nightly
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
+          toolchain: nightly
           target: wasm32-wasip1,nightly-x86_64-unknown-linux-gnu
 
       - name: Build API document
