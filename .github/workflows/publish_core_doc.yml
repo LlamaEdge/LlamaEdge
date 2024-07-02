@@ -1,16 +1,12 @@
-name: Release llama-core API documentation
+name: Publish Core API Document
 
 on:
   workflow_dispatch: # manual trigger release
     inputs:
       create_release:
-        description: 'Create new release'
+        description: 'Publish Core API Document'
         required: true
         type: boolean
-      release_version:
-        description: "Version (e.g. 1.0.0)"
-        required: true
-        type: string
 
 jobs:
   build-and-release:
