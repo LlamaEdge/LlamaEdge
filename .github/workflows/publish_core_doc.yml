@@ -24,7 +24,7 @@ jobs:
         id: rustup
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          target: wasm32-wasip1
+          target: wasm32-wasip1,nightly-x86_64-unknown-linux-gnu
 
       - name: Build API document
         run: |
