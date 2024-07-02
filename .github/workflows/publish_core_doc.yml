@@ -37,5 +37,5 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
-          publish_dir: api-server/target/wasm32-wasip1/doc/llama_core
+          publish_dir: api-server/target/wasm32-wasip1/doc/
           force_orphan: true
