@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["chat_completions","chat_completions_stream"]};
