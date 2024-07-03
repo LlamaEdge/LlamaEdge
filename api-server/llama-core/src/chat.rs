@@ -1006,7 +1006,7 @@ fn build_prompt(
                     },
                     None => {
                         #[cfg(feature = "logging")]
-                        warn!(target: "llama_core", "The tool choice is not supported without tools.");
+                        warn!(target: "llama_core", "The tool choice without tools is not supported.");
 
                         match chat_prompt.build_with_tools(&mut chat_request.messages, None) {
                             Ok(prompt) => (prompt, false),
@@ -1065,15 +1065,30 @@ fn build_prompt(
                     }
                     ChatCompletionRole::User => {
                         if chat_request.messages.len() >= 3 {
+                            // case 1: user_1 -> assistant_1 -> user_latest
+                            // case 2: user_1 -> assistant_1 -> tool_1 -> assistant_2 -> user_latest
+
+                            // deal with "user_1 -> assistant_1" of both case 1 and 2
                             if chat_request.messages[0].role() == ChatCompletionRole::User {
                                 chat_request.messages.remove(0);
                             }
                             if chat_request.messages[0].role() == ChatCompletionRole::Assistant {
                                 chat_request.messages.remove(0);
                             }
+
+                            // deal with "tool_1 -> assistant_2" of case 2
+                            if chat_request.messages[0].role() == ChatCompletionRole::Tool {
+                                chat_request.messages.remove(0);
+
+                                if chat_request.messages[0].role() == ChatCompletionRole::Assistant
+                                {
+                                    chat_request.messages.remove(0);
+                                }
+                            }
                         } else if chat_request.messages.len() == 2
                             && chat_request.messages[0].role() == ChatCompletionRole::User
                         {
+                            // deal with "user_1 -> user_latest"
                             chat_request.messages.remove(0);
                         } else {
                             #[cfg(feature = "logging")]
