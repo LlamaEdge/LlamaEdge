@@ -66,11 +66,11 @@ pub async fn chat(
     }
 
     match chat_request.stream {
-        Some(true) => match chat_completions_stream(chat_request).await {
+        Some(true) => match chat_stream(chat_request).await {
             Ok(stream) => Ok(Left(stream)),
             Err(e) => Err(e),
         },
-        Some(false) | None => match chat_completions(chat_request).await {
+        Some(false) | None => match chat_once(chat_request).await {
             Ok(chat_completion_object) => Ok(Right(chat_completion_object)),
             Err(e) => Err(e),
         },
@@ -78,7 +78,22 @@ pub async fn chat(
 }
 
 /// Processes a chat-completion request and returns ChatCompletionChunk instances in stream.
+#[deprecated(since = "0.10.0", note = "Please use the `chat` function.")]
 pub async fn chat_completions_stream(
+    chat_request: &mut ChatCompletionRequest,
+) -> Result<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, LlamaCoreError> {
+    chat_stream(chat_request).await
+}
+
+/// Processes a chat-completion request and returns a ChatCompletionObject instance.
+#[deprecated(since = "0.10.0", note = "Please use the `chat` function.")]
+pub async fn chat_completions(
+    chat_request: &mut ChatCompletionRequest,
+) -> Result<ChatCompletionObject, LlamaCoreError> {
+    chat_once(chat_request).await
+}
+
+async fn chat_stream(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, LlamaCoreError> {
     #[cfg(feature = "logging")]
@@ -143,8 +158,7 @@ pub async fn chat_completions_stream(
     Ok(stream)
 }
 
-/// Processes a chat-completion request and returns a ChatCompletionObject instance.
-pub async fn chat_completions(
+async fn chat_once(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<ChatCompletionObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
