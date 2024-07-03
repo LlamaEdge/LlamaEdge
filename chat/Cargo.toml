@@ -16,3 +16,4 @@ thiserror = "1"
 anyhow = "1.0"
 tokio_wasi = { version = "1", features = ["full"] }
 futures = { version = "0.3.6", default-features = false, features = ["async-await", "std"] }
+either = "1.12.0"
