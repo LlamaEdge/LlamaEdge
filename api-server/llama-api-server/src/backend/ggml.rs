@@ -159,6 +159,7 @@ pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body>
     res
 }
 
+/// Process a completion request and returns a completion response with the answer from the model.
 pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body> {
     // log
     info!(target: "completions_handler", "Handling the coming completions request.");
@@ -303,14 +304,94 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
     if chat_request.user.is_none() {
         chat_request.user = Some(gen_chat_id())
     };
+    let id = chat_request.user.clone().unwrap();
 
     // log user id
     info!(target: "chat_completions_handler", "user: {}", chat_request.user.clone().unwrap());
 
-    // handle chat request
-    let res = match chat_request.stream {
-        Some(true) => chat_completions_stream(chat_request).await,
-        Some(false) | None => chat_completions(chat_request).await,
+    let res = match llama_core::chat::chat(&mut chat_request).await {
+        Ok(result) => match result {
+            either::Left(stream) => {
+                let stream = stream.map_err(|e| e.to_string());
+
+                let result = Response::builder()
+                    .header("Access-Control-Allow-Origin", "*")
+                    .header("Access-Control-Allow-Methods", "*")
+                    .header("Access-Control-Allow-Headers", "*")
+                    .header("Content-Type", "text/event-stream")
+                    .header("Cache-Control", "no-cache")
+                    .header("Connection", "keep-alive")
+                    .header("user", id)
+                    .body(Body::wrap_stream(stream));
+
+                match result {
+                    Ok(response) => {
+                        // log
+                        info!(target: "chat_completions_stream", "finish chat completions in stream mode");
+
+                        response
+                    }
+                    Err(e) => {
+                        let err_msg =
+                            format!("Failed chat completions in stream mode. Reason: {}", e);
+
+                        // log
+                        error!(target: "chat_completions_stream", "{}", &err_msg);
+
+                        error::internal_server_error(err_msg)
+                    }
+                }
+            }
+            either::Right(chat_completion_object) => {
+                // serialize chat completion object
+                let s = match serde_json::to_string(&chat_completion_object) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        let err_msg = format!("Failed to serialize chat completion object. {}", e);
+
+                        // log
+                        error!(target: "chat_completions", "{}", &err_msg);
+
+                        return error::internal_server_error(err_msg);
+                    }
+                };
+
+                // return response
+                let result = Response::builder()
+                    .header("Access-Control-Allow-Origin", "*")
+                    .header("Access-Control-Allow-Methods", "*")
+                    .header("Access-Control-Allow-Headers", "*")
+                    .header("Content-Type", "application/json")
+                    .header("user", id)
+                    .body(Body::from(s));
+
+                match result {
+                    Ok(response) => {
+                        // log
+                        info!(target: "chat_completions", "Finish chat completions in non-stream mode");
+
+                        response
+                    }
+                    Err(e) => {
+                        let err_msg =
+                            format!("Failed chat completions in non-stream mode. Reason: {}", e);
+
+                        // log
+                        error!(target: "chat_completions", "{}", &err_msg);
+
+                        error::internal_server_error(err_msg)
+                    }
+                }
+            }
+        },
+        Err(e) => {
+            let err_msg = format!("Failed to get chat completions. Reason: {}", e);
+
+            // log
+            error!(target: "chat_completions_handler", "{}", &err_msg);
+
+            error::internal_server_error(err_msg)
+        }
     };
 
     // log
@@ -319,119 +400,7 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
     res
 }
 
-/// Process a chat-completion request in stream mode and returns a chat-completion response with the answer from the model.
-async fn chat_completions_stream(mut chat_request: ChatCompletionRequest) -> Response<Body> {
-    info!(target: "chat_completions_stream", "Process the chat completions in stream mode.");
-
-    if chat_request.user.is_none() {
-        chat_request.user = Some(gen_chat_id())
-    };
-    let id = chat_request.user.clone().unwrap();
-
-    match llama_core::chat::chat_completions_stream(&mut chat_request).await {
-        Ok(stream) => {
-            let stream = stream.map_err(|e| e.to_string());
-
-            let result = Response::builder()
-                .header("Access-Control-Allow-Origin", "*")
-                .header("Access-Control-Allow-Methods", "*")
-                .header("Access-Control-Allow-Headers", "*")
-                .header("Content-Type", "text/event-stream")
-                .header("Cache-Control", "no-cache")
-                .header("Connection", "keep-alive")
-                .header("user", id)
-                .body(Body::wrap_stream(stream));
-
-            match result {
-                Ok(response) => {
-                    // log
-                    info!(target: "chat_completions_stream", "finish chat completions in stream mode");
-
-                    response
-                }
-                Err(e) => {
-                    let err_msg = format!("Failed chat completions in stream mode. Reason: {}", e);
-
-                    // log
-                    error!(target: "chat_completions_stream", "{}", &err_msg);
-
-                    error::internal_server_error(err_msg)
-                }
-            }
-        }
-        Err(e) => {
-            let err_msg = format!("Failed chat completions in stream mode. Reason: {}", e);
-
-            // log
-            error!(target: "chat_completions_stream", "{}", &err_msg);
-
-            error::internal_server_error(err_msg)
-        }
-    }
-}
-
-/// Process a chat-completion request and returns a chat-completion response with the answer from the model.
-async fn chat_completions(mut chat_request: ChatCompletionRequest) -> Response<Body> {
-    info!(target: "chat_completions", "Process the chat completions request in non-stream mode.");
-
-    if chat_request.user.is_none() {
-        chat_request.user = Some(gen_chat_id())
-    };
-    let id = chat_request.user.clone().unwrap();
-
-    match llama_core::chat::chat_completions(&mut chat_request).await {
-        Ok(chat_completion_object) => {
-            // serialize chat completion object
-            let s = match serde_json::to_string(&chat_completion_object) {
-                Ok(s) => s,
-                Err(e) => {
-                    let err_msg = format!("Failed to serialize chat completion object. {}", e);
-
-                    // log
-                    error!(target: "chat_completions", "{}", &err_msg);
-
-                    return error::internal_server_error(err_msg);
-                }
-            };
-
-            // return response
-            let result = Response::builder()
-                .header("Access-Control-Allow-Origin", "*")
-                .header("Access-Control-Allow-Methods", "*")
-                .header("Access-Control-Allow-Headers", "*")
-                .header("Content-Type", "application/json")
-                .header("user", id)
-                .body(Body::from(s));
-
-            match result {
-                Ok(response) => {
-                    // log
-                    info!(target: "chat_completions", "Finish chat completions in non-stream mode");
-
-                    response
-                }
-                Err(e) => {
-                    let err_msg =
-                        format!("Failed chat completions in non-stream mode. Reason: {}", e);
-
-                    // log
-                    error!(target: "chat_completions", "{}", &err_msg);
-
-                    error::internal_server_error(err_msg)
-                }
-            }
-        }
-        Err(e) => {
-            let err_msg = format!("Failed chat completions in non-stream mode. Reason: {}", e);
-
-            // log
-            error!(target: "chat_completions", "{}", &err_msg);
-
-            error::internal_server_error(err_msg)
-        }
-    }
-}
-
+/// Upload files and return the file object.
 pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
     // log
     info!(target: "files_handler", "Handling the coming files request");
@@ -625,6 +594,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
     res
 }
 
+/// Segment the text into chunks and return the chunks response.
 pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
     // log
     info!(target: "chunks_handler", "Handling the coming chunks request");
@@ -789,6 +759,7 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
     res
 }
 
+/// Return the server info.
 pub(crate) async fn server_info_handler() -> Response<Body> {
     // log
     info!(target: "server_info", "Handling the coming server info request.");

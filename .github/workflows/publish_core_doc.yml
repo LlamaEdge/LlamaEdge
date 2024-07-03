@@ -1,16 +1,12 @@
-name: Release llama-core API documentation
+name: Publish Core API Document
 
 on:
   workflow_dispatch: # manual trigger release
     inputs:
       create_release:
-        description: 'Create new release'
+        description: 'Publish Core API Document'
         required: true
         type: boolean
-      release_version:
-        description: "Version (e.g. 1.0.0)"
-        required: true
-        type: string
 
 jobs:
   build-and-release:
@@ -20,22 +16,22 @@ jobs:
         id: checkout
         uses: actions/checkout@v3
 
-      - name: Setup rustup
-        id: rustup
+      - name: Install Rust-nightly
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
+          toolchain: nightly
           target: wasm32-wasip1
 
       - name: Build API document
         run: |
           cd api-server
-          RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc -p llama-core --no-deps --target wasm32-wasi --features full --target-dir=./target
+          RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc -p llama-core --no-deps --target wasm32-wasip1 --features full --target-dir=./target
 
       - name: Deploy API document
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/dev'
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
-          publish_dir: api-server/target/doc
+          publish_dir: api-server/target/wasm32-wasip1/doc/
           force_orphan: true

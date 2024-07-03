@@ -1,13 +1,13 @@
 [package]
 name = "llama-core"
-version = "0.11.4"
+version = "0.12.0"
 edition = "2021"
 readme = "README.md"
 repository = "https://github.com/LlamaEdge/LlamaEdge"
 license = "Apache-2.0"
-documentation = "https://docs.rs/llama-core/"
+documentation = "https://llamaedge.github.io/LlamaEdge/llama_core/index.html"
 categories = ["wasm", "science"]
-description = "The core component of LlamaEdge"
+description = "The core library of LlamaEdge"
 
 [dependencies]
 endpoints.workspace = true
@@ -26,6 +26,8 @@ text-splitter = { version = "^0.7", features = ["tiktoken-rs", "markdown"] }
 tiktoken-rs = "^0.5"
 wasi-logger = { workspace = true, optional = true }
 log = { workspace = true, optional = true }
+regex = "1"
+either.workspace = true
 
 [features]
 default = []

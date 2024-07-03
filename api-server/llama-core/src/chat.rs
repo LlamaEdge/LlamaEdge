@@ -12,6 +12,7 @@ use chat_prompts::{
     chat::{BuildChatPrompt, ChatPrompt},
     PromptTemplateType,
 };
+use either::{Either, Left, Right};
 #[cfg(feature = "https")]
 use endpoints::chat::{
     ChatCompletionRequestMessage, ChatCompletionUserMessageContent, ContentPart,
@@ -20,7 +21,7 @@ use endpoints::{
     chat::{
         ChatCompletionChunk, ChatCompletionChunkChoice, ChatCompletionChunkChoiceDelta,
         ChatCompletionObject, ChatCompletionObjectChoice, ChatCompletionObjectMessage,
-        ChatCompletionRequest, ChatCompletionRole,
+        ChatCompletionRequest, ChatCompletionRole, Function, ToolCall, ToolChoice,
     },
     common::{FinishReason, Usage},
 };
@@ -34,8 +35,65 @@ use std::{
     time::SystemTime,
 };
 
+/// Processes a chat-completion request and returns either a stream of ChatCompletionChunk instances or a ChatCompletionObject instance.
+pub async fn chat(
+    chat_request: &mut ChatCompletionRequest,
+) -> Result<
+    Either<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, ChatCompletionObject>,
+    LlamaCoreError,
+> {
+    // * update stream mode according to the tool choice and tools
+    if chat_request.stream == Some(true) {
+        if let Some(tool_choice) = chat_request.tool_choice.as_ref() {
+            if *tool_choice != ToolChoice::None {
+                if let Some(tools) = chat_request.tools.as_ref() {
+                    if !tools.is_empty() && !chat_request.messages.is_empty() {
+                        let role = chat_request.messages.last().unwrap().role();
+                        if role != ChatCompletionRole::Tool {
+                            chat_request.stream = Some(false);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(feature = "logging")]
+    {
+        info!(target: "llama-core", "tool choice: {:?}", chat_request.tool_choice.as_ref());
+        info!(target: "llama-core", "tools: {:?}", chat_request.tools.as_ref());
+        info!(target: "llama-core", "stream mode: {:?}", chat_request.stream);
+    }
+
+    match chat_request.stream {
+        Some(true) => match chat_stream(chat_request).await {
+            Ok(stream) => Ok(Left(stream)),
+            Err(e) => Err(e),
+        },
+        Some(false) | None => match chat_once(chat_request).await {
+            Ok(chat_completion_object) => Ok(Right(chat_completion_object)),
+            Err(e) => Err(e),
+        },
+    }
+}
+
 /// Processes a chat-completion request and returns ChatCompletionChunk instances in stream.
+#[deprecated(since = "0.10.0", note = "Please use the `chat` function.")]
 pub async fn chat_completions_stream(
+    chat_request: &mut ChatCompletionRequest,
+) -> Result<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, LlamaCoreError> {
+    chat_stream(chat_request).await
+}
+
+/// Processes a chat-completion request and returns a ChatCompletionObject instance.
+#[deprecated(since = "0.10.0", note = "Please use the `chat` function.")]
+pub async fn chat_completions(
+    chat_request: &mut ChatCompletionRequest,
+) -> Result<ChatCompletionObject, LlamaCoreError> {
+    chat_once(chat_request).await
+}
+
+async fn chat_stream(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, LlamaCoreError> {
     #[cfg(feature = "logging")]
@@ -76,10 +134,14 @@ pub async fn chat_completions_stream(
     let mut metadata = check_model_metadata(chat_request).await?;
 
     // build prompt
-    let (prompt, avaible_completion_tokens) = build_prompt(model_name.as_ref(), chat_request)?;
+    let (prompt, avaible_completion_tokens, _tool_use) =
+        build_prompt(model_name.as_ref(), chat_request)?;
 
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "prompt: {}, avaible_completion_tokens: {}", &prompt, avaible_completion_tokens);
+    {
+        info!(target: "llama_core", "prompt:\n{}", &prompt);
+        info!(target: "llama_core", "avaible_completion_tokens: {}", avaible_completion_tokens);
+    }
 
     // update metadata n_predict
     update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
@@ -96,8 +158,7 @@ pub async fn chat_completions_stream(
     Ok(stream)
 }
 
-/// Processes a chat-completion request and returns a ChatCompletionObject instance.
-pub async fn chat_completions(
+async fn chat_once(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<ChatCompletionObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
@@ -129,12 +190,14 @@ pub async fn chat_completions(
     let mut metadata = check_model_metadata(chat_request).await?;
 
     // build prompt
-    let (prompt, avaible_completion_tokens) = build_prompt(model_name.as_ref(), chat_request)?;
+    let (prompt, avaible_completion_tokens, tool_use) =
+        build_prompt(model_name.as_ref(), chat_request)?;
 
     #[cfg(feature = "logging")]
     {
         info!(target: "llama_core", "prompt:\n{}", &prompt);
         info!(target: "llama_core", "avaible_completion_tokens: {}", avaible_completion_tokens);
+        info!(target: "llama_core", "tool_use: {}", tool_use);
     }
 
     // update metadata n_predict
@@ -144,7 +207,7 @@ pub async fn chat_completions(
     set_prompt(model_name.as_ref(), &prompt)?;
 
     // compute
-    let res = compute(model_name.as_ref(), id);
+    let res = compute(model_name.as_ref(), id, tool_use);
 
     #[cfg(feature = "logging")]
     info!(target: "llama_core", "End of the chat completion.");
@@ -155,6 +218,7 @@ pub async fn chat_completions(
 fn compute(
     model_name: Option<&String>,
     id: impl Into<String>,
+    tool_use: bool,
 ) -> Result<ChatCompletionObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "llama_core", "Compute chat completion.");
@@ -183,7 +247,7 @@ fn compute(
             })?;
 
             match chat_graphs.get_mut(model_name) {
-                Some(graph) => compute_by_graph(graph, id),
+                Some(graph) => compute_by_graph(graph, id, tool_use),
                 None => {
                     let err_msg = format!(
                         "The model `{}` does not exist in the chat graphs.",
@@ -220,7 +284,7 @@ fn compute(
             })?;
 
             match chat_graphs.iter_mut().next() {
-                Some((_, graph)) => compute_by_graph(graph, id),
+                Some((_, graph)) => compute_by_graph(graph, id, tool_use),
                 None => {
                     let err_msg = "There is no model available in the chat graphs.";
 
@@ -237,6 +301,7 @@ fn compute(
 fn compute_by_graph(
     graph: &mut Graph,
     id: impl Into<String>,
+    tool_use: bool,
 ) -> Result<ChatCompletionObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "llama_core", "Compute chat completion by the model named {}.", graph.name());
@@ -256,6 +321,9 @@ fn compute_by_graph(
 
                 LlamaCoreError::Operation(err_msg)
             })?;
+
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "raw generation: {}", output);
 
             // post-process
             let message = post_process(output, &graph.metadata.prompt_template).map_err(|e| {
@@ -282,27 +350,100 @@ fn compute_by_graph(
                     LlamaCoreError::Operation(err_msg)
                 })?;
 
-            // create ChatCompletionResponse
-            Ok(ChatCompletionObject {
-                id: id.into(),
-                object: String::from("chat.completion"),
-                created: created.as_secs(),
-                model: graph.name().to_owned(),
-                choices: vec![ChatCompletionObjectChoice {
-                    index: 0,
-                    message: ChatCompletionObjectMessage {
-                        role: ChatCompletionRole::Assistant,
-                        content: message,
-                        function_call: None,
-                    },
-                    finish_reason: FinishReason::stop,
-                }],
-                usage: Usage {
-                    prompt_tokens: token_info.prompt_tokens,
-                    completion_tokens: token_info.completion_tokens,
-                    total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
-                },
-            })
+            match tool_use {
+                true => {
+                    if graph.metadata.prompt_template != PromptTemplateType::MistralTool
+                        && graph.metadata.prompt_template != PromptTemplateType::ChatMLTool
+                    {
+                        let err_msg = "The tool use is only supported for 'mistral-chat' and 'chatml' prompt templates.";
+
+                        #[cfg(feature = "logging")]
+                        error!(target: "llama_core", "{}", &err_msg);
+
+                        return Err(LlamaCoreError::Operation(err_msg.into()));
+                    }
+
+                    match parse_tool_calls(&message, graph.metadata.prompt_template) {
+                        Some(tool_calls) => {
+                            // create ChatCompletionResponse
+                            Ok(ChatCompletionObject {
+                                id: id.into(),
+                                object: String::from("chat.completion"),
+                                created: created.as_secs(),
+                                model: graph.name().to_owned(),
+                                choices: vec![ChatCompletionObjectChoice {
+                                    index: 0,
+                                    message: ChatCompletionObjectMessage {
+                                        role: ChatCompletionRole::Assistant,
+                                        content: Some(message),
+                                        tool_calls,
+                                        function_call: None,
+                                    },
+                                    finish_reason: FinishReason::tool_calls,
+                                    logprobs: None,
+                                }],
+                                usage: Usage {
+                                    prompt_tokens: token_info.prompt_tokens,
+                                    completion_tokens: token_info.completion_tokens,
+                                    total_tokens: token_info.prompt_tokens
+                                        + token_info.completion_tokens,
+                                },
+                            })
+                        }
+                        None => {
+                            // create ChatCompletionResponse
+                            Ok(ChatCompletionObject {
+                                id: id.into(),
+                                object: String::from("chat.completion"),
+                                created: created.as_secs(),
+                                model: graph.name().to_owned(),
+                                choices: vec![ChatCompletionObjectChoice {
+                                    index: 0,
+                                    message: ChatCompletionObjectMessage {
+                                        role: ChatCompletionRole::Assistant,
+                                        content: Some(message),
+                                        tool_calls: vec![],
+                                        function_call: None,
+                                    },
+                                    finish_reason: FinishReason::stop,
+                                    logprobs: None,
+                                }],
+                                usage: Usage {
+                                    prompt_tokens: token_info.prompt_tokens,
+                                    completion_tokens: token_info.completion_tokens,
+                                    total_tokens: token_info.prompt_tokens
+                                        + token_info.completion_tokens,
+                                },
+                            })
+                        }
+                    }
+                }
+                false => {
+                    // create ChatCompletionResponse
+                    Ok(ChatCompletionObject {
+                        id: id.into(),
+                        object: String::from("chat.completion"),
+                        created: created.as_secs(),
+                        model: graph.name().to_owned(),
+                        choices: vec![ChatCompletionObjectChoice {
+                            index: 0,
+                            message: ChatCompletionObjectMessage {
+                                role: ChatCompletionRole::Assistant,
+                                content: Some(message),
+                                tool_calls: vec![],
+                                function_call: None,
+                            },
+                            finish_reason: FinishReason::stop,
+                            logprobs: None,
+                        }],
+                        usage: Usage {
+                            prompt_tokens: token_info.prompt_tokens,
+                            completion_tokens: token_info.completion_tokens,
+                            total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
+                        },
+                    })
+                }
+            }
         }
         Err(wasmedge_wasi_nn::Error::BackendError(wasmedge_wasi_nn::BackendError::ContextFull)) => {
             // Retrieve the output.
@@ -356,10 +497,12 @@ fn compute_by_graph(
                     index: 0,
                     message: ChatCompletionObjectMessage {
                         role: ChatCompletionRole::Assistant,
-                        content: message,
+                        content: Some(message),
+                        tool_calls: vec![],
                         function_call: None,
                     },
                     finish_reason: FinishReason::length,
+                    logprobs: None,
                 }],
                 usage: Usage {
                     prompt_tokens: token_info.prompt_tokens,
@@ -425,10 +568,12 @@ fn compute_by_graph(
                     index: 0,
                     message: ChatCompletionObjectMessage {
                         role: ChatCompletionRole::Assistant,
-                        content: message,
+                        content: Some(message),
+                        tool_calls: vec![],
                         function_call: None,
                     },
                     finish_reason: FinishReason::length,
+                    logprobs: None,
                 }],
                 usage: Usage {
                     prompt_tokens: token_info.prompt_tokens,
@@ -445,6 +590,98 @@ fn compute_by_graph(
 
             Err(LlamaCoreError::Backend(BackendError::Compute(err_msg)))
         }
+    }
+}
+
+fn parse_tool_calls(input: &str, prompt_template: PromptTemplateType) -> Option<Vec<ToolCall>> {
+    match prompt_template {
+        PromptTemplateType::MistralTool => match regex::Regex::new(r"\[\{.*?\}\]") {
+            Ok(re) => {
+                let mut values: Vec<serde_json::Value> = vec![];
+                for cap in re.captures_iter(input) {
+                    let matched = &cap[0];
+
+                    #[cfg(feature = "logging")]
+                    info!(target: "llama_core", "captured: {}", matched);
+
+                    if let Ok(group) = serde_json::from_str::<Vec<serde_json::Value>>(matched) {
+                        values.extend(group);
+                    }
+                }
+
+                let mut tool_calls: Vec<ToolCall> = vec![];
+                for value in values.iter() {
+                    let function = Function {
+                        name: value.get("name").unwrap().to_string(),
+                        arguments: value.get("arguments").unwrap().to_string(),
+                    };
+
+                    let tool_call = ToolCall {
+                        id: "call_abc123".to_string(),
+                        ty: "function".to_string(),
+                        function,
+                    };
+
+                    tool_calls.push(tool_call);
+                }
+
+                #[cfg(feature = "logging")]
+                info!(target: "llama_core", "extracted {} tool calls: {:?}", tool_calls.len(),&tool_calls);
+
+                Some(tool_calls)
+            }
+            Err(_e) => {
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "Failed to create a regex pattern. Reason: {}", _e);
+
+                None
+            }
+        },
+        PromptTemplateType::ChatMLTool => {
+            match regex::Regex::new(r"<tool_call>(.*?)</tool_call>") {
+                Ok(re) => {
+                    let mut values: Vec<serde_json::Value> = vec![];
+                    for cap in re.captures_iter(input) {
+                        let cleaned = cap[1].replace("\\n", ""); // Remove "\\n" from the captured group
+
+                        #[cfg(feature = "logging")]
+                        info!(target: "llama_core", "captured: {}", cleaned);
+
+                        if let Ok(value) = serde_json::from_str::<serde_json::Value>(&cleaned) {
+                            values.push(value);
+                        }
+                    }
+
+                    let mut tool_calls: Vec<ToolCall> = vec![];
+                    for value in values.iter() {
+                        let function = Function {
+                            name: value.get("name").unwrap().to_string(),
+                            arguments: value.get("arguments").unwrap().to_string(),
+                        };
+
+                        let tool_call = ToolCall {
+                            id: "call_abc123".to_string(),
+                            ty: "function".to_string(),
+                            function,
+                        };
+
+                        tool_calls.push(tool_call);
+                    }
+
+                    #[cfg(feature = "logging")]
+                    info!(target: "llama_core", "extracted {} tool calls: {:?}", tool_calls.len(),&tool_calls);
+
+                    Some(tool_calls)
+                }
+                Err(_e) => {
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "Failed to create a regex pattern. Reason: {}", _e);
+
+                    None
+                }
+            }
+        }
+        _ => None,
     }
 }
 
@@ -621,7 +858,9 @@ fn post_process(
         } else {
             s.to_owned()
         }
-    } else if *template_ty == PromptTemplateType::ChatML {
+    } else if *template_ty == PromptTemplateType::ChatML
+        || *template_ty == PromptTemplateType::ChatMLTool
+    {
         if output.as_ref().contains("<|im_start|>") && output.as_ref().contains("<|im_end|>") {
             let idx_start = output.as_ref().find("<|im_start|>").unwrap();
             let idx_end = output.as_ref().find("<|im_end|>").unwrap();
@@ -647,6 +886,7 @@ fn post_process(
         }
     } else if *template_ty == PromptTemplateType::Zephyr
         || *template_ty == PromptTemplateType::MistralLite
+        || *template_ty == PromptTemplateType::MistralTool
     {
         if output.as_ref().contains("</s><") {
             output.as_ref().trim_end_matches("</s><").trim().to_owned()
@@ -722,9 +962,8 @@ fn post_process(
 
 fn build_prompt(
     model_name: Option<&String>,
-    // template: &ChatPrompt,
     chat_request: &mut ChatCompletionRequest,
-) -> Result<(String, u64), LlamaCoreError> {
+) -> Result<(String, u64, bool), LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "llama_core", "Build the chat prompt from the chat messages.");
 
@@ -736,17 +975,78 @@ fn build_prompt(
     let max_prompt_tokens = ctx_size * 4 / 5;
 
     loop {
+        // ! DO NOT REMOVE
         // build prompt
-        let prompt = match chat_prompt.build(&mut chat_request.messages) {
-            Ok(prompt) => prompt,
-            Err(e) => {
-                let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
+        // let prompt = match chat_prompt.build(&mut chat_request.messages) {
+        //     Ok(prompt) => prompt,
+        //     Err(e) => {
+        //         let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
 
-                #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+        //         #[cfg(feature = "logging")]
+        //         error!(target: "llama_core", "{}", &err_msg);
 
-                return Err(LlamaCoreError::Operation(err_msg));
-            }
+        //         return Err(LlamaCoreError::Operation(err_msg));
+        //     }
+        // };
+
+        let (prompt, tool_use) = match chat_request.tool_choice.as_ref() {
+            Some(tool_choice) => match tool_choice {
+                ToolChoice::None => {
+                    match chat_prompt.build_with_tools(&mut chat_request.messages, None) {
+                        Ok(prompt) => (prompt, false),
+                        Err(e) => {
+                            let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
+
+                            #[cfg(feature = "logging")]
+                            error!(target: "llama_core", "{}", &err_msg);
+
+                            return Err(LlamaCoreError::Operation(err_msg));
+                        }
+                    }
+                }
+                _ => match chat_request.tools.as_ref() {
+                    Some(tools) => match chat_prompt
+                        .build_with_tools(&mut chat_request.messages, Some(tools.as_slice()))
+                    {
+                        Ok(prompt) => (prompt, true),
+                        Err(e) => {
+                            let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
+
+                            #[cfg(feature = "logging")]
+                            error!(target: "llama_core", "{}", &err_msg);
+
+                            return Err(LlamaCoreError::Operation(err_msg));
+                        }
+                    },
+                    None => {
+                        #[cfg(feature = "logging")]
+                        warn!(target: "llama_core", "The tool choice without tools is not supported.");
+
+                        match chat_prompt.build_with_tools(&mut chat_request.messages, None) {
+                            Ok(prompt) => (prompt, false),
+                            Err(e) => {
+                                let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            }
+                        }
+                    }
+                },
+            },
+            None => match chat_prompt.build_with_tools(&mut chat_request.messages, None) {
+                Ok(prompt) => (prompt, false),
+                Err(e) => {
+                    let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg));
+                }
+            },
         };
 
         // set prompt
@@ -774,26 +1074,41 @@ fn build_prompt(
                             #[cfg(feature = "logging")]
                             info!(target: "llama_core", "prompt: {}", &prompt);
 
-                            return Ok((prompt, ctx_size - max_prompt_tokens));
+                            return Ok((prompt, ctx_size - max_prompt_tokens, tool_use));
                         }
                     }
                     ChatCompletionRole::User => {
                         if chat_request.messages.len() >= 3 {
+                            // case 1: user_1 -> assistant_1 -> user_latest
+                            // case 2: user_1 -> assistant_1 -> tool_1 -> assistant_2 -> user_latest
+
+                            // deal with "user_1 -> assistant_1" of both case 1 and 2
                             if chat_request.messages[0].role() == ChatCompletionRole::User {
                                 chat_request.messages.remove(0);
                             }
                             if chat_request.messages[0].role() == ChatCompletionRole::Assistant {
                                 chat_request.messages.remove(0);
                             }
+
+                            // deal with "tool_1 -> assistant_2" of case 2
+                            if chat_request.messages[0].role() == ChatCompletionRole::Tool {
+                                chat_request.messages.remove(0);
+
+                                if chat_request.messages[0].role() == ChatCompletionRole::Assistant
+                                {
+                                    chat_request.messages.remove(0);
+                                }
+                            }
                         } else if chat_request.messages.len() == 2
                             && chat_request.messages[0].role() == ChatCompletionRole::User
                         {
+                            // deal with "user_1 -> user_latest"
                             chat_request.messages.remove(0);
                         } else {
                             #[cfg(feature = "logging")]
                             info!(target: "llama_core", "prompt: {}", &prompt);
 
-                            return Ok((prompt, ctx_size - max_prompt_tokens));
+                            return Ok((prompt, ctx_size - max_prompt_tokens, tool_use));
                         }
                     }
                     _ => {
@@ -811,7 +1126,7 @@ fn build_prompt(
 
                 continue;
             }
-            false => return Ok((prompt, ctx_size - max_prompt_tokens)),
+            false => return Ok((prompt, ctx_size - max_prompt_tokens, tool_use)),
         }
     }
 }
@@ -1495,10 +1810,9 @@ fn compute_stream(
                                 choices: vec![ChatCompletionChunkChoice {
                                     index: 0,
                                     delta: ChatCompletionChunkChoiceDelta {
-                                        role: Some(ChatCompletionRole::Assistant),
+                                        role: ChatCompletionRole::Assistant,
                                         content: Some(output),
-                                        function_call: None,
-                                        tool_calls: None,
+                                        tool_calls: vec![],
                                     },
                                     logprobs: None,
                                     finish_reason: None,
@@ -1640,12 +1954,11 @@ fn compute_stream(
                                         choices: vec![ChatCompletionChunkChoice {
                                             index: 0,
                                             delta: ChatCompletionChunkChoiceDelta {
-                                                role: Some(ChatCompletionRole::Assistant),
+                                                role: ChatCompletionRole::Assistant,
                                                 content: Some(
                                                     "<|WASMEDGE-GGML-CONTEXT-FULL|>".to_string(),
                                                 ),
-                                                function_call: None,
-                                                tool_calls: None,
+                                                tool_calls: vec![],
                                             },
                                             logprobs: None,
                                             finish_reason: Some(FinishReason::length),
@@ -1780,10 +2093,9 @@ fn compute_stream(
                                         choices: vec![ChatCompletionChunkChoice {
                                             index: 0,
                                             delta: ChatCompletionChunkChoiceDelta {
-                                                role: Some(ChatCompletionRole::Assistant),
+                                                role: ChatCompletionRole::Assistant,
                                                 content: None,
-                                                function_call: None,
-                                                tool_calls: None,
+                                                tool_calls: vec![],
                                             },
                                             logprobs: None,
                                             finish_reason: Some(FinishReason::length),
@@ -2020,10 +2332,9 @@ fn compute_stream(
                                 choices: vec![ChatCompletionChunkChoice {
                                     index: 0,
                                     delta: ChatCompletionChunkChoiceDelta {
-                                        role: Some(ChatCompletionRole::Assistant),
+                                        role: ChatCompletionRole::Assistant,
                                         content: Some(output),
-                                        function_call: None,
-                                        tool_calls: None,
+                                        tool_calls: vec![],
                                     },
                                     logprobs: None,
                                     finish_reason: None,
@@ -2165,12 +2476,11 @@ fn compute_stream(
                                         choices: vec![ChatCompletionChunkChoice {
                                             index: 0,
                                             delta: ChatCompletionChunkChoiceDelta {
-                                                role: Some(ChatCompletionRole::Assistant),
+                                                role: ChatCompletionRole::Assistant,
                                                 content: Some(
                                                     "<|WASMEDGE-GGML-CONTEXT-FULL|>".to_string(),
                                                 ),
-                                                function_call: None,
-                                                tool_calls: None,
+                                                tool_calls: vec![],
                                             },
                                             logprobs: None,
                                             finish_reason: Some(FinishReason::length),
@@ -2305,10 +2615,9 @@ fn compute_stream(
                                         choices: vec![ChatCompletionChunkChoice {
                                             index: 0,
                                             delta: ChatCompletionChunkChoiceDelta {
-                                                role: Some(ChatCompletionRole::Assistant),
+                                                role: ChatCompletionRole::Assistant,
                                                 content: None,
-                                                function_call: None,
-                                                tool_calls: None,
+                                                tool_calls: vec![],
                                             },
                                             logprobs: None,
                                             finish_reason: Some(FinishReason::length),

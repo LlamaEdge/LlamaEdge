@@ -1,4 +1,139 @@
-//! Define types for the `chat completions` endpoint.
+//! Define types for building chat completion requests, including messages, tools, and tool choices.
+//!
+//! **Example 1** Create a normal chat completion request.
+//! ```
+//! use endpoints::chat::*;
+//!
+//! let mut messages = Vec::new();
+//!
+//! // create a system message
+//! let system_message = ChatCompletionRequestMessage::System(
+//!     ChatCompletionSystemMessage::new("Hello, world!", None),
+//! );
+//! messages.push(system_message);
+//!
+//! // create a user message
+//! let user_message_content = ChatCompletionUserMessageContent::Parts(vec![
+//!     ContentPart::Text(TextContentPart::new("what is in the picture?")),
+//!     ContentPart::Image(ImageContentPart::new(Image {
+//!         url: "https://example.com/image.png".to_string(),
+//!         detail: None,
+//!     })),
+//! ]);
+//! let user_message =
+//!     ChatCompletionRequestMessage::new_user_message(user_message_content, None);
+//! messages.push(user_message);
+//!
+//! // create a chat completion request
+//! let request = ChatCompletionRequestBuilder::new("model-id", messages)
+//!     .with_tool_choice(ToolChoice::None)
+//!     .build();
+//!
+//! // serialize the request to JSON string
+//! let json = serde_json::to_string(&request).unwrap();
+//! assert_eq!(
+//!     json,
+//!     r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"tool_choice":"none"}"#
+//! );
+//! ```
+//!
+//! **Example 2** Create a chat completion request with available tools.
+//! ```
+//! use endpoints::chat::*;
+//!
+//! let mut messages = Vec::new();
+//!
+//! // create a system message
+//! let system_message = ChatCompletionRequestMessage::System(
+//!     ChatCompletionSystemMessage::new("Hello, world!", None),
+//! );
+//! messages.push(system_message);
+//!
+//! // create a user message
+//! let user_message = ChatCompletionRequestMessage::User(ChatCompletionUserMessage::new(
+//!     ChatCompletionUserMessageContent::Text("Hello, world!".to_string()),
+//!     None,
+//! ));
+//! messages.push(user_message);
+//! let assistant_message = ChatCompletionRequestMessage::Assistant(
+//!     ChatCompletionAssistantMessage::new(Some("Hello, world!".to_string()), None, None),
+//! );
+//! messages.push(assistant_message);
+//!
+//! // create a tool
+//! let params = ToolFunctionParameters {
+//!     schema_type: JSONSchemaType::Object,
+//!     properties: Some(
+//!         vec![
+//!             (
+//!                 "location".to_string(),
+//!                 Box::new(JSONSchemaDefine {
+//!                     schema_type: Some(JSONSchemaType::String),
+//!                     description: Some(
+//!                         "The city and state, e.g. San Francisco, CA".to_string(),
+//!                     ),
+//!                     enum_values: None,
+//!                     properties: None,
+//!                     required: None,
+//!                     items: None,
+//!                 }),
+//!             ),
+//!             (
+//!                 "unit".to_string(),
+//!                 Box::new(JSONSchemaDefine {
+//!                     schema_type: Some(JSONSchemaType::String),
+//!                     description: None,
+//!                     enum_values: Some(vec![
+//!                         "celsius".to_string(),
+//!                         "fahrenheit".to_string(),
+//!                     ]),
+//!                     properties: None,
+//!                     required: None,
+//!                     items: None,
+//!                 }),
+//!             ),
+//!         ]
+//!         .into_iter()
+//!         .collect(),
+//!     ),
+//!     required: Some(vec!["location".to_string()]),
+//! };
+//! let tool = Tool {
+//!     ty: "function".to_string(),
+//!     function: ToolFunction {
+//!         name: "my_function".to_string(),
+//!         description: None,
+//!         parameters: Some(params),
+//!     },
+//! };
+//!
+//! // create a chat completion request
+//! let request = ChatCompletionRequestBuilder::new("model-id", messages)
+//!     .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
+//!     .with_n_choices(3)
+//!     .enable_stream(true)
+//!     .include_usage()
+//!     .with_stop(vec!["stop1".to_string(), "stop2".to_string()])
+//!     .with_max_tokens(100)
+//!     .with_presence_penalty(0.5)
+//!     .with_frequency_penalty(0.5)
+//!     .with_reponse_format(ChatResponseFormat::default())
+//!     .with_tools(vec![tool])
+//!     .with_tool_choice(ToolChoice::Tool(ToolChoiceTool {
+//!         ty: "function".to_string(),
+//!         function: ToolChoiceToolFunction {
+//!             name: "my_function".to_string(),
+//!         },
+//!     }))
+//!     .build();
+//!
+//! // serialize the request to JSON string
+//! let json = serde_json::to_string(&request).unwrap();
+//! assert_eq!(
+//!     json,
+//!     r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#
+//! );
+//! ```
 
 use crate::common::{FinishReason, Usage};
 use indexmap::IndexMap;
@@ -150,7 +285,7 @@ impl ChatCompletionRequestBuilder {
     }
 }
 
-/// Create a new chat completion request.
+/// Represents a chat completion request.
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct ChatCompletionRequest {
     /// The model to use for generating completions.
@@ -210,10 +345,10 @@ pub struct ChatCompletionRequest {
     pub user: Option<String>,
 
     //* OpenAI specific parameters
-    /// A list of functions the model may generate JSON inputs for.
+    /// **Deprecated since 0.10.0.** Use `tools` instead.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub functions: Option<Vec<ChatCompletionRequestFunction>>,
-    /// Controls how the model responds to function calls. "none" means the model does not call a function, and responds to the end-user. "auto" means the model can pick between an end-user or calling a function. Specifying a particular function via `{"name":\ "my_function"}` forces the model to call that function. "none" is the default when no functions are present. "auto" is the default if functions are present.
+    /// **Deprecated since 0.10.0.** Use `tool_choice` instead.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub function_call: Option<String>,
 
@@ -536,6 +671,7 @@ fn test_chat_serialize_response_format() {
     assert_eq!(json, r#"{"type":"json_object"}"#);
 }
 
+/// Options for streaming response. Only set this when you set stream: `true``.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct StreamOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -551,6 +687,9 @@ pub enum ToolChoice {
     /// The model can pick between generating a message or calling a function.
     #[serde(rename = "auto")]
     Auto,
+    /// The model must call one or more tools.
+    #[serde(rename = "required")]
+    Required,
     /// Specifies a tool the model should use. Use to force the model to call a specific function.
     #[serde(untagged)]
     Tool(ToolChoiceTool),
@@ -617,12 +756,14 @@ pub struct ToolChoiceTool {
     pub function: ToolChoiceToolFunction,
 }
 
+/// Represents a tool the model should use.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct ToolChoiceToolFunction {
     /// The name of the function to call.
     pub name: String,
 }
 
+/// Represents a tool the model may generate JSON inputs for.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Tool {
     /// The type of the tool. Currently, only `function` is supported.
@@ -701,6 +842,71 @@ fn test_chat_serialize_tool() {
         assert_eq!(
             json,
             r#"{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}"#
+        );
+    }
+
+    {
+        let tool_1 = Tool {
+            ty: "function".to_string(),
+            function: ToolFunction {
+                name: "my_function_1".to_string(),
+                description: None,
+                parameters: None,
+            },
+        };
+
+        let params = ToolFunctionParameters {
+            schema_type: JSONSchemaType::Object,
+            properties: Some(
+                vec![
+                    (
+                        "location".to_string(),
+                        Box::new(JSONSchemaDefine {
+                            schema_type: Some(JSONSchemaType::String),
+                            description: Some(
+                                "The city and state, e.g. San Francisco, CA".to_string(),
+                            ),
+                            enum_values: None,
+                            properties: None,
+                            required: None,
+                            items: None,
+                        }),
+                    ),
+                    (
+                        "unit".to_string(),
+                        Box::new(JSONSchemaDefine {
+                            schema_type: Some(JSONSchemaType::String),
+                            description: None,
+                            enum_values: Some(vec![
+                                "celsius".to_string(),
+                                "fahrenheit".to_string(),
+                            ]),
+                            properties: None,
+                            required: None,
+                            items: None,
+                        }),
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+            ),
+            required: Some(vec!["location".to_string()]),
+        };
+
+        let tool_2 = Tool {
+            ty: "function".to_string(),
+            function: ToolFunction {
+                name: "my_function_2".to_string(),
+                description: None,
+                parameters: Some(params),
+            },
+        };
+
+        let tools = vec![tool_1, tool_2];
+        let json = serde_json::to_string(&tools).unwrap();
+        assert_eq!(
+            json,
+            r#"[{"type":"function","function":{"name":"my_function_1"}},{"type":"function","function":{"name":"my_function_2","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}]"#
         );
     }
 }
@@ -895,7 +1101,6 @@ fn test_chat_deserialize_tool_function_params() {
 /// Message for comprising the conversation.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(tag = "role", rename_all = "lowercase")]
-// #[serde(untagged)]
 pub enum ChatCompletionRequestMessage {
     System(ChatCompletionSystemMessage),
     User(ChatCompletionUserMessage),
@@ -948,17 +1153,17 @@ impl ChatCompletionRequestMessage {
     }
 
     /// Creates a new tool message.
-    pub fn new_tool_message(content: impl Into<String>, tool_call_id: impl Into<String>) -> Self {
+    pub fn new_tool_message(content: impl Into<String>, tool_call_id: Option<String>) -> Self {
         ChatCompletionRequestMessage::Tool(ChatCompletionToolMessage::new(content, tool_call_id))
     }
 
     /// The role of the messages author.
     pub fn role(&self) -> ChatCompletionRole {
         match self {
-            ChatCompletionRequestMessage::System(message) => message.role(),
-            ChatCompletionRequestMessage::User(message) => message.role(),
-            ChatCompletionRequestMessage::Assistant(message) => message.role(),
-            ChatCompletionRequestMessage::Tool(message) => message.role(),
+            ChatCompletionRequestMessage::System(_) => ChatCompletionRole::System,
+            ChatCompletionRequestMessage::User(_) => ChatCompletionRole::User,
+            ChatCompletionRequestMessage::Assistant(_) => ChatCompletionRole::Assistant,
+            ChatCompletionRequestMessage::Tool(_) => ChatCompletionRole::Tool,
         }
     }
 
@@ -999,7 +1204,7 @@ fn test_chat_serialize_request_message() {
 
     let message = ChatCompletionRequestMessage::Tool(ChatCompletionToolMessage::new(
         "Hello, world!",
-        "tool-call-id",
+        Some("tool-call-id".into()),
     ));
     let json = serde_json::to_string(&message).unwrap();
     assert_eq!(
@@ -1027,6 +1232,7 @@ fn test_chat_deserialize_request_message() {
     assert_eq!(message.role(), ChatCompletionRole::Tool);
 }
 
+/// Defines the content of a system message.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct ChatCompletionSystemMessage {
     /// The contents of the system message.
@@ -1063,6 +1269,7 @@ impl ChatCompletionSystemMessage {
     }
 }
 
+/// Defines the content of a user message.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct ChatCompletionUserMessage {
     /// The contents of the user message.
@@ -1133,6 +1340,7 @@ fn test_chat_deserialize_user_message() {
     assert_eq!(message.content().ty(), "parts");
 }
 
+/// Defines the content of an assistant message.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct ChatCompletionAssistantMessage {
     /// The contents of the assistant message. Required unless `tool_calls` is specified.
@@ -1211,12 +1419,14 @@ fn test_chat_deserialize_assistant_message() {
     assert_eq!(message.content().unwrap().as_str(), "Hello, world!");
 }
 
+/// Defines the content of a tool message.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct ChatCompletionToolMessage {
     /// The contents of the tool message.
     content: String,
     /// Tool call that this message is responding to.
-    tool_call_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tool_call_id: Option<String>,
 }
 impl ChatCompletionToolMessage {
     /// Creates a new tool message.
@@ -1226,10 +1436,10 @@ impl ChatCompletionToolMessage {
     /// * `content` - The contents of the tool message.
     ///
     /// * `tool_call_id` - Tool call that this message is responding to.
-    pub fn new(content: impl Into<String>, tool_call_id: impl Into<String>) -> Self {
+    pub fn new(content: impl Into<String>, tool_call_id: Option<String>) -> Self {
         Self {
             content: content.into(),
-            tool_call_id: tool_call_id.into(),
+            tool_call_id,
         }
     }
 
@@ -1244,30 +1454,48 @@ impl ChatCompletionToolMessage {
     }
 
     /// Tool call that this message is responding to.
-    pub fn tool_call_id(&self) -> &str {
-        &self.tool_call_id
+    pub fn tool_call_id(&self) -> Option<String> {
+        self.tool_call_id.clone()
     }
 }
 
+/// Represents a tool call generated by the model.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct ToolCall {
     /// The ID of the tool call.
-    id: String,
+    pub id: String,
     /// The type of the tool. Currently, only function is supported.
     #[serde(rename = "type")]
-    ty: String,
+    pub ty: String,
     /// The function that the model called.
-    function: Fuction,
+    pub function: Function,
 }
 
+#[test]
+fn test_deserialize_tool_call() {
+    let json = r#"{"id":"tool-call-id","type":"function","function":{"name":"my_function","arguments":"{\"location\":\"San Francisco, CA\"}"}}"#;
+    let tool_call: ToolCall = serde_json::from_str(json).unwrap();
+    assert_eq!(tool_call.id, "tool-call-id");
+    assert_eq!(tool_call.ty, "function");
+    assert_eq!(
+        tool_call.function,
+        Function {
+            name: "my_function".to_string(),
+            arguments: r#"{"location":"San Francisco, CA"}"#.to_string()
+        }
+    );
+}
+
+/// The function that the model called.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub struct Fuction {
+pub struct Function {
     /// The name of the function that the model called.
-    name: String,
+    pub name: String,
     /// The arguments that the model called the function with.
-    arguments: String,
+    pub arguments: String,
 }
 
+/// Defines the types of a user message content.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum ChatCompletionUserMessageContent {
@@ -1318,6 +1546,7 @@ fn test_chat_deserialize_user_message_content() {
     }
 }
 
+/// Define the content part of a user message.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "lowercase")]
 // #[serde(untagged)]
@@ -1366,6 +1595,7 @@ fn test_chat_deserialize_content_part() {
     assert_eq!(content_part.ty(), "image_url");
 }
 
+/// Represents the text part of a user message content.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct TextContentPart {
     /// The text content.
@@ -1396,6 +1626,7 @@ fn test_chat_deserialize_text_content_part() {
     assert_eq!(text_content_part.text, "Hello, world!");
 }
 
+/// Represents the image part of a user message content.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct ImageContentPart {
     #[serde(rename = "image_url")]
@@ -1543,6 +1774,7 @@ fn test_chat_deserialize_image() {
     assert_eq!(image.detail, None);
 }
 
+/// Sampling methods used for chat completion requests.
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq)]
 pub enum ChatCompletionRequestSampling {
     /// What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.
@@ -1558,10 +1790,12 @@ pub enum ChatCompletionRole {
     System,
     User,
     Assistant,
+    /// **Deprecated since 0.10.0.** Use [ChatCompletionRole::Tool] instead.
     Function,
     Tool,
 }
 
+/// **Deprecated since 0.10.0.** Use [Tool] instead.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ChatCompletionRequestFunction {
     name: String,
@@ -1627,6 +1861,79 @@ pub struct ChatCompletionObject {
     pub usage: Usage,
 }
 
+#[test]
+fn test_deserialize_chat_completion_object() {
+    let json = r#"{
+  "id": "chatcmpl-abc123",
+  "object": "chat.completion",
+  "created": 1699896916,
+  "model": "gpt-3.5-turbo-0125",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": null,
+        "tool_calls": [
+          {
+            "id": "call_abc123",
+            "type": "function",
+            "function": {
+              "name": "get_current_weather",
+              "arguments": "{\n\"location\": \"Boston, MA\"\n}"
+            }
+          }
+        ]
+      },
+      "logprobs": null,
+      "finish_reason": "tool_calls"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 82,
+    "completion_tokens": 17,
+    "total_tokens": 99
+  }
+}"#;
+
+    let chatcmp_object: ChatCompletionObject = serde_json::from_str(json).unwrap();
+    assert_eq!(chatcmp_object.id, "chatcmpl-abc123");
+    assert_eq!(chatcmp_object.object, "chat.completion");
+    assert_eq!(chatcmp_object.created, 1699896916);
+    assert_eq!(chatcmp_object.model, "gpt-3.5-turbo-0125");
+    assert_eq!(chatcmp_object.choices.len(), 1);
+    assert_eq!(chatcmp_object.choices[0].index, 0);
+    assert_eq!(
+        chatcmp_object.choices[0].finish_reason,
+        FinishReason::tool_calls
+    );
+    assert_eq!(chatcmp_object.choices[0].message.tool_calls.len(), 1);
+    assert_eq!(
+        chatcmp_object.choices[0].message.tool_calls[0].id,
+        "call_abc123"
+    );
+    assert_eq!(
+        chatcmp_object.choices[0].message.tool_calls[0].ty,
+        "function"
+    );
+    assert_eq!(
+        chatcmp_object.choices[0].message.tool_calls[0]
+            .function
+            .name,
+        "get_current_weather"
+    );
+    assert_eq!(
+        chatcmp_object.choices[0].message.tool_calls[0]
+            .function
+            .arguments,
+        "{\n\"location\": \"Boston, MA\"\n}"
+    );
+    assert_eq!(chatcmp_object.usage.prompt_tokens, 82);
+    assert_eq!(chatcmp_object.usage.completion_tokens, 17);
+    assert_eq!(chatcmp_object.usage.total_tokens, 99);
+}
+
+/// Represents a chat completion choice returned by model.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ChatCompletionObjectChoice {
     /// The index of the choice in the list of choices.
@@ -1635,17 +1942,87 @@ pub struct ChatCompletionObjectChoice {
     pub message: ChatCompletionObjectMessage,
     /// The reason the model stopped generating tokens. This will be `stop` if the model hit a natural stop point or a provided stop sequence, `length` if the maximum number of tokens specified in the request was reached, or `function_call` if the model called a function.
     pub finish_reason: FinishReason,
+    /// Log probability information for the choice.
+    pub logprobs: Option<LogProbs>,
 }
 
+#[test]
+fn test_serialize_chat_completion_object_choice() {
+    let tool = ToolCall {
+        id: "call_abc123".to_string(),
+        ty: "function".to_string(),
+        function: Function {
+            name: "get_current_weather".to_string(),
+            arguments: "{\"location\": \"Boston, MA\"}".to_string(),
+        },
+    };
+    let message = ChatCompletionObjectMessage {
+        content: None,
+        tool_calls: vec![tool],
+        role: ChatCompletionRole::Assistant,
+        function_call: None,
+    };
+    let choice = ChatCompletionObjectChoice {
+        index: 0,
+        message,
+        finish_reason: FinishReason::tool_calls,
+        logprobs: None,
+    };
+    let json = serde_json::to_string(&choice).unwrap();
+    assert_eq!(
+        json,
+        r#"{"index":0,"message":{"content":null,"tool_calls":[{"id":"call_abc123","type":"function","function":{"name":"get_current_weather","arguments":"{\"location\": \"Boston, MA\"}"}}],"role":"assistant"},"finish_reason":"tool_calls","logprobs":null}"#
+    );
+}
+
+/// Log probability information for the choice.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct LogProbs;
+
+/// Represents a chat completion message generated by the model.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ChatCompletionObjectMessage {
+    /// The contents of the message.
+    pub content: Option<String>,
+    /// The tool calls generated by the model, such as function calls.
+    pub tool_calls: Vec<ToolCall>,
     /// The role of the author of this message.
     pub role: ChatCompletionRole,
-    /// The contents of the message.
-    pub content: String,
-    /// The name and arguments of a function that should be called, as generated by the model.
+    /// Deprecated. The name and arguments of a function that should be called, as generated by the model.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub function_call: Option<ChatMessageFunctionCall>,
+}
+
+#[test]
+fn test_serialize_chat_completion_object_message() {
+    let tool = ToolCall {
+        id: "call_abc123".to_string(),
+        ty: "function".to_string(),
+        function: Function {
+            name: "get_current_weather".to_string(),
+            arguments: "{\"location\": \"Boston, MA\"}".to_string(),
+        },
+    };
+    let message = ChatCompletionObjectMessage {
+        content: None,
+        tool_calls: vec![tool],
+        role: ChatCompletionRole::Assistant,
+        function_call: None,
+    };
+    let json = serde_json::to_string(&message).unwrap();
+    assert_eq!(
+        json,
+        r#"{"content":null,"tool_calls":[{"id":"call_abc123","type":"function","function":{"name":"get_current_weather","arguments":"{\"location\": \"Boston, MA\"}"}}],"role":"assistant"}"#
+    );
+}
+
+#[test]
+fn test_deserialize_chat_completion_object_message() {
+    let json = r#"{"content":null,"tool_calls":[{"id":"call_abc123","type":"function","function":{"name":"get_current_weather","arguments":"{\"location\": \"Boston, MA\"}"}}],"role":"assistant"}"#;
+    let message: ChatCompletionObjectMessage = serde_json::from_str(json).unwrap();
+    assert_eq!(message.content, None);
+    assert_eq!(message.tool_calls.len(), 1);
+    assert_eq!(message.role, ChatCompletionRole::Assistant);
 }
 
 /// The name and arguments of a function that should be called, as generated by the model.
@@ -1658,6 +2035,7 @@ pub struct ChatMessageFunctionCall {
     pub arguments: String,
 }
 
+/// Represents a streamed chunk of a chat completion response returned by model, based on the provided input.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ChatCompletionChunk {
     /// A unique identifier for the chat completion.
@@ -1679,6 +2057,7 @@ pub struct ChatCompletionChunk {
     pub usage: Option<Usage>,
 }
 
+/// Represents a chat completion choice in a streamed chunk of a chat completion response.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ChatCompletionChunkChoice {
     /// The index of the choice in the list of choices.
@@ -1686,38 +2065,18 @@ pub struct ChatCompletionChunkChoice {
     /// A chat completion delta generated by streamed model responses.
     pub delta: ChatCompletionChunkChoiceDelta,
     /// Log probability information for the choice.
-    pub logprobs: Option<ChatCompletionChunkChoiceLogprobs>,
+    pub logprobs: Option<LogProbs>,
     /// The reason the model stopped generating tokens. This will be `stop` if the model hit a natural stop point or a provided stop sequence, `length` if the maximum number of tokens specified in the request was reached, or `function_call` if the model called a function.
     pub finish_reason: Option<FinishReason>,
 }
 
+/// Represents a chat completion delta generated by streamed model responses.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ChatCompletionChunkChoiceDelta {
-    /// The role of the author of this message.
-    pub role: Option<ChatCompletionRole>,
     /// The contents of the chunk message.
     pub content: Option<String>,
     /// The name and arguments of a function that should be called, as generated by the model.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub function_call: Option<ChatMessageFunctionCall>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_calls: Option<Vec<ToolCall>>,
+    pub tool_calls: Vec<ToolCall>,
+    /// The role of the author of this message.
+    pub role: ChatCompletionRole,
 }
-
-// #[derive(Debug, Deserialize, Serialize)]
-// pub struct ToolCall {
-//     index: u32,
-//     id: String,
-//     /// The type of the tool. Currently, only function is supported.
-//     ty: String,
-//     function: ToolCallFunction,
-// }
-
-// #[derive(Debug, Deserialize, Serialize)]
-// pub struct ToolCallFunction {
-//     name: String,
-//     arguments: String,
-// }
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct ChatCompletionChunkChoiceLogprobs;
