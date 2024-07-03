@@ -28,7 +28,7 @@ jobs:
           RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc -p llama-core --no-deps --target wasm32-wasip1 --features full --target-dir=./target
 
       - name: Deploy API document
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/dev'
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
