@@ -1,6 +1,6 @@
 [package]
 name = "llama-core"
-version = "0.11.4"
+version = "0.12.0"
 edition = "2021"
 readme = "README.md"
 repository = "https://github.com/LlamaEdge/LlamaEdge"
