@@ -102,6 +102,7 @@ impl From<Vec<String>> for InputText {
     }
 }
 
+/// Defines the embedding response.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EmbeddingsResponse {
     pub object: String,
