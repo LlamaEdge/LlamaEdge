@@ -1,6 +1,7 @@
 use anyhow::bail;
 use chat_prompts::PromptTemplateType;
 use clap::Parser;
+use either::{Left, Right};
 use endpoints::chat::{
     ChatCompletionChunk, ChatCompletionRequestBuilder, ChatCompletionRequestMessage,
     ChatCompletionRequestSampling, ChatCompletionUserMessageContent,
@@ -256,47 +257,43 @@ async fn main() -> anyhow::Result<()> {
 
         println!("\n[Bot]:");
         let mut assistant_answer = String::new();
-        match chat_request.stream {
-            Some(true) => {
-                match llama_core::chat::chat_completions_stream(&mut chat_request).await {
-                    Ok(mut stream) => {
-                        while let Some(data) = stream.try_next().await? {
-                            if let Some(chunk) = parse_sse_event(&data) {
-                                if let Some(content) = &chunk.choices[0].delta.content {
-                                    if content.is_empty() {
-                                        continue;
-                                    }
-                                    if assistant_answer.is_empty() {
-                                        let content = content.trim_start();
-                                        print!("{}", content);
-                                        assistant_answer.push_str(content);
-                                    } else {
-                                        print!("{content}");
-                                        assistant_answer.push_str(content);
-                                    }
-                                    io::stdout().flush().unwrap();
+        match llama_core::chat::chat(&mut chat_request).await {
+            Ok(res) => match res {
+                Left(mut stream) => {
+                    while let Some(data) = stream.try_next().await? {
+                        if let Some(chunk) = parse_sse_event(&data) {
+                            if let Some(content) = &chunk.choices[0].delta.content {
+                                if content.is_empty() {
+                                    continue;
                                 }
+                                if assistant_answer.is_empty() {
+                                    let content = content.trim_start();
+                                    print!("{}", content);
+                                    assistant_answer.push_str(content);
+                                } else {
+                                    print!("{content}");
+                                    assistant_answer.push_str(content);
+                                }
+                                io::stdout().flush().unwrap();
                             }
                         }
-                        println!();
                     }
-                    Err(e) => bail!("Fail to generate completion. Reason: {msg}", msg = e),
-                };
+                    println!();
+                }
+                Right(completion) => {
+                    let chat_completion = completion.choices[0]
+                        .message
+                        .content
+                        .to_owned()
+                        .unwrap_or_default();
+                    println!("{chat_completion}");
+                    assistant_answer = chat_completion;
+                }
+            },
+            Err(e) => {
+                bail!("Fail to generate chat completion. Reason: {msg}", msg = e)
             }
-            Some(false) | None => {
-                let chat_completion =
-                    match llama_core::chat::chat_completions(&mut chat_request).await {
-                        Ok(completion) => completion.choices[0]
-                            .message
-                            .content
-                            .to_owned()
-                            .unwrap_or_default(),
-                        Err(e) => bail!("Fail to generate completion. Reason: {msg}", msg = e),
-                    };
-                println!("{chat_completion}");
-                assistant_answer = chat_completion;
-            }
-        }
+        };
 
         let assistant_message = ChatCompletionRequestMessage::new_assistant_message(
             Some(assistant_answer.trim().to_string()),
