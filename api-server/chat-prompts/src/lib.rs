@@ -55,6 +55,8 @@ pub enum PromptTemplateType {
     DeepseekChat,
     #[value(name = "deepseek-coder")]
     DeepseekCoder,
+    #[value(name = "deepseek-chat-2")]
+    DeepseekChat2,
     #[value(name = "solar-instruct")]
     SolarInstruct,
     #[value(name = "phi-2-chat")]
@@ -88,6 +90,7 @@ impl PromptTemplateType {
             | PromptTemplateType::Zephyr
             | PromptTemplateType::IntelNeural
             | PromptTemplateType::DeepseekCoder
+            | PromptTemplateType::DeepseekChat2
             | PromptTemplateType::Octopus
             | PromptTemplateType::Phi3Chat => true,
             PromptTemplateType::MistralInstruct
@@ -134,6 +137,7 @@ impl FromStr for PromptTemplateType {
             "intel-neural" => Ok(PromptTemplateType::IntelNeural),
             "deepseek-chat" => Ok(PromptTemplateType::DeepseekChat),
             "deepseek-coder" => Ok(PromptTemplateType::DeepseekCoder),
+            "deepseek-chat-2" => Ok(PromptTemplateType::DeepseekChat2),
             "solar-instruct" => Ok(PromptTemplateType::SolarInstruct),
             "phi-2-chat" => Ok(PromptTemplateType::Phi2Chat),
             "phi-2-instruct" => Ok(PromptTemplateType::Phi2Instruct),
@@ -171,6 +175,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::IntelNeural => write!(f, "intel-neural"),
             PromptTemplateType::DeepseekChat => write!(f, "deepseek-chat"),
             PromptTemplateType::DeepseekCoder => write!(f, "deepseek-coder"),
+            PromptTemplateType::DeepseekChat2 => write!(f, "deepseek-chat-2"),
             PromptTemplateType::SolarInstruct => write!(f, "solar-instruct"),
             PromptTemplateType::Phi2Chat => write!(f, "phi-2-chat"),
             PromptTemplateType::Phi2Instruct => write!(f, "phi-2-instruct"),
