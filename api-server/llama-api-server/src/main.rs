@@ -473,16 +473,12 @@ async fn handle_request(
         let path = req.uri().path().to_string();
         let version = format!("{:?}", req.version());
         if req.method() == hyper::http::Method::POST {
-            let size: u64 = req
-                .headers()
-                .get("content-length")
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .parse()
-                .unwrap();
+            let size: u64 = match req.headers().get("content-length") {
+                Some(content_length) => content_length.to_str().unwrap().parse().unwrap(),
+                None => 0,
+            };
 
-            info!(target: "request", "method: {}, endpoint: {}, http_version: {}, size: {}", method, path, version, size);
+            info!(target: "request", "method: {}, endpoint: {}, http_version: {}, content-length: {}", method, path, version, size);
         } else {
             info!(target: "request", "method: {}, endpoint: {}, http_version: {}", method, path, version);
         }
