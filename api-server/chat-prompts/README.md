@@ -86,6 +86,21 @@ The available prompt templates are listed below:
 
   - Example: [second-state/Deepseek-LLM-7B-Chat-GGUF](https://huggingface.co/second-state/Deepseek-LLM-7B-Chat-GGUF)
 
+- `deepseek-chat-2`
+  - Prompt string
+
+    ```text
+    <|begin_of_sentence|>{system_message}
+
+    User: {user_message_1}
+
+    Assistant: {assistant_message_1}<|end_of_sentence|>User: {user_message_2}
+
+    Assistant:
+    ```
+
+  - Example: [second-state/DeepSeek-Coder-V2-Lite-Instruct-GGUF](https://huggingface.co/second-state/DeepSeek-Coder-V2-Lite-Instruct-GGUF)
+
 - `deepseek-coder`
   - Prompt string
 
@@ -102,21 +117,6 @@ The available prompt templates are listed below:
     ```
 
   - Example: [second-state/Deepseek-Coder-6.7B-Instruct-GGUF](https://huggingface.co/second-state/Deepseek-Coder-6.7B-Instruct-GGUF)
-
-- `deepseek-coder-2`
-  - Prompt string
-
-    ```text
-    <｜begin▁of▁sentence｜>{system_message}
-
-    User: {user_message_1}
-
-    Assistant: {assistant_message_1}<｜end▁of▁sentence｜>User: {user_message_2}
-
-    Assistant:
-    ```
-
-  - Example: [second-state/DeepSeek-Coder-V2-Lite-Instruct-GGUF](https://huggingface.co/second-state/DeepSeek-Coder-V2-Lite-Instruct-GGUF)
 
 - `embedding`
   - Prompt string
