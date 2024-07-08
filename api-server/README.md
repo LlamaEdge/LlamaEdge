@@ -117,7 +117,7 @@ The command above starts the API server on the default socket address. Besides, 
 You can use `curl` to test it on a new terminal:
 
 ```bash
-curl -X POST http://localhost:8080/v1/models -H 'accept:application/json'
+curl -X GET http://localhost:8080/v1/models -H 'accept:application/json'
 ```
 
 If the command is successful, you should see the similar output as below in your terminal:
