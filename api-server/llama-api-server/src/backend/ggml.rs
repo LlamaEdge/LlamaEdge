@@ -576,92 +576,174 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
             }
         }
     } else if req.method() == Method::GET {
-        fn is_hidden(entry: &DirEntry) -> bool {
-            entry
-                .file_name()
-                .to_str()
-                .map(|s| s.starts_with("."))
-                .unwrap_or(false)
-        }
+        let uri_path = req.uri().path();
 
-        let mut file_objects: Vec<FileObject> = Vec::new();
-        for entry in WalkDir::new("archives").into_iter().filter_map(|e| e.ok()) {
-            if !is_hidden(&entry) && entry.path().is_file() {
-                info!(target: "files_handler", "archive file: {}", entry.path().display());
+        if uri_path == "/v1/files" {
+            let mut file_objects: Vec<FileObject> = Vec::new();
+            for entry in WalkDir::new("archives").into_iter().filter_map(|e| e.ok()) {
+                if !is_hidden(&entry) && entry.path().is_file() {
+                    info!(target: "files_handler", "archive file: {}", entry.path().display());
 
-                let id = entry
-                    .path()
-                    .parent()
-                    .and_then(|p| {
-                        p.file_name()
-                            .and_then(|f| f.to_str().map(|s| s.trim_start_matches("file_")))
-                    })
-                    .unwrap()
-                    .to_string();
+                    let id = entry
+                        .path()
+                        .parent()
+                        .and_then(|p| {
+                            p.file_name()
+                                .and_then(|f| f.to_str().map(|s| s.trim_start_matches("file_")))
+                        })
+                        .unwrap()
+                        .to_string();
 
-                let filename = entry
-                    .path()
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap()
-                    .to_string();
+                    let filename = entry
+                        .path()
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap()
+                        .to_string();
 
-                let metadata = entry.path().metadata().unwrap();
+                    let metadata = entry.path().metadata().unwrap();
 
-                let created_at = metadata
-                    .created()
-                    .unwrap()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs();
+                    let created_at = metadata
+                        .created()
+                        .unwrap()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs();
 
-                let bytes = metadata.len();
+                    let bytes = metadata.len();
 
-                let fo = FileObject {
-                    id,
-                    bytes,
-                    created_at,
-                    filename,
-                    object: "file".to_string(),
-                    purpose: "assistants".to_string(),
-                };
+                    let fo = FileObject {
+                        id,
+                        bytes,
+                        created_at,
+                        filename,
+                        object: "file".to_string(),
+                        purpose: "assistants".to_string(),
+                    };
 
-                file_objects.push(fo);
+                    file_objects.push(fo);
+                }
             }
-        }
 
-        info!(target: "files_handler", "Found {} archive files", file_objects.len());
+            info!(target: "files_handler", "Found {} archive files", file_objects.len());
 
-        // serialize chat completion object
-        let s = match serde_json::to_string(&file_objects) {
-            Ok(s) => s,
-            Err(e) => {
-                let err_msg = format!("Failed to serialize file object. {}", e);
+            // serialize chat completion object
+            let s = match serde_json::to_string(&file_objects) {
+                Ok(s) => s,
+                Err(e) => {
+                    let err_msg = format!("Failed to serialize file object. {}", e);
 
-                // log
-                error!(target: "files_handler", "{}", &err_msg);
+                    // log
+                    error!(target: "files_handler", "{}", &err_msg);
 
-                return error::internal_server_error(err_msg);
+                    return error::internal_server_error(err_msg);
+                }
+            };
+
+            // return response
+            let result = Response::builder()
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "*")
+                .header("Access-Control-Allow-Headers", "*")
+                .header("Content-Type", "application/json")
+                .body(Body::from(s));
+
+            match result {
+                Ok(response) => response,
+                Err(e) => {
+                    let err_msg = e.to_string();
+
+                    // log
+                    error!(target: "files_handler", "{}", &err_msg);
+
+                    error::internal_server_error(err_msg)
+                }
             }
-        };
+        } else {
+            let id = uri_path.trim_start_matches("/v1/files/");
+            let root = format!("archives/file_{}", id);
+            let mut file_object: Option<FileObject> = None;
+            for entry in WalkDir::new(root).into_iter().filter_map(|e| e.ok()) {
+                if !is_hidden(&entry) && entry.path().is_file() {
+                    info!(target: "files_handler", "archive file: {}", entry.path().display());
 
-        // return response
-        let result = Response::builder()
-            .header("Access-Control-Allow-Origin", "*")
-            .header("Access-Control-Allow-Methods", "*")
-            .header("Access-Control-Allow-Headers", "*")
-            .header("Content-Type", "application/json")
-            .body(Body::from(s));
+                    let filename = entry
+                        .path()
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap()
+                        .to_string();
 
-        match result {
-            Ok(response) => response,
-            Err(e) => {
-                let err_msg = e.to_string();
+                    let metadata = entry.path().metadata().unwrap();
 
-                // log
-                error!(target: "files_handler", "{}", &err_msg);
+                    let created_at = metadata
+                        .created()
+                        .unwrap()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs();
 
-                error::internal_server_error(err_msg)
+                    let bytes = metadata.len();
+
+                    file_object = Some(FileObject {
+                        id: id.into(),
+                        bytes,
+                        created_at,
+                        filename,
+                        object: "file".to_string(),
+                        purpose: "assistants".to_string(),
+                    });
+
+                    break;
+                }
+            }
+
+            match file_object {
+                Some(fo) => {
+                    // serialize chat completion object
+                    let s = match serde_json::to_string(&fo) {
+                        Ok(s) => s,
+                        Err(e) => {
+                            let err_msg = format!("Failed to serialize file object. {}", e);
+
+                            // log
+                            error!(target: "files_handler", "{}", &err_msg);
+
+                            return error::internal_server_error(err_msg);
+                        }
+                    };
+
+                    // return response
+                    let result = Response::builder()
+                        .header("Access-Control-Allow-Origin", "*")
+                        .header("Access-Control-Allow-Methods", "*")
+                        .header("Access-Control-Allow-Headers", "*")
+                        .header("Content-Type", "application/json")
+                        .body(Body::from(s));
+
+                    match result {
+                        Ok(response) => response,
+                        Err(e) => {
+                            let err_msg = e.to_string();
+
+                            // log
+                            error!(target: "files_handler", "{}", &err_msg);
+
+                            error::internal_server_error(err_msg)
+                        }
+                    }
+                }
+                None => {
+                    let err_msg = format!(
+                        "Failed to retrieve the target file. Not found the target file with id {}.",
+                        id
+                    );
+
+                    // log
+                    error!(target: "files_handler", "{}", &err_msg);
+
+                    error::internal_server_error(err_msg)
+                }
             }
         }
     } else {
@@ -896,4 +978,12 @@ pub(crate) async fn server_info_handler() -> Response<Body> {
     info!(target: "server_info", "Send the server info response.");
 
     res
+}
+
+fn is_hidden(entry: &DirEntry) -> bool {
+    entry
+        .file_name()
+        .to_str()
+        .map(|s| s.starts_with("."))
+        .unwrap_or(false)
 }
