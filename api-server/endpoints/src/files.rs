@@ -36,3 +36,14 @@ pub struct ListFilesResponse {
     /// The list of file objects.
     pub data: Vec<FileObject>,
 }
+
+/// Represents the status of a file deletion operation.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DeleteFileStatus {
+    /// The file identifier, which can be referenced in the API endpoints.
+    pub id: String,
+    /// The object type, which is always `file`.
+    pub object: String,
+    /// The status of the deletion operation.
+    pub deleted: bool,
+}

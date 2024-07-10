@@ -311,6 +311,26 @@ If the command is successful, you should see the similar output as below in your
 
 </details>
 
+<details> <summary> Example: Delete a specific file </summary>
+
+The following command deletes a specific file on the server via the `/v1/files/{file_id}` endpoint:
+
+```bash
+curl -X DELETE http://localhost:10086/v1/files/6a6d8046-fd98-410a-b70e-0a0142ec9a39
+```
+
+If the command is successful, you should see the similar output as below in your terminal:
+
+```bash
+{
+    "id": "6a6d8046-fd98-410a-b70e-0a0142ec9a39",
+    "object": "file",
+    "deleted": true
+}
+```
+
+</details>
+
 ### `/v1/chunks` endpoint
 
 To segment the uploaded file to chunks for computing embeddings, use the `/v1/chunks` API.
