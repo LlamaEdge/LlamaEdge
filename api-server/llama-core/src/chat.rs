@@ -611,10 +611,10 @@ fn parse_tool_calls(input: &str, prompt_template: PromptTemplateType) -> Option<
 
                 let mut tool_calls: Vec<ToolCall> = vec![];
                 for value in values.iter() {
-                    let function = Function {
-                        name: value.get("name").unwrap().to_string(),
-                        arguments: value.get("arguments").unwrap().to_string(),
-                    };
+                    let name = value.get("name").unwrap().to_string().replace("\"", "");
+                    let arguments = value.get("arguments").unwrap().to_string();
+
+                    let function = Function { name, arguments };
 
                     let tool_call = ToolCall {
                         id: "call_abc123".to_string(),
@@ -654,10 +654,10 @@ fn parse_tool_calls(input: &str, prompt_template: PromptTemplateType) -> Option<
 
                     let mut tool_calls: Vec<ToolCall> = vec![];
                     for value in values.iter() {
-                        let function = Function {
-                            name: value.get("name").unwrap().to_string(),
-                            arguments: value.get("arguments").unwrap().to_string(),
-                        };
+                        let name = value.get("name").unwrap().to_string().replace("\"", "");
+                        let arguments = value.get("arguments").unwrap().to_string();
+
+                        let function = Function { name, arguments };
 
                         let tool_call = ToolCall {
                             id: "call_abc123".to_string(),
