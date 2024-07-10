@@ -285,6 +285,29 @@ If the command is successful, you should see the similar output as below in your
 
 </details>
 
+<details> <summary> Example: Retrieve information about a specific file </summary>
+
+The following command retrieves information about a specific file on the server via the `/v1/files/{file_id}` endpoint:
+
+```bash
+curl -X GET http://localhost:10086/v1/files/b892bc81-35e9-44a6-8c01-ae915c1d3832
+```
+
+If the command is successful, you should see the similar output as below in your terminal:
+
+```bash
+{
+    "id": "b892bc81-35e9-44a6-8c01-ae915c1d3832",
+    "bytes": 2161,
+    "created_at": 1715832065,
+    "filename": "paris.txt",
+    "object": "file",
+    "purpose": "assistants"
+}
+```
+
+</details>
+
 ### `/v1/chunks` endpoint
 
 To segment the uploaded file to chunks for computing embeddings, use the `/v1/chunks` API.
