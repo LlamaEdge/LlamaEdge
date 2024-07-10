@@ -887,6 +887,7 @@ fn post_process(
     } else if *template_ty == PromptTemplateType::Zephyr
         || *template_ty == PromptTemplateType::MistralLite
         || *template_ty == PromptTemplateType::MistralTool
+        || *template_ty == PromptTemplateType::MistralInstruct
     {
         if output.as_ref().contains("</s><") {
             output.as_ref().trim_end_matches("</s><").trim().to_owned()
