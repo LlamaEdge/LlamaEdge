@@ -27,3 +27,12 @@ pub struct FileObject {
     /// The intended purpose of the file. Supported values are `fine-tune`, `fine-tune-results`, `assistants`, and `assistants_output`.
     pub purpose: String,
 }
+
+/// List files.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ListFilesResponse {
+    /// The object type, which is always `list`.
+    pub object: String,
+    /// The list of file objects.
+    pub data: Vec<FileObject>,
+}
