@@ -7,15 +7,15 @@ use serde::{
 };
 use std::fmt;
 
-/// Builder for creating a `CreateImageRequest` instance.
-pub struct CreateImageRequestBuilder {
-    req: CreateImageRequest,
+/// Builder for creating a `ImageCreateRequest` instance.
+pub struct ImageCreateRequestBuilder {
+    req: ImageCreateRequest,
 }
-impl CreateImageRequestBuilder {
+impl ImageCreateRequestBuilder {
     /// Create a new builder with the given model and prompt.
     pub fn new(model: impl Into<String>, prompt: impl Into<String>) -> Self {
         Self {
-            req: CreateImageRequest {
+            req: ImageCreateRequest {
                 model: model.into(),
                 prompt: prompt.into(),
                 n: Some(1),
@@ -62,14 +62,14 @@ impl CreateImageRequestBuilder {
     }
 
     /// Build the request.
-    pub fn build(self) -> CreateImageRequest {
+    pub fn build(self) -> ImageCreateRequest {
         self.req
     }
 }
 
 /// Request to create an image by a given prompt.
 #[derive(Debug, Serialize, Default)]
-pub struct CreateImageRequest {
+pub struct ImageCreateRequest {
     /// A text description of the desired image.
     pub prompt: String,
     /// Name of the model to use for image generation.
@@ -93,7 +93,7 @@ pub struct CreateImageRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user: Option<String>,
 }
-impl<'de> Deserialize<'de> for CreateImageRequest {
+impl<'de> Deserialize<'de> for ImageCreateRequest {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -148,13 +148,13 @@ impl<'de> Deserialize<'de> for CreateImageRequest {
         struct CreateImageRequestVisitor;
 
         impl<'de> Visitor<'de> for CreateImageRequestVisitor {
-            type Value = CreateImageRequest;
+            type Value = ImageCreateRequest;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str("struct CreateImageRequest")
             }
 
-            fn visit_seq<V>(self, mut seq: V) -> Result<CreateImageRequest, V::Error>
+            fn visit_seq<V>(self, mut seq: V) -> Result<ImageCreateRequest, V::Error>
             where
                 V: SeqAccess<'de>,
             {
@@ -171,7 +171,7 @@ impl<'de> Deserialize<'de> for CreateImageRequest {
                 let style = seq.next_element()?;
                 let user = seq.next_element()?;
 
-                Ok(CreateImageRequest {
+                Ok(ImageCreateRequest {
                     prompt,
                     model,
                     n,
@@ -183,7 +183,7 @@ impl<'de> Deserialize<'de> for CreateImageRequest {
                 })
             }
 
-            fn visit_map<V>(self, mut map: V) -> Result<CreateImageRequest, V::Error>
+            fn visit_map<V>(self, mut map: V) -> Result<ImageCreateRequest, V::Error>
             where
                 V: MapAccess<'de>,
             {
@@ -247,7 +247,7 @@ impl<'de> Deserialize<'de> for CreateImageRequest {
                         }
                     }
                 }
-                Ok(CreateImageRequest {
+                Ok(ImageCreateRequest {
                     prompt: prompt.ok_or_else(|| de::Error::missing_field("prompt"))?,
                     model: model.ok_or_else(|| de::Error::missing_field("model"))?,
                     n: n.unwrap_or(Some(1)),
@@ -275,9 +275,9 @@ impl<'de> Deserialize<'de> for CreateImageRequest {
 }
 
 #[test]
-fn test_serialize_create_image_request() {
+fn test_serialize_image_create_request() {
     {
-        let req = CreateImageRequestBuilder::new("test-model-name", "This is a prompt").build();
+        let req = ImageCreateRequestBuilder::new("test-model-name", "This is a prompt").build();
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
@@ -286,7 +286,7 @@ fn test_serialize_create_image_request() {
     }
 
     {
-        let req = CreateImageRequestBuilder::new("test-model-name", "This is a prompt")
+        let req = ImageCreateRequestBuilder::new("test-model-name", "This is a prompt")
             .with_number_of_images(2)
             .with_response_format(ResponseFormat::Url)
             .with_size("1024x1024")
@@ -302,10 +302,10 @@ fn test_serialize_create_image_request() {
 }
 
 #[test]
-fn test_deserialize_create_image_request() {
+fn test_deserialize_image_create_request() {
     {
         let json = r#"{"prompt":"This is a prompt","model":"test-model-name"}"#;
-        let req: CreateImageRequest = serde_json::from_str(json).unwrap();
+        let req: ImageCreateRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.prompt, "This is a prompt");
         assert_eq!(req.model, "test-model-name");
         assert_eq!(req.n, Some(1));
@@ -314,7 +314,7 @@ fn test_deserialize_create_image_request() {
 
     {
         let json = r#"{"prompt":"This is a prompt","model":"test-model-name","n":2,"response_format":"url","size":"1024x1024","style":"vivid","user":"user"}"#;
-        let req: CreateImageRequest = serde_json::from_str(json).unwrap();
+        let req: ImageCreateRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.prompt, "This is a prompt");
         assert_eq!(req.model, "test-model-name");
         assert_eq!(req.n, Some(2));
@@ -325,6 +325,7 @@ fn test_deserialize_create_image_request() {
     }
 }
 
+/// Builder for creating a `ImageEditRequest` instance.
 pub struct ImageEditRequestBuilder {
     req: ImageEditRequest,
 }
