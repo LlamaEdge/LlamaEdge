@@ -16,6 +16,7 @@ use std::{
     path::Path,
     time::SystemTime,
 };
+use walkdir::{DirEntry, WalkDir};
 
 /// List all models available.
 pub(crate) async fn models_handler() -> Response<Body> {
@@ -449,6 +450,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
 
                 if !((filename).to_lowercase().ends_with(".txt")
                     || (filename).to_lowercase().ends_with(".md"))
+                    || (filename).to_lowercase().ends_with(".png")
                 {
                     let err_msg = format!(
                         "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported. The file extension is {}.",
@@ -574,12 +576,94 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
             }
         }
     } else if req.method() == Method::GET {
-        let err_msg = "Not implemented for listing files.";
+        fn is_hidden(entry: &DirEntry) -> bool {
+            entry
+                .file_name()
+                .to_str()
+                .map(|s| s.starts_with("."))
+                .unwrap_or(false)
+        }
 
-        // log
-        error!(target: "files_handler", "{}", &err_msg);
+        let mut file_objects: Vec<FileObject> = Vec::new();
+        for entry in WalkDir::new("archives").into_iter().filter_map(|e| e.ok()) {
+            if !is_hidden(&entry) && entry.path().is_file() {
+                info!(target: "files_handler", "archive file: {}", entry.path().display());
 
-        error::internal_server_error(err_msg)
+                let id = entry
+                    .path()
+                    .parent()
+                    .and_then(|p| {
+                        p.file_name()
+                            .and_then(|f| f.to_str().map(|s| s.trim_start_matches("file_")))
+                    })
+                    .unwrap()
+                    .to_string();
+
+                let filename = entry
+                    .path()
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap()
+                    .to_string();
+
+                let metadata = entry.path().metadata().unwrap();
+
+                let created_at = metadata
+                    .created()
+                    .unwrap()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs();
+
+                let bytes = metadata.len();
+
+                let fo = FileObject {
+                    id,
+                    bytes,
+                    created_at,
+                    filename,
+                    object: "file".to_string(),
+                    purpose: "assistants".to_string(),
+                };
+
+                file_objects.push(fo);
+            }
+        }
+
+        info!(target: "files_handler", "Found {} archive files", file_objects.len());
+
+        // serialize chat completion object
+        let s = match serde_json::to_string(&file_objects) {
+            Ok(s) => s,
+            Err(e) => {
+                let err_msg = format!("Failed to serialize file object. {}", e);
+
+                // log
+                error!(target: "files_handler", "{}", &err_msg);
+
+                return error::internal_server_error(err_msg);
+            }
+        };
+
+        // return response
+        let result = Response::builder()
+            .header("Access-Control-Allow-Origin", "*")
+            .header("Access-Control-Allow-Methods", "*")
+            .header("Access-Control-Allow-Headers", "*")
+            .header("Content-Type", "application/json")
+            .body(Body::from(s));
+
+        match result {
+            Ok(response) => response,
+            Err(e) => {
+                let err_msg = e.to_string();
+
+                // log
+                error!(target: "files_handler", "{}", &err_msg);
+
+                error::internal_server_error(err_msg)
+            }
+        }
     } else {
         let err_msg = "Invalid HTTP Method.";
 
