@@ -333,3 +333,17 @@ pub enum ResponseFormat {
     #[serde(rename = "b64_json")]
     B64Json,
 }
+
+/// Represents the url or the content of an image generated.
+#[derive(Debug, Deserialize, Serialize, Default)]
+pub struct ImageObject {
+    /// The base64-encoded JSON of the generated image, if response_format is `b64_json`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub b64_json: Option<String>,
+    /// The URL of the generated image, if response_format is `url`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    /// The prompt that was used to generate the image, if there was any revision to the prompt.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prompt: Option<String>,
+}
