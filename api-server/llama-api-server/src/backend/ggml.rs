@@ -3,7 +3,7 @@ use endpoints::{
     chat::ChatCompletionRequest,
     completions::CompletionRequest,
     embeddings::EmbeddingRequest,
-    files::{FileObject, ListFilesResponse},
+    files::{DeleteFileStatus, FileObject, ListFilesResponse},
     rag::{ChunksRequest, ChunksResponse},
 };
 use futures_util::TryStreamExt;
@@ -749,6 +749,68 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
 
                     error::internal_server_error(err_msg)
                 }
+            }
+        }
+    } else if req.method() == Method::DELETE {
+        let id = req.uri().path().trim_start_matches("/v1/files/");
+        let root = format!("archives/file_{}", id);
+        let status = match fs::remove_dir_all(root) {
+            Ok(_) => {
+                info!(target: "files_handler", "Successfully deleted the target file with id {}.", id);
+
+                DeleteFileStatus {
+                    id: id.into(),
+                    object: "file".to_string(),
+                    deleted: true,
+                }
+            }
+            Err(e) => {
+                let err_msg = format!("Failed to delete the target file with id {}. {}", id, e);
+
+                // log
+                error!(target: "files_handler", "{}", &err_msg);
+
+                DeleteFileStatus {
+                    id: id.into(),
+                    object: "file".to_string(),
+                    deleted: false,
+                }
+            }
+        };
+
+        // serialize status
+        let s = match serde_json::to_string(&status) {
+            Ok(s) => s,
+            Err(e) => {
+                let err_msg = format!(
+                    "Failed to serialize the status of the file deletion operation. {}",
+                    e
+                );
+
+                // log
+                error!(target: "files_handler", "{}", &err_msg);
+
+                return error::internal_server_error(err_msg);
+            }
+        };
+
+        // return response
+        let result = Response::builder()
+            .header("Access-Control-Allow-Origin", "*")
+            .header("Access-Control-Allow-Methods", "*")
+            .header("Access-Control-Allow-Headers", "*")
+            .header("Content-Type", "application/json")
+            .body(Body::from(s));
+
+        match result {
+            Ok(response) => response,
+            Err(e) => {
+                let err_msg = e.to_string();
+
+                // log
+                error!(target: "files_handler", "{}", &err_msg);
+
+                error::internal_server_error(err_msg)
             }
         }
     } else {
