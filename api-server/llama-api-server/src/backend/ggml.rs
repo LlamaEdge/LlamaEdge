@@ -3,7 +3,7 @@ use endpoints::{
     chat::ChatCompletionRequest,
     completions::CompletionRequest,
     embeddings::EmbeddingRequest,
-    files::FileObject,
+    files::{FileObject, ListFilesResponse},
     rag::{ChunksRequest, ChunksResponse},
 };
 use futures_util::TryStreamExt;
@@ -626,6 +626,11 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
             }
 
             info!(target: "files_handler", "Found {} archive files", file_objects.len());
+
+            let file_objects = ListFilesResponse {
+                object: "list".to_string(),
+                data: file_objects,
+            };
 
             // serialize chat completion object
             let s = match serde_json::to_string(&file_objects) {
