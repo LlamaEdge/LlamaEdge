@@ -260,7 +260,7 @@ impl<'de> Deserialize<'de> for CreateImageRequest {
             }
         }
 
-        const FIELDS: &'static [&'static str] = &[
+        const FIELDS: &[&str] = &[
             "prompt",
             "model",
             "n",
