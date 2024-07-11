@@ -55,6 +55,8 @@ pub enum PromptTemplateType {
     DeepseekChat,
     #[value(name = "deepseek-coder")]
     DeepseekCoder,
+    #[value(name = "deepseek-chat-2")]
+    DeepseekChat2,
     #[value(name = "solar-instruct")]
     SolarInstruct,
     #[value(name = "phi-2-chat")]
@@ -69,6 +71,8 @@ pub enum PromptTemplateType {
     GemmaInstruct,
     #[value(name = "octopus")]
     Octopus,
+    #[value(name = "glm-4-chat")]
+    Glm4Chat,
     #[value(name = "embedding")]
     Embedding,
 }
@@ -88,8 +92,10 @@ impl PromptTemplateType {
             | PromptTemplateType::Zephyr
             | PromptTemplateType::IntelNeural
             | PromptTemplateType::DeepseekCoder
+            | PromptTemplateType::DeepseekChat2
             | PromptTemplateType::Octopus
-            | PromptTemplateType::Phi3Chat => true,
+            | PromptTemplateType::Phi3Chat
+            | PromptTemplateType::Glm4Chat => true,
             PromptTemplateType::MistralInstruct
             | PromptTemplateType::MistralTool
             | PromptTemplateType::MistralLite
@@ -134,6 +140,7 @@ impl FromStr for PromptTemplateType {
             "intel-neural" => Ok(PromptTemplateType::IntelNeural),
             "deepseek-chat" => Ok(PromptTemplateType::DeepseekChat),
             "deepseek-coder" => Ok(PromptTemplateType::DeepseekCoder),
+            "deepseek-chat-2" => Ok(PromptTemplateType::DeepseekChat2),
             "solar-instruct" => Ok(PromptTemplateType::SolarInstruct),
             "phi-2-chat" => Ok(PromptTemplateType::Phi2Chat),
             "phi-2-instruct" => Ok(PromptTemplateType::Phi2Instruct),
@@ -141,6 +148,7 @@ impl FromStr for PromptTemplateType {
             "phi-3-instruct" => Ok(PromptTemplateType::Phi3Instruct),
             "gemma-instruct" => Ok(PromptTemplateType::GemmaInstruct),
             "octopus" => Ok(PromptTemplateType::Octopus),
+            "glm-4-chat" => Ok(PromptTemplateType::Glm4Chat),
             "embedding" => Ok(PromptTemplateType::Embedding),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
                 template.to_string(),
@@ -171,6 +179,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::IntelNeural => write!(f, "intel-neural"),
             PromptTemplateType::DeepseekChat => write!(f, "deepseek-chat"),
             PromptTemplateType::DeepseekCoder => write!(f, "deepseek-coder"),
+            PromptTemplateType::DeepseekChat2 => write!(f, "deepseek-chat-2"),
             PromptTemplateType::SolarInstruct => write!(f, "solar-instruct"),
             PromptTemplateType::Phi2Chat => write!(f, "phi-2-chat"),
             PromptTemplateType::Phi2Instruct => write!(f, "phi-2-instruct"),
@@ -179,6 +188,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::CodeLlamaSuper => write!(f, "codellama-super-instruct"),
             PromptTemplateType::GemmaInstruct => write!(f, "gemma-instruct"),
             PromptTemplateType::Octopus => write!(f, "octopus"),
+            PromptTemplateType::Glm4Chat => write!(f, "glm-4-chat"),
             PromptTemplateType::Embedding => write!(f, "embedding"),
         }
     }

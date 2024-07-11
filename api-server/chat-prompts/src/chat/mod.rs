@@ -3,6 +3,7 @@ pub mod belle;
 pub mod chatml;
 pub mod deepseek;
 pub mod gemma;
+pub mod glm;
 pub mod intel;
 pub mod llama;
 pub mod mistral;
@@ -19,8 +20,9 @@ use baichuan::*;
 use belle::*;
 use chatml::*;
 use deepseek::*;
-use endpoints::chat::ChatCompletionRequestMessage;
+use endpoints::chat::{ChatCompletionRequestMessage, Tool};
 use gemma::*;
+use glm::*;
 use intel::*;
 use llama::*;
 use mistral::*;
@@ -31,8 +33,6 @@ use solar::*;
 use vicuna::*;
 use wizard::*;
 use zephyr::*;
-
-use endpoints::chat::Tool;
 
 /// Trait for building prompts for chat completions.
 #[enum_dispatch::enum_dispatch]
@@ -73,6 +73,7 @@ pub enum ChatPrompt {
     NeuralChatPrompt,
     DeepseekChatPrompt,
     DeepseekCoderPrompt,
+    DeepseekChat2Prompt,
     SolarInstructPrompt,
     Phi2ChatPrompt,
     Phi2InstructPrompt,
@@ -80,6 +81,7 @@ pub enum ChatPrompt {
     Phi3InstructPrompt,
     GemmaInstructPrompt,
     OctopusPrompt,
+    Glm4ChatPrompt,
 }
 impl From<PromptTemplateType> for ChatPrompt {
     fn from(ty: PromptTemplateType) -> Self {
@@ -117,6 +119,9 @@ impl From<PromptTemplateType> for ChatPrompt {
             PromptTemplateType::DeepseekCoder => {
                 ChatPrompt::DeepseekCoderPrompt(DeepseekCoderPrompt)
             }
+            PromptTemplateType::DeepseekChat2 => {
+                ChatPrompt::DeepseekChat2Prompt(DeepseekChat2Prompt)
+            }
             PromptTemplateType::SolarInstruct => {
                 ChatPrompt::SolarInstructPrompt(SolarInstructPrompt)
             }
@@ -128,6 +133,7 @@ impl From<PromptTemplateType> for ChatPrompt {
                 ChatPrompt::GemmaInstructPrompt(GemmaInstructPrompt)
             }
             PromptTemplateType::Octopus => ChatPrompt::OctopusPrompt(OctopusPrompt),
+            PromptTemplateType::Glm4Chat => ChatPrompt::Glm4ChatPrompt(Glm4ChatPrompt),
             PromptTemplateType::Embedding => {
                 panic!("Embedding prompt template is not used for building chat prompts")
             }

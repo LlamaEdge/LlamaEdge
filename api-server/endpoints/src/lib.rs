@@ -6,5 +6,6 @@ pub mod common;
 pub mod completions;
 pub mod embeddings;
 pub mod files;
+pub mod images;
 pub mod models;
 pub mod rag;
