@@ -71,6 +71,8 @@ pub enum PromptTemplateType {
     GemmaInstruct,
     #[value(name = "octopus")]
     Octopus,
+    #[value(name = "glm-4-chat")]
+    Glm4Chat,
     #[value(name = "embedding")]
     Embedding,
 }
@@ -92,7 +94,8 @@ impl PromptTemplateType {
             | PromptTemplateType::DeepseekCoder
             | PromptTemplateType::DeepseekChat2
             | PromptTemplateType::Octopus
-            | PromptTemplateType::Phi3Chat => true,
+            | PromptTemplateType::Phi3Chat
+            | PromptTemplateType::Glm4Chat => true,
             PromptTemplateType::MistralInstruct
             | PromptTemplateType::MistralTool
             | PromptTemplateType::MistralLite
@@ -145,6 +148,7 @@ impl FromStr for PromptTemplateType {
             "phi-3-instruct" => Ok(PromptTemplateType::Phi3Instruct),
             "gemma-instruct" => Ok(PromptTemplateType::GemmaInstruct),
             "octopus" => Ok(PromptTemplateType::Octopus),
+            "glm-4-chat" => Ok(PromptTemplateType::Glm4Chat),
             "embedding" => Ok(PromptTemplateType::Embedding),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
                 template.to_string(),
@@ -184,6 +188,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::CodeLlamaSuper => write!(f, "codellama-super-instruct"),
             PromptTemplateType::GemmaInstruct => write!(f, "gemma-instruct"),
             PromptTemplateType::Octopus => write!(f, "octopus"),
+            PromptTemplateType::Glm4Chat => write!(f, "glm-4-chat"),
             PromptTemplateType::Embedding => write!(f, "embedding"),
         }
     }
