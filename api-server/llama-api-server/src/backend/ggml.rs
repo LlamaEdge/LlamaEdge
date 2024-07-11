@@ -587,10 +587,9 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
                     let id = entry
                         .path()
                         .parent()
-                        .and_then(|p| {
-                            p.file_name()
-                                .and_then(|f| f.to_str().map(|s| s.trim_start_matches("file_")))
-                        })
+                        .and_then(|p| p.file_name())
+                        .unwrap()
+                        .to_str()
                         .unwrap()
                         .to_string();
 
@@ -666,7 +665,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
             }
         } else {
             let id = uri_path.trim_start_matches("/v1/files/");
-            let root = format!("archives/file_{}", id);
+            let root = format!("archives/{}", id);
             let mut file_object: Option<FileObject> = None;
             for entry in WalkDir::new(root).into_iter().filter_map(|e| e.ok()) {
                 if !is_hidden(&entry) && entry.path().is_file() {
@@ -753,7 +752,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
         }
     } else if req.method() == Method::DELETE {
         let id = req.uri().path().trim_start_matches("/v1/files/");
-        let root = format!("archives/file_{}", id);
+        let root = format!("archives/{}", id);
         let status = match fs::remove_dir_all(root) {
             Ok(_) => {
                 info!(target: "files_handler", "Successfully deleted the target file with id {}.", id);
