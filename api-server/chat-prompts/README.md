@@ -339,3 +339,15 @@ The available prompt templates are listed below:
     ```
 
   - Example: [second-state/Zephyr-7B-Beta-GGUF](https://huggingface.co/second-state/Zephyr-7B-Beta-GGUF)
+
+- `glm-4-chat`
+  - Prompt string
+
+    ```text
+    [gMASK]<|system|>
+    {system_message}<|user|>
+    {user_message_1}<|assistant|>
+    {assistant_message_1}
+    ```
+
+  - Example: [second-state/glm-4-9b-chat-GGUF](https://huggingface.co/second-state/glm-4-9b-chat-GGUF)
