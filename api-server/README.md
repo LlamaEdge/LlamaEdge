@@ -227,7 +227,7 @@ If the command is successful, you should see the similar output as below in your
     "object": "list",
     "data": [
         {
-            "id": "33d9188d-5060-4141-8c52-ae148fd15f6a",
+            "id": "file_33d9188d-5060-4141-8c52-ae148fd15f6a",
             "bytes": 17039,
             "created_at": 1718296362,
             "filename": "test-123.m4a",
@@ -235,7 +235,7 @@ If the command is successful, you should see the similar output as below in your
             "purpose": "assistants"
         },
         {
-            "id": "8c6439da-df59-4b9a-bb5e-dba4b2f23c04",
+            "id": "file_8c6439da-df59-4b9a-bb5e-dba4b2f23c04",
             "bytes": 17039,
             "created_at": 1718294169,
             "filename": "test-123.m4a",
@@ -243,7 +243,7 @@ If the command is successful, you should see the similar output as below in your
             "purpose": "assistants"
         },
         {
-            "id": "6c601277-7deb-44c9-bfb3-57ce9da856c9",
+            "id": "file_6c601277-7deb-44c9-bfb3-57ce9da856c9",
             "bytes": 17039,
             "created_at": 1718296350,
             "filename": "test-123.m4a",
@@ -251,7 +251,7 @@ If the command is successful, you should see the similar output as below in your
             "purpose": "assistants"
         },
         {
-            "id": "137b1ea2-c01d-44da-83ad-6b4aa2ff71de",
+            "id": "file_137b1ea2-c01d-44da-83ad-6b4aa2ff71de",
             "bytes": 244596,
             "created_at": 1718337557,
             "filename": "audio16k.wav",
@@ -259,7 +259,7 @@ If the command is successful, you should see the similar output as below in your
             "purpose": "assistants"
         },
         {
-            "id": "21fde6a7-18dc-4d42-a5bb-1a27d4b7a32e",
+            "id": "file_21fde6a7-18dc-4d42-a5bb-1a27d4b7a32e",
             "bytes": 17039,
             "created_at": 1718294739,
             "filename": "test-123.m4a",
@@ -267,7 +267,7 @@ If the command is successful, you should see the similar output as below in your
             "purpose": "assistants"
         },
         {
-            "id": "b892bc81-35e9-44a6-8c01-ae915c1d3832",
+            "id": "file_b892bc81-35e9-44a6-8c01-ae915c1d3832",
             "bytes": 2161,
             "created_at": 1715832065,
             "filename": "paris.txt",
@@ -275,7 +275,7 @@ If the command is successful, you should see the similar output as below in your
             "purpose": "assistants"
         },
         {
-            "id": "6a6d8046-fd98-410a-b70e-0a0142ec9a39",
+            "id": "file_6a6d8046-fd98-410a-b70e-0a0142ec9a39",
             "bytes": 17039,
             "created_at": 1718332593,
             "filename": "test-123.m4a",
@@ -293,14 +293,14 @@ If the command is successful, you should see the similar output as below in your
 The following command retrieves information about a specific file on the server via the `/v1/files/{file_id}` endpoint:
 
 ```bash
-curl -X GET http://localhost:10086/v1/files/b892bc81-35e9-44a6-8c01-ae915c1d3832
+curl -X GET http://localhost:10086/v1/files/file_b892bc81-35e9-44a6-8c01-ae915c1d3832
 ```
 
 If the command is successful, you should see the similar output as below in your terminal:
 
 ```bash
 {
-    "id": "b892bc81-35e9-44a6-8c01-ae915c1d3832",
+    "id": "file_b892bc81-35e9-44a6-8c01-ae915c1d3832",
     "bytes": 2161,
     "created_at": 1715832065,
     "filename": "paris.txt",
@@ -316,14 +316,14 @@ If the command is successful, you should see the similar output as below in your
 The following command deletes a specific file on the server via the `/v1/files/{file_id}` endpoint:
 
 ```bash
-curl -X DELETE http://localhost:10086/v1/files/6a6d8046-fd98-410a-b70e-0a0142ec9a39
+curl -X DELETE http://localhost:10086/v1/files/file_6a6d8046-fd98-410a-b70e-0a0142ec9a39
 ```
 
 If the command is successful, you should see the similar output as below in your terminal:
 
 ```bash
 {
-    "id": "6a6d8046-fd98-410a-b70e-0a0142ec9a39",
+    "id": "file_6a6d8046-fd98-410a-b70e-0a0142ec9a39",
     "object": "file",
     "deleted": true
 }
