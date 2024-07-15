@@ -439,10 +439,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     if tool_choice.is_none() {
                         tool_choice = Some(ToolChoice::Auto);
                     }
-                } else {
-                    if tool_choice.is_none() {
-                        tool_choice = Some(ToolChoice::None);
-                    }
+                } else if tool_choice.is_none() {
+                    tool_choice = Some(ToolChoice::None);
                 }
 
                 // Construct ChatCompletionRequest with all fields
@@ -469,7 +467,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
             }
         }
 
-        const FIELDS: &'static [&'static str] = &[
+        const FIELDS: &[&str] = &[
             "prompt",
             "max_tokens",
             "temperature",
