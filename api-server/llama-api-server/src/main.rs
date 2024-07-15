@@ -498,12 +498,6 @@ async fn main() -> Result<(), ServerError> {
 
     let server = Server::bind(&addr).serve(new_service);
 
-    // println!(
-    //     "LlamaEdge API server listening on http://{}:{}",
-    //     addr.ip(),
-    //     addr.port()
-    // );
-
     match server.await {
         Ok(_) => Ok(()),
         Err(e) => Err(ServerError::Operation(e.to_string())),
