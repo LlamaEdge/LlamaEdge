@@ -666,3 +666,12 @@ pub struct ImageObject {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prompt: Option<String>,
 }
+
+/// Represent the response from the `images` endpoint.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ListImagesResponse {
+    /// The Unix timestamp (in seconds) for when the response was created.
+    pub created: u64,
+    /// The list of file objects.
+    pub data: Vec<ImageObject>,
+}
