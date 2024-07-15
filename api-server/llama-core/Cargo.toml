@@ -28,6 +28,8 @@ wasi-logger = { workspace = true, optional = true }
 log = { workspace = true, optional = true }
 regex = "1"
 either.workspace = true
+wasmedge_stable_diffusion = { version = "0.1.0", git = "https://github.com/WasmEdge/wasmedge-stable-diffusion.git" }
+base64.workspace = true
 
 [features]
 default = []
