@@ -13,3 +13,4 @@ clap = { version = "4.4.6", features = ["cargo", "derive"] }
 log = { version = "0.4.21", features = ["std", "kv", "kv_serde"] }
 wasi-logger = { version = "0.1.2", features = ["kv"] }
 either = "1.12.0"
+base64 = "=0.22.0"
