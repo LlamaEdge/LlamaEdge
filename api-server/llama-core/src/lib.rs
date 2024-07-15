@@ -8,6 +8,7 @@ pub mod chat;
 pub mod completions;
 pub mod embeddings;
 pub mod error;
+pub mod images;
 pub mod models;
 pub mod rag;
 pub mod utils;
@@ -22,6 +23,7 @@ use std::{
     sync::{Mutex, RwLock},
 };
 use utils::{get_output_buffer, set_tensor_data_u8};
+use wasmedge_stable_diffusion::*;
 use wasmedge_wasi_nn::{
     Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext, TensorType,
 };
@@ -34,6 +36,10 @@ pub(crate) static EMBEDDING_GRAPHS: OnceCell<Mutex<HashMap<String, Graph>>> = On
 pub(crate) static CACHED_UTF8_ENCODINGS: OnceCell<Mutex<Vec<u8>>> = OnceCell::new();
 // running mode
 pub(crate) static RUNNING_MODE: OnceCell<RwLock<RunningMode>> = OnceCell::new();
+// stable diffusion context for the text-to-image task
+pub(crate) static SD_TEXT_TO_IMAGE: OnceCell<Mutex<StableDiffusion>> = OnceCell::new();
+// stable diffusion context for the image-to-image task
+pub(crate) static SD_IMAGE_TO_IMAGE: OnceCell<Mutex<StableDiffusion>> = OnceCell::new();
 
 pub(crate) const MAX_BUFFER_SIZE: usize = 2usize.pow(14) * 15 + 128;
 pub(crate) const OUTPUT_TENSOR: usize = 0;
@@ -828,4 +834,40 @@ pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
     info!(target: "llama-core", "running mode: {}", &mode);
 
     Ok(mode.to_owned())
+}
+
+/// Initialize the stable diffusion context
+pub fn init_stable_diffusion_context(gguf: impl AsRef<str>) -> Result<(), LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "Initializing the stable diffusion context");
+
+    // create the stable diffusion context for the text-to-image task
+    let sd = StableDiffusion::new(Task::TextToImage, gguf.as_ref());
+    SD_TEXT_TO_IMAGE.set(Mutex::new(sd)).map_err(|_| {
+        let err_msg = "Failed to initialize the stable diffusion context. Reason: The `SD_TEXT_TO_IMAGE` has already been initialized";
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama-core", "{}", err_msg);
+
+        LlamaCoreError::InitContext(err_msg.into())
+    })?;
+
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "The stable diffusion text-to-image context has been initialized");
+
+    // create the stable diffusion context for the image-to-image task
+    let sd = StableDiffusion::new(Task::ImageToImage, gguf.as_ref());
+    SD_IMAGE_TO_IMAGE.set(Mutex::new(sd)).map_err(|_| {
+        let err_msg = "Failed to initialize the stable diffusion context. Reason: The `SD_IMAGE_TO_IMAGE` has already been initialized";
+
+        #[cfg(feature = "logging")]
+        error!(target: "llama-core", "{}", err_msg);
+
+        LlamaCoreError::InitContext(err_msg.into())
+    })?;
+
+    #[cfg(feature = "logging")]
+    info!(target: "llama-core", "The stable diffusion image-to-image context has been initialized");
+
+    Ok(())
 }
