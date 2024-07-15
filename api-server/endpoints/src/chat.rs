@@ -141,8 +141,7 @@ use serde::{
     de::{self, MapAccess, Visitor},
     Deserialize, Deserializer, Serialize,
 };
-use std::collections::HashMap;
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
 /// Request builder for creating a new chat completion request.
 pub struct ChatCompletionRequestBuilder {
