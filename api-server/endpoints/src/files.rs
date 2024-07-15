@@ -28,7 +28,7 @@ pub struct FileObject {
     pub purpose: String,
 }
 
-/// List files.
+/// Represent the response from the `files` endpoint.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ListFilesResponse {
     /// The object type, which is always `list`.
