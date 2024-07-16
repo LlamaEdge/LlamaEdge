@@ -8,6 +8,7 @@ use std::{
 };
 use wasmedge_stable_diffusion::{BaseFunction, Context};
 
+/// Create an image given a prompt.
 pub async fn image_generation(
     req: &mut ImageCreateRequest,
 ) -> Result<ListImagesResponse, LlamaCoreError> {
@@ -129,6 +130,7 @@ pub async fn image_generation(
     }
 }
 
+/// Create an edited or extended image given an original image and a prompt.
 pub async fn image_edit(_req: &mut ImageEditRequest) -> Result<ListImagesResponse, LlamaCoreError> {
     unimplemented!("image_edit")
 }
