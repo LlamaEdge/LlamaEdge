@@ -644,6 +644,153 @@ fn test_deserialize_image_edit_request() {
     }
 }
 
+/// Request to generate an image variation.
+#[derive(Debug, Serialize, Default)]
+pub struct ImageVariationRequest {
+    /// The image to use as the basis for the variation(s).
+    pub image: FileObject,
+    /// Name of the model to use for image generation.
+    pub model: String,
+    /// The number of images to generate. Defaults to 1.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub n: Option<u64>,
+    /// The format in which the generated images are returned. Must be one of `url` or `b64_json`. Defaults to `b64_json`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_format: Option<ResponseFormat>,
+    /// The size of the generated images. Defaults to 1024x1024.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size: Option<String>,
+    /// A unique identifier representing your end-user, which can help monitor and detect abuse.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user: Option<String>,
+}
+impl<'de> Deserialize<'de> for ImageVariationRequest {
+    fn deserialize<D>(deserializer: D) -> Result<ImageVariationRequest, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        enum Field {
+            Image,
+            Model,
+            N,
+            ResponseFormat,
+            Size,
+            User,
+        }
+
+        impl<'de> Deserialize<'de> for Field {
+            fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                struct FieldVisitor;
+
+                impl<'de> Visitor<'de> for FieldVisitor {
+                    type Value = Field;
+
+                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                        formatter.write_str("field identifier")
+                    }
+
+                    fn visit_str<E>(self, value: &str) -> Result<Field, E>
+                    where
+                        E: de::Error,
+                    {
+                        match value {
+                            "image" => Ok(Field::Image),
+                            "model" => Ok(Field::Model),
+                            "n" => Ok(Field::N),
+                            "response_format" => Ok(Field::ResponseFormat),
+                            "size" => Ok(Field::Size),
+                            "user" => Ok(Field::User),
+                            _ => Err(de::Error::unknown_field(value, FIELDS)),
+                        }
+                    }
+                }
+
+                deserializer.deserialize_identifier(FieldVisitor)
+            }
+        }
+
+        struct ImageVariationRequestVisitor;
+
+        impl<'de> Visitor<'de> for ImageVariationRequestVisitor {
+            type Value = ImageVariationRequest;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("struct ImageVariationRequest")
+            }
+
+            fn visit_map<V>(self, mut map: V) -> Result<ImageVariationRequest, V::Error>
+            where
+                V: MapAccess<'de>,
+            {
+                let mut image = None;
+                let mut model = None;
+                let mut n = None;
+                let mut response_format = None;
+                let mut size = None;
+                let mut user = None;
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::Image => {
+                            if image.is_some() {
+                                return Err(de::Error::duplicate_field("image"));
+                            }
+                            image = Some(map.next_value()?);
+                        }
+                        Field::Model => {
+                            if model.is_some() {
+                                return Err(de::Error::duplicate_field("model"));
+                            }
+                            model = Some(map.next_value()?);
+                        }
+                        Field::N => {
+                            if n.is_some() {
+                                return Err(de::Error::duplicate_field("n"));
+                            }
+                            n = Some(map.next_value()?);
+                        }
+                        Field::ResponseFormat => {
+                            if response_format.is_some() {
+                                return Err(de::Error::duplicate_field("response_format"));
+                            }
+                            response_format = Some(map.next_value()?);
+                        }
+                        Field::Size => {
+                            if size.is_some() {
+                                return Err(de::Error::duplicate_field("size"));
+                            }
+                            size = Some(map.next_value()?);
+                        }
+                        Field::User => {
+                            if user.is_some() {
+                                return Err(de::Error::duplicate_field("user"));
+                            }
+                            user = Some(map.next_value()?);
+                        }
+                    }
+                }
+                Ok(ImageVariationRequest {
+                    image: image.ok_or_else(|| de::Error::missing_field("image"))?,
+                    model: model.ok_or_else(|| de::Error::missing_field("model"))?,
+                    n: n.unwrap_or(Some(1)),
+                    response_format: response_format.unwrap_or(Some(ResponseFormat::B64Json)),
+                    size,
+                    user,
+                })
+            }
+        }
+
+        const FIELDS: &[&str] = &["image", "model", "n", "response_format", "size", "user"];
+        deserializer.deserialize_struct(
+            "ImageVariationRequest",
+            FIELDS,
+            ImageVariationRequestVisitor,
+        )
+    }
+}
+
 /// The format in which the generated images are returned.
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 pub enum ResponseFormat {
