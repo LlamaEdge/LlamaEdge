@@ -1,6 +1,8 @@
 use crate::{error::LlamaCoreError, SD_IMAGE_TO_IMAGE, SD_TEXT_TO_IMAGE};
 use base64::{engine::general_purpose, Engine as _};
-use endpoints::images::{ImageCreateRequest, ImageEditRequest, ImageObject, ListImagesResponse};
+use endpoints::images::{
+    ImageCreateRequest, ImageEditRequest, ImageObject, ImageVariationRequest, ListImagesResponse,
+};
 use std::{
     fs::{self, File},
     io::{self, Read},
@@ -261,7 +263,7 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
 
 /// Create a variation of a given image.
 pub async fn image_variation(
-    _req: &mut ImageEditRequest,
+    _req: &mut ImageVariationRequest,
 ) -> Result<ListImagesResponse, LlamaCoreError> {
     unimplemented!("image_variation")
 }
