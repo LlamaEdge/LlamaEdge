@@ -5,7 +5,7 @@ use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
     Deserialize, Deserializer, Serialize,
 };
-use std::fmt;
+use std::{fmt, str::FromStr};
 
 /// Builder for creating a `ImageCreateRequest` instance.
 pub struct ImageCreateRequestBuilder {
@@ -651,6 +651,29 @@ pub enum ResponseFormat {
     Url,
     #[serde(rename = "b64_json")]
     B64Json,
+}
+impl FromStr for ResponseFormat {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "url" => Ok(ResponseFormat::Url),
+            "b64_json" => Ok(ResponseFormat::B64Json),
+            _ => Err(ParseError),
+        }
+    }
+}
+
+// Custom error type for conversion errors
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParseError;
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "provided string did not match any ResponseFormat variants"
+        )
+    }
 }
 
 /// Represents the url or the content of an image generated.
