@@ -29,6 +29,7 @@ use error::{BackendError, LlamaCoreError};
 #[cfg(feature = "https")]
 use futures::StreamExt;
 use std::{
+    collections::VecDeque,
     pin::Pin,
     sync::Mutex,
     task::{Context, Poll},
@@ -42,22 +43,6 @@ pub async fn chat(
     Either<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, ChatCompletionObject>,
     LlamaCoreError,
 > {
-    // * update stream mode according to the tool choice and tools
-    if chat_request.stream == Some(true) {
-        if let Some(tool_choice) = chat_request.tool_choice.as_ref() {
-            if *tool_choice != ToolChoice::None {
-                if let Some(tools) = chat_request.tools.as_ref() {
-                    if !tools.is_empty() && !chat_request.messages.is_empty() {
-                        let role = chat_request.messages.last().unwrap().role();
-                        if role != ChatCompletionRole::Tool {
-                            chat_request.stream = Some(false);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     #[cfg(feature = "logging")]
     {
         info!(target: "llama-core", "tool choice: {:?}", chat_request.tool_choice.as_ref());
@@ -227,9 +212,6 @@ async fn chat_stream(
         },
     };
 
-    // // create chat stream
-    // let stream = ChatStream::new(model_name, id, include_usage);
-
     #[cfg(feature = "logging")]
     info!(target: "llama_core", "End of the chat completion stream.");
 
@@ -242,7 +224,7 @@ fn chat_stream_by_graph(
     include_usage: bool,
 ) -> Result<ChatStream, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Compute chat completion by the model named {}.", graph.name());
+    info!(target: "llama_core", "Handle chat request with available tools by the model named {}.", graph.name());
 
     let id = id.into();
 
@@ -2081,7 +2063,7 @@ struct ChatStream {
     context_full_state: ContextFullState,
     prompt_too_long_state: PromptTooLongState,
     stream_state: StreamState,
-    cache: Option<Vec<String>>,
+    cache: Option<VecDeque<String>>,
 }
 impl ChatStream {
     fn new(
@@ -2103,51 +2085,69 @@ impl ChatStream {
             context_full_state: ContextFullState::Message,
             prompt_too_long_state: PromptTooLongState::Message,
             stream_state,
-            cache,
+            cache: cache.map(VecDeque::from),
         }
     }
 }
 impl Drop for ChatStream {
     fn drop(&mut self) {
-        match &self.model {
-            Some(model_name) => {
-                match CHAT_GRAPHS.get() {
-                    Some(chat_graphs) => match chat_graphs.lock() {
-                        Ok(mut chat_graphs) => match chat_graphs.get_mut(model_name) {
-                            Some(graph) => {
-                                if let Err(e) = graph.finish_single() {
-                                    let err_msg =
-                                        format!("Failed to clean up the context. Reason: {}", e);
+        if self.cache.is_none() {
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "Clean up the context of the stream work environment.");
+            match &self.model {
+                Some(model_name) => {
+                    match CHAT_GRAPHS.get() {
+                        Some(chat_graphs) => match chat_graphs.lock() {
+                            Ok(mut chat_graphs) => match chat_graphs.get_mut(model_name) {
+                                Some(graph) => {
+                                    if let Err(e) = graph.finish_single() {
+                                        let err_msg = format!(
+                                            "Failed to clean up the context. Reason: {}",
+                                            e
+                                        );
+
+                                        #[cfg(feature = "logging")]
+                                        error!(target: "llama_core", "{}", &err_msg);
+
+                                        #[cfg(not(feature = "logging"))]
+                                        println!(
+                                        "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
+                                        &err_msg
+                                    );
+                                    }
+                                }
+                                None => {
+                                    let err_msg = format!(
+                                        "The model `{}` does not exist in the chat graphs.",
+                                        &model_name
+                                    );
 
                                     #[cfg(feature = "logging")]
                                     error!(target: "llama_core", "{}", &err_msg);
 
                                     #[cfg(not(feature = "logging"))]
                                     println!(
-                                        "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                                        &err_msg
-                                    );
-                                }
-                            }
-                            None => {
-                                let err_msg = format!(
-                                    "The model `{}` does not exist in the chat graphs.",
-                                    &model_name
+                                    "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
+                                    &err_msg
                                 );
+                                }
+                            },
+                            Err(e) => {
+                                let err_msg =
+                                    format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
                                 #[cfg(feature = "logging")]
                                 error!(target: "llama_core", "{}", &err_msg);
 
                                 #[cfg(not(feature = "logging"))]
                                 println!(
-                                    "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                                    &err_msg
-                                );
+                                "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
+                                &err_msg
+                            );
                             }
                         },
-                        Err(e) => {
-                            let err_msg =
-                                format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+                        None => {
+                            let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                             #[cfg(feature = "logging")]
                             error!(target: "llama_core", "{}", &err_msg);
@@ -2158,56 +2158,58 @@ impl Drop for ChatStream {
                                 &err_msg
                             );
                         }
-                    },
-                    None => {
-                        let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+                    };
+                }
+                None => {
+                    match CHAT_GRAPHS.get() {
+                        Some(chat_graphs) => match chat_graphs.lock() {
+                            Ok(mut chat_graphs) => match chat_graphs.iter_mut().next() {
+                                Some((_, graph)) => {
+                                    if let Err(e) = graph.finish_single() {
+                                        let err_msg = format!(
+                                            "Failed to clean up the context. Reason: {}",
+                                            e
+                                        );
 
-                        #[cfg(feature = "logging")]
-                        error!(target: "llama_core", "{}", &err_msg);
+                                        #[cfg(feature = "logging")]
+                                        error!(target: "llama_core", "{}", &err_msg);
 
-                        #[cfg(not(feature = "logging"))]
-                        println!(
-                            "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                            &err_msg
-                        );
-                    }
-                };
-            }
-            None => {
-                match CHAT_GRAPHS.get() {
-                    Some(chat_graphs) => match chat_graphs.lock() {
-                        Ok(mut chat_graphs) => match chat_graphs.iter_mut().next() {
-                            Some((_, graph)) => {
-                                if let Err(e) = graph.finish_single() {
-                                    let err_msg =
-                                        format!("Failed to clean up the context. Reason: {}", e);
-
-                                    #[cfg(feature = "logging")]
-                                    error!(target: "llama_core", "{}", &err_msg);
-
-                                    #[cfg(not(feature = "logging"))]
-                                    println!(
+                                        #[cfg(not(feature = "logging"))]
+                                        println!(
                                         "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
                                         &err_msg
                                     );
+                                    }
                                 }
-                            }
-                            None => {
-                                let err_msg = "There is no model available in the chat graphs.";
+                                None => {
+                                    let err_msg = "There is no model available in the chat graphs.";
 
-                                #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", err_msg);
+                                    #[cfg(feature = "logging")]
+                                    error!(target: "llama_core", "{}", err_msg);
 
-                                #[cfg(not(feature = "logging"))]
-                                println!(
+                                    #[cfg(not(feature = "logging"))]
+                                    println!(
                                     "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
                                     err_msg
                                 );
+                                }
+                            },
+                            Err(e) => {
+                                let err_msg =
+                                    format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
+                                #[cfg(not(feature = "logging"))]
+                                println!(
+                                "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
+                                &err_msg
+                            );
                             }
                         },
-                        Err(e) => {
-                            let err_msg =
-                                format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+                        None => {
+                            let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                             #[cfg(feature = "logging")]
                             error!(target: "llama_core", "{}", &err_msg);
@@ -2218,20 +2220,8 @@ impl Drop for ChatStream {
                                 &err_msg
                             );
                         }
-                    },
-                    None => {
-                        let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
-
-                        #[cfg(feature = "logging")]
-                        error!(target: "llama_core", "{}", &err_msg);
-
-                        #[cfg(not(feature = "logging"))]
-                        println!(
-                            "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                            &err_msg
-                        );
-                    }
-                };
+                    };
+                }
             }
         }
     }
@@ -2251,6 +2241,9 @@ impl futures::Stream for ChatStream {
                 &mut this.stream_state,
             );
 
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "Get the next item: {:?}", &x);
+
             match x {
                 Ok(x) => {
                     if x != "[GGML] End of sequence" && !x.is_empty() {
@@ -2265,7 +2258,10 @@ impl futures::Stream for ChatStream {
         } else {
             let this = self.get_mut();
 
-            let x = this.cache.as_mut().unwrap().pop();
+            let x = this.cache.as_mut().unwrap().pop_front();
+
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "Get the next item from the cache: {:?}", &x);
 
             match x {
                 Some(x) => Poll::Ready(Some(Ok(x))),
