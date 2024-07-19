@@ -280,6 +280,7 @@ fn chat_stream_by_graph(
 
             if graph.metadata.prompt_template != PromptTemplateType::MistralTool
                 && graph.metadata.prompt_template != PromptTemplateType::ChatMLTool
+                && graph.metadata.prompt_template != PromptTemplateType::GroqLlama3Tool
             {
                 let err_msg = "The tool use is only supported for 'mistral-chat' and 'chatml' prompt templates.";
 
@@ -898,6 +899,7 @@ fn compute_by_graph(
                 true => {
                     if graph.metadata.prompt_template != PromptTemplateType::MistralTool
                         && graph.metadata.prompt_template != PromptTemplateType::ChatMLTool
+                        && graph.metadata.prompt_template != PromptTemplateType::GroqLlama3Tool
                     {
                         let err_msg = "The tool use is only supported for 'mistral-chat' and 'chatml' prompt templates.";
 
@@ -1484,7 +1486,9 @@ fn post_process(
         } else {
             s.to_owned()
         }
-    } else if *template_ty == PromptTemplateType::Llama3Chat {
+    } else if *template_ty == PromptTemplateType::Llama3Chat
+        || *template_ty == PromptTemplateType::GroqLlama3Tool
+    {
         let s = output.as_ref().trim();
         if s.ends_with("<|eot_id|>") {
             s.trim_end_matches("<|eot_id|>").trim().to_owned()
