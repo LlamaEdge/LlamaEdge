@@ -4,6 +4,7 @@ pub mod chatml;
 pub mod deepseek;
 pub mod gemma;
 pub mod glm;
+pub mod groq;
 pub mod intel;
 pub mod llama;
 pub mod mistral;
@@ -23,6 +24,7 @@ use deepseek::*;
 use endpoints::chat::{ChatCompletionRequestMessage, Tool};
 use gemma::*;
 use glm::*;
+use groq::*;
 use intel::*;
 use llama::*;
 use mistral::*;
@@ -82,6 +84,7 @@ pub enum ChatPrompt {
     GemmaInstructPrompt,
     OctopusPrompt,
     Glm4ChatPrompt,
+    GroqLlama3ToolPrompt,
 }
 impl From<PromptTemplateType> for ChatPrompt {
     fn from(ty: PromptTemplateType) -> Self {
@@ -134,6 +137,9 @@ impl From<PromptTemplateType> for ChatPrompt {
             }
             PromptTemplateType::Octopus => ChatPrompt::OctopusPrompt(OctopusPrompt),
             PromptTemplateType::Glm4Chat => ChatPrompt::Glm4ChatPrompt(Glm4ChatPrompt),
+            PromptTemplateType::GroqLlama3Tool => {
+                ChatPrompt::GroqLlama3ToolPrompt(GroqLlama3ToolPrompt)
+            }
             PromptTemplateType::Embedding => {
                 panic!("Embedding prompt template is not used for building chat prompts")
             }
