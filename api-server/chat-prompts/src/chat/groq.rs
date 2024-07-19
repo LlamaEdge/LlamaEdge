@@ -19,7 +19,7 @@ impl GroqLlama3ToolPrompt {
                         available_tools
                             .push_str(&serde_json::to_string_pretty(&tool.function).unwrap());
                     } else {
-                        available_tools.push_str("\n");
+                        available_tools.push('\n');
                         available_tools
                             .push_str(&serde_json::to_string_pretty(&tool.function).unwrap());
                     }
