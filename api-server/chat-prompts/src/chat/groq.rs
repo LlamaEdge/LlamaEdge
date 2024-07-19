@@ -13,9 +13,20 @@ impl GroqLlama3ToolPrompt {
     fn create_system_prompt_tool(&self, tools: Option<&[Tool]>) -> Result<String> {
         match tools {
             Some(tools) => {
-                let available_tools = serde_json::to_string_pretty(&tools[0].function).unwrap();
+                let mut available_tools = String::new();
+                for tool in tools {
+                    if available_tools.is_empty() {
+                        available_tools
+                            .push_str(&serde_json::to_string_pretty(&tool.function).unwrap());
+                    } else {
+                        available_tools.push_str(", ");
+                        available_tools
+                            .push_str(&serde_json::to_string_pretty(&tool.function).unwrap());
+                    }
+                }
+
                 let tools = format!(
-                    "Here are the available tools:\n<tools> {} </tools>",
+                    "Here are the available tools:\n<tools> [{}] </tools>",
                     available_tools
                 );
 
