@@ -876,7 +876,7 @@ fn compute_by_graph(
             })?;
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "post-processed generation: {}", &message);
+            info!(target: "llama_core", "post-processed generation:\n{}", &message);
 
             // retrieve the number of prompt and completion tokens
             let token_info = get_token_info_by_graph(graph)?;
