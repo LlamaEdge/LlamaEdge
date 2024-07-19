@@ -911,6 +911,12 @@ fn compute_by_graph(
 
                     match parse_tool_calls(&message, graph.metadata.prompt_template) {
                         Some(tool_calls) => {
+                            let finish_reason = if tool_calls.is_empty() {
+                                FinishReason::stop
+                            } else {
+                                FinishReason::tool_calls
+                            };
+
                             // create ChatCompletionResponse
                             Ok(ChatCompletionObject {
                                 id: id.into(),
@@ -925,7 +931,7 @@ fn compute_by_graph(
                                         tool_calls,
                                         function_call: None,
                                     },
-                                    finish_reason: FinishReason::tool_calls,
+                                    finish_reason,
                                     logprobs: None,
                                 }],
                                 usage: Usage {
@@ -1194,6 +1200,51 @@ fn parse_tool_calls(input: &str, prompt_template: PromptTemplateType) -> Option<
                         info!(target: "llama_core", "captured: {}", cleaned);
 
                         if let Ok(value) = serde_json::from_str::<serde_json::Value>(&cleaned) {
+                            values.push(value);
+                        }
+                    }
+
+                    let mut tool_calls: Vec<ToolCall> = vec![];
+                    for value in values.iter() {
+                        let name = value.get("name").unwrap().to_string().replace("\"", "");
+                        let arguments = value.get("arguments").unwrap().to_string();
+
+                        let function = Function { name, arguments };
+
+                        let tool_call = ToolCall {
+                            id: "call_abc123".to_string(),
+                            ty: "function".to_string(),
+                            function,
+                        };
+
+                        tool_calls.push(tool_call);
+                    }
+
+                    #[cfg(feature = "logging")]
+                    info!(target: "llama_core", "extracted {} tool calls: {:?}", tool_calls.len(),&tool_calls);
+
+                    Some(tool_calls)
+                }
+                Err(_e) => {
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "Failed to create a regex pattern. Reason: {}", _e);
+
+                    None
+                }
+            }
+        }
+        PromptTemplateType::GroqLlama3Tool => {
+            match regex::Regex::new(r"(?s)<tool_call>(.*?)</tool_call>") {
+                Ok(re) => {
+                    let mut values: Vec<serde_json::Value> = vec![];
+                    for cap in re.captures_iter(input) {
+                        let cleaned = cap[1].replace("\\n", ""); // Remove "\\n" from the captured group
+                        let cleaned = cleaned.trim();
+
+                        #[cfg(feature = "logging")]
+                        info!(target: "llama_core", "captured: {}", cleaned);
+
+                        if let Ok(value) = serde_json::from_str::<serde_json::Value>(cleaned) {
                             values.push(value);
                         }
                     }
