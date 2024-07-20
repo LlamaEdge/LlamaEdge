@@ -11,6 +11,8 @@ pub enum PromptError {
     NoUserMessage,
     #[error("No content in the assistant message when the `tool_calls` is not specified.")]
     NoAssistantMessage,
+    #[error("No available tools to create prompt from.")]
+    NoAvailableTools,
     #[error("Bad messages. {0}")]
     BadMessages(String),
     #[error("Unknown chat completion role: {0:?}")]

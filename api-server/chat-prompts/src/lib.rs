@@ -73,6 +73,8 @@ pub enum PromptTemplateType {
     Octopus,
     #[value(name = "glm-4-chat")]
     Glm4Chat,
+    #[value(name = "groq-llama3-tool")]
+    GroqLlama3Tool,
     #[value(name = "embedding")]
     Embedding,
 }
@@ -95,7 +97,8 @@ impl PromptTemplateType {
             | PromptTemplateType::DeepseekChat2
             | PromptTemplateType::Octopus
             | PromptTemplateType::Phi3Chat
-            | PromptTemplateType::Glm4Chat => true,
+            | PromptTemplateType::Glm4Chat
+            | PromptTemplateType::GroqLlama3Tool => true,
             PromptTemplateType::MistralInstruct
             | PromptTemplateType::MistralTool
             | PromptTemplateType::MistralLite
@@ -149,6 +152,7 @@ impl FromStr for PromptTemplateType {
             "gemma-instruct" => Ok(PromptTemplateType::GemmaInstruct),
             "octopus" => Ok(PromptTemplateType::Octopus),
             "glm-4-chat" => Ok(PromptTemplateType::Glm4Chat),
+            "groq-llama3-tool" => Ok(PromptTemplateType::GroqLlama3Tool),
             "embedding" => Ok(PromptTemplateType::Embedding),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
                 template.to_string(),
@@ -189,6 +193,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::GemmaInstruct => write!(f, "gemma-instruct"),
             PromptTemplateType::Octopus => write!(f, "octopus"),
             PromptTemplateType::Glm4Chat => write!(f, "glm-4-chat"),
+            PromptTemplateType::GroqLlama3Tool => write!(f, "groq-llama3-tool"),
             PromptTemplateType::Embedding => write!(f, "embedding"),
         }
     }

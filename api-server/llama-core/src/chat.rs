@@ -29,6 +29,7 @@ use error::{BackendError, LlamaCoreError};
 #[cfg(feature = "https")]
 use futures::StreamExt;
 use std::{
+    collections::VecDeque,
     pin::Pin,
     sync::Mutex,
     task::{Context, Poll},
@@ -42,22 +43,6 @@ pub async fn chat(
     Either<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, ChatCompletionObject>,
     LlamaCoreError,
 > {
-    // * update stream mode according to the tool choice and tools
-    if chat_request.stream == Some(true) {
-        if let Some(tool_choice) = chat_request.tool_choice.as_ref() {
-            if *tool_choice != ToolChoice::None {
-                if let Some(tools) = chat_request.tools.as_ref() {
-                    if !tools.is_empty() && !chat_request.messages.is_empty() {
-                        let role = chat_request.messages.last().unwrap().role();
-                        if role != ChatCompletionRole::Tool {
-                            chat_request.stream = Some(false);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     #[cfg(feature = "logging")]
     {
         info!(target: "llama-core", "tool choice: {:?}", chat_request.tool_choice.as_ref());
@@ -134,13 +119,14 @@ async fn chat_stream(
     let mut metadata = check_model_metadata(chat_request).await?;
 
     // build prompt
-    let (prompt, avaible_completion_tokens, _tool_use) =
+    let (prompt, avaible_completion_tokens, tool_use) =
         build_prompt(model_name.as_ref(), chat_request)?;
 
     #[cfg(feature = "logging")]
     {
         info!(target: "llama_core", "prompt:\n{}", &prompt);
         info!(target: "llama_core", "avaible_completion_tokens: {}", avaible_completion_tokens);
+        info!(target: "llama_core", "tool_use: {}", tool_use);
     }
 
     // update metadata n_predict
@@ -149,13 +135,572 @@ async fn chat_stream(
     // set prompt
     set_prompt(chat_request.model.as_ref(), &prompt)?;
 
-    // create chat stream
-    let stream = ChatStream::new(model_name, id, include_usage);
+    let stream = match tool_use {
+        false => ChatStream::new(model_name, id, include_usage, None),
+        true => match model_name {
+            Some(model_name) => {
+                let chat_graphs = match CHAT_GRAPHS.get() {
+                    Some(chat_graphs) => chat_graphs,
+                    None => {
+                        let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+                        #[cfg(feature = "logging")]
+                        error!(target: "llama_core", "{}", &err_msg);
+
+                        return Err(LlamaCoreError::Operation(err_msg.into()));
+                    }
+                };
+
+                let mut chat_graphs = chat_graphs.lock().map_err(|e| {
+                    let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    LlamaCoreError::Operation(err_msg)
+                })?;
+
+                match chat_graphs.get_mut(&model_name) {
+                    Some(graph) => chat_stream_by_graph(graph, id, include_usage)?,
+                    None => {
+                        let err_msg = format!(
+                            "The model `{}` does not exist in the chat graphs.",
+                            &model_name
+                        );
+
+                        #[cfg(feature = "logging")]
+                        error!(target: "llama_core", "{}", &err_msg);
+
+                        return Err(LlamaCoreError::Operation(err_msg));
+                    }
+                }
+            }
+            None => {
+                let chat_graphs = match CHAT_GRAPHS.get() {
+                    Some(chat_graphs) => chat_graphs,
+                    None => {
+                        let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+                        #[cfg(feature = "logging")]
+                        error!(target: "llama_core", "{}", &err_msg);
+
+                        return Err(LlamaCoreError::Operation(err_msg.into()));
+                    }
+                };
+
+                let mut chat_graphs = chat_graphs.lock().map_err(|e| {
+                    let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    LlamaCoreError::Operation(err_msg)
+                })?;
+
+                match chat_graphs.iter_mut().next() {
+                    Some((_, graph)) => chat_stream_by_graph(graph, id, include_usage)?,
+                    None => {
+                        let err_msg = "There is no model available in the chat graphs.";
+
+                        #[cfg(feature = "logging")]
+                        error!(target: "llama_core", "{}", &err_msg);
+
+                        return Err(LlamaCoreError::Operation(err_msg.into()));
+                    }
+                }
+            }
+        },
+    };
 
     #[cfg(feature = "logging")]
     info!(target: "llama_core", "End of the chat completion stream.");
 
     Ok(stream)
+}
+
+fn chat_stream_by_graph(
+    graph: &mut Graph,
+    id: impl Into<String>,
+    include_usage: bool,
+) -> Result<ChatStream, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "Handle chat request with available tools by the model named {}.", graph.name());
+
+    let id = id.into();
+
+    match graph.compute() {
+        Ok(_) => {
+            // Retrieve the output.
+            let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
+            let output = std::str::from_utf8(&output_buffer[..]).map_err(|e| {
+                let err_msg = format!(
+                    "Failed to decode the buffer of the inference result to a utf-8 string. {}",
+                    e
+                );
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
+            })?;
+
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "raw generation: {}", output);
+
+            // post-process
+            let message = post_process(output, &graph.metadata.prompt_template).map_err(|e| {
+                LlamaCoreError::Operation(format!("Failed to post-process the output. {}", e))
+            })?;
+
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "post-processed generation: {}", &message);
+
+            // retrieve the number of prompt and completion tokens
+            let token_info = get_token_info_by_graph(graph)?;
+
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "prompt tokens: {}, completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
+
+            let usage = Some(Usage {
+                prompt_tokens: token_info.prompt_tokens,
+                completion_tokens: token_info.completion_tokens,
+                total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
+            });
+
+            let created = SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_err(|e| {
+                    let err_msg = format!("Failed to get the current time. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    LlamaCoreError::Operation(err_msg)
+                })?;
+
+            if graph.metadata.prompt_template != PromptTemplateType::MistralTool
+                && graph.metadata.prompt_template != PromptTemplateType::ChatMLTool
+                && graph.metadata.prompt_template != PromptTemplateType::GroqLlama3Tool
+            {
+                let err_msg = "The tool use is only supported for 'mistral-chat' and 'chatml' prompt templates.";
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                return Err(LlamaCoreError::Operation(err_msg.into()));
+            }
+
+            match parse_tool_calls(&message, graph.metadata.prompt_template) {
+                Some(tool_calls) => {
+                    // tool_calls chunk
+                    let tool_call_chunk = {
+                        let chat_completion_chunk = ChatCompletionChunk {
+                            id: id.clone(),
+                            object: "chat.completion.chunk".to_string(),
+                            created: created.as_secs(),
+                            model: graph.name().to_owned(),
+                            system_fingerprint: "fp_44709d6fcb".to_string(),
+                            choices: vec![ChatCompletionChunkChoice {
+                                index: 0,
+                                delta: ChatCompletionChunkChoiceDelta {
+                                    role: ChatCompletionRole::Assistant,
+                                    content: Some(message),
+                                    tool_calls,
+                                },
+                                logprobs: None,
+                                finish_reason: None,
+                            }],
+                            usage: None,
+                        };
+                        let chunk_str =
+                            serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                                let err_msg = format!(
+                                    "Failed to serialize chat completion chunk. Reason: {}",
+                                    e
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
+                                LlamaCoreError::Operation(err_msg)
+                            })?;
+
+                        format!("data: {}\n\n", chunk_str)
+                    };
+
+                    // uage chunk
+                    let usage_chunk = {
+                        let chat_completion_chunk = ChatCompletionChunk {
+                            id: id.clone(),
+                            object: "chat.completion.chunk".to_string(),
+                            created: created.as_secs(),
+                            model: graph.name().to_owned(),
+                            system_fingerprint: "fp_44709d6fcb".to_string(),
+                            choices: vec![],
+                            usage,
+                        };
+                        let chunk_str =
+                            serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                                let err_msg = format!(
+                                    "Failed to serialize chat completion chunk. Reason: {}",
+                                    e
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
+                                LlamaCoreError::Operation(err_msg)
+                            })?;
+
+                        format!("data: {}\n\n", chunk_str)
+                    };
+
+                    // ending chunk
+                    let ending_chunk = "data: [DONE]\n\n".to_string();
+
+                    let chunks = vec![tool_call_chunk, usage_chunk, ending_chunk];
+
+                    Ok(ChatStream::new(
+                        Some(graph.name().to_owned()),
+                        id,
+                        include_usage,
+                        Some(chunks),
+                    ))
+                }
+                None => {
+                    // tool_calls chunk
+                    let tool_call_chunk = {
+                        let chat_completion_chunk = ChatCompletionChunk {
+                            id: id.clone(),
+                            object: "chat.completion.chunk".to_string(),
+                            created: created.as_secs(),
+                            model: graph.name().to_owned(),
+                            system_fingerprint: "fp_44709d6fcb".to_string(),
+                            choices: vec![ChatCompletionChunkChoice {
+                                index: 0,
+                                delta: ChatCompletionChunkChoiceDelta {
+                                    role: ChatCompletionRole::Assistant,
+                                    content: Some(message),
+                                    tool_calls: vec![],
+                                },
+                                logprobs: None,
+                                finish_reason: None,
+                            }],
+                            usage: None,
+                        };
+                        let chunk_str =
+                            serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                                let err_msg = format!(
+                                    "Failed to serialize chat completion chunk. Reason: {}",
+                                    e
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
+                                LlamaCoreError::Operation(err_msg)
+                            })?;
+
+                        format!("data: {}\n\n", chunk_str)
+                    };
+
+                    // uage chunk
+                    let usage_chunk = {
+                        let chat_completion_chunk = ChatCompletionChunk {
+                            id: id.clone(),
+                            object: "chat.completion.chunk".to_string(),
+                            created: created.as_secs(),
+                            model: graph.name().to_owned(),
+                            system_fingerprint: "fp_44709d6fcb".to_string(),
+                            choices: vec![],
+                            usage,
+                        };
+                        let chunk_str =
+                            serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                                let err_msg = format!(
+                                    "Failed to serialize chat completion chunk. Reason: {}",
+                                    e
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
+                                LlamaCoreError::Operation(err_msg)
+                            })?;
+
+                        format!("data: {}\n\n", chunk_str)
+                    };
+
+                    // ending chunk
+                    let ending_chunk = "data: [DONE]\n\n".to_string();
+
+                    let chunks = vec![tool_call_chunk, usage_chunk, ending_chunk];
+
+                    Ok(ChatStream::new(
+                        Some(graph.name().to_owned()),
+                        id,
+                        include_usage,
+                        Some(chunks),
+                    ))
+                }
+            }
+        }
+        Err(wasmedge_wasi_nn::Error::BackendError(wasmedge_wasi_nn::BackendError::ContextFull)) => {
+            // Retrieve the output.
+            let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
+            let output = std::str::from_utf8(&output_buffer[..]).map_err(|e| {
+                let err_msg = format!(
+                    "Failed to decode the buffer of the inference result to a utf-8 string. {}",
+                    e
+                );
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
+            })?;
+
+            // post-process
+            let message = post_process(output, &graph.metadata.prompt_template).map_err(|e| {
+                let err_msg = format!("Failed to post-process the output. {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
+            })?;
+
+            // retrieve the number of prompt and completion tokens
+            let token_info = get_token_info_by_graph(graph)?;
+
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "prompt tokens: {}, completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
+
+            let usage = Some(Usage {
+                prompt_tokens: token_info.prompt_tokens,
+                completion_tokens: token_info.completion_tokens,
+                total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
+            });
+
+            let created = SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_err(|e| {
+                    let err_msg = format!("Failed to get the current time. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    LlamaCoreError::Operation(err_msg)
+                })?;
+
+            // context full chunk
+            let context_full_chunk = {
+                let chat_completion_chunk = ChatCompletionChunk {
+                    id: id.clone(),
+                    object: "chat.completion.chunk".to_string(),
+                    created: created.as_secs(),
+                    model: graph.name().to_owned(),
+                    system_fingerprint: "fp_44709d6fcb".to_string(),
+                    choices: vec![ChatCompletionChunkChoice {
+                        index: 0,
+                        delta: ChatCompletionChunkChoiceDelta {
+                            role: ChatCompletionRole::Assistant,
+                            content: Some(message),
+                            tool_calls: vec![],
+                        },
+                        logprobs: None,
+                        finish_reason: Some(FinishReason::length),
+                    }],
+                    usage: None,
+                };
+
+                // serialize chat completion chunk
+                let chunk_str = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                    let err_msg =
+                        format!("Failed to serialize chat completion chunk. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    LlamaCoreError::Operation(err_msg)
+                })?;
+
+                format!("data: {}\n\n", chunk_str)
+            };
+
+            // usage chunk
+            let usage_chunk = {
+                let chat_completion_chunk = ChatCompletionChunk {
+                    id: id.clone(),
+                    object: "chat.completion.chunk".to_string(),
+                    created: created.as_secs(),
+                    model: graph.name().to_owned(),
+                    system_fingerprint: "fp_44709d6fcb".to_string(),
+                    choices: vec![],
+                    usage,
+                };
+
+                // serialize chat completion chunk
+                let chunk_str = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                    let err_msg =
+                        format!("Failed to serialize chat completion chunk. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    LlamaCoreError::Operation(err_msg)
+                })?;
+
+                format!("data: {}\n\n", chunk_str)
+            };
+
+            // ending chunk
+            let ending_chunk = "data: [DONE]\n\n".to_string();
+
+            let chunks = vec![context_full_chunk, usage_chunk, ending_chunk];
+
+            Ok(ChatStream::new(
+                Some(graph.name().to_owned()),
+                id,
+                include_usage,
+                Some(chunks),
+            ))
+        }
+        Err(wasmedge_wasi_nn::Error::BackendError(
+            wasmedge_wasi_nn::BackendError::PromptTooLong,
+        )) => {
+            #[cfg(feature = "logging")]
+            warn!(target: "llama_core", "The prompt is too long. Please reduce the length of your input and try again.");
+
+            // Retrieve the output.
+            let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
+            let output = std::str::from_utf8(&output_buffer[..]).map_err(|e| {
+                let err_msg = format!(
+                    "Failed to decode the buffer of the inference result to a utf-8 string. {}",
+                    e
+                );
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
+            })?;
+
+            // post-process
+            let message = post_process(output, &graph.metadata.prompt_template).map_err(|e| {
+                let err_msg = format!("Failed to post-process the output. {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
+            })?;
+
+            // retrieve the number of prompt and completion token
+            let token_info = get_token_info_by_graph(graph)?;
+
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "prompt tokens: {}, completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
+
+            let usage = Some(Usage {
+                prompt_tokens: token_info.prompt_tokens,
+                completion_tokens: token_info.completion_tokens,
+                total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
+            });
+
+            let created = SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_err(|e| {
+                    let err_msg = format!("Failed to get the current time. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    LlamaCoreError::Operation(err_msg)
+                })?;
+
+            // prompt too long chunk
+            let prompt_too_long_chunk = {
+                let chat_completion_chunk = ChatCompletionChunk {
+                    id: id.clone(),
+                    object: "chat.completion.chunk".to_string(),
+                    created: created.as_secs(),
+                    model: graph.name().to_owned(),
+                    system_fingerprint: "fp_44709d6fcb".to_string(),
+                    choices: vec![ChatCompletionChunkChoice {
+                        index: 0,
+                        delta: ChatCompletionChunkChoiceDelta {
+                            role: ChatCompletionRole::Assistant,
+                            content: Some(message),
+                            tool_calls: vec![],
+                        },
+                        logprobs: None,
+                        finish_reason: Some(FinishReason::length),
+                    }],
+                    usage: None,
+                };
+
+                // serialize chat completion chunk
+                let chunk_str = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                    let err_msg =
+                        format!("Failed to serialize chat completion chunk. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    LlamaCoreError::Operation(err_msg)
+                })?;
+
+                format!("data: {}\n\n", chunk_str)
+            };
+
+            // usage chunk
+            let usage_chunk = {
+                let chat_completion_chunk = ChatCompletionChunk {
+                    id: id.clone(),
+                    object: "chat.completion.chunk".to_string(),
+                    created: created.as_secs(),
+                    model: graph.name().to_owned(),
+                    system_fingerprint: "fp_44709d6fcb".to_string(),
+                    choices: vec![],
+                    usage,
+                };
+
+                // serialize chat completion chunk
+                let chunk_str = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                    let err_msg =
+                        format!("Failed to serialize chat completion chunk. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    LlamaCoreError::Operation(err_msg)
+                })?;
+
+                format!("data: {}\n\n", chunk_str)
+            };
+
+            // ending chunk
+            let ending_chunk = "data: [DONE]\n\n".to_string();
+
+            let chunks = vec![prompt_too_long_chunk, usage_chunk, ending_chunk];
+
+            Ok(ChatStream::new(
+                Some(graph.name().to_owned()),
+                id,
+                include_usage,
+                Some(chunks),
+            ))
+        }
+        Err(e) => {
+            let err_msg = format!("Failed to compute the chat completion. Reason: {}", e);
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama_core", "{}", &err_msg);
+
+            Err(LlamaCoreError::Backend(BackendError::Compute(err_msg)))
+        }
+    }
 }
 
 async fn chat_once(
@@ -331,7 +876,7 @@ fn compute_by_graph(
             })?;
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "post-processed generation: {}", &message);
+            info!(target: "llama_core", "post-processed generation:\n{}", &message);
 
             // retrieve the number of prompt and completion tokens
             let token_info = get_token_info_by_graph(graph)?;
@@ -354,6 +899,7 @@ fn compute_by_graph(
                 true => {
                     if graph.metadata.prompt_template != PromptTemplateType::MistralTool
                         && graph.metadata.prompt_template != PromptTemplateType::ChatMLTool
+                        && graph.metadata.prompt_template != PromptTemplateType::GroqLlama3Tool
                     {
                         let err_msg = "The tool use is only supported for 'mistral-chat' and 'chatml' prompt templates.";
 
@@ -365,6 +911,12 @@ fn compute_by_graph(
 
                     match parse_tool_calls(&message, graph.metadata.prompt_template) {
                         Some(tool_calls) => {
+                            let finish_reason = if tool_calls.is_empty() {
+                                FinishReason::stop
+                            } else {
+                                FinishReason::tool_calls
+                            };
+
                             // create ChatCompletionResponse
                             Ok(ChatCompletionObject {
                                 id: id.into(),
@@ -379,7 +931,7 @@ fn compute_by_graph(
                                         tool_calls,
                                         function_call: None,
                                     },
-                                    finish_reason: FinishReason::tool_calls,
+                                    finish_reason,
                                     logprobs: None,
                                 }],
                                 usage: Usage {
@@ -681,6 +1233,51 @@ fn parse_tool_calls(input: &str, prompt_template: PromptTemplateType) -> Option<
                 }
             }
         }
+        PromptTemplateType::GroqLlama3Tool => {
+            match regex::Regex::new(r"(?s)<tool_call>(.*?)</tool_call>") {
+                Ok(re) => {
+                    let mut values: Vec<serde_json::Value> = vec![];
+                    for cap in re.captures_iter(input) {
+                        let cleaned = cap[1].replace("\\n", ""); // Remove "\\n" from the captured group
+                        let cleaned = cleaned.trim();
+
+                        #[cfg(feature = "logging")]
+                        info!(target: "llama_core", "captured: {}", cleaned);
+
+                        if let Ok(value) = serde_json::from_str::<serde_json::Value>(cleaned) {
+                            values.push(value);
+                        }
+                    }
+
+                    let mut tool_calls: Vec<ToolCall> = vec![];
+                    for value in values.iter() {
+                        let name = value.get("name").unwrap().to_string().replace("\"", "");
+                        let arguments = value.get("arguments").unwrap().to_string();
+
+                        let function = Function { name, arguments };
+
+                        let tool_call = ToolCall {
+                            id: "call_abc123".to_string(),
+                            ty: "function".to_string(),
+                            function,
+                        };
+
+                        tool_calls.push(tool_call);
+                    }
+
+                    #[cfg(feature = "logging")]
+                    info!(target: "llama_core", "extracted {} tool calls: {:?}", tool_calls.len(),&tool_calls);
+
+                    Some(tool_calls)
+                }
+                Err(_e) => {
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "Failed to create a regex pattern. Reason: {}", _e);
+
+                    None
+                }
+            }
+        }
         _ => None,
     }
 }
@@ -940,7 +1537,9 @@ fn post_process(
         } else {
             s.to_owned()
         }
-    } else if *template_ty == PromptTemplateType::Llama3Chat {
+    } else if *template_ty == PromptTemplateType::Llama3Chat
+        || *template_ty == PromptTemplateType::GroqLlama3Tool
+    {
         let s = output.as_ref().trim();
         if s.ends_with("<|eot_id|>") {
             s.trim_end_matches("<|eot_id|>").trim().to_owned()
@@ -1519,9 +2118,15 @@ struct ChatStream {
     context_full_state: ContextFullState,
     prompt_too_long_state: PromptTooLongState,
     stream_state: StreamState,
+    cache: Option<VecDeque<String>>,
 }
 impl ChatStream {
-    fn new(model: Option<String>, id: String, include_usage: bool) -> Self {
+    fn new(
+        model: Option<String>,
+        id: String,
+        include_usage: bool,
+        cache: Option<Vec<String>>,
+    ) -> Self {
         let stream_state = if include_usage {
             StreamState::Usage
         } else {
@@ -1535,50 +2140,69 @@ impl ChatStream {
             context_full_state: ContextFullState::Message,
             prompt_too_long_state: PromptTooLongState::Message,
             stream_state,
+            cache: cache.map(VecDeque::from),
         }
     }
 }
 impl Drop for ChatStream {
     fn drop(&mut self) {
-        match &self.model {
-            Some(model_name) => {
-                match CHAT_GRAPHS.get() {
-                    Some(chat_graphs) => match chat_graphs.lock() {
-                        Ok(mut chat_graphs) => match chat_graphs.get_mut(model_name) {
-                            Some(graph) => {
-                                if let Err(e) = graph.finish_single() {
-                                    let err_msg =
-                                        format!("Failed to clean up the context. Reason: {}", e);
+        if self.cache.is_none() {
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "Clean up the context of the stream work environment.");
+            match &self.model {
+                Some(model_name) => {
+                    match CHAT_GRAPHS.get() {
+                        Some(chat_graphs) => match chat_graphs.lock() {
+                            Ok(mut chat_graphs) => match chat_graphs.get_mut(model_name) {
+                                Some(graph) => {
+                                    if let Err(e) = graph.finish_single() {
+                                        let err_msg = format!(
+                                            "Failed to clean up the context. Reason: {}",
+                                            e
+                                        );
+
+                                        #[cfg(feature = "logging")]
+                                        error!(target: "llama_core", "{}", &err_msg);
+
+                                        #[cfg(not(feature = "logging"))]
+                                        println!(
+                                        "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
+                                        &err_msg
+                                    );
+                                    }
+                                }
+                                None => {
+                                    let err_msg = format!(
+                                        "The model `{}` does not exist in the chat graphs.",
+                                        &model_name
+                                    );
 
                                     #[cfg(feature = "logging")]
                                     error!(target: "llama_core", "{}", &err_msg);
 
                                     #[cfg(not(feature = "logging"))]
                                     println!(
-                                        "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                                        &err_msg
-                                    );
-                                }
-                            }
-                            None => {
-                                let err_msg = format!(
-                                    "The model `{}` does not exist in the chat graphs.",
-                                    &model_name
+                                    "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
+                                    &err_msg
                                 );
+                                }
+                            },
+                            Err(e) => {
+                                let err_msg =
+                                    format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
                                 #[cfg(feature = "logging")]
                                 error!(target: "llama_core", "{}", &err_msg);
 
                                 #[cfg(not(feature = "logging"))]
                                 println!(
-                                    "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                                    &err_msg
-                                );
+                                "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
+                                &err_msg
+                            );
                             }
                         },
-                        Err(e) => {
-                            let err_msg =
-                                format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+                        None => {
+                            let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                             #[cfg(feature = "logging")]
                             error!(target: "llama_core", "{}", &err_msg);
@@ -1589,56 +2213,58 @@ impl Drop for ChatStream {
                                 &err_msg
                             );
                         }
-                    },
-                    None => {
-                        let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+                    };
+                }
+                None => {
+                    match CHAT_GRAPHS.get() {
+                        Some(chat_graphs) => match chat_graphs.lock() {
+                            Ok(mut chat_graphs) => match chat_graphs.iter_mut().next() {
+                                Some((_, graph)) => {
+                                    if let Err(e) = graph.finish_single() {
+                                        let err_msg = format!(
+                                            "Failed to clean up the context. Reason: {}",
+                                            e
+                                        );
 
-                        #[cfg(feature = "logging")]
-                        error!(target: "llama_core", "{}", &err_msg);
+                                        #[cfg(feature = "logging")]
+                                        error!(target: "llama_core", "{}", &err_msg);
 
-                        #[cfg(not(feature = "logging"))]
-                        println!(
-                            "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                            &err_msg
-                        );
-                    }
-                };
-            }
-            None => {
-                match CHAT_GRAPHS.get() {
-                    Some(chat_graphs) => match chat_graphs.lock() {
-                        Ok(mut chat_graphs) => match chat_graphs.iter_mut().next() {
-                            Some((_, graph)) => {
-                                if let Err(e) = graph.finish_single() {
-                                    let err_msg =
-                                        format!("Failed to clean up the context. Reason: {}", e);
-
-                                    #[cfg(feature = "logging")]
-                                    error!(target: "llama_core", "{}", &err_msg);
-
-                                    #[cfg(not(feature = "logging"))]
-                                    println!(
+                                        #[cfg(not(feature = "logging"))]
+                                        println!(
                                         "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
                                         &err_msg
                                     );
+                                    }
                                 }
-                            }
-                            None => {
-                                let err_msg = "There is no model available in the chat graphs.";
+                                None => {
+                                    let err_msg = "There is no model available in the chat graphs.";
 
-                                #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", err_msg);
+                                    #[cfg(feature = "logging")]
+                                    error!(target: "llama_core", "{}", err_msg);
 
-                                #[cfg(not(feature = "logging"))]
-                                println!(
+                                    #[cfg(not(feature = "logging"))]
+                                    println!(
                                     "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
                                     err_msg
                                 );
+                                }
+                            },
+                            Err(e) => {
+                                let err_msg =
+                                    format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
+                                #[cfg(not(feature = "logging"))]
+                                println!(
+                                "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
+                                &err_msg
+                            );
                             }
                         },
-                        Err(e) => {
-                            let err_msg =
-                                format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+                        None => {
+                            let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                             #[cfg(feature = "logging")]
                             error!(target: "llama_core", "{}", &err_msg);
@@ -1649,20 +2275,8 @@ impl Drop for ChatStream {
                                 &err_msg
                             );
                         }
-                    },
-                    None => {
-                        let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
-
-                        #[cfg(feature = "logging")]
-                        error!(target: "llama_core", "{}", &err_msg);
-
-                        #[cfg(not(feature = "logging"))]
-                        println!(
-                            "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                            &err_msg
-                        );
-                    }
-                };
+                    };
+                }
             }
         }
     }
@@ -1671,26 +2285,43 @@ impl futures::Stream for ChatStream {
     type Item = Result<String, LlamaCoreError>;
 
     fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = self.get_mut();
-        let x = compute_stream(
-            this.model.clone(),
-            this.id.clone(),
-            this.include_usage,
-            &mut this.prompt_too_long_state,
-            &mut this.context_full_state,
-            &mut this.stream_state,
-        );
+        if self.cache.is_none() {
+            let this = self.get_mut();
+            let x = compute_stream(
+                this.model.clone(),
+                this.id.clone(),
+                this.include_usage,
+                &mut this.prompt_too_long_state,
+                &mut this.context_full_state,
+                &mut this.stream_state,
+            );
 
-        match x {
-            Ok(x) => {
-                if x != "[GGML] End of sequence" && !x.is_empty() {
-                    Poll::Ready(Some(Ok(x)))
-                } else {
-                    // stopped
-                    Poll::Ready(None)
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "Get the next item: {:?}", &x);
+
+            match x {
+                Ok(x) => {
+                    if x != "[GGML] End of sequence" && !x.is_empty() {
+                        Poll::Ready(Some(Ok(x)))
+                    } else {
+                        // stopped
+                        Poll::Ready(None)
+                    }
                 }
+                Err(e) => Poll::Ready(Some(Err(e))),
             }
-            Err(e) => Poll::Ready(Some(Err(e))),
+        } else {
+            let this = self.get_mut();
+
+            let x = this.cache.as_mut().unwrap().pop_front();
+
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "Get the next item from the cache: {:?}", &x);
+
+            match x {
+                Some(x) => Poll::Ready(Some(Ok(x))),
+                None => Poll::Ready(None),
+            }
         }
     }
 }
