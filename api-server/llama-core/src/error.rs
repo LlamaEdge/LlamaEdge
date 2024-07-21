@@ -38,3 +38,12 @@ pub enum BackendError {
     #[error("{0}")]
     FinishSingle(String),
 }
+
+/// Error types for search functionality.
+//#[cfg(feature = "search")]
+#[derive(Error, Debug)]
+pub enum SearchError {
+    /// Errors parsing the response.
+    #[error("{0}")]
+    Response(String),
+}
