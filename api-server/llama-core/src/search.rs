@@ -28,24 +28,38 @@ pub struct SearchConfig {
     /// The search engine we're currently focusing on. Currently only one supported, to ensure
     /// stabiliity.
     #[allow(dead_code)]
-    search_engine: String,
+    pub search_engine: String,
     /// The total number of results.
-    max_search_results: u8,
+    pub max_search_results: u8,
     /// The size limit of every search result.
-    size_limit_per_result: u16, // 128**2
+    pub size_limit_per_result: u16, // 128**2
     /// The endpoint for the search API.
-    endpoint: String,
+    pub endpoint: String,
     /// The content type of the input.
-    content_type: ContentType,
+    pub content_type: ContentType,
     /// The (expected) content type of the output.
-    output_content_type: ContentType,
+    pub output_content_type: ContentType,
     /// Method expected by the api endpoint.
-    method: String,
+    pub method: String,
     //authentication: Option<AuthenticationMethod>,
     /// Additional headers for any other purpose.
-    additional_headers: Option<std::collections::HashMap<String, String>>,
+    pub additional_headers: Option<std::collections::HashMap<String, String>>,
     /// Callback function to parse the output of the api-service. Implementation left to the user.
-    parser: fn(&serde_json::Value) -> Result<SearchOutput, SearchError>,
+    pub parser: fn(&serde_json::Value) -> Result<SearchOutput, SearchError>,
+}
+
+// output format for individual results in the final output.
+#[derive(Serialize, Deserialize)]
+pub struct SearchResult {
+    pub url: String,
+    pub site_name: String,
+    pub text_content: String,
+}
+
+// Final output format for consumption by the LLM.
+#[derive(Serialize, Deserialize)]
+pub struct SearchOutput {
+    pub results: Vec<SearchResult>,
 }
 
 impl SearchConfig {
@@ -79,23 +93,6 @@ impl SearchConfig {
             parser,
         }
     }
-}
-
-// output format for individual results in the final output.
-#[derive(Serialize, Deserialize)]
-pub struct SearchResult {
-    pub url: String,
-    pub site_name: String,
-    pub text_content: String,
-}
-
-// Final output format for consumption by the LLM.
-#[derive(Serialize, Deserialize)]
-pub struct SearchOutput {
-    pub results: Vec<SearchResult>,
-}
-
-impl SearchConfig {
     pub async fn perform_search<T: Serialize>(
         &self,
         search_input: &T,
