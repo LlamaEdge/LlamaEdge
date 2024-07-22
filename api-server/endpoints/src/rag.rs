@@ -124,7 +124,7 @@ pub struct RagChatCompletionsRequest {
     /// How many chat completion choices to generate for each input message.
     /// Defaults to 1.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub n_choice: Option<i32>,
+    pub n_choice: Option<u64>,
     /// Whether to stream the results as they are generated. Useful for chatbots.
     /// Defaults to false.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -285,7 +285,7 @@ impl RagChatCompletionRequestBuilder {
     /// # Arguments
     ///
     /// * `n` - How many chat completion choices to generate for each input message. If `n` is less than 1, then sets to `1`.
-    pub fn with_n_choices(mut self, n: i32) -> Self {
+    pub fn with_n_choices(mut self, n: u64) -> Self {
         let n_choice = if n < 1 { 1 } else { n };
         self.req.n_choice = Some(n_choice);
         self
