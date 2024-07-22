@@ -97,6 +97,7 @@ impl SearchConfig {
         &self,
         search_input: &T,
     ) -> Result<SearchOutput, SearchError> {
+        println!("entering SearchConfig");
         let client = Client::new();
         let url = match Url::parse(&self.endpoint) {
             Ok(url) => url,
@@ -105,7 +106,7 @@ impl SearchConfig {
                 #[cfg(feature = "logging")]
                 error!(target: "search", "perform_search: {}", msg);
                 return Err(SearchError::Response(format!(
-                    "When parsing endpoint: {}",
+                    "When parsing endpoint url: {}",
                     msg
                 )));
             }
@@ -114,11 +115,11 @@ impl SearchConfig {
         let method_as_string = match reqwest::Method::from_bytes(self.method.as_bytes()) {
             Ok(method) => method,
             _ => {
-                let msg = "Header conversion failed";
+                let msg = "Non Standard or unknown method";
                 #[cfg(feature = "logging")]
                 error!(target: "search", "perform_search: {}", msg);
                 return Err(SearchError::Response(format!(
-                    "When processing headers: {}",
+                    "When converting method from bytes: {}",
                     msg
                 )));
             }
@@ -136,11 +137,11 @@ impl SearchConfig {
             {
                 Ok(headers) => headers,
                 Err(_) => {
-                    let msg = "Header parsing failed";
+                    let msg = "Failed to convert headers from HashMaps to HeaderMaps";
                     #[cfg(feature = "logging")]
                     error!(target: "search", "perform_search: {}", msg);
                     return Err(SearchError::Response(format!(
-                        "When processing headers: {}",
+                        "On converting headers: {}",
                         msg
                     )));
                 }
@@ -167,11 +168,11 @@ impl SearchConfig {
         match res.content_length() {
             Some(length) => {
                 if length == 0 {
-                    let msg = "Empty repsonse from server";
+                    let msg = "Empty response from server";
                     #[cfg(feature = "logging")]
                     error!(target: "search", "perform_search: {}", msg);
                     return Err(SearchError::Response(format!(
-                        "When recieving response: {}",
+                        "Unexpected content length: {}",
                         msg
                     )));
                 }
@@ -181,7 +182,7 @@ impl SearchConfig {
                 #[cfg(feature = "logging")]
                 error!(target: "search", "perform_search: {}", msg);
                 return Err(SearchError::Response(format!(
-                    "When recieving response: {}",
+                    "Content length field not found: {}",
                     msg
                 )));
             }
@@ -203,7 +204,7 @@ impl SearchConfig {
                         )));
                     }
                 };
-                debug!(target: "serach", "text body of server response: {}", body_text);
+                println!("{}", body_text);
                 raw_results = match serde_json::from_str(body_text.as_str()) {
                     Ok(value) => value,
                     Err(e) => {
@@ -229,7 +230,7 @@ impl SearchConfig {
                 #[cfg(feature = "logging")]
                 error!(target: "search", "perform_search: {}", msg);
                 return Err(SearchError::Response(format!(
-                    "When applying parser function: {}",
+                    "When calling parse_into_results: {}",
                     msg
                 )));
             }
@@ -241,6 +242,8 @@ impl SearchConfig {
             .truncate(self.max_search_results as usize);
 
         // apply per result character limit.
+        // since the clipping only happens when split_at_checked() returns Some, the results will
+        // remain unchanged should split_at_checked() return None.
         for result in search_output.results.iter_mut() {
             if let Some(clipped_content) = result
                 .text_content
