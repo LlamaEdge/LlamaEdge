@@ -97,7 +97,6 @@ impl SearchConfig {
         &self,
         search_input: &T,
     ) -> Result<SearchOutput, SearchError> {
-        println!("entering SearchConfig");
         let client = Client::new();
         let url = match Url::parse(&self.endpoint) {
             Ok(url) => url,
@@ -204,7 +203,7 @@ impl SearchConfig {
                         )));
                     }
                 };
-                println!("{}", body_text);
+                debug!(target: "serach", "text body of server response: {}", body_text);
                 raw_results = match serde_json::from_str(body_text.as_str()) {
                     Ok(value) => value,
                     Err(e) => {
@@ -230,7 +229,7 @@ impl SearchConfig {
                 #[cfg(feature = "logging")]
                 error!(target: "search", "perform_search: {}", msg);
                 return Err(SearchError::Response(format!(
-                    "When accessing response body: {}",
+                    "When applying parser function: {}",
                     msg
                 )));
             }
