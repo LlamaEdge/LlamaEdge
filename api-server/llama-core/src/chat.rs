@@ -1571,7 +1571,7 @@ fn build_prompt(
     let ctx_size = metadata.ctx_size as u64;
     let chat_prompt = ChatPrompt::from(metadata.prompt_template);
 
-    // compute max prompt tokens
+    // compute max prompt tokens, which is 80% of the context size
     let max_prompt_tokens = ctx_size * 4 / 5;
 
     loop {
@@ -1660,21 +1660,48 @@ fn build_prompt(
                 match chat_request.messages[0].role() {
                     ChatCompletionRole::System => {
                         if chat_request.messages.len() >= 4 {
+                            // system -> user_1 -> assistant_1 (maybe tool_calls) -> ... -> user_latest
+
                             if chat_request.messages[1].role() == ChatCompletionRole::User {
                                 chat_request.messages.remove(1);
                             }
                             if chat_request.messages[1].role() == ChatCompletionRole::Assistant {
                                 chat_request.messages.remove(1);
                             }
+
+                            // system -> user_1 -> assistant_1 (tool_calls) -> tool_1 -> ... -> user_latest
+                            if chat_request.messages.len() > 2
+                                && chat_request.messages[1].role() == ChatCompletionRole::Tool
+                            {
+                                chat_request.messages.remove(1);
+                            }
+
+                            // system -> user_1 -> assistant_1 (tool_calls) -> tool_1 -> assistant_1 -> ... -> user_latest
+                            if chat_request.messages.len() > 2
+                                && chat_request.messages[1].role() == ChatCompletionRole::Assistant
+                            {
+                                chat_request.messages.remove(1);
+                            }
                         } else if chat_request.messages.len() == 3
                             && chat_request.messages[1].role() == ChatCompletionRole::User
                         {
+                            // system -> user_1 -> user_latest
+
                             chat_request.messages.remove(1);
                         } else {
-                            #[cfg(feature = "logging")]
-                            info!(target: "llama_core", "prompt: {}", &prompt);
+                            if token_info.prompt_tokens > ctx_size {
+                                let err_msg = format!(
+                                    "The number of prompt tokens is greater than the context size: {} > {}",
+                                    token_info.prompt_tokens, ctx_size
+                                );
 
-                            return Ok((prompt, ctx_size - max_prompt_tokens, tool_use));
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            } else {
+                                return Ok((prompt, ctx_size - token_info.prompt_tokens, tool_use));
+                            }
                         }
                     }
                     ChatCompletionRole::User => {
@@ -1705,10 +1732,19 @@ fn build_prompt(
                             // deal with "user_1 -> user_latest"
                             chat_request.messages.remove(0);
                         } else {
-                            #[cfg(feature = "logging")]
-                            info!(target: "llama_core", "prompt: {}", &prompt);
+                            if token_info.prompt_tokens > ctx_size {
+                                let err_msg = format!(
+                                    "The number of prompt tokens is greater than the context size: {} > {}",
+                                    token_info.prompt_tokens, ctx_size
+                                );
 
-                            return Ok((prompt, ctx_size - max_prompt_tokens, tool_use));
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            } else {
+                                return Ok((prompt, ctx_size - token_info.prompt_tokens, tool_use));
+                            }
                         }
                     }
                     _ => {
@@ -1720,7 +1756,7 @@ fn build_prompt(
                         #[cfg(feature = "logging")]
                         error!(target: "llama_core", "{}", &err_msg);
 
-                        panic!("{}", err_msg)
+                        return Err(LlamaCoreError::Operation(err_msg));
                     }
                 }
 
