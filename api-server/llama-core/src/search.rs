@@ -1,4 +1,4 @@
-use crate::error::SearchError;
+use crate::error::LlamaCoreError;
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -21,18 +21,16 @@ impl std::fmt::Display for ContentType {
     }
 }
 
-/// The base Search Configuration holding all relevant information to access a search api and
-/// retrieve results.
+/// The base Search Configuration holding all relevant information to access a search api and retrieve results.
 #[derive(Debug)]
 pub struct SearchConfig {
-    /// The search engine we're currently focusing on. Currently only one supported, to ensure
-    /// stabiliity.
+    /// The search engine we're currently focusing on. Currently only one supported, to ensure stability.
     #[allow(dead_code)]
     pub search_engine: String,
     /// The total number of results.
     pub max_search_results: u8,
     /// The size limit of every search result.
-    pub size_limit_per_result: u16, // 128**2
+    pub size_limit_per_result: u8,
     /// The endpoint for the search API.
     pub endpoint: String,
     /// The content type of the input.
@@ -41,11 +39,10 @@ pub struct SearchConfig {
     pub output_content_type: ContentType,
     /// Method expected by the api endpoint.
     pub method: String,
-    //authentication: Option<AuthenticationMethod>,
     /// Additional headers for any other purpose.
     pub additional_headers: Option<std::collections::HashMap<String, String>>,
     /// Callback function to parse the output of the api-service. Implementation left to the user.
-    pub parser: fn(&serde_json::Value) -> Result<SearchOutput, SearchError>,
+    pub parser: fn(&serde_json::Value) -> Result<SearchOutput, Box<dyn std::error::Error>>,
 }
 
 // output format for individual results in the final output.
@@ -63,23 +60,23 @@ pub struct SearchOutput {
 }
 
 impl SearchConfig {
-    // wrapper for parse function
+    /// Wrapper for the parser() function.
     pub fn parse_into_results(
         &self,
         raw_results: &serde_json::Value,
-    ) -> Result<SearchOutput, SearchError> {
+    ) -> Result<SearchOutput, Box<dyn std::error::Error>> {
         (self.parser)(raw_results)
     }
     pub fn new(
         search_engine: String,
         max_search_results: u8,
-        size_limit_per_result: u16,
+        size_limit_per_result: u8,
         endpoint: String,
         content_type: ContentType,
         output_content_type: ContentType,
         method: String,
         additional_headers: Option<std::collections::HashMap<String, String>>,
-        parser: fn(&serde_json::Value) -> Result<SearchOutput, SearchError>,
+        parser: fn(&serde_json::Value) -> Result<SearchOutput, Box<dyn std::error::Error>>,
     ) -> SearchConfig {
         SearchConfig {
             search_engine,
@@ -93,10 +90,11 @@ impl SearchConfig {
             parser,
         }
     }
+    /// Perform a web search with a `Serialize`-able input. The `search_input` is used as is to query the search endpoint.
     pub async fn perform_search<T: Serialize>(
         &self,
         search_input: &T,
-    ) -> Result<SearchOutput, SearchError> {
+    ) -> Result<SearchOutput, LlamaCoreError> {
         println!("entering SearchConfig");
         let client = Client::new();
         let url = match Url::parse(&self.endpoint) {
@@ -105,7 +103,7 @@ impl SearchConfig {
                 let msg = "Malformed endpoind url";
                 #[cfg(feature = "logging")]
                 error!(target: "search", "perform_search: {}", msg);
-                return Err(SearchError::Response(format!(
+                return Err(LlamaCoreError::Search(format!(
                     "When parsing endpoint url: {}",
                     msg
                 )));
@@ -118,7 +116,7 @@ impl SearchConfig {
                 let msg = "Non Standard or unknown method";
                 #[cfg(feature = "logging")]
                 error!(target: "search", "perform_search: {}", msg);
-                return Err(SearchError::Response(format!(
+                return Err(LlamaCoreError::Search(format!(
                     "When converting method from bytes: {}",
                     msg
                 )));
@@ -140,7 +138,7 @@ impl SearchConfig {
                     let msg = "Failed to convert headers from HashMaps to HeaderMaps";
                     #[cfg(feature = "logging")]
                     error!(target: "search", "perform_search: {}", msg);
-                    return Err(SearchError::Response(format!(
+                    return Err(LlamaCoreError::Search(format!(
                         "On converting headers: {}",
                         msg
                     )));
@@ -158,7 +156,7 @@ impl SearchConfig {
                 let msg = e.to_string();
                 #[cfg(feature = "logging")]
                 error!(target: "search", "perform_search: {}", msg);
-                return Err(SearchError::Response(format!(
+                return Err(LlamaCoreError::Search(format!(
                     "When recieving response: {}",
                     msg
                 )));
@@ -171,7 +169,7 @@ impl SearchConfig {
                     let msg = "Empty response from server";
                     #[cfg(feature = "logging")]
                     error!(target: "search", "perform_search: {}", msg);
-                    return Err(SearchError::Response(format!(
+                    return Err(LlamaCoreError::Search(format!(
                         "Unexpected content length: {}",
                         msg
                     )));
@@ -181,7 +179,7 @@ impl SearchConfig {
                 let msg = "Content length returned None";
                 #[cfg(feature = "logging")]
                 error!(target: "search", "perform_search: {}", msg);
-                return Err(SearchError::Response(format!(
+                return Err(LlamaCoreError::Search(format!(
                     "Content length field not found: {}",
                     msg
                 )));
@@ -189,6 +187,9 @@ impl SearchConfig {
         }
 
         // start parsing the output.
+        //
+        // only checking for JSON as the output content type since it's the most common and widely
+        // supported.
         let raw_results: Value;
         match self.output_content_type {
             ContentType::JSON => {
@@ -198,7 +199,7 @@ impl SearchConfig {
                         let msg = e.to_string();
                         #[cfg(feature = "logging")]
                         error!(target: "search", "perform_search: {}", msg);
-                        return Err(SearchError::Response(format!(
+                        return Err(LlamaCoreError::Search(format!(
                             "When accessing response body: {}",
                             msg
                         )));
@@ -211,7 +212,7 @@ impl SearchConfig {
                         let msg = e.to_string();
                         #[cfg(feature = "logging")]
                         error!(target: "search", "perform_search: {}", msg);
-                        return Err(SearchError::Response(format!(
+                        return Err(LlamaCoreError::Search(format!(
                             "When converting to a JSON object: {}",
                             msg
                         )));
@@ -229,7 +230,7 @@ impl SearchConfig {
                 let msg = e.to_string();
                 #[cfg(feature = "logging")]
                 error!(target: "search", "perform_search: {}", msg);
-                return Err(SearchError::Response(format!(
+                return Err(LlamaCoreError::Search(format!(
                     "When calling parse_into_results: {}",
                     msg
                 )));

@@ -14,6 +14,10 @@ pub enum LlamaCoreError {
     /// Errors thrown by the wasi-nn-ggml plugin and runtime.
     #[error("{0}")]
     Backend(#[from] BackendError),
+    /// Errors thrown by the Search Backend
+    #[cfg(feature = "search")]
+    #[error("{0}")]
+    Search(String),
 }
 
 /// Error types for wasi-nn errors.
@@ -37,13 +41,4 @@ pub enum BackendError {
     /// Errors in cleaning up the computation context in the stream mode.
     #[error("{0}")]
     FinishSingle(String),
-}
-
-/// Error types for search functionality.
-//#[cfg(feature = "search")]
-#[derive(Error, Debug)]
-pub enum SearchError {
-    /// Errors parsing the response.
-    #[error("{0}")]
-    Response(String),
 }
