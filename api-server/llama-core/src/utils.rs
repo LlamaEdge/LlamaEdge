@@ -268,7 +268,7 @@ pub(crate) fn get_token_info_by_graph(graph: &Graph) -> Result<TokenInfo, LlamaC
     };
 
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "prompt tokens: {}, comletion tokens: {}", prompt_tokens, completion_tokens);
+    info!(target: "llama-core", "prompt tokens: {}, completion tokens: {}", prompt_tokens, completion_tokens);
 
     Ok(TokenInfo {
         prompt_tokens,

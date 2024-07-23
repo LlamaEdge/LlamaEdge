@@ -82,7 +82,7 @@ async fn chat_stream(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Process chat completion request in stream mode.");
+    info!(target: "llama_core", "Process chat completion request in the stream mode.");
 
     let running_mode = running_mode()?;
     if running_mode == RunningMode::Embeddings {
@@ -125,7 +125,7 @@ async fn chat_stream(
     #[cfg(feature = "logging")]
     {
         info!(target: "llama_core", "prompt:\n{}", &prompt);
-        info!(target: "llama_core", "avaible_completion_tokens: {}", avaible_completion_tokens);
+        info!(target: "llama_core", "available_completion_tokens: {}", avaible_completion_tokens);
         info!(target: "llama_core", "tool_use: {}", tool_use);
     }
 
@@ -245,7 +245,7 @@ fn chat_stream_by_graph(
             })?;
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "raw generation: {}", output);
+            info!(target: "llama_core", "raw generation:\n{}", output);
 
             // post-process
             let message = post_process(output, &graph.metadata.prompt_template).map_err(|e| {
@@ -253,7 +253,7 @@ fn chat_stream_by_graph(
             })?;
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "post-processed generation: {}", &message);
+            info!(target: "llama_core", "post-processed generation:\n{}", &message);
 
             // retrieve the number of prompt and completion tokens
             let token_info = get_token_info_by_graph(graph)?;
@@ -2149,6 +2149,7 @@ impl Drop for ChatStream {
         if self.cache.is_none() {
             #[cfg(feature = "logging")]
             info!(target: "llama_core", "Clean up the context of the stream work environment.");
+
             match &self.model {
                 Some(model_name) => {
                     match CHAT_GRAPHS.get() {
@@ -2278,6 +2279,9 @@ impl Drop for ChatStream {
                     };
                 }
             }
+
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "Cleanup done!");
         }
     }
 }
@@ -2334,6 +2338,9 @@ fn compute_stream(
     context_full_state: &mut ContextFullState,
     stream_state: &mut StreamState,
 ) -> Result<String, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "Compute the chat stream chunk.");
+
     if *prompt_too_long_state == PromptTooLongState::EndOfSequence
         || *context_full_state == ContextFullState::EndOfSequence
         || *stream_state == StreamState::EndOfSequence
@@ -2342,7 +2349,7 @@ fn compute_stream(
     }
 
     // get graph
-    match &model_name {
+    let res = match &model_name {
         Some(model_name) => {
             let chat_graphs = match CHAT_GRAPHS.get() {
                 Some(chat_graphs) => chat_graphs,
@@ -3387,5 +3394,10 @@ fn compute_stream(
                 }
             }
         }
-    }
+    };
+
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "Return the chat stream chunk!");
+
+    res
 }
