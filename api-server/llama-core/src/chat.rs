@@ -1688,20 +1688,18 @@ fn build_prompt(
                             // system -> user_1 -> user_latest
 
                             chat_request.messages.remove(1);
-                        } else {
-                            if token_info.prompt_tokens > ctx_size {
-                                let err_msg = format!(
+                        } else if token_info.prompt_tokens > ctx_size {
+                            let err_msg = format!(
                                     "The number of prompt tokens is greater than the context size: {} > {}",
                                     token_info.prompt_tokens, ctx_size
                                 );
 
-                                #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", &err_msg);
+                            #[cfg(feature = "logging")]
+                            error!(target: "llama_core", "{}", &err_msg);
 
-                                return Err(LlamaCoreError::Operation(err_msg));
-                            } else {
-                                return Ok((prompt, ctx_size - token_info.prompt_tokens, tool_use));
-                            }
+                            return Err(LlamaCoreError::Operation(err_msg));
+                        } else {
+                            return Ok((prompt, ctx_size - token_info.prompt_tokens, tool_use));
                         }
                     }
                     ChatCompletionRole::User => {
@@ -1731,20 +1729,18 @@ fn build_prompt(
                         {
                             // deal with "user_1 -> user_latest"
                             chat_request.messages.remove(0);
-                        } else {
-                            if token_info.prompt_tokens > ctx_size {
-                                let err_msg = format!(
+                        } else if token_info.prompt_tokens > ctx_size {
+                            let err_msg = format!(
                                     "The number of prompt tokens is greater than the context size: {} > {}",
                                     token_info.prompt_tokens, ctx_size
                                 );
 
-                                #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", &err_msg);
+                            #[cfg(feature = "logging")]
+                            error!(target: "llama_core", "{}", &err_msg);
 
-                                return Err(LlamaCoreError::Operation(err_msg));
-                            } else {
-                                return Ok((prompt, ctx_size - token_info.prompt_tokens, tool_use));
-                            }
+                            return Err(LlamaCoreError::Operation(err_msg));
+                        } else {
+                            return Ok((prompt, ctx_size - token_info.prompt_tokens, tool_use));
                         }
                     }
                     _ => {
