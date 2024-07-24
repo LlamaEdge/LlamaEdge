@@ -741,7 +741,7 @@ async fn chat_once(
     #[cfg(feature = "logging")]
     {
         info!(target: "llama_core", "prompt:\n{}", &prompt);
-        info!(target: "llama_core", "avaible_completion_tokens: {}", avaible_completion_tokens);
+        info!(target: "llama_core", "available_completion_tokens: {}", avaible_completion_tokens);
         info!(target: "llama_core", "tool_use: {}", tool_use);
     }
 
@@ -1391,23 +1391,28 @@ async fn update_n_predict(
 
     // check if necessary to update n_predict with max_tokens
     if let Some(max_tokens) = chat_request.max_tokens {
+        #[cfg(feature = "logging")]
+        info!(target: "llama_core", "available_completion_tokens: {}, max_tokens from request: {}, n_predict: {}", available_completion_tokens, max_tokens, metadata.n_predict);
+
         let max_completion_tokens = match available_completion_tokens < max_tokens {
             true => available_completion_tokens,
             false => max_tokens,
         };
 
-        #[cfg(feature = "logging")]
-        info!(target: "llama_core", "n_predict: current: {}, new: {}", metadata.n_predict, max_completion_tokens);
-
         // update n_predict
-        metadata.n_predict = max_completion_tokens;
+        if metadata.n_predict != max_completion_tokens {
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "update n_predict from {} to {}", metadata.n_predict, max_completion_tokens);
 
-        if !should_update {
-            should_update = true;
+            metadata.n_predict = max_completion_tokens;
+
+            if !should_update {
+                should_update = true;
+            }
         }
     } else if metadata.n_predict < available_completion_tokens {
         #[cfg(feature = "logging")]
-        info!(target: "llama_core", "n_predict: current: {}, new: {}", metadata.n_predict, available_completion_tokens);
+        info!(target: "llama_core", "Update n_predict from {} to {}", metadata.n_predict, available_completion_tokens);
 
         // update n_predict
         metadata.n_predict = available_completion_tokens;
