@@ -1405,7 +1405,7 @@ async fn update_n_predict(
         if !should_update {
             should_update = true;
         }
-    } else if metadata.n_predict > available_completion_tokens {
+    } else if metadata.n_predict < available_completion_tokens {
         #[cfg(feature = "logging")]
         info!(target: "llama_core", "n_predict: current: {}, new: {}", metadata.n_predict, available_completion_tokens);
 
