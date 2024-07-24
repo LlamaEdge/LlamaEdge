@@ -33,7 +33,7 @@
 //! let json = serde_json::to_string(&request).unwrap();
 //! assert_eq!(
 //!     json,
-//!     r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"max_tokens":16,"tool_choice":"none"}"#
+//!     r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"max_tokens":1024,"tool_choice":"none"}"#
 //! );
 //! ```
 //!
@@ -168,7 +168,7 @@ impl ChatCompletionRequestBuilder {
                 stream: None,
                 stream_options: None,
                 stop: None,
-                max_tokens: Some(16),
+                max_tokens: Some(1024),
                 presence_penalty: None,
                 frequency_penalty: None,
                 logit_bias: None,
@@ -327,7 +327,7 @@ pub struct ChatCompletionRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop: Option<Vec<String>>,
     /// The maximum number of tokens to generate. The value should be no less than 1.
-    /// Defaults to 16.
+    /// Defaults to 1024.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_tokens: Option<u64>,
     /// Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
@@ -435,7 +435,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
 
                 // Set default value for `max_tokens` if not provided
                 if max_tokens.is_none() {
-                    max_tokens = Some(16);
+                    max_tokens = Some(1024);
                 }
 
                 // Check tools and tool_choice
@@ -536,7 +536,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":16,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto"}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":1024,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto"}"#
         );
     }
 
@@ -564,7 +564,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"max_tokens":16,"tool_choice":"none"}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"max_tokens":1024,"tool_choice":"none"}"#
         );
     }
 
@@ -777,7 +777,7 @@ fn test_chat_deserialize_chat_request() {
             request.stop,
             Some(vec!["stop1".to_string(), "stop2".to_string()])
         );
-        assert_eq!(request.max_tokens, Some(16));
+        assert_eq!(request.max_tokens, Some(1024));
         assert_eq!(request.presence_penalty, Some(0.5));
         assert_eq!(request.frequency_penalty, Some(0.5));
         assert_eq!(request.tool_choice, Some(ToolChoice::None));
