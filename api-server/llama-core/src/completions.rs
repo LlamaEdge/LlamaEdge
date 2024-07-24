@@ -8,7 +8,7 @@ use crate::{
 };
 use endpoints::{
     common::{FinishReason, Usage},
-    completions::{CompletionChoice, CompletionObject, CompletionRequest},
+    completions::{CompletionChoice, CompletionObject, CompletionPrompt, CompletionRequest},
 };
 use std::time::SystemTime;
 
@@ -30,7 +30,10 @@ pub async fn completions(request: &CompletionRequest) -> Result<CompletionObject
         return Err(LlamaCoreError::Operation(err_msg));
     }
 
-    let prompt = request.prompt.join(" ");
+    let prompt = match &request.prompt {
+        CompletionPrompt::SingleText(prompt) => prompt.to_owned(),
+        CompletionPrompt::MultiText(prompts) => prompts.join(" "),
+    };
 
     compute(prompt.trim(), request.model.as_ref())
 }
