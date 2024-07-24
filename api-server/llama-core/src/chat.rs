@@ -1475,9 +1475,12 @@ fn post_process(
                 .trim()
                 .to_owned()
         } else if output.as_ref().contains("<|im_end|>") {
-            output.as_ref().split("<|im_end|>").collect::<Vec<_>>()[0]
-                .trim()
-                .to_owned()
+            let output = output.as_ref().trim_end_matches("<|im_end|>").trim();
+            if output.starts_with(": ") {
+                output.trim_start_matches(": ").to_owned()
+            } else {
+                output.to_owned()
+            }
         } else {
             output.as_ref().trim().to_owned()
         }
