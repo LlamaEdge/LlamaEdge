@@ -11,7 +11,7 @@ pub struct CompletionRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     /// The prompt(s) to generate completions for, encoded as a string, array of strings, array of tokens, or array of token arrays.
-    pub prompt: Vec<String>,
+    pub prompt: CompletionPrompt,
     /// Generates `best_of` completions server-side and returns the "best" (the one with the highest log probability per token). Results cannot be streamed.When used with `n_choice`, `best_of` controls the number of candidate completions and `n_choice` specifies how many to return – `best_of` must be greater than `n_choice`.
     /// Defaults to 1.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -81,6 +81,126 @@ pub struct CompletionRequest {
     // llama_cpp_top_k: i32,
     // llama_cpp_repeat_penalty: f64,
     // llama_cpp_logit_bias_type: Option<LlamaCppLogitBiasType>,
+}
+
+#[test]
+fn test_serialize_completion_request() {
+    {
+        let request = CompletionRequest {
+            model: Some("text-davinci-003".to_string()),
+            prompt: CompletionPrompt::SingleText("Once upon a time".to_string()),
+            best_of: Some(1),
+            echo: Some(false),
+            frequency_penalty: Some(0.0),
+            logit_bias: Some(HashMap::new()),
+            logprobs: Some(5),
+            max_tokens: Some(16),
+            n: Some(1),
+            presence_penalty: Some(0.0),
+            stop: Some(vec!["\n".to_string()]),
+            stream: Some(false),
+            suffix: Some("".to_string()),
+            temperature: Some(1.0),
+            top_p: Some(1.0),
+            user: Some("user-123".to_string()),
+        };
+
+        let actual = serde_json::to_string(&request).unwrap();
+        let expected = r#"{"model":"text-davinci-003","prompt":"Once upon a time","best_of":1,"echo":false,"frequency_penalty":0.0,"logit_bias":{},"logprobs":5,"max_tokens":16,"n":1,"presence_penalty":0.0,"stop":["\n"],"stream":false,"suffix":"","temperature":1.0,"top_p":1.0,"user":"user-123"}"#;
+        assert_eq!(actual, expected);
+    }
+
+    {
+        let request = CompletionRequest {
+            model: None,
+            prompt: CompletionPrompt::MultiText(vec![
+                "Once upon a time".to_string(),
+                "There was a cat".to_string(),
+            ]),
+            best_of: None,
+            echo: None,
+            frequency_penalty: None,
+            logit_bias: None,
+            logprobs: None,
+            max_tokens: None,
+            n: None,
+            presence_penalty: None,
+            stop: None,
+            stream: None,
+            suffix: None,
+            temperature: None,
+            top_p: None,
+            user: None,
+        };
+
+        let actual = serde_json::to_string(&request).unwrap();
+        let expected = r#"{"prompt":["Once upon a time","There was a cat"]}"#;
+        assert_eq!(actual, expected);
+    }
+}
+
+#[test]
+fn test_deserialize_completion_request() {
+    {
+        let json = r#"{"model":"text-davinci-003","prompt":"Once upon a time","best_of":1,"echo":false,"frequency_penalty":0.0,"logit_bias":{},"logprobs":5,"max_tokens":16,"n":1,"presence_penalty":0.0,"stop":["\n"],"stream":false,"suffix":"","temperature":1.0,"top_p":1.0,"user":"user-123"}"#;
+        let request: CompletionRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(request.model, Some("text-davinci-003".to_string()));
+        assert_eq!(
+            request.prompt,
+            CompletionPrompt::SingleText("Once upon a time".to_string())
+        );
+        assert_eq!(request.best_of, Some(1));
+        assert_eq!(request.echo, Some(false));
+        assert_eq!(request.frequency_penalty, Some(0.0));
+        assert_eq!(request.logit_bias, Some(HashMap::new()));
+        assert_eq!(request.logprobs, Some(5));
+        assert_eq!(request.max_tokens, Some(16));
+        assert_eq!(request.n, Some(1));
+        assert_eq!(request.presence_penalty, Some(0.0));
+        assert_eq!(request.stop, Some(vec!["\n".to_string()]));
+        assert_eq!(request.stream, Some(false));
+        assert_eq!(request.suffix, Some("".to_string()));
+        assert_eq!(request.temperature, Some(1.0));
+        assert_eq!(request.top_p, Some(1.0));
+        assert_eq!(request.user, Some("user-123".to_string()));
+    }
+
+    {
+        let json = r#"{"prompt":["Once upon a time","There was a cat"]}"#;
+        let request: CompletionRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(request.model, None);
+        assert_eq!(
+            request.prompt,
+            CompletionPrompt::MultiText(vec![
+                "Once upon a time".to_string(),
+                "There was a cat".to_string()
+            ])
+        );
+        assert_eq!(request.best_of, None);
+        assert_eq!(request.echo, None);
+        assert_eq!(request.frequency_penalty, None);
+        assert_eq!(request.logit_bias, None);
+        assert_eq!(request.logprobs, None);
+        assert_eq!(request.max_tokens, None);
+        assert_eq!(request.n, None);
+        assert_eq!(request.presence_penalty, None);
+        assert_eq!(request.stop, None);
+        assert_eq!(request.stream, None);
+        assert_eq!(request.suffix, None);
+        assert_eq!(request.temperature, None);
+        assert_eq!(request.top_p, None);
+        assert_eq!(request.user, None);
+    }
+}
+
+/// Defines the types of a user message content.
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum CompletionPrompt {
+    /// A single text prompt.
+    SingleText(String),
+    /// Multiple text prompts.
+    MultiText(Vec<String>),
 }
 
 /// Represents a completion response from the API.

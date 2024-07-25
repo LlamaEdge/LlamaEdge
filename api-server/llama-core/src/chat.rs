@@ -82,7 +82,7 @@ async fn chat_stream(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Process chat completion request in stream mode.");
+    info!(target: "llama_core", "Process chat completion request in the stream mode.");
 
     let running_mode = running_mode()?;
     if running_mode == RunningMode::Embeddings {
@@ -125,7 +125,7 @@ async fn chat_stream(
     #[cfg(feature = "logging")]
     {
         info!(target: "llama_core", "prompt:\n{}", &prompt);
-        info!(target: "llama_core", "avaible_completion_tokens: {}", avaible_completion_tokens);
+        info!(target: "llama_core", "available_completion_tokens: {}", avaible_completion_tokens);
         info!(target: "llama_core", "tool_use: {}", tool_use);
     }
 
@@ -245,7 +245,7 @@ fn chat_stream_by_graph(
             })?;
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "raw generation: {}", output);
+            info!(target: "llama_core", "raw generation:\n{}", output);
 
             // post-process
             let message = post_process(output, &graph.metadata.prompt_template).map_err(|e| {
@@ -253,7 +253,7 @@ fn chat_stream_by_graph(
             })?;
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "post-processed generation: {}", &message);
+            info!(target: "llama_core", "post-processed generation:\n{}", &message);
 
             // retrieve the number of prompt and completion tokens
             let token_info = get_token_info_by_graph(graph)?;
@@ -741,7 +741,7 @@ async fn chat_once(
     #[cfg(feature = "logging")]
     {
         info!(target: "llama_core", "prompt:\n{}", &prompt);
-        info!(target: "llama_core", "avaible_completion_tokens: {}", avaible_completion_tokens);
+        info!(target: "llama_core", "available_completion_tokens: {}", avaible_completion_tokens);
         info!(target: "llama_core", "tool_use: {}", tool_use);
     }
 
@@ -1391,23 +1391,28 @@ async fn update_n_predict(
 
     // check if necessary to update n_predict with max_tokens
     if let Some(max_tokens) = chat_request.max_tokens {
+        #[cfg(feature = "logging")]
+        info!(target: "llama_core", "available_completion_tokens: {}, max_tokens from request: {}, n_predict: {}", available_completion_tokens, max_tokens, metadata.n_predict);
+
         let max_completion_tokens = match available_completion_tokens < max_tokens {
             true => available_completion_tokens,
             false => max_tokens,
         };
 
-        #[cfg(feature = "logging")]
-        info!(target: "llama_core", "n_predict: current: {}, new: {}", metadata.n_predict, max_completion_tokens);
-
         // update n_predict
-        metadata.n_predict = max_completion_tokens;
+        if metadata.n_predict != max_completion_tokens {
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "update n_predict from {} to {}", metadata.n_predict, max_completion_tokens);
 
-        if !should_update {
-            should_update = true;
+            metadata.n_predict = max_completion_tokens;
+
+            if !should_update {
+                should_update = true;
+            }
         }
-    } else if metadata.n_predict > available_completion_tokens {
+    } else if metadata.n_predict < available_completion_tokens {
         #[cfg(feature = "logging")]
-        info!(target: "llama_core", "n_predict: current: {}, new: {}", metadata.n_predict, available_completion_tokens);
+        info!(target: "llama_core", "Update n_predict from {} to {}", metadata.n_predict, available_completion_tokens);
 
         // update n_predict
         metadata.n_predict = available_completion_tokens;
@@ -1475,9 +1480,12 @@ fn post_process(
                 .trim()
                 .to_owned()
         } else if output.as_ref().contains("<|im_end|>") {
-            output.as_ref().split("<|im_end|>").collect::<Vec<_>>()[0]
-                .trim()
-                .to_owned()
+            let output = output.as_ref().trim_end_matches("<|im_end|>").trim();
+            if output.starts_with(": ") {
+                output.trim_start_matches(": ").to_owned()
+            } else {
+                output.to_owned()
+            }
         } else {
             output.as_ref().trim().to_owned()
         }
@@ -1571,7 +1579,7 @@ fn build_prompt(
     let ctx_size = metadata.ctx_size as u64;
     let chat_prompt = ChatPrompt::from(metadata.prompt_template);
 
-    // compute max prompt tokens
+    // compute max prompt tokens, which is 80% of the context size
     let max_prompt_tokens = ctx_size * 4 / 5;
 
     loop {
@@ -1660,21 +1668,46 @@ fn build_prompt(
                 match chat_request.messages[0].role() {
                     ChatCompletionRole::System => {
                         if chat_request.messages.len() >= 4 {
+                            // system -> user_1 -> assistant_1 (maybe tool_calls) -> ... -> user_latest
+
                             if chat_request.messages[1].role() == ChatCompletionRole::User {
                                 chat_request.messages.remove(1);
                             }
                             if chat_request.messages[1].role() == ChatCompletionRole::Assistant {
                                 chat_request.messages.remove(1);
                             }
+
+                            // system -> user_1 -> assistant_1 (tool_calls) -> tool_1 -> ... -> user_latest
+                            if chat_request.messages.len() > 2
+                                && chat_request.messages[1].role() == ChatCompletionRole::Tool
+                            {
+                                chat_request.messages.remove(1);
+                            }
+
+                            // system -> user_1 -> assistant_1 (tool_calls) -> tool_1 -> assistant_1 -> ... -> user_latest
+                            if chat_request.messages.len() > 2
+                                && chat_request.messages[1].role() == ChatCompletionRole::Assistant
+                            {
+                                chat_request.messages.remove(1);
+                            }
                         } else if chat_request.messages.len() == 3
                             && chat_request.messages[1].role() == ChatCompletionRole::User
                         {
-                            chat_request.messages.remove(1);
-                        } else {
-                            #[cfg(feature = "logging")]
-                            info!(target: "llama_core", "prompt: {}", &prompt);
+                            // system -> user_1 -> user_latest
 
-                            return Ok((prompt, ctx_size - max_prompt_tokens, tool_use));
+                            chat_request.messages.remove(1);
+                        } else if token_info.prompt_tokens > ctx_size {
+                            let err_msg = format!(
+                                    "The number of prompt tokens is greater than the context size: {} > {}",
+                                    token_info.prompt_tokens, ctx_size
+                                );
+
+                            #[cfg(feature = "logging")]
+                            error!(target: "llama_core", "{}", &err_msg);
+
+                            return Err(LlamaCoreError::Operation(err_msg));
+                        } else {
+                            return Ok((prompt, ctx_size - token_info.prompt_tokens, tool_use));
                         }
                     }
                     ChatCompletionRole::User => {
@@ -1704,11 +1737,18 @@ fn build_prompt(
                         {
                             // deal with "user_1 -> user_latest"
                             chat_request.messages.remove(0);
-                        } else {
-                            #[cfg(feature = "logging")]
-                            info!(target: "llama_core", "prompt: {}", &prompt);
+                        } else if token_info.prompt_tokens > ctx_size {
+                            let err_msg = format!(
+                                    "The number of prompt tokens is greater than the context size: {} > {}",
+                                    token_info.prompt_tokens, ctx_size
+                                );
 
-                            return Ok((prompt, ctx_size - max_prompt_tokens, tool_use));
+                            #[cfg(feature = "logging")]
+                            error!(target: "llama_core", "{}", &err_msg);
+
+                            return Err(LlamaCoreError::Operation(err_msg));
+                        } else {
+                            return Ok((prompt, ctx_size - token_info.prompt_tokens, tool_use));
                         }
                     }
                     _ => {
@@ -1720,7 +1760,7 @@ fn build_prompt(
                         #[cfg(feature = "logging")]
                         error!(target: "llama_core", "{}", &err_msg);
 
-                        panic!("{}", err_msg)
+                        return Err(LlamaCoreError::Operation(err_msg));
                     }
                 }
 
@@ -2149,6 +2189,7 @@ impl Drop for ChatStream {
         if self.cache.is_none() {
             #[cfg(feature = "logging")]
             info!(target: "llama_core", "Clean up the context of the stream work environment.");
+
             match &self.model {
                 Some(model_name) => {
                     match CHAT_GRAPHS.get() {
@@ -2278,6 +2319,9 @@ impl Drop for ChatStream {
                     };
                 }
             }
+
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "Cleanup done!");
         }
     }
 }
@@ -2334,6 +2378,9 @@ fn compute_stream(
     context_full_state: &mut ContextFullState,
     stream_state: &mut StreamState,
 ) -> Result<String, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "Compute the chat stream chunk.");
+
     if *prompt_too_long_state == PromptTooLongState::EndOfSequence
         || *context_full_state == ContextFullState::EndOfSequence
         || *stream_state == StreamState::EndOfSequence
@@ -2342,7 +2389,7 @@ fn compute_stream(
     }
 
     // get graph
-    match &model_name {
+    let res = match &model_name {
         Some(model_name) => {
             let chat_graphs = match CHAT_GRAPHS.get() {
                 Some(chat_graphs) => chat_graphs,
@@ -3387,5 +3434,10 @@ fn compute_stream(
                 }
             }
         }
-    }
+    };
+
+    #[cfg(feature = "logging")]
+    info!(target: "llama_core", "Return the chat stream chunk!");
+
+    res
 }

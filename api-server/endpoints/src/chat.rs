@@ -33,7 +33,7 @@
 //! let json = serde_json::to_string(&request).unwrap();
 //! assert_eq!(
 //!     json,
-//!     r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"tool_choice":"none"}"#
+//!     r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"max_tokens":1024,"tool_choice":"none"}"#
 //! );
 //! ```
 //!
@@ -131,7 +131,7 @@
 //! let json = serde_json::to_string(&request).unwrap();
 //! assert_eq!(
 //!     json,
-//!     r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#
+//!     r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#
 //! );
 //! ```
 
@@ -168,7 +168,7 @@ impl ChatCompletionRequestBuilder {
                 stream: None,
                 stream_options: None,
                 stop: None,
-                max_tokens: None,
+                max_tokens: Some(1024),
                 presence_penalty: None,
                 frequency_penalty: None,
                 logit_bias: None,
@@ -197,7 +197,7 @@ impl ChatCompletionRequestBuilder {
     /// # Arguments
     ///
     /// * `n` - How many chat completion choices to generate for each input message. If `n` is less than 1, then sets to `1`.
-    pub fn with_n_choices(mut self, n: i32) -> Self {
+    pub fn with_n_choices(mut self, n: u64) -> Self {
         let n_choice = if n < 1 { 1 } else { n };
         self.req.n_choice = Some(n_choice);
         self
@@ -313,7 +313,8 @@ pub struct ChatCompletionRequest {
     /// How many chat completion choices to generate for each input message.
     /// Defaults to 1.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub n_choice: Option<i32>,
+    #[serde(rename = "n")]
+    pub n_choice: Option<u64>,
     /// Whether to stream the results as they are generated. Useful for chatbots.
     /// Defaults to false.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -326,7 +327,7 @@ pub struct ChatCompletionRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop: Option<Vec<String>>,
     /// The maximum number of tokens to generate. The value should be no less than 1.
-    /// Defaults to 16.
+    /// Defaults to 1024.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_tokens: Option<u64>,
     /// Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
@@ -411,7 +412,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                         "messages" => messages = map.next_value()?,
                         "temperature" => temperature = map.next_value()?,
                         "top_p" => top_p = map.next_value()?,
-                        "n_choice" => n_choice = map.next_value()?,
+                        "n" => n_choice = map.next_value()?,
                         "stream" => stream = map.next_value()?,
                         "stream_options" => stream_options = map.next_value()?,
                         "stop" => stop = map.next_value()?,
@@ -432,6 +433,11 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 // Ensure all required fields are initialized
                 let messages = messages.ok_or_else(|| de::Error::missing_field("messages"))?;
 
+                // Set default value for `max_tokens` if not provided
+                if max_tokens.is_none() {
+                    max_tokens = Some(1024);
+                }
+
                 // Check tools and tool_choice
                 // `auto` is the default if tools are present.
                 // `none` is the default when no tools are present.
@@ -441,6 +447,10 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     }
                 } else if tool_choice.is_none() {
                     tool_choice = Some(ToolChoice::None);
+                }
+
+                if n_choice.is_none() {
+                    n_choice = Some(1);
                 }
 
                 // Construct ChatCompletionRequest with all fields
@@ -472,7 +482,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
             "max_tokens",
             "temperature",
             "top_p",
-            "n_choice",
+            "n",
             "stream",
             "stream_options",
             "stop",
@@ -518,7 +528,6 @@ fn test_chat_serialize_chat_request() {
             .enable_stream(true)
             .include_usage()
             .with_stop(vec!["stop1".to_string(), "stop2".to_string()])
-            .with_max_tokens(100)
             .with_presence_penalty(0.5)
             .with_frequency_penalty(0.5)
             .with_reponse_format(ChatResponseFormat::default())
@@ -527,7 +536,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto"}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":1024,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto"}"#
         );
     }
 
@@ -555,7 +564,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"tool_choice":"none"}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"max_tokens":1024,"tool_choice":"none"}"#
         );
     }
 
@@ -643,7 +652,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#
         );
     }
 
@@ -726,7 +735,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto"}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto"}"#
         );
     }
 }
@@ -734,7 +743,7 @@ fn test_chat_serialize_chat_request() {
 #[test]
 fn test_chat_deserialize_chat_request() {
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"}}"#;
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stop":["stop1","stop2"],"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"}}"#;
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         assert_eq!(request.model, Some("model-id".to_string()));
         assert_eq!(request.messages.len(), 3);
@@ -768,14 +777,14 @@ fn test_chat_deserialize_chat_request() {
             request.stop,
             Some(vec!["stop1".to_string(), "stop2".to_string()])
         );
-        assert_eq!(request.max_tokens, Some(100));
+        assert_eq!(request.max_tokens, Some(1024));
         assert_eq!(request.presence_penalty, Some(0.5));
         assert_eq!(request.frequency_penalty, Some(0.5));
         assert_eq!(request.tool_choice, Some(ToolChoice::None));
     }
 
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto"}"#;
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto"}"#;
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         assert_eq!(request.model, Some("model-id".to_string()));
         assert_eq!(request.messages.len(), 3);
@@ -794,7 +803,7 @@ fn test_chat_deserialize_chat_request() {
     }
 
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#;
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#;
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         assert_eq!(request.model, Some("model-id".to_string()));
         assert_eq!(request.messages.len(), 3);
@@ -821,7 +830,7 @@ fn test_chat_deserialize_chat_request() {
     }
 
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#;
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#;
 
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         let tools = request.tools.unwrap();
@@ -854,7 +863,7 @@ fn test_chat_deserialize_chat_request() {
     }
 
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}]}"#;
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}]}"#;
 
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         let tool_choice = request.tool_choice.unwrap();
@@ -862,7 +871,7 @@ fn test_chat_deserialize_chat_request() {
     }
 
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n_choice":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"}}"#;
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"}}"#;
 
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         let tool_choice = request.tool_choice.unwrap();
