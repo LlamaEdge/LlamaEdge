@@ -281,6 +281,7 @@ fn chat_stream_by_graph(
             if graph.metadata.prompt_template != PromptTemplateType::MistralTool
                 && graph.metadata.prompt_template != PromptTemplateType::ChatMLTool
                 && graph.metadata.prompt_template != PromptTemplateType::GroqLlama3Tool
+                && graph.metadata.prompt_template != PromptTemplateType::Llama3Tool
             {
                 let err_msg = "The tool use is only supported for 'mistral-chat' and 'chatml' prompt templates.";
 
@@ -900,6 +901,7 @@ fn compute_by_graph(
                     if graph.metadata.prompt_template != PromptTemplateType::MistralTool
                         && graph.metadata.prompt_template != PromptTemplateType::ChatMLTool
                         && graph.metadata.prompt_template != PromptTemplateType::GroqLlama3Tool
+                        && graph.metadata.prompt_template != PromptTemplateType::Llama3Tool
                     {
                         let err_msg = "The tool use is only supported for 'mistral-chat' and 'chatml' prompt templates.";
 
@@ -1278,6 +1280,38 @@ fn parse_tool_calls(input: &str, prompt_template: PromptTemplateType) -> Option<
                 }
             }
         }
+        PromptTemplateType::Llama3Tool => {
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "raw input: {}", input);
+
+            match serde_json::from_str::<serde_json::Value>(input) {
+                Ok(value) => {
+                    let values: Vec<serde_json::Value> = vec![value];
+
+                    let mut tool_calls: Vec<ToolCall> = vec![];
+                    for value in values.iter() {
+                        let name = value.get("name").unwrap().to_string().replace("\"", "");
+                        let arguments = value.get("parameters").unwrap().to_string();
+
+                        let function = Function { name, arguments };
+
+                        let tool_call = ToolCall {
+                            id: "call_abc123".to_string(),
+                            ty: "function".to_string(),
+                            function,
+                        };
+
+                        tool_calls.push(tool_call);
+                    }
+
+                    #[cfg(feature = "logging")]
+                    info!(target: "llama_core", "extracted {} tool calls: {:?}", tool_calls.len(),&tool_calls);
+
+                    Some(tool_calls)
+                }
+                Err(_) => None,
+            }
+        }
         _ => None,
     }
 }
@@ -1547,6 +1581,7 @@ fn post_process(
         }
     } else if *template_ty == PromptTemplateType::Llama3Chat
         || *template_ty == PromptTemplateType::GroqLlama3Tool
+        || *template_ty == PromptTemplateType::Llama3Tool
     {
         let s = output.as_ref().trim();
         if s.ends_with("<|eot_id|>") {
