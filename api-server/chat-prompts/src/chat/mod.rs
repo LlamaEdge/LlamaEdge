@@ -54,6 +54,7 @@ pub trait BuildChatPrompt: Send {
 pub enum ChatPrompt {
     Llama2ChatPrompt,
     Llama3ChatPrompt,
+    Llama3ToolPrompt,
     MistralInstructPrompt,
     MistralToolPrompt,
     MistralLitePrompt,
@@ -91,6 +92,7 @@ impl From<PromptTemplateType> for ChatPrompt {
         match ty {
             PromptTemplateType::Llama2Chat => ChatPrompt::Llama2ChatPrompt(Llama2ChatPrompt),
             PromptTemplateType::Llama3Chat => ChatPrompt::Llama3ChatPrompt(Llama3ChatPrompt),
+            PromptTemplateType::Llama3Tool => ChatPrompt::Llama3ToolPrompt(Llama3ToolPrompt),
             PromptTemplateType::MistralInstruct => {
                 ChatPrompt::MistralInstructPrompt(MistralInstructPrompt)
             }

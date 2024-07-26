@@ -17,6 +17,8 @@ pub enum PromptTemplateType {
     Llama2Chat,
     #[value(name = "llama-3-chat")]
     Llama3Chat,
+    #[value(name = "llama-3-tool")]
+    Llama3Tool,
     #[value(name = "mistral-instruct")]
     MistralInstruct,
     #[value(name = "mistral-tool")]
@@ -83,6 +85,7 @@ impl PromptTemplateType {
         match self {
             PromptTemplateType::Llama2Chat
             | PromptTemplateType::Llama3Chat
+            | PromptTemplateType::Llama3Tool
             | PromptTemplateType::CodeLlama
             | PromptTemplateType::CodeLlamaSuper
             | PromptTemplateType::VicunaChat
@@ -123,6 +126,7 @@ impl FromStr for PromptTemplateType {
         match template {
             "llama-2-chat" => Ok(PromptTemplateType::Llama2Chat),
             "llama-3-chat" => Ok(PromptTemplateType::Llama3Chat),
+            "llama-3-tool" => Ok(PromptTemplateType::Llama3Tool),
             "mistral-instruct" => Ok(PromptTemplateType::MistralInstruct),
             "mistral-tool" => Ok(PromptTemplateType::MistralTool),
             "mistrallite" => Ok(PromptTemplateType::MistralLite),
@@ -165,6 +169,7 @@ impl std::fmt::Display for PromptTemplateType {
         match self {
             PromptTemplateType::Llama2Chat => write!(f, "llama-2-chat"),
             PromptTemplateType::Llama3Chat => write!(f, "llama-3-chat"),
+            PromptTemplateType::Llama3Tool => write!(f, "llama-3-tool"),
             PromptTemplateType::MistralInstruct => write!(f, "mistral-instruct"),
             PromptTemplateType::MistralTool => write!(f, "mistral-tool"),
             PromptTemplateType::MistralLite => write!(f, "mistrallite"),
