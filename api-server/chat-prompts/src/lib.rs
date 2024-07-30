@@ -43,6 +43,8 @@ pub enum PromptTemplateType {
     ChatML,
     #[value(name = "chatml-tool")]
     ChatMLTool,
+    #[value(name = "internlm-2-tool")]
+    InternLM2Tool,
     #[value(name = "baichuan-2")]
     Baichuan2,
     #[value(name = "wizard-coder")]
@@ -92,6 +94,7 @@ impl PromptTemplateType {
             | PromptTemplateType::VicunaLlava
             | PromptTemplateType::ChatML
             | PromptTemplateType::ChatMLTool
+            | PromptTemplateType::InternLM2Tool
             | PromptTemplateType::Baichuan2
             | PromptTemplateType::WizardCoder
             | PromptTemplateType::Zephyr
@@ -139,6 +142,7 @@ impl FromStr for PromptTemplateType {
             "vicuna-llava" => Ok(PromptTemplateType::VicunaLlava),
             "chatml" => Ok(PromptTemplateType::ChatML),
             "chatml-tool" => Ok(PromptTemplateType::ChatMLTool),
+            "internlm-2-tool" => Ok(PromptTemplateType::InternLM2Tool),
             "openchat" => Ok(PromptTemplateType::OpenChat),
             "baichuan-2" => Ok(PromptTemplateType::Baichuan2),
             "wizard-coder" => Ok(PromptTemplateType::WizardCoder),
@@ -181,6 +185,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::VicunaLlava => write!(f, "vicuna-llava"),
             PromptTemplateType::ChatML => write!(f, "chatml"),
             PromptTemplateType::ChatMLTool => write!(f, "chatml-tool"),
+            PromptTemplateType::InternLM2Tool => write!(f, "internlm-2-tool"),
             PromptTemplateType::Baichuan2 => write!(f, "baichuan-2"),
             PromptTemplateType::WizardCoder => write!(f, "wizard-coder"),
             PromptTemplateType::Zephyr => write!(f, "zephyr"),

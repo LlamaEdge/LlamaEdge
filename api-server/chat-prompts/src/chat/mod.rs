@@ -69,6 +69,7 @@ pub enum ChatPrompt {
     VicunaLlavaPrompt,
     ChatMLPrompt,
     ChatMLToolPrompt,
+    InternLM2ToolPrompt,
     Baichuan2ChatPrompt,
     WizardCoderPrompt,
     ZephyrChatPrompt,
@@ -113,6 +114,9 @@ impl From<PromptTemplateType> for ChatPrompt {
             PromptTemplateType::VicunaLlava => ChatPrompt::VicunaLlavaPrompt(VicunaLlavaPrompt),
             PromptTemplateType::ChatML => ChatPrompt::ChatMLPrompt(ChatMLPrompt),
             PromptTemplateType::ChatMLTool => ChatPrompt::ChatMLToolPrompt(ChatMLToolPrompt),
+            PromptTemplateType::InternLM2Tool => {
+                ChatPrompt::InternLM2ToolPrompt(InternLM2ToolPrompt)
+            }
             PromptTemplateType::Baichuan2 => ChatPrompt::Baichuan2ChatPrompt(Baichuan2ChatPrompt),
             PromptTemplateType::WizardCoder => ChatPrompt::WizardCoderPrompt(WizardCoderPrompt),
             PromptTemplateType::Zephyr => ChatPrompt::ZephyrChatPrompt(ZephyrChatPrompt),
