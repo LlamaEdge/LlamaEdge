@@ -30,7 +30,7 @@ pub struct SearchConfig {
     /// The total number of results.
     pub max_search_results: u8,
     /// The size limit of every search result.
-    pub size_limit_per_result: u8,
+    pub size_limit_per_result: u16,
     /// The endpoint for the search API.
     pub endpoint: String,
     /// The content type of the input.
@@ -70,7 +70,7 @@ impl SearchConfig {
     pub fn new(
         search_engine: String,
         max_search_results: u8,
-        size_limit_per_result: u8,
+        size_limit_per_result: u16,
         endpoint: String,
         content_type: ContentType,
         output_content_type: ContentType,
@@ -95,12 +95,11 @@ impl SearchConfig {
         &self,
         search_input: &T,
     ) -> Result<SearchOutput, LlamaCoreError> {
-        println!("entering SearchConfig");
         let client = Client::new();
         let url = match Url::parse(&self.endpoint) {
             Ok(url) => url,
             Err(_) => {
-                let msg = "Malformed endpoind url";
+                let msg = "Malformed endpoint url";
                 #[cfg(feature = "logging")]
                 error!(target: "search", "perform_search: {}", msg);
                 return Err(LlamaCoreError::Search(format!(
