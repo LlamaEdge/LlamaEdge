@@ -282,6 +282,7 @@ fn chat_stream_by_graph(
                 && graph.metadata.prompt_template != PromptTemplateType::ChatMLTool
                 && graph.metadata.prompt_template != PromptTemplateType::GroqLlama3Tool
                 && graph.metadata.prompt_template != PromptTemplateType::Llama3Tool
+                && graph.metadata.prompt_template != PromptTemplateType::InternLM2Tool
             {
                 let err_msg = "The tool use is only supported for 'mistral-chat' and 'chatml' prompt templates.";
 
@@ -291,7 +292,12 @@ fn chat_stream_by_graph(
                 return Err(LlamaCoreError::Operation(err_msg.into()));
             }
 
-            let tool_calls = parse_tool_calls(&message, graph.metadata.prompt_template)?;
+            let parsed_result = parse_tool_calls(&message, graph.metadata.prompt_template)?;
+
+            let content = match parsed_result.content {
+                Some(content) => Some(content),
+                None => Some(parsed_result.raw),
+            };
 
             // tool_calls chunk
             let tool_call_chunk = {
@@ -305,8 +311,8 @@ fn chat_stream_by_graph(
                         index: 0,
                         delta: ChatCompletionChunkChoiceDelta {
                             role: ChatCompletionRole::Assistant,
-                            content: Some(message),
-                            tool_calls,
+                            content,
+                            tool_calls: parsed_result.tool_calls,
                         },
                         logprobs: None,
                         finish_reason: None,
@@ -818,6 +824,7 @@ fn compute_by_graph(
                         && graph.metadata.prompt_template != PromptTemplateType::ChatMLTool
                         && graph.metadata.prompt_template != PromptTemplateType::GroqLlama3Tool
                         && graph.metadata.prompt_template != PromptTemplateType::Llama3Tool
+                        && graph.metadata.prompt_template != PromptTemplateType::InternLM2Tool
                     {
                         let err_msg = "The tool use is only supported for 'mistral-chat' and 'chatml' prompt templates.";
 
@@ -827,12 +834,17 @@ fn compute_by_graph(
                         return Err(LlamaCoreError::Operation(err_msg.into()));
                     }
 
-                    let tool_calls = parse_tool_calls(&message, graph.metadata.prompt_template)?;
+                    let parsed_result = parse_tool_calls(&message, graph.metadata.prompt_template)?;
 
-                    let finish_reason = if tool_calls.is_empty() {
+                    let finish_reason = if parsed_result.tool_calls.is_empty() {
                         FinishReason::stop
                     } else {
                         FinishReason::tool_calls
+                    };
+
+                    let content = match parsed_result.content {
+                        Some(content) => Some(content),
+                        None => Some(parsed_result.raw),
                     };
 
                     // create ChatCompletionResponse
@@ -845,8 +857,8 @@ fn compute_by_graph(
                             index: 0,
                             message: ChatCompletionObjectMessage {
                                 role: ChatCompletionRole::Assistant,
-                                content: Some(message),
-                                tool_calls,
+                                content,
+                                tool_calls: parsed_result.tool_calls,
                                 function_call: None,
                             },
                             finish_reason,
@@ -1037,7 +1049,7 @@ fn compute_by_graph(
 fn parse_tool_calls(
     input: &str,
     prompt_template: PromptTemplateType,
-) -> Result<Vec<ToolCall>, LlamaCoreError> {
+) -> Result<ParseResult, LlamaCoreError> {
     match prompt_template {
         PromptTemplateType::MistralTool => match regex::Regex::new(r"\[\{.*?\}\]") {
             Ok(re) => {
@@ -1107,10 +1119,16 @@ fn parse_tool_calls(
                     tool_calls.push(tool_call);
                 }
 
-                #[cfg(feature = "logging")]
-                info!(target: "llama_core", "extracted {} tool calls: {:?}", tool_calls.len(),&tool_calls);
+                let parsed = ParseResult {
+                    raw: input.to_owned(),
+                    content: None,
+                    tool_calls,
+                };
 
-                Ok(tool_calls)
+                #[cfg(feature = "logging")]
+                info!(target: "llama_core", "parsed result: {:?}", parsed);
+
+                Ok(parsed)
             }
             Err(e) => {
                 let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
@@ -1190,10 +1208,16 @@ fn parse_tool_calls(
                         tool_calls.push(tool_call);
                     }
 
-                    #[cfg(feature = "logging")]
-                    info!(target: "llama_core", "extracted {} tool calls: {:?}", tool_calls.len(),&tool_calls);
+                    let parsed = ParseResult {
+                        raw: input.to_owned(),
+                        content: None,
+                        tool_calls,
+                    };
 
-                    Ok(tool_calls)
+                    #[cfg(feature = "logging")]
+                    info!(target: "llama_core", "parsed result: {:?}", parsed);
+
+                    Ok(parsed)
                 }
                 Err(e) => {
                     let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
@@ -1275,10 +1299,16 @@ fn parse_tool_calls(
                         tool_calls.push(tool_call);
                     }
 
-                    #[cfg(feature = "logging")]
-                    info!(target: "llama_core", "extracted {} tool calls: {:?}", tool_calls.len(),&tool_calls);
+                    let parsed = ParseResult {
+                        raw: input.to_owned(),
+                        content: None,
+                        tool_calls,
+                    };
 
-                    Ok(tool_calls)
+                    #[cfg(feature = "logging")]
+                    info!(target: "llama_core", "parsed result: {:?}", parsed);
+
+                    Ok(parsed)
                 }
                 Err(e) => {
                     let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
@@ -1354,10 +1384,16 @@ fn parse_tool_calls(
                             tool_calls.push(tool_call);
                         }
 
-                        #[cfg(feature = "logging")]
-                        info!(target: "llama_core", "extracted {} tool calls: {:?}", tool_calls.len(),&tool_calls);
+                        let parsed = ParseResult {
+                            raw: input.to_owned(),
+                            content: None,
+                            tool_calls,
+                        };
 
-                        Ok(tool_calls)
+                        #[cfg(feature = "logging")]
+                        info!(target: "llama_core", "parsed result: {:?}", parsed);
+
+                        Ok(parsed)
                     }
                     Err(e) => {
                         let err_msg =
@@ -1370,15 +1406,124 @@ fn parse_tool_calls(
                     }
                 }
             } else {
-                Ok(vec![])
+                let parsed = ParseResult {
+                    raw: input.to_owned(),
+                    content: None,
+                    tool_calls: vec![],
+                };
+
+                #[cfg(feature = "logging")]
+                info!(target: "llama_core", "parsed result: {:?}", parsed);
+
+                Ok(parsed)
             }
         }
+        PromptTemplateType::InternLM2Tool => {
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "raw input: {}", input);
+
+            let blocks: Vec<&str> = input.trim().split("<|action_start|><|plugin|>").collect();
+
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "blocks: {:?}", blocks);
+
+            let mut tool_calls: Vec<ToolCall> = vec![];
+            let mut content = String::new();
+            for block in blocks {
+                let block = block.trim();
+                if !block.is_empty() {
+                    if block.ends_with("<|action_end|>") {
+                        let value = block.trim().trim_end_matches("<|action_end|>");
+
+                        #[cfg(feature = "logging")]
+                        info!(target: "llama_core", "tool call: {}", value);
+
+                        match serde_json::from_str::<serde_json::Value>(value) {
+                            Ok(value) => {
+                                let name = match value.get("name") {
+                                    Some(name) => name.to_string().replace("\"", ""),
+                                    None => {
+                                        let err_msg = format!(
+                                            "Failed to get the name of the function. Tool call: {:?}",
+                                            value
+                                        );
+
+                                        #[cfg(feature = "logging")]
+                                        error!(target: "llama_core", "{}", &err_msg);
+
+                                        return Err(LlamaCoreError::Operation(err_msg));
+                                    }
+                                };
+
+                                let arguments = match value.get("parameters") {
+                                    Some(arguments) => arguments.to_string(),
+                                    None => {
+                                        let err_msg = format!(
+                                            "Failed to get the arguments of the function. Tool call: {:?}",
+                                            value
+                                        );
+
+                                        #[cfg(feature = "logging")]
+                                        error!(target: "llama_core", "{}", &err_msg);
+
+                                        return Err(LlamaCoreError::Operation(err_msg));
+                                    }
+                                };
+
+                                let function = Function { name, arguments };
+
+                                let tool_call = ToolCall {
+                                    id: "call_abc123".to_string(),
+                                    ty: "function".to_string(),
+                                    function,
+                                };
+
+                                tool_calls.push(tool_call);
+                            }
+                            Err(e) => {
+                                let err_msg = format!(
+                                    "Failed to deserialize generated tool calls. Reason: {}",
+                                    e
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            }
+                        }
+                    } else {
+                        content.push_str(block);
+                        content.push('\n');
+                    }
+                }
+            }
+
+            let parsed = match content.is_empty() {
+                true => ParseResult {
+                    raw: input.to_owned(),
+                    content: None,
+                    tool_calls,
+                },
+                false => ParseResult {
+                    raw: input.to_owned(),
+                    content: Some(content.trim().to_owned()),
+                    tool_calls,
+                },
+            };
+
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "parsed result: {:?}", parsed);
+
+            Ok(parsed)
+        }
         _ => Err(LlamaCoreError::Operation(format!(
-            "The tool use is only supported for prompt templates: {}, {}, {}, and {}.",
+            "The tool use is only supported for prompt templates: {}, {}, {}, {}, and {}.",
             PromptTemplateType::MistralTool,
             PromptTemplateType::ChatMLTool,
             PromptTemplateType::GroqLlama3Tool,
-            PromptTemplateType::Llama3Tool
+            PromptTemplateType::Llama3Tool,
+            PromptTemplateType::InternLM2Tool
         ))),
     }
 }
@@ -1563,6 +1708,7 @@ fn post_process(
         }
     } else if *template_ty == PromptTemplateType::ChatML
         || *template_ty == PromptTemplateType::ChatMLTool
+        || *template_ty == PromptTemplateType::InternLM2Tool
     {
         if output.as_ref().contains("<|im_start|>") && output.as_ref().contains("<|im_end|>") {
             let idx_start = output.as_ref().find("<|im_start|>").unwrap();
@@ -3542,4 +3688,11 @@ fn compute_stream(
     info!(target: "llama_core", "Return the chat stream chunk!");
 
     res
+}
+
+#[derive(Debug)]
+struct ParseResult {
+    raw: String,
+    content: Option<String>,
+    tool_calls: Vec<ToolCall>,
 }
