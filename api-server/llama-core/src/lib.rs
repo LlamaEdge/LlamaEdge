@@ -78,10 +78,14 @@ pub struct Metadata {
     // * Model parameters (need to reload the model if updated):
     #[serde(rename = "n-gpu-layers")]
     pub n_gpu_layers: u64,
-    // #[serde(rename = "main-gpu")]
-    // pub main_gpu: u64,
-    // #[serde(rename = "tensor-split")]
-    // pub tensor_split: String,
+    /// The main GPU to use. Defaults to None.
+    #[serde(rename = "main-gpu")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub main_gpu: Option<u64>,
+    /// How split tensors should be distributed accross GPUs. If None the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1.
+    #[serde(rename = "tensor-split")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tensor_split: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", rename = "use-mmap")]
     pub use_mmap: Option<bool>,
     // * Context parameters (used by the llama context):
@@ -117,6 +121,8 @@ impl Default for Metadata {
             mmproj: None,
             image: None,
             n_gpu_layers: 100,
+            main_gpu: None,
+            tensor_split: None,
             use_mmap: Some(true),
             ctx_size: 512,
             batch_size: 512,
@@ -183,6 +189,16 @@ impl MetadataBuilder {
 
     pub fn with_n_predict(mut self, n: u64) -> Self {
         self.metadata.n_predict = n;
+        self
+    }
+
+    pub fn with_main_gpu(mut self, gpu: Option<u64>) -> Self {
+        self.metadata.main_gpu = gpu;
+        self
+    }
+
+    pub fn with_tensor_split(mut self, split: Option<String>) -> Self {
+        self.metadata.tensor_split = split;
         self
     }
 
