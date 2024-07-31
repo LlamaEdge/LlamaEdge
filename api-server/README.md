@@ -551,15 +551,19 @@ Options:
   -b, --batch-size <BATCH_SIZE>
           Sets batch sizes for chat and/or embedding models. To run both chat and embedding models, the sizes should be separated by comma without space, for example, '--batch-size 128,64'. The first value is for the chat model, and the second is for the embedding model [default: 512,512]
   -p, --prompt-template <PROMPT_TEMPLATE>
-          Sets prompt templates for chat and/or embedding models, respectively. To run both chat and embedding models, the prompt templates should be separated by comma without space, for example, '--prompt-template llama-2-chat,embedding'. The first value is for the chat model, and the second is for the embedding model [possible values: llama-2-chat, llama-3-chat, mistral-instruct, mistrallite, openchat, codellama-instruct, codellama-super-instruct, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, solar-instruct, phi-2-chat, phi-2-instruct, phi-3-chat, phi-3-instruct, gemma-instruct, octopus, embedding]
+          Sets prompt templates for chat and/or embedding models, respectively. To run both chat and embedding models, the prompt templates should be separated by comma without space, for example, '--prompt-template llama-2-chat,embedding'. The first value is for the chat model, and the second is for the embedding model [possible values: llama-2-chat, llama-3-chat, llama-3-tool, mistral-instruct, mistral-tool, mistrallite, openchat, codellama-instruct, codellama-super-instruct, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, chatml-tool, internlm-2-tool, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, deepseek-chat-2, solar-instruct, phi-2-chat, phi-2-instruct, phi-3-chat, phi-3-instruct, gemma-instruct, octopus, glm-4-chat, groq-llama3-tool, embedding]
   -r, --reverse-prompt <REVERSE_PROMPT>
           Halt generation at PROMPT, return control
   -n, --n-predict <N_PREDICT>
           Number of tokens to predict [default: 1024]
   -g, --n-gpu-layers <N_GPU_LAYERS>
           Number of layers to run on the GPU [default: 100]
-      --no-mmap
-          Disable memory mapping for file access of chat models
+      --main-gpu <MAIN_GPU>
+          The main GPU to use
+      --tensor-split <TENSOR_SPLIT>
+          How split tensors should be distributed accross GPUs. If None the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1
+      --no-mmap <NO_MMAP>
+          Disable memory mapping for file access of chat models [possible values: true, false]
       --temp <TEMP>
           Temperature for sampling [default: 1.0]
       --top-p <TOP_P>
@@ -576,6 +580,12 @@ Options:
           Socket address of LlamaEdge API Server instance [default: 0.0.0.0:8080]
       --web-ui <WEB_UI>
           Root path for the Web UI files [default: chatbot-ui]
+      --log-prompts
+          Deprecated. Print prompt strings to stdout
+      --log-stat
+          Deprecated. Print statistics to stdout
+      --log-all
+          Deprecated. Print all log information to stdout
   -h, --help
           Print help
   -V, --version
