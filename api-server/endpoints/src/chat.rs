@@ -2265,10 +2265,7 @@ impl<'de> Deserialize<'de> for ChatCompletionObjectMessage {
                 }
 
                 let content = content;
-                let tool_calls = match tool_calls {
-                    Some(tool_calls) => tool_calls,
-                    None => Vec::new(),
-                };
+                let tool_calls = tool_calls.unwrap_or_default();
                 let role = role.ok_or_else(|| de::Error::missing_field("role"))?;
                 let function_call = function_call;
 
@@ -2281,7 +2278,7 @@ impl<'de> Deserialize<'de> for ChatCompletionObjectMessage {
             }
         }
 
-        const FIELDS: &'static [&'static str] = &["content", "tool_calls", "role", "function_call"];
+        const FIELDS: &[&str] = &["content", "tool_calls", "role", "function_call"];
         deserializer.deserialize_struct(
             "ChatCompletionObjectMessage",
             FIELDS,
@@ -2437,10 +2434,7 @@ impl<'de> Deserialize<'de> for ChatCompletionChunkChoiceDelta {
                 }
 
                 let content = content;
-                let tool_calls = match tool_calls {
-                    Some(tool_calls) => tool_calls,
-                    None => Vec::new(),
-                };
+                let tool_calls = tool_calls.unwrap_or_default();
                 let role = role.ok_or_else(|| de::Error::missing_field("role"))?;
                 Ok(ChatCompletionChunkChoiceDelta {
                     content,
@@ -2450,7 +2444,7 @@ impl<'de> Deserialize<'de> for ChatCompletionChunkChoiceDelta {
             }
         }
 
-        const FIELDS: &'static [&'static str] = &["content", "tool_calls", "role"];
+        const FIELDS: &[&str] = &["content", "tool_calls", "role"];
         deserializer.deserialize_struct(
             "ChatCompletionChunkChoiceDelta",
             FIELDS,
