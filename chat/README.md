@@ -125,8 +125,12 @@ Options:
           Number of tokens to predict [default: 1024]
   -g, --n-gpu-layers <N_GPU_LAYERS>
           Number of layers to run on the GPU [default: 100]
-  --no-mmap
-          Disable memory mapping for file access of chat models
+      --main-gpu <MAIN_GPU>
+          The main GPU to use
+      --tensor-split <TENSOR_SPLIT>
+          How split tensors should be distributed accross GPUs. If None the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1
+      --no-mmap <NO_MMAP>
+          Disable memory mapping for file access of chat models [possible values: true, false]
   -b, --batch-size <BATCH_SIZE>
           Batch size for prompt processing [default: 512]
       --temp <TEMP>
@@ -140,7 +144,7 @@ Options:
       --frequency-penalty <FREQUENCY_PENALTY>
           Repeat alpha frequency penalty. 0.0 = disabled [default: 0.0]
   -p, --prompt-template <PROMPT_TEMPLATE>
-          Sets the prompt template [possible values: llama-2-chat, llama-3-chat, mistral-instruct, mistrallite, openchat, codellama-instruct, codellama-super-instruct, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, solar-instruct, phi-2-chat, phi-2-instruct, phi-3-chat, phi-3-instruct, gemma-instruct, octopus]
+          Sets the prompt template [possible values: llama-2-chat, llama-3-chat, llama-3-tool, mistral-instruct, mistral-tool, mistrallite, openchat, codellama-instruct, codellama-super-instruct, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, chatml-tool, internlm-2-tool, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, deepseek-chat-2, solar-instruct, phi-2-chat, phi-2-instruct, phi-3-chat, phi-3-instruct, gemma-instruct, octopus, glm-4-chat, groq-llama3-tool, embedding]
   -r, --reverse-prompt <REVERSE_PROMPT>
           Halt generation at PROMPT, return control
   -s, --system-prompt <SYSTEM_PROMPT>
