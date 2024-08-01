@@ -1845,6 +1845,15 @@ fn build_prompt(
         //     }
         // };
 
+        if chat_request.messages.is_empty() {
+            let err_msg = "The messages in the chat request are empty.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama_core", "{}", err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.to_owned()));
+        }
+
         let (prompt, tool_use) = match chat_request.tool_choice.as_ref() {
             Some(tool_choice) => match tool_choice {
                 ToolChoice::None => {
@@ -2000,15 +2009,10 @@ fn build_prompt(
                         }
                     }
                     _ => {
-                        let err_msg = format!(
-                            "Found a unsupported chat message role: {:?}",
-                            chat_request.messages[0].role()
-                        );
-
                         #[cfg(feature = "logging")]
-                        error!(target: "llama_core", "{}", &err_msg);
+                        info!(target: "llama_core", "remove a {} message from the message queue", chat_request.messages[0].role());
 
-                        return Err(LlamaCoreError::Operation(err_msg));
+                        chat_request.messages.remove(0);
                     }
                 }
 
