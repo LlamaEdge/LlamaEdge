@@ -13,21 +13,17 @@ use chat_prompts::{
     PromptTemplateType,
 };
 use either::{Either, Left, Right};
-#[cfg(feature = "https")]
-use endpoints::chat::{
-    ChatCompletionRequestMessage, ChatCompletionUserMessageContent, ContentPart,
-};
 use endpoints::{
     chat::{
         ChatCompletionChunk, ChatCompletionChunkChoice, ChatCompletionChunkChoiceDelta,
         ChatCompletionObject, ChatCompletionObjectChoice, ChatCompletionObjectMessage,
-        ChatCompletionRequest, ChatCompletionRole, Function, ToolCall, ToolCallForChunk,
+        ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRole,
+        ChatCompletionUserMessageContent, ContentPart, Function, ToolCall, ToolCallForChunk,
         ToolChoice,
     },
     common::{FinishReason, Usage},
 };
 use error::{BackendError, LlamaCoreError};
-#[cfg(feature = "https")]
 use futures::StreamExt;
 use std::{
     collections::VecDeque,
@@ -1551,7 +1547,6 @@ async fn check_model_metadata(
     let mut metadata = get_model_metadata(chat_request.model.as_ref())?;
 
     // check if necessary to update `image`
-    #[cfg(feature = "https")]
     if let Some(ChatCompletionRequestMessage::User(user_message)) = chat_request.messages.last() {
         if let ChatCompletionUserMessageContent::Parts(parts) = user_message.content() {
             for part in parts {
@@ -2037,7 +2032,6 @@ fn build_prompt(
 }
 
 /// Downloads an image from the given URL and returns the file name.
-#[cfg(feature = "https")]
 async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "llama_core", "Download image from the URL.");
