@@ -2032,6 +2032,17 @@ pub enum ChatCompletionRole {
     Function,
     Tool,
 }
+impl std::fmt::Display for ChatCompletionRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ChatCompletionRole::System => write!(f, "system"),
+            ChatCompletionRole::User => write!(f, "user"),
+            ChatCompletionRole::Assistant => write!(f, "assistant"),
+            ChatCompletionRole::Function => write!(f, "function"),
+            ChatCompletionRole::Tool => write!(f, "tool"),
+        }
+    }
+}
 
 /// **Deprecated since 0.10.0.** Use [Tool] instead.
 #[derive(Debug, Deserialize, Serialize)]
