@@ -1,4 +1,4 @@
-use crate::error::LlamaCoreError;
+use crate::{error::LlamaCoreError, CHAT_GRAPHS};
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -43,6 +43,10 @@ pub struct SearchConfig {
     pub additional_headers: Option<std::collections::HashMap<String, String>>,
     /// Callback function to parse the output of the api-service. Implementation left to the user.
     pub parser: fn(&serde_json::Value) -> Result<SearchOutput, Box<dyn std::error::Error>>,
+    /// Prompts for use with summarization functionality. If set to `None`, use hard-coded prompts.
+    pub summarization_prompts: Option<(String, String)>,
+    /// Context size for summary generation. If `None`, will use the 4 char ~ 1 token metric to generate summary.
+    pub summarize_ctx_size: Option<usize>,
 }
 
 // output format for individual results in the final output.
@@ -77,6 +81,8 @@ impl SearchConfig {
         method: String,
         additional_headers: Option<std::collections::HashMap<String, String>>,
         parser: fn(&serde_json::Value) -> Result<SearchOutput, Box<dyn std::error::Error>>,
+        summarization_prompts: Option<(String, String)>,
+        summarize_ctx_size: Option<usize>,
     ) -> SearchConfig {
         SearchConfig {
             search_engine,
@@ -88,6 +94,8 @@ impl SearchConfig {
             method,
             additional_headers,
             parser,
+            summarization_prompts,
+            summarize_ctx_size,
         }
     }
     /// Perform a web search with a `Serialize`-able input. The `search_input` is used as is to query the search endpoint.
@@ -242,6 +250,7 @@ impl SearchConfig {
             .truncate(self.max_search_results as usize);
 
         // apply per result character limit.
+        //
         // since the clipping only happens when split_at_checked() returns Some, the results will
         // remain unchanged should split_at_checked() return None.
         for result in search_output.results.iter_mut() {
@@ -256,4 +265,111 @@ impl SearchConfig {
         // Search Output cleaned and finalized.
         Ok(search_output)
     }
+    /// Perform a search and summarize the corresponding search results
+    pub async fn summarize_search<T: Serialize>(
+        &self,
+        search_input: &T,
+    ) -> Result<String, LlamaCoreError> {
+        let search_output = self.perform_search(&search_input).await?;
+
+        let summarization_prompts = self.summarization_prompts.clone().unwrap_or((
+            "The following are search results I found on the internet:\n\n".to_string(),
+            "\n\nTo sum up them up: ".to_string(),
+        ));
+
+        // the fallback context size limit for the search summary to be generated.
+        let summarize_ctx_size = self
+            .summarize_ctx_size
+            .unwrap_or((self.size_limit_per_result * self.max_search_results as u16) as usize);
+
+        summarize(search_output, summarize_ctx_size, summarization_prompts)
+    }
+}
+
+/// Summarize the search output provided
+fn summarize(
+    search_output: SearchOutput,
+    summarize_ctx_size: usize,
+    (initial_prompt, final_prompt): (String, String),
+) -> Result<String, LlamaCoreError> {
+    let mut search_output_string: String = String::new();
+
+    // Add the text content of every result together.
+    search_output
+        .results
+        .iter()
+        .for_each(|result| search_output_string.push_str(result.text_content.as_str()));
+
+    // Error on embedding running mode.
+    if crate::running_mode()? == crate::RunningMode::Embeddings {
+        let err_msg = "Summarization is not supported in the EMBEDDINGS running mode.";
+
+        #[cfg(feature = "logging")]
+        error!(target: "search", "{}", err_msg);
+
+        return Err(LlamaCoreError::Search(err_msg.into()));
+    }
+
+    // Get graphs and pick the first graph.
+    let chat_graphs = match CHAT_GRAPHS.get() {
+        Some(chat_graphs) => chat_graphs,
+        None => {
+            let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "search", "{}", err_msg);
+
+            return Err(LlamaCoreError::Search(err_msg.into()));
+        }
+    };
+
+    let mut chat_graphs = chat_graphs.lock().map_err(|e| {
+        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "search", "{}", &err_msg);
+
+        LlamaCoreError::Search(err_msg)
+    })?;
+
+    // Prepare input prompt.
+    let input = initial_prompt + search_output_string.as_str() + final_prompt.as_str();
+    let tensor_data = input.as_bytes().to_vec();
+
+    // Use first available chat graph
+    let graph: &mut crate::Graph = match chat_graphs.values_mut().next() {
+        Some(graph) => graph,
+        None => {
+            let err_msg = "No available chat graph.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "search", "{}", err_msg);
+
+            return Err(LlamaCoreError::Search(err_msg.into()));
+        }
+    };
+
+    graph
+        .set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data)
+        .expect("Failed to set prompt as the input tensor");
+
+    #[cfg(feature = "logging")]
+    info!(target: "search", "Generating a summary for search results...");
+    // Execute the inference.
+    graph.compute().expect("Failed to complete inference");
+
+    // Retrieve the output.
+    let mut output_buffer = vec![0u8; summarize_ctx_size];
+    let mut output_size = graph
+        .get_output(0, &mut output_buffer)
+        .expect("Failed to get output tensor");
+    output_size = std::cmp::min(summarize_ctx_size, output_size);
+
+    // Compute lossy UTF-8 output (text only).
+    let output = String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
+
+    #[cfg(feature = "logging")]
+    info!(target: "search", "Summary generated.");
+
+    Ok(output)
 }
