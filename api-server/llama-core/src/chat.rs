@@ -2239,8 +2239,7 @@ fn get_model_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCore
                 Some(graph) => Ok(graph.metadata.clone()),
                 None => {
                     let err_msg = format!(
-                        "The model `{}` does not exist in the chat graphs.",
-                        &model_name
+                        "The model `{}` does not exist in the chat graphs. The available models are: {:?}", model_name, chat_graphs.keys()
                     );
 
                     #[cfg(feature = "logging")]
