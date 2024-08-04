@@ -54,6 +54,7 @@ pub trait BuildChatPrompt: Send {
 pub enum ChatPrompt {
     Llama2ChatPrompt,
     Llama3ChatPrompt,
+    Llama3ToolPrompt,
     MistralInstructPrompt,
     MistralToolPrompt,
     MistralLitePrompt,
@@ -68,6 +69,7 @@ pub enum ChatPrompt {
     VicunaLlavaPrompt,
     ChatMLPrompt,
     ChatMLToolPrompt,
+    InternLM2ToolPrompt,
     Baichuan2ChatPrompt,
     WizardCoderPrompt,
     ZephyrChatPrompt,
@@ -91,6 +93,7 @@ impl From<PromptTemplateType> for ChatPrompt {
         match ty {
             PromptTemplateType::Llama2Chat => ChatPrompt::Llama2ChatPrompt(Llama2ChatPrompt),
             PromptTemplateType::Llama3Chat => ChatPrompt::Llama3ChatPrompt(Llama3ChatPrompt),
+            PromptTemplateType::Llama3Tool => ChatPrompt::Llama3ToolPrompt(Llama3ToolPrompt),
             PromptTemplateType::MistralInstruct => {
                 ChatPrompt::MistralInstructPrompt(MistralInstructPrompt)
             }
@@ -111,6 +114,9 @@ impl From<PromptTemplateType> for ChatPrompt {
             PromptTemplateType::VicunaLlava => ChatPrompt::VicunaLlavaPrompt(VicunaLlavaPrompt),
             PromptTemplateType::ChatML => ChatPrompt::ChatMLPrompt(ChatMLPrompt),
             PromptTemplateType::ChatMLTool => ChatPrompt::ChatMLToolPrompt(ChatMLToolPrompt),
+            PromptTemplateType::InternLM2Tool => {
+                ChatPrompt::InternLM2ToolPrompt(InternLM2ToolPrompt)
+            }
             PromptTemplateType::Baichuan2 => ChatPrompt::Baichuan2ChatPrompt(Baichuan2ChatPrompt),
             PromptTemplateType::WizardCoder => ChatPrompt::WizardCoderPrompt(WizardCoderPrompt),
             PromptTemplateType::Zephyr => ChatPrompt::ZephyrChatPrompt(ZephyrChatPrompt),

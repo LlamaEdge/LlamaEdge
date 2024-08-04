@@ -68,6 +68,12 @@ struct Cli {
     /// Number of layers to run on the GPU
     #[arg(short = 'g', long, default_value = "100")]
     n_gpu_layers: u64,
+    /// The main GPU to use.
+    #[arg(long, requires = "tensor_split")]
+    main_gpu: Option<u64>,
+    /// How split tensors should be distributed accross GPUs. If None the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1.
+    #[arg(long, requires = "main_gpu")]
+    tensor_split: Option<String>,
     /// Disable memory mapping for file access of chat models
     #[arg(long)]
     no_mmap: Option<bool>,
@@ -215,11 +221,21 @@ async fn main() -> Result<(), ServerError> {
     // log n_gpu_layers
     info!(target: "server_config", "n_gpu_layers: {}", cli.n_gpu_layers);
 
+    // log main_gpu
+    if let Some(main_gpu) = &cli.main_gpu {
+        info!(target: "server_config", "main_gpu: {}", main_gpu);
+    }
+
+    // log tensor_split
+    if let Some(tensor_split) = &cli.tensor_split {
+        info!(target: "server_config", "tensor_split: {}", tensor_split);
+    }
+
     // log no_mmap
     if let Some(no_mmap) = &cli.no_mmap {
         info!(
             "[INFO] Disable memory mapping for file access of chat models : {}",
-            no_mmap.clone()
+            no_mmap
         );
     }
 
@@ -240,7 +256,7 @@ async fn main() -> Result<(), ServerError> {
 
     // log multimodal projector
     if let Some(llava_mmproj) = &cli.llava_mmproj {
-        info!(target: "server_config", "llava_mmproj: {}", llava_mmproj.clone());
+        info!(target: "server_config", "llava_mmproj: {}", llava_mmproj);
     }
 
     // initialize the core context
@@ -285,6 +301,8 @@ async fn main() -> Result<(), ServerError> {
                 .with_batch_size(cli.batch_size[0])
                 .with_n_predict(cli.n_predict)
                 .with_n_gpu_layers(cli.n_gpu_layers)
+                .with_main_gpu(cli.main_gpu)
+                .with_tensor_split(cli.tensor_split)
                 .disable_mmap(cli.no_mmap)
                 .with_temperature(cli.temp)
                 .with_top_p(cli.top_p)

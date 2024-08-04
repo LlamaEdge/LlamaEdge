@@ -17,6 +17,8 @@ pub enum PromptTemplateType {
     Llama2Chat,
     #[value(name = "llama-3-chat")]
     Llama3Chat,
+    #[value(name = "llama-3-tool")]
+    Llama3Tool,
     #[value(name = "mistral-instruct")]
     MistralInstruct,
     #[value(name = "mistral-tool")]
@@ -41,6 +43,8 @@ pub enum PromptTemplateType {
     ChatML,
     #[value(name = "chatml-tool")]
     ChatMLTool,
+    #[value(name = "internlm-2-tool")]
+    InternLM2Tool,
     #[value(name = "baichuan-2")]
     Baichuan2,
     #[value(name = "wizard-coder")]
@@ -83,12 +87,14 @@ impl PromptTemplateType {
         match self {
             PromptTemplateType::Llama2Chat
             | PromptTemplateType::Llama3Chat
+            | PromptTemplateType::Llama3Tool
             | PromptTemplateType::CodeLlama
             | PromptTemplateType::CodeLlamaSuper
             | PromptTemplateType::VicunaChat
             | PromptTemplateType::VicunaLlava
             | PromptTemplateType::ChatML
             | PromptTemplateType::ChatMLTool
+            | PromptTemplateType::InternLM2Tool
             | PromptTemplateType::Baichuan2
             | PromptTemplateType::WizardCoder
             | PromptTemplateType::Zephyr
@@ -123,6 +129,7 @@ impl FromStr for PromptTemplateType {
         match template {
             "llama-2-chat" => Ok(PromptTemplateType::Llama2Chat),
             "llama-3-chat" => Ok(PromptTemplateType::Llama3Chat),
+            "llama-3-tool" => Ok(PromptTemplateType::Llama3Tool),
             "mistral-instruct" => Ok(PromptTemplateType::MistralInstruct),
             "mistral-tool" => Ok(PromptTemplateType::MistralTool),
             "mistrallite" => Ok(PromptTemplateType::MistralLite),
@@ -135,6 +142,7 @@ impl FromStr for PromptTemplateType {
             "vicuna-llava" => Ok(PromptTemplateType::VicunaLlava),
             "chatml" => Ok(PromptTemplateType::ChatML),
             "chatml-tool" => Ok(PromptTemplateType::ChatMLTool),
+            "internlm-2-tool" => Ok(PromptTemplateType::InternLM2Tool),
             "openchat" => Ok(PromptTemplateType::OpenChat),
             "baichuan-2" => Ok(PromptTemplateType::Baichuan2),
             "wizard-coder" => Ok(PromptTemplateType::WizardCoder),
@@ -165,6 +173,7 @@ impl std::fmt::Display for PromptTemplateType {
         match self {
             PromptTemplateType::Llama2Chat => write!(f, "llama-2-chat"),
             PromptTemplateType::Llama3Chat => write!(f, "llama-3-chat"),
+            PromptTemplateType::Llama3Tool => write!(f, "llama-3-tool"),
             PromptTemplateType::MistralInstruct => write!(f, "mistral-instruct"),
             PromptTemplateType::MistralTool => write!(f, "mistral-tool"),
             PromptTemplateType::MistralLite => write!(f, "mistrallite"),
@@ -176,6 +185,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::VicunaLlava => write!(f, "vicuna-llava"),
             PromptTemplateType::ChatML => write!(f, "chatml"),
             PromptTemplateType::ChatMLTool => write!(f, "chatml-tool"),
+            PromptTemplateType::InternLM2Tool => write!(f, "internlm-2-tool"),
             PromptTemplateType::Baichuan2 => write!(f, "baichuan-2"),
             PromptTemplateType::WizardCoder => write!(f, "wizard-coder"),
             PromptTemplateType::Zephyr => write!(f, "zephyr"),

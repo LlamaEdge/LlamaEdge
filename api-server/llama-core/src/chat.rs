@@ -281,6 +281,8 @@ fn chat_stream_by_graph(
             if graph.metadata.prompt_template != PromptTemplateType::MistralTool
                 && graph.metadata.prompt_template != PromptTemplateType::ChatMLTool
                 && graph.metadata.prompt_template != PromptTemplateType::GroqLlama3Tool
+                && graph.metadata.prompt_template != PromptTemplateType::Llama3Tool
+                && graph.metadata.prompt_template != PromptTemplateType::InternLM2Tool
             {
                 let err_msg = "The tool use is only supported for 'mistral-chat' and 'chatml' prompt templates.";
 
@@ -290,160 +292,81 @@ fn chat_stream_by_graph(
                 return Err(LlamaCoreError::Operation(err_msg.into()));
             }
 
-            match parse_tool_calls(&message, graph.metadata.prompt_template) {
-                Some(tool_calls) => {
-                    // tool_calls chunk
-                    let tool_call_chunk = {
-                        let chat_completion_chunk = ChatCompletionChunk {
-                            id: id.clone(),
-                            object: "chat.completion.chunk".to_string(),
-                            created: created.as_secs(),
-                            model: graph.name().to_owned(),
-                            system_fingerprint: "fp_44709d6fcb".to_string(),
-                            choices: vec![ChatCompletionChunkChoice {
-                                index: 0,
-                                delta: ChatCompletionChunkChoiceDelta {
-                                    role: ChatCompletionRole::Assistant,
-                                    content: Some(message),
-                                    tool_calls,
-                                },
-                                logprobs: None,
-                                finish_reason: None,
-                            }],
-                            usage: None,
-                        };
-                        let chunk_str =
-                            serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                let err_msg = format!(
-                                    "Failed to serialize chat completion chunk. Reason: {}",
-                                    e
-                                );
+            let parsed_result = parse_tool_calls(&message, graph.metadata.prompt_template)?;
 
-                                #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", &err_msg);
+            let content = match parsed_result.content {
+                Some(content) => Some(content),
+                None => Some(parsed_result.raw),
+            };
 
-                                LlamaCoreError::Operation(err_msg)
-                            })?;
+            // tool_calls chunk
+            let tool_call_chunk = {
+                let chat_completion_chunk = ChatCompletionChunk {
+                    id: id.clone(),
+                    object: "chat.completion.chunk".to_string(),
+                    created: created.as_secs(),
+                    model: graph.name().to_owned(),
+                    system_fingerprint: "fp_44709d6fcb".to_string(),
+                    choices: vec![ChatCompletionChunkChoice {
+                        index: 0,
+                        delta: ChatCompletionChunkChoiceDelta {
+                            role: ChatCompletionRole::Assistant,
+                            content,
+                            tool_calls: parsed_result.tool_calls,
+                        },
+                        logprobs: None,
+                        finish_reason: None,
+                    }],
+                    usage: None,
+                };
+                let chunk_str = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                    let err_msg =
+                        format!("Failed to serialize chat completion chunk. Reason: {}", e);
 
-                        format!("data: {}\n\n", chunk_str)
-                    };
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
 
-                    // uage chunk
-                    let usage_chunk = {
-                        let chat_completion_chunk = ChatCompletionChunk {
-                            id: id.clone(),
-                            object: "chat.completion.chunk".to_string(),
-                            created: created.as_secs(),
-                            model: graph.name().to_owned(),
-                            system_fingerprint: "fp_44709d6fcb".to_string(),
-                            choices: vec![],
-                            usage,
-                        };
-                        let chunk_str =
-                            serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                let err_msg = format!(
-                                    "Failed to serialize chat completion chunk. Reason: {}",
-                                    e
-                                );
+                    LlamaCoreError::Operation(err_msg)
+                })?;
 
-                                #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", &err_msg);
+                format!("data: {}\n\n", chunk_str)
+            };
 
-                                LlamaCoreError::Operation(err_msg)
-                            })?;
+            // uage chunk
+            let usage_chunk = {
+                let chat_completion_chunk = ChatCompletionChunk {
+                    id: id.clone(),
+                    object: "chat.completion.chunk".to_string(),
+                    created: created.as_secs(),
+                    model: graph.name().to_owned(),
+                    system_fingerprint: "fp_44709d6fcb".to_string(),
+                    choices: vec![],
+                    usage,
+                };
+                let chunk_str = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
+                    let err_msg =
+                        format!("Failed to serialize chat completion chunk. Reason: {}", e);
 
-                        format!("data: {}\n\n", chunk_str)
-                    };
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
 
-                    // ending chunk
-                    let ending_chunk = "data: [DONE]\n\n".to_string();
+                    LlamaCoreError::Operation(err_msg)
+                })?;
 
-                    let chunks = vec![tool_call_chunk, usage_chunk, ending_chunk];
+                format!("data: {}\n\n", chunk_str)
+            };
 
-                    Ok(ChatStream::new(
-                        Some(graph.name().to_owned()),
-                        id,
-                        include_usage,
-                        Some(chunks),
-                    ))
-                }
-                None => {
-                    // tool_calls chunk
-                    let tool_call_chunk = {
-                        let chat_completion_chunk = ChatCompletionChunk {
-                            id: id.clone(),
-                            object: "chat.completion.chunk".to_string(),
-                            created: created.as_secs(),
-                            model: graph.name().to_owned(),
-                            system_fingerprint: "fp_44709d6fcb".to_string(),
-                            choices: vec![ChatCompletionChunkChoice {
-                                index: 0,
-                                delta: ChatCompletionChunkChoiceDelta {
-                                    role: ChatCompletionRole::Assistant,
-                                    content: Some(message),
-                                    tool_calls: vec![],
-                                },
-                                logprobs: None,
-                                finish_reason: None,
-                            }],
-                            usage: None,
-                        };
-                        let chunk_str =
-                            serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                let err_msg = format!(
-                                    "Failed to serialize chat completion chunk. Reason: {}",
-                                    e
-                                );
+            // ending chunk
+            let ending_chunk = "data: [DONE]\n\n".to_string();
 
-                                #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", &err_msg);
+            let chunks = vec![tool_call_chunk, usage_chunk, ending_chunk];
 
-                                LlamaCoreError::Operation(err_msg)
-                            })?;
-
-                        format!("data: {}\n\n", chunk_str)
-                    };
-
-                    // uage chunk
-                    let usage_chunk = {
-                        let chat_completion_chunk = ChatCompletionChunk {
-                            id: id.clone(),
-                            object: "chat.completion.chunk".to_string(),
-                            created: created.as_secs(),
-                            model: graph.name().to_owned(),
-                            system_fingerprint: "fp_44709d6fcb".to_string(),
-                            choices: vec![],
-                            usage,
-                        };
-                        let chunk_str =
-                            serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                let err_msg = format!(
-                                    "Failed to serialize chat completion chunk. Reason: {}",
-                                    e
-                                );
-
-                                #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", &err_msg);
-
-                                LlamaCoreError::Operation(err_msg)
-                            })?;
-
-                        format!("data: {}\n\n", chunk_str)
-                    };
-
-                    // ending chunk
-                    let ending_chunk = "data: [DONE]\n\n".to_string();
-
-                    let chunks = vec![tool_call_chunk, usage_chunk, ending_chunk];
-
-                    Ok(ChatStream::new(
-                        Some(graph.name().to_owned()),
-                        id,
-                        include_usage,
-                        Some(chunks),
-                    ))
-                }
-            }
+            Ok(ChatStream::new(
+                Some(graph.name().to_owned()),
+                id,
+                include_usage,
+                Some(chunks),
+            ))
         }
         Err(wasmedge_wasi_nn::Error::BackendError(wasmedge_wasi_nn::BackendError::ContextFull)) => {
             // Retrieve the output.
@@ -900,6 +823,8 @@ fn compute_by_graph(
                     if graph.metadata.prompt_template != PromptTemplateType::MistralTool
                         && graph.metadata.prompt_template != PromptTemplateType::ChatMLTool
                         && graph.metadata.prompt_template != PromptTemplateType::GroqLlama3Tool
+                        && graph.metadata.prompt_template != PromptTemplateType::Llama3Tool
+                        && graph.metadata.prompt_template != PromptTemplateType::InternLM2Tool
                     {
                         let err_msg = "The tool use is only supported for 'mistral-chat' and 'chatml' prompt templates.";
 
@@ -909,66 +834,42 @@ fn compute_by_graph(
                         return Err(LlamaCoreError::Operation(err_msg.into()));
                     }
 
-                    match parse_tool_calls(&message, graph.metadata.prompt_template) {
-                        Some(tool_calls) => {
-                            let finish_reason = if tool_calls.is_empty() {
-                                FinishReason::stop
-                            } else {
-                                FinishReason::tool_calls
-                            };
+                    let parsed_result = parse_tool_calls(&message, graph.metadata.prompt_template)?;
 
-                            // create ChatCompletionResponse
-                            Ok(ChatCompletionObject {
-                                id: id.into(),
-                                object: String::from("chat.completion"),
-                                created: created.as_secs(),
-                                model: graph.name().to_owned(),
-                                choices: vec![ChatCompletionObjectChoice {
-                                    index: 0,
-                                    message: ChatCompletionObjectMessage {
-                                        role: ChatCompletionRole::Assistant,
-                                        content: Some(message),
-                                        tool_calls,
-                                        function_call: None,
-                                    },
-                                    finish_reason,
-                                    logprobs: None,
-                                }],
-                                usage: Usage {
-                                    prompt_tokens: token_info.prompt_tokens,
-                                    completion_tokens: token_info.completion_tokens,
-                                    total_tokens: token_info.prompt_tokens
-                                        + token_info.completion_tokens,
-                                },
-                            })
-                        }
-                        None => {
-                            // create ChatCompletionResponse
-                            Ok(ChatCompletionObject {
-                                id: id.into(),
-                                object: String::from("chat.completion"),
-                                created: created.as_secs(),
-                                model: graph.name().to_owned(),
-                                choices: vec![ChatCompletionObjectChoice {
-                                    index: 0,
-                                    message: ChatCompletionObjectMessage {
-                                        role: ChatCompletionRole::Assistant,
-                                        content: Some(message),
-                                        tool_calls: vec![],
-                                        function_call: None,
-                                    },
-                                    finish_reason: FinishReason::stop,
-                                    logprobs: None,
-                                }],
-                                usage: Usage {
-                                    prompt_tokens: token_info.prompt_tokens,
-                                    completion_tokens: token_info.completion_tokens,
-                                    total_tokens: token_info.prompt_tokens
-                                        + token_info.completion_tokens,
-                                },
-                            })
-                        }
-                    }
+                    let finish_reason = if parsed_result.tool_calls.is_empty() {
+                        FinishReason::stop
+                    } else {
+                        FinishReason::tool_calls
+                    };
+
+                    let content = match parsed_result.content {
+                        Some(content) => Some(content),
+                        None => Some(parsed_result.raw),
+                    };
+
+                    // create ChatCompletionResponse
+                    Ok(ChatCompletionObject {
+                        id: id.into(),
+                        object: String::from("chat.completion"),
+                        created: created.as_secs(),
+                        model: graph.name().to_owned(),
+                        choices: vec![ChatCompletionObjectChoice {
+                            index: 0,
+                            message: ChatCompletionObjectMessage {
+                                role: ChatCompletionRole::Assistant,
+                                content,
+                                tool_calls: parsed_result.tool_calls,
+                                function_call: None,
+                            },
+                            finish_reason,
+                            logprobs: None,
+                        }],
+                        usage: Usage {
+                            prompt_tokens: token_info.prompt_tokens,
+                            completion_tokens: token_info.completion_tokens,
+                            total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
+                        },
+                    })
                 }
                 false => {
                     // create ChatCompletionResponse
@@ -1145,7 +1046,10 @@ fn compute_by_graph(
     }
 }
 
-fn parse_tool_calls(input: &str, prompt_template: PromptTemplateType) -> Option<Vec<ToolCall>> {
+fn parse_tool_calls(
+    input: &str,
+    prompt_template: PromptTemplateType,
+) -> Result<ParseResult, LlamaCoreError> {
     match prompt_template {
         PromptTemplateType::MistralTool => match regex::Regex::new(r"\[\{.*?\}\]") {
             Ok(re) => {
@@ -1156,15 +1060,53 @@ fn parse_tool_calls(input: &str, prompt_template: PromptTemplateType) -> Option<
                     #[cfg(feature = "logging")]
                     info!(target: "llama_core", "captured: {}", matched);
 
-                    if let Ok(group) = serde_json::from_str::<Vec<serde_json::Value>>(matched) {
-                        values.extend(group);
+                    match serde_json::from_str::<Vec<serde_json::Value>>(matched) {
+                        Ok(group) => values.extend(group),
+                        Err(e) => {
+                            let err_msg = format!(
+                                "Failed to deserialize generated tool calls. Reason: {}",
+                                e
+                            );
+
+                            #[cfg(feature = "logging")]
+                            error!(target: "llama_core", "{}", &err_msg);
+
+                            return Err(LlamaCoreError::Operation(err_msg));
+                        }
                     }
                 }
 
                 let mut tool_calls: Vec<ToolCall> = vec![];
                 for value in values.iter() {
-                    let name = value.get("name").unwrap().to_string().replace("\"", "");
-                    let arguments = value.get("arguments").unwrap().to_string();
+                    let name = match value.get("name") {
+                        Some(name) => name.to_string().replace("\"", ""),
+                        None => {
+                            let err_msg = format!(
+                                "Failed to get the name of the function. Tool call: {:?}",
+                                value
+                            );
+
+                            #[cfg(feature = "logging")]
+                            error!(target: "llama_core", "{}", &err_msg);
+
+                            return Err(LlamaCoreError::Operation(err_msg));
+                        }
+                    };
+
+                    let arguments = match value.get("arguments") {
+                        Some(arguments) => arguments.to_string(),
+                        None => {
+                            let err_msg = format!(
+                                "Failed to get the arguments of the function. Tool call: {:?}",
+                                value
+                            );
+
+                            #[cfg(feature = "logging")]
+                            error!(target: "llama_core", "{}", &err_msg);
+
+                            return Err(LlamaCoreError::Operation(err_msg));
+                        }
+                    };
 
                     let function = Function { name, arguments };
 
@@ -1177,16 +1119,24 @@ fn parse_tool_calls(input: &str, prompt_template: PromptTemplateType) -> Option<
                     tool_calls.push(tool_call);
                 }
 
-                #[cfg(feature = "logging")]
-                info!(target: "llama_core", "extracted {} tool calls: {:?}", tool_calls.len(),&tool_calls);
+                let parsed = ParseResult {
+                    raw: input.to_owned(),
+                    content: None,
+                    tool_calls,
+                };
 
-                Some(tool_calls)
+                #[cfg(feature = "logging")]
+                info!(target: "llama_core", "parsed result: {:?}", parsed);
+
+                Ok(parsed)
             }
-            Err(_e) => {
-                #[cfg(feature = "logging")]
-                error!(target: "llama_core", "Failed to create a regex pattern. Reason: {}", _e);
+            Err(e) => {
+                let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
 
-                None
+                #[cfg(feature = "logging")]
+                error!(target: "llama_core", "{}", &err_msg);
+
+                Err(LlamaCoreError::Operation(err_msg))
             }
         },
         PromptTemplateType::ChatMLTool => {
@@ -1194,20 +1144,58 @@ fn parse_tool_calls(input: &str, prompt_template: PromptTemplateType) -> Option<
                 Ok(re) => {
                     let mut values: Vec<serde_json::Value> = vec![];
                     for cap in re.captures_iter(input) {
-                        let cleaned = cap[1].replace("\\n", ""); // Remove "\\n" from the captured group
+                        let matched = cap[1].replace("\\n", ""); // Remove "\\n" from the captured group
 
                         #[cfg(feature = "logging")]
-                        info!(target: "llama_core", "captured: {}", cleaned);
+                        info!(target: "llama_core", "captured: {}", &matched);
 
-                        if let Ok(value) = serde_json::from_str::<serde_json::Value>(&cleaned) {
-                            values.push(value);
+                        match serde_json::from_str::<serde_json::Value>(&matched) {
+                            Ok(value) => values.push(value),
+                            Err(e) => {
+                                let err_msg = format!(
+                                    "Failed to deserialize generated tool calls. Reason: {}",
+                                    e
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            }
                         }
                     }
 
                     let mut tool_calls: Vec<ToolCall> = vec![];
                     for value in values.iter() {
-                        let name = value.get("name").unwrap().to_string().replace("\"", "");
-                        let arguments = value.get("arguments").unwrap().to_string();
+                        let name = match value.get("name") {
+                            Some(name) => name.to_string().replace("\"", ""),
+                            None => {
+                                let err_msg = format!(
+                                    "Failed to get the name of the function. Tool call: {:?}",
+                                    value
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            }
+                        };
+
+                        let arguments = match value.get("arguments") {
+                            Some(arguments) => arguments.to_string(),
+                            None => {
+                                let err_msg = format!(
+                                    "Failed to get the arguments of the function. Tool call: {:?}",
+                                    value
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            }
+                        };
 
                         let function = Function { name, arguments };
 
@@ -1220,16 +1208,24 @@ fn parse_tool_calls(input: &str, prompt_template: PromptTemplateType) -> Option<
                         tool_calls.push(tool_call);
                     }
 
-                    #[cfg(feature = "logging")]
-                    info!(target: "llama_core", "extracted {} tool calls: {:?}", tool_calls.len(),&tool_calls);
+                    let parsed = ParseResult {
+                        raw: input.to_owned(),
+                        content: None,
+                        tool_calls,
+                    };
 
-                    Some(tool_calls)
+                    #[cfg(feature = "logging")]
+                    info!(target: "llama_core", "parsed result: {:?}", parsed);
+
+                    Ok(parsed)
                 }
-                Err(_e) => {
-                    #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "Failed to create a regex pattern. Reason: {}", _e);
+                Err(e) => {
+                    let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
 
-                    None
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    Err(LlamaCoreError::Operation(err_msg))
                 }
             }
         }
@@ -1239,20 +1235,58 @@ fn parse_tool_calls(input: &str, prompt_template: PromptTemplateType) -> Option<
                     let mut values: Vec<serde_json::Value> = vec![];
                     for cap in re.captures_iter(input) {
                         let cleaned = cap[1].replace("\\n", ""); // Remove "\\n" from the captured group
-                        let cleaned = cleaned.trim();
+                        let matched = cleaned.trim();
 
                         #[cfg(feature = "logging")]
-                        info!(target: "llama_core", "captured: {}", cleaned);
+                        info!(target: "llama_core", "captured: {}", matched);
 
-                        if let Ok(value) = serde_json::from_str::<serde_json::Value>(cleaned) {
-                            values.push(value);
+                        match serde_json::from_str::<serde_json::Value>(matched) {
+                            Ok(value) => values.push(value),
+                            Err(e) => {
+                                let err_msg = format!(
+                                    "Failed to deserialize generated tool calls. Reason: {}",
+                                    e
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            }
                         }
                     }
 
                     let mut tool_calls: Vec<ToolCall> = vec![];
                     for value in values.iter() {
-                        let name = value.get("name").unwrap().to_string().replace("\"", "");
-                        let arguments = value.get("arguments").unwrap().to_string();
+                        let name = match value.get("name") {
+                            Some(name) => name.to_string().replace("\"", ""),
+                            None => {
+                                let err_msg = format!(
+                                    "Failed to get the name of the function. Tool call: {:?}",
+                                    value
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            }
+                        };
+
+                        let arguments = match value.get("arguments") {
+                            Some(arguments) => arguments.to_string(),
+                            None => {
+                                let err_msg = format!(
+                                    "Failed to get the arguments of the function. Tool call: {:?}",
+                                    value
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            }
+                        };
 
                         let function = Function { name, arguments };
 
@@ -1265,20 +1299,232 @@ fn parse_tool_calls(input: &str, prompt_template: PromptTemplateType) -> Option<
                         tool_calls.push(tool_call);
                     }
 
-                    #[cfg(feature = "logging")]
-                    info!(target: "llama_core", "extracted {} tool calls: {:?}", tool_calls.len(),&tool_calls);
+                    let parsed = ParseResult {
+                        raw: input.to_owned(),
+                        content: None,
+                        tool_calls,
+                    };
 
-                    Some(tool_calls)
+                    #[cfg(feature = "logging")]
+                    info!(target: "llama_core", "parsed result: {:?}", parsed);
+
+                    Ok(parsed)
                 }
-                Err(_e) => {
-                    #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "Failed to create a regex pattern. Reason: {}", _e);
+                Err(e) => {
+                    let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
 
-                    None
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    Err(LlamaCoreError::Operation(err_msg))
                 }
             }
         }
-        _ => None,
+        PromptTemplateType::Llama3Tool => {
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "raw input: {}", input);
+
+            let re = match regex::Regex::new(r"^\{.*\}$") {
+                Ok(re) => re,
+                Err(e) => {
+                    let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "llama_core", "{}", &err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg));
+                }
+            };
+
+            if re.is_match(input) {
+                match serde_json::from_str::<serde_json::Value>(input) {
+                    Ok(value) => {
+                        let values: Vec<serde_json::Value> = vec![value];
+
+                        let mut tool_calls: Vec<ToolCall> = vec![];
+                        for value in values.iter() {
+                            let name = match value.get("name") {
+                                Some(name) => name.to_string().replace("\"", ""),
+                                None => {
+                                    let err_msg = format!(
+                                        "Failed to get the name of the function. Tool call: {:?}",
+                                        value
+                                    );
+
+                                    #[cfg(feature = "logging")]
+                                    error!(target: "llama_core", "{}", &err_msg);
+
+                                    return Err(LlamaCoreError::Operation(err_msg));
+                                }
+                            };
+
+                            let arguments = match value.get("parameters") {
+                                Some(arguments) => arguments.to_string(),
+                                None => {
+                                    let err_msg = format!(
+                                        "Failed to get the arguments of the function. Tool call: {:?}",
+                                        value
+                                    );
+
+                                    #[cfg(feature = "logging")]
+                                    error!(target: "llama_core", "{}", &err_msg);
+
+                                    return Err(LlamaCoreError::Operation(err_msg));
+                                }
+                            };
+
+                            let function = Function { name, arguments };
+
+                            let tool_call = ToolCall {
+                                id: "call_abc123".to_string(),
+                                ty: "function".to_string(),
+                                function,
+                            };
+
+                            tool_calls.push(tool_call);
+                        }
+
+                        let parsed = ParseResult {
+                            raw: input.to_owned(),
+                            content: None,
+                            tool_calls,
+                        };
+
+                        #[cfg(feature = "logging")]
+                        info!(target: "llama_core", "parsed result: {:?}", parsed);
+
+                        Ok(parsed)
+                    }
+                    Err(e) => {
+                        let err_msg =
+                            format!("Failed to deserialize generated tool calls. Reason: {}", e);
+
+                        #[cfg(feature = "logging")]
+                        error!(target: "llama_core", "{}", &err_msg);
+
+                        Err(LlamaCoreError::Operation(err_msg))
+                    }
+                }
+            } else {
+                let parsed = ParseResult {
+                    raw: input.to_owned(),
+                    content: None,
+                    tool_calls: vec![],
+                };
+
+                #[cfg(feature = "logging")]
+                info!(target: "llama_core", "parsed result: {:?}", parsed);
+
+                Ok(parsed)
+            }
+        }
+        PromptTemplateType::InternLM2Tool => {
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "raw input: {}", input);
+
+            let blocks: Vec<&str> = input.trim().split("<|action_start|><|plugin|>").collect();
+
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "blocks: {:?}", blocks);
+
+            let mut tool_calls: Vec<ToolCall> = vec![];
+            let mut content = String::new();
+            for block in blocks {
+                let block = block.trim();
+                if !block.is_empty() {
+                    if block.ends_with("<|action_end|>") {
+                        let value = block.trim().trim_end_matches("<|action_end|>");
+
+                        #[cfg(feature = "logging")]
+                        info!(target: "llama_core", "tool call: {}", value);
+
+                        match serde_json::from_str::<serde_json::Value>(value) {
+                            Ok(value) => {
+                                let name = match value.get("name") {
+                                    Some(name) => name.to_string().replace("\"", ""),
+                                    None => {
+                                        let err_msg = format!(
+                                            "Failed to get the name of the function. Tool call: {:?}",
+                                            value
+                                        );
+
+                                        #[cfg(feature = "logging")]
+                                        error!(target: "llama_core", "{}", &err_msg);
+
+                                        return Err(LlamaCoreError::Operation(err_msg));
+                                    }
+                                };
+
+                                let arguments = match value.get("parameters") {
+                                    Some(arguments) => arguments.to_string(),
+                                    None => {
+                                        let err_msg = format!(
+                                            "Failed to get the arguments of the function. Tool call: {:?}",
+                                            value
+                                        );
+
+                                        #[cfg(feature = "logging")]
+                                        error!(target: "llama_core", "{}", &err_msg);
+
+                                        return Err(LlamaCoreError::Operation(err_msg));
+                                    }
+                                };
+
+                                let function = Function { name, arguments };
+
+                                let tool_call = ToolCall {
+                                    id: "call_abc123".to_string(),
+                                    ty: "function".to_string(),
+                                    function,
+                                };
+
+                                tool_calls.push(tool_call);
+                            }
+                            Err(e) => {
+                                let err_msg = format!(
+                                    "Failed to deserialize generated tool calls. Reason: {}",
+                                    e
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "llama_core", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            }
+                        }
+                    } else {
+                        content.push_str(block);
+                        content.push('\n');
+                    }
+                }
+            }
+
+            let parsed = match content.is_empty() {
+                true => ParseResult {
+                    raw: input.to_owned(),
+                    content: None,
+                    tool_calls,
+                },
+                false => ParseResult {
+                    raw: input.to_owned(),
+                    content: Some(content.trim().to_owned()),
+                    tool_calls,
+                },
+            };
+
+            #[cfg(feature = "logging")]
+            info!(target: "llama_core", "parsed result: {:?}", parsed);
+
+            Ok(parsed)
+        }
+        _ => Err(LlamaCoreError::Operation(format!(
+            "The tool use is only supported for prompt templates: {}, {}, {}, {}, and {}.",
+            PromptTemplateType::MistralTool,
+            PromptTemplateType::ChatMLTool,
+            PromptTemplateType::GroqLlama3Tool,
+            PromptTemplateType::Llama3Tool,
+            PromptTemplateType::InternLM2Tool
+        ))),
     }
 }
 
@@ -1462,6 +1708,7 @@ fn post_process(
         }
     } else if *template_ty == PromptTemplateType::ChatML
         || *template_ty == PromptTemplateType::ChatMLTool
+        || *template_ty == PromptTemplateType::InternLM2Tool
     {
         if output.as_ref().contains("<|im_start|>") && output.as_ref().contains("<|im_end|>") {
             let idx_start = output.as_ref().find("<|im_start|>").unwrap();
@@ -1547,6 +1794,7 @@ fn post_process(
         }
     } else if *template_ty == PromptTemplateType::Llama3Chat
         || *template_ty == PromptTemplateType::GroqLlama3Tool
+        || *template_ty == PromptTemplateType::Llama3Tool
     {
         let s = output.as_ref().trim();
         if s.ends_with("<|eot_id|>") {
@@ -1596,6 +1844,15 @@ fn build_prompt(
         //         return Err(LlamaCoreError::Operation(err_msg));
         //     }
         // };
+
+        if chat_request.messages.is_empty() {
+            let err_msg = "The messages in the chat request are empty.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "llama_core", "{}", err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.to_owned()));
+        }
 
         let (prompt, tool_use) = match chat_request.tool_choice.as_ref() {
             Some(tool_choice) => match tool_choice {
@@ -1752,15 +2009,10 @@ fn build_prompt(
                         }
                     }
                     _ => {
-                        let err_msg = format!(
-                            "Found a unsupported chat message role: {:?}",
-                            chat_request.messages[0].role()
-                        );
-
                         #[cfg(feature = "logging")]
-                        error!(target: "llama_core", "{}", &err_msg);
+                        info!(target: "llama_core", "remove a {} message from the message queue", chat_request.messages[0].role());
 
-                        return Err(LlamaCoreError::Operation(err_msg));
+                        chat_request.messages.remove(0);
                     }
                 }
 
@@ -3440,4 +3692,11 @@ fn compute_stream(
     info!(target: "llama_core", "Return the chat stream chunk!");
 
     res
+}
+
+#[derive(Debug)]
+struct ParseResult {
+    raw: String,
+    content: Option<String>,
+    tool_calls: Vec<ToolCall>,
 }
