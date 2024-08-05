@@ -4,7 +4,7 @@ use thiserror::Error;
 #[allow(dead_code)]
 pub(crate) fn not_implemented() -> Response<Body> {
     // log error
-    error!(target: "response", "501 Not Implemented");
+    error!(target: "stdout", "501 Not Implemented");
 
     Response::builder()
         .header("Access-Control-Allow-Origin", "*")
@@ -22,7 +22,7 @@ pub(crate) fn internal_server_error(msg: impl AsRef<str>) -> Response<Body> {
     };
 
     // log error
-    error!(target: "response", "{}", &err_msg);
+    error!(target: "stdout", "{}", &err_msg);
 
     Response::builder()
         .header("Access-Control-Allow-Origin", "*")
@@ -40,7 +40,7 @@ pub(crate) fn bad_request(msg: impl AsRef<str>) -> Response<Body> {
     };
 
     // log error
-    error!(target: "response", "{}", &err_msg);
+    error!(target: "stdout", "{}", &err_msg);
 
     Response::builder()
         .header("Access-Control-Allow-Origin", "*")
@@ -61,7 +61,7 @@ pub(crate) fn invalid_endpoint(msg: impl AsRef<str>) -> Response<Body> {
     };
 
     // log error
-    error!(target: "response", "{}", &err_msg);
+    error!(target: "stdout", "{}", &err_msg);
 
     Response::builder()
         .header("Access-Control-Allow-Origin", "*")
