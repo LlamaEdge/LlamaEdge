@@ -26,7 +26,7 @@ pub async fn rag_doc_chunks_to_embeddings(
     rag_embedding_request: &RagEmbeddingRequest,
 ) -> Result<EmbeddingsResponse, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Convert document chunks to embeddings.");
+    info!(target: "stdout", "Convert document chunks to embeddings.");
 
     let running_mode = running_mode()?;
     if running_mode != RunningMode::Rag {
@@ -36,7 +36,7 @@ pub async fn rag_doc_chunks_to_embeddings(
         );
 
         #[cfg(feature = "logging")]
-        error!(target: "llama-core", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         return Err(LlamaCoreError::Operation(err_msg));
     }
@@ -46,11 +46,11 @@ pub async fn rag_doc_chunks_to_embeddings(
     let qdrant_collection_name = rag_embedding_request.qdrant_collection_name.as_str();
 
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Compute embeddings for document chunks.");
+    info!(target: "stdout", "Compute embeddings for document chunks.");
 
     #[cfg(feature = "logging")]
     if let Ok(request_str) = serde_json::to_string(&embedding_request) {
-        info!(target: "llama-core", "Embedding request: {}", request_str);
+        info!(target: "stdout", "Embedding request: {}", request_str);
     }
 
     // compute embeddings for the document
@@ -95,14 +95,14 @@ pub async fn rag_query_to_embeddings(
     rag_embedding_request: &RagEmbeddingRequest,
 ) -> Result<EmbeddingsResponse, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Compute embeddings for the user query.");
+    info!(target: "stdout", "Compute embeddings for the user query.");
 
     let running_mode = running_mode()?;
     if running_mode != RunningMode::Rag {
         let err_msg = format!("The RAG query is not supported in the {running_mode} mode.",);
 
         #[cfg(feature = "logging")]
-        error!(target: "llama-core", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         return Err(LlamaCoreError::Operation(err_msg));
     }
@@ -130,9 +130,9 @@ pub async fn rag_retrieve_context(
 ) -> Result<RetrieveObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
     {
-        info!(target: "llama-core", "Retrieve context.");
+        info!(target: "stdout", "Retrieve context.");
 
-        info!(target: "llama-core", "qdrant_url: {}, qdrant_collection_name: {}, limit: {}, score_threshold: {}", qdrant_url.as_ref(), qdrant_collection_name.as_ref(), limit, score_threshold.unwrap_or_default());
+        info!(target: "stdout", "qdrant_url: {}, qdrant_collection_name: {}, limit: {}, score_threshold: {}", qdrant_url.as_ref(), qdrant_collection_name.as_ref(), limit, score_threshold.unwrap_or_default());
     }
 
     let running_mode = running_mode()?;
@@ -143,7 +143,7 @@ pub async fn rag_retrieve_context(
         );
 
         #[cfg(feature = "logging")]
-        error!(target: "llama-core", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         return Err(LlamaCoreError::Operation(err_msg));
     }
@@ -164,7 +164,7 @@ pub async fn rag_retrieve_context(
         Ok(points) => points,
         Err(e) => {
             #[cfg(feature = "logging")]
-            error!(target: "llama-core", "{}", e.to_string());
+            error!(target: "stdout", "{}", e.to_string());
 
             return Err(e);
         }
@@ -206,7 +206,7 @@ async fn qdrant_create_collection(
     dim: usize,
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Create a Qdrant collection named {} of {} dimensions.", collection_name.as_ref(), dim);
+    info!(target: "stdout", "Create a Qdrant collection named {} of {} dimensions.", collection_name.as_ref(), dim);
 
     if let Err(e) = qdrant_client
         .create_collection(collection_name.as_ref(), dim as u32)
@@ -215,7 +215,7 @@ async fn qdrant_create_collection(
         let err_msg = e.to_string();
 
         #[cfg(feature = "logging")]
-        error!(target: "llama-core", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         return Err(LlamaCoreError::Operation(err_msg));
     }
@@ -230,7 +230,7 @@ async fn qdrant_persist_embeddings(
     chunks: &[String],
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Persist embeddings to the Qdrant instance.");
+    info!(target: "stdout", "Persist embeddings to the Qdrant instance.");
 
     let mut points = Vec::<Point>::new();
     for embedding in embeddings {
@@ -253,7 +253,7 @@ async fn qdrant_persist_embeddings(
     }
 
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Number of points to be upserted: {}", points.len());
+    info!(target: "stdout", "Number of points to be upserted: {}", points.len());
 
     if let Err(e) = qdrant_client
         .upsert_points(collection_name.as_ref(), points)
@@ -262,7 +262,7 @@ async fn qdrant_persist_embeddings(
         let err_msg = format!("Failed to upsert points. Reason: {}", e);
 
         #[cfg(feature = "logging")]
-        error!(target: "llama-core", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         return Err(LlamaCoreError::Operation(err_msg));
     }
@@ -278,7 +278,7 @@ async fn qdrant_search_similar_points(
     score_threshold: Option<f32>,
 ) -> Result<Vec<ScoredPoint>, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Search similar points from the qdrant instance.");
+    info!(target: "stdout", "Search similar points from the qdrant instance.");
 
     match qdrant_client
         .search_points(
@@ -291,7 +291,7 @@ async fn qdrant_search_similar_points(
     {
         Ok(search_result) => {
             #[cfg(feature = "logging")]
-            info!(target: "llama-core", "Number of similar points found: {}", search_result.len());
+            info!(target: "stdout", "Number of similar points found: {}", search_result.len());
 
             Ok(search_result)
         }
@@ -299,7 +299,7 @@ async fn qdrant_search_similar_points(
             let err_msg = e.to_string();
 
             #[cfg(feature = "logging")]
-            error!(target: "llama-core", "Fail to search similar points from the qdrant instance. Reason: {}", &err_msg);
+            error!(target: "stdout", "Fail to search similar points from the qdrant instance. Reason: {}", &err_msg);
 
             Err(LlamaCoreError::Operation(err_msg))
         }
@@ -332,7 +332,7 @@ pub fn chunk_text(
         let err_msg = "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported.";
 
         #[cfg(feature = "logging")]
-        error!(target: "llama-core", "{}", err_msg);
+        error!(target: "stdout", "{}", err_msg);
 
         return Err(LlamaCoreError::Operation(err_msg.into()));
     }
@@ -340,13 +340,13 @@ pub fn chunk_text(
     match ty.as_ref().to_lowercase().as_str() {
         "txt" => {
             #[cfg(feature = "logging")]
-            info!(target: "llama-core", "Chunk the plain text contents.");
+            info!(target: "stdout", "Chunk the plain text contents.");
 
             let tokenizer = cl100k_base().map_err(|e| {
                 let err_msg = e.to_string();
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama-core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -360,19 +360,19 @@ pub fn chunk_text(
                 .collect::<Vec<_>>();
 
             #[cfg(feature = "logging")]
-            info!(target: "llama-core", "Number of chunks: {}", chunks.len());
+            info!(target: "stdout", "Number of chunks: {}", chunks.len());
 
             Ok(chunks)
         }
         "md" => {
             #[cfg(feature = "logging")]
-            info!(target: "llama-core", "Chunk the markdown contents.");
+            info!(target: "stdout", "Chunk the markdown contents.");
 
             let tokenizer = cl100k_base().map_err(|e| {
                 let err_msg = e.to_string();
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama-core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -386,7 +386,7 @@ pub fn chunk_text(
                 .collect::<Vec<_>>();
 
             #[cfg(feature = "logging")]
-            info!(target: "llama-core", "Number of chunks: {}", chunks.len());
+            info!(target: "stdout", "Number of chunks: {}", chunks.len());
 
             Ok(chunks)
         }
@@ -395,7 +395,7 @@ pub fn chunk_text(
                 "Failed to upload the target file. Only text and markdown files are supported.";
 
             #[cfg(feature = "logging")]
-            error!(target: "llama-core", "{}", err_msg);
+            error!(target: "stdout", "{}", err_msg);
 
             Err(LlamaCoreError::Operation(err_msg.into()))
         }
