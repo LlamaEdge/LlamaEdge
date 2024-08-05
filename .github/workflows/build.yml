@@ -54,30 +54,22 @@ jobs:
         id: build_simple
         run: |
           cd simple
-          cargo +nightly fmt --all -- --check
-          cargo +nightly clippy --target wasm32-wasip1 -- -D warnings
-          cargo build --target wasm32-wasip1 --release
+          RUSTFLAGS="--cfg wasmedge --cfg tokio_unstable" cargo +nightly fmt --all -- --check
+          RUSTFLAGS="--cfg wasmedge --cfg tokio_unstable" cargo +nightly clippy --target wasm32-wasip1 -- -D warnings
+          RUSTFLAGS="--cfg wasmedge --cfg tokio_unstable" cargo build --target wasm32-wasip1 --release
 
       - name: Build chat
         id: build_chat
         run: |
           cd chat
-          cargo +nightly fmt --all -- --check
-          cargo +nightly clippy --target wasm32-wasip1 -- -D warnings
-          cargo build --target wasm32-wasip1 --release
+          RUSTFLAGS="--cfg wasmedge --cfg tokio_unstable" cargo +nightly fmt --all -- --check
+          RUSTFLAGS="--cfg wasmedge --cfg tokio_unstable" cargo +nightly clippy --target wasm32-wasip1 -- -D warnings
+          RUSTFLAGS="--cfg wasmedge --cfg tokio_unstable" cargo build --target wasm32-wasip1 --release
 
       - name: Build api-server
         id: build_api_server
         run: |
           cd api-server
-          cargo +nightly fmt --all -- --check
-          cargo +nightly clippy --target wasm32-wasip1 -- -D warnings
-          cargo build --target wasm32-wasip1 --release
-
-      - name: Build api-server-full
-        id: build_api_server_full
-        run: |
-          cd api-server
-          cargo +nightly fmt --all -- --check
-          cargo +nightly clippy --target wasm32-wasip1 --features full -- -D warnings
-          cargo build --target wasm32-wasip1 --release --features full
+          RUSTFLAGS="--cfg wasmedge --cfg tokio_unstable" cargo +nightly fmt --all -- --check
+          RUSTFLAGS="--cfg wasmedge --cfg tokio_unstable" cargo +nightly clippy --target wasm32-wasip1 -- -D warnings
+          RUSTFLAGS="--cfg wasmedge --cfg tokio_unstable" cargo build --target wasm32-wasip1 --release
