@@ -42,9 +42,9 @@ pub async fn chat(
 > {
     #[cfg(feature = "logging")]
     {
-        info!(target: "llama-core", "tool choice: {:?}", chat_request.tool_choice.as_ref());
-        info!(target: "llama-core", "tools: {:?}", chat_request.tools.as_ref());
-        info!(target: "llama-core", "stream mode: {:?}", chat_request.stream);
+        info!(target: "stdout", "tool choice: {:?}", chat_request.tool_choice.as_ref());
+        info!(target: "stdout", "tools: {:?}", chat_request.tools.as_ref());
+        info!(target: "stdout", "stream mode: {:?}", chat_request.stream);
     }
 
     match chat_request.stream {
@@ -79,7 +79,7 @@ async fn chat_stream(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Process chat completion request in the stream mode.");
+    info!(target: "stdout", "Process chat completion request in the stream mode.");
 
     let running_mode = running_mode()?;
     if running_mode == RunningMode::Embeddings {
@@ -89,7 +89,7 @@ async fn chat_stream(
         );
 
         #[cfg(feature = "logging")]
-        error!(target: "llama_core", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         return Err(LlamaCoreError::Operation(err_msg));
     }
@@ -101,7 +101,7 @@ async fn chat_stream(
     };
 
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "user: {}", &id);
+    info!(target: "stdout", "user: {}", &id);
 
     // parse the `include_usage` option
     let include_usage = match chat_request.stream_options {
@@ -110,7 +110,7 @@ async fn chat_stream(
     };
 
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "include_usage: {}", include_usage);
+    info!(target: "stdout", "include_usage: {}", include_usage);
 
     // update metadata
     let mut metadata = check_model_metadata(chat_request).await?;
@@ -121,9 +121,9 @@ async fn chat_stream(
 
     #[cfg(feature = "logging")]
     {
-        info!(target: "llama_core", "prompt:\n{}", &prompt);
-        info!(target: "llama_core", "available_completion_tokens: {}", avaible_completion_tokens);
-        info!(target: "llama_core", "tool_use: {}", tool_use);
+        info!(target: "stdout", "prompt:\n{}", &prompt);
+        info!(target: "stdout", "available_completion_tokens: {}", avaible_completion_tokens);
+        info!(target: "stdout", "tool_use: {}", tool_use);
     }
 
     // update metadata n_predict
@@ -142,7 +142,7 @@ async fn chat_stream(
                         let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                         #[cfg(feature = "logging")]
-                        error!(target: "llama_core", "{}", &err_msg);
+                        error!(target: "stdout", "{}", &err_msg);
 
                         return Err(LlamaCoreError::Operation(err_msg.into()));
                     }
@@ -152,7 +152,7 @@ async fn chat_stream(
                     let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     LlamaCoreError::Operation(err_msg)
                 })?;
@@ -166,7 +166,7 @@ async fn chat_stream(
                         );
 
                         #[cfg(feature = "logging")]
-                        error!(target: "llama_core", "{}", &err_msg);
+                        error!(target: "stdout", "{}", &err_msg);
 
                         return Err(LlamaCoreError::Operation(err_msg));
                     }
@@ -179,7 +179,7 @@ async fn chat_stream(
                         let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                         #[cfg(feature = "logging")]
-                        error!(target: "llama_core", "{}", &err_msg);
+                        error!(target: "stdout", "{}", &err_msg);
 
                         return Err(LlamaCoreError::Operation(err_msg.into()));
                     }
@@ -189,7 +189,7 @@ async fn chat_stream(
                     let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     LlamaCoreError::Operation(err_msg)
                 })?;
@@ -200,7 +200,7 @@ async fn chat_stream(
                         let err_msg = "There is no model available in the chat graphs.";
 
                         #[cfg(feature = "logging")]
-                        error!(target: "llama_core", "{}", &err_msg);
+                        error!(target: "stdout", "{}", &err_msg);
 
                         return Err(LlamaCoreError::Operation(err_msg.into()));
                     }
@@ -210,7 +210,7 @@ async fn chat_stream(
     };
 
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "End of the chat completion stream.");
+    info!(target: "stdout", "End of the chat completion stream.");
 
     Ok(stream)
 }
@@ -221,7 +221,7 @@ fn chat_stream_by_graph(
     include_usage: bool,
 ) -> Result<ChatStream, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Handle chat request with available tools by the model named {}.", graph.name());
+    info!(target: "stdout", "Handle chat request with available tools by the model named {}.", graph.name());
 
     let id = id.into();
 
@@ -236,13 +236,13 @@ fn chat_stream_by_graph(
                 );
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "raw generation:\n{}", output);
+            info!(target: "stdout", "raw generation:\n{}", output);
 
             // post-process
             let message = post_process(output, &graph.metadata.prompt_template).map_err(|e| {
@@ -250,13 +250,13 @@ fn chat_stream_by_graph(
             })?;
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "post-processed generation:\n{}", &message);
+            info!(target: "stdout", "post-processed generation:\n{}", &message);
 
             // retrieve the number of prompt and completion tokens
             let token_info = get_token_info_by_graph(graph)?;
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "prompt tokens: {}, completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
+            info!(target: "stdout", "prompt tokens: {}, completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
 
             let usage = Some(Usage {
                 prompt_tokens: token_info.prompt_tokens,
@@ -270,7 +270,7 @@ fn chat_stream_by_graph(
                     let err_msg = format!("Failed to get the current time. Reason: {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     LlamaCoreError::Operation(err_msg)
                 })?;
@@ -284,7 +284,7 @@ fn chat_stream_by_graph(
                 let err_msg = "The tool use is only supported for 'mistral-chat' and 'chatml' prompt templates.";
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 return Err(LlamaCoreError::Operation(err_msg.into()));
             }
@@ -333,7 +333,7 @@ fn chat_stream_by_graph(
                         format!("Failed to serialize chat completion chunk. Reason: {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     LlamaCoreError::Operation(err_msg)
                 })?;
@@ -357,7 +357,7 @@ fn chat_stream_by_graph(
                         format!("Failed to serialize chat completion chunk. Reason: {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     LlamaCoreError::Operation(err_msg)
                 })?;
@@ -387,7 +387,7 @@ fn chat_stream_by_graph(
                 );
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -397,7 +397,7 @@ fn chat_stream_by_graph(
                 let err_msg = format!("Failed to post-process the output. {}", e);
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -406,7 +406,7 @@ fn chat_stream_by_graph(
             let token_info = get_token_info_by_graph(graph)?;
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "prompt tokens: {}, completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
+            info!(target: "stdout", "prompt tokens: {}, completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
 
             let usage = Some(Usage {
                 prompt_tokens: token_info.prompt_tokens,
@@ -420,7 +420,7 @@ fn chat_stream_by_graph(
                     let err_msg = format!("Failed to get the current time. Reason: {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     LlamaCoreError::Operation(err_msg)
                 })?;
@@ -452,7 +452,7 @@ fn chat_stream_by_graph(
                         format!("Failed to serialize chat completion chunk. Reason: {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     LlamaCoreError::Operation(err_msg)
                 })?;
@@ -478,7 +478,7 @@ fn chat_stream_by_graph(
                         format!("Failed to serialize chat completion chunk. Reason: {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     LlamaCoreError::Operation(err_msg)
                 })?;
@@ -502,7 +502,7 @@ fn chat_stream_by_graph(
             wasmedge_wasi_nn::BackendError::PromptTooLong,
         )) => {
             #[cfg(feature = "logging")]
-            warn!(target: "llama_core", "The prompt is too long. Please reduce the length of your input and try again.");
+            warn!(target: "stdout", "The prompt is too long. Please reduce the length of your input and try again.");
 
             // Retrieve the output.
             let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
@@ -513,7 +513,7 @@ fn chat_stream_by_graph(
                 );
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -523,7 +523,7 @@ fn chat_stream_by_graph(
                 let err_msg = format!("Failed to post-process the output. {}", e);
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -532,7 +532,7 @@ fn chat_stream_by_graph(
             let token_info = get_token_info_by_graph(graph)?;
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "prompt tokens: {}, completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
+            info!(target: "stdout", "prompt tokens: {}, completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
 
             let usage = Some(Usage {
                 prompt_tokens: token_info.prompt_tokens,
@@ -546,7 +546,7 @@ fn chat_stream_by_graph(
                     let err_msg = format!("Failed to get the current time. Reason: {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     LlamaCoreError::Operation(err_msg)
                 })?;
@@ -578,7 +578,7 @@ fn chat_stream_by_graph(
                         format!("Failed to serialize chat completion chunk. Reason: {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     LlamaCoreError::Operation(err_msg)
                 })?;
@@ -604,7 +604,7 @@ fn chat_stream_by_graph(
                         format!("Failed to serialize chat completion chunk. Reason: {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     LlamaCoreError::Operation(err_msg)
                 })?;
@@ -628,7 +628,7 @@ fn chat_stream_by_graph(
             let err_msg = format!("Failed to compute the chat completion. Reason: {}", e);
 
             #[cfg(feature = "logging")]
-            error!(target: "llama_core", "{}", &err_msg);
+            error!(target: "stdout", "{}", &err_msg);
 
             Err(LlamaCoreError::Backend(BackendError::Compute(err_msg)))
         }
@@ -639,7 +639,7 @@ async fn chat_once(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<ChatCompletionObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Processing chat completion request in non-stream mode.");
+    info!(target: "stdout", "Processing chat completion request in non-stream mode.");
 
     let running_mode = running_mode()?;
     if running_mode == RunningMode::Embeddings {
@@ -649,7 +649,7 @@ async fn chat_once(
         );
 
         #[cfg(feature = "logging")]
-        error!(target: "llama_core", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         return Err(LlamaCoreError::Operation(err_msg));
     }
@@ -661,7 +661,7 @@ async fn chat_once(
     };
 
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "user: {}", &id);
+    info!(target: "stdout", "user: {}", &id);
 
     // update metadata
     let mut metadata = check_model_metadata(chat_request).await?;
@@ -672,9 +672,9 @@ async fn chat_once(
 
     #[cfg(feature = "logging")]
     {
-        info!(target: "llama_core", "prompt:\n{}", &prompt);
-        info!(target: "llama_core", "available_completion_tokens: {}", avaible_completion_tokens);
-        info!(target: "llama_core", "tool_use: {}", tool_use);
+        info!(target: "stdout", "prompt:\n{}", &prompt);
+        info!(target: "stdout", "available_completion_tokens: {}", avaible_completion_tokens);
+        info!(target: "stdout", "tool_use: {}", tool_use);
     }
 
     // update metadata n_predict
@@ -687,7 +687,7 @@ async fn chat_once(
     let res = compute(model_name.as_ref(), id, tool_use);
 
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "End of the chat completion.");
+    info!(target: "stdout", "End of the chat completion.");
 
     res
 }
@@ -698,7 +698,7 @@ fn compute(
     tool_use: bool,
 ) -> Result<ChatCompletionObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Compute chat completion.");
+    info!(target: "stdout", "Compute chat completion.");
 
     match model_name {
         Some(model_name) => {
@@ -708,7 +708,7 @@ fn compute(
                     let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     return Err(LlamaCoreError::Operation(err_msg.into()));
                 }
@@ -718,7 +718,7 @@ fn compute(
                 let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -732,7 +732,7 @@ fn compute(
                     );
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     Err(LlamaCoreError::Operation(err_msg))
                 }
@@ -745,7 +745,7 @@ fn compute(
                     let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     return Err(LlamaCoreError::Operation(err_msg.into()));
                 }
@@ -755,7 +755,7 @@ fn compute(
                 let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -766,7 +766,7 @@ fn compute(
                     let err_msg = "There is no model available in the chat graphs.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     Err(LlamaCoreError::Operation(err_msg.into()))
                 }
@@ -781,7 +781,7 @@ fn compute_by_graph(
     tool_use: bool,
 ) -> Result<ChatCompletionObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Compute chat completion by the model named {}.", graph.name());
+    info!(target: "stdout", "Compute chat completion by the model named {}.", graph.name());
 
     match graph.compute() {
         Ok(_) => {
@@ -794,13 +794,13 @@ fn compute_by_graph(
                 );
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "raw generation: {}", output);
+            info!(target: "stdout", "raw generation: {}", output);
 
             // post-process
             let message = post_process(output, &graph.metadata.prompt_template).map_err(|e| {
@@ -808,13 +808,13 @@ fn compute_by_graph(
             })?;
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "post-processed generation:\n{}", &message);
+            info!(target: "stdout", "post-processed generation:\n{}", &message);
 
             // retrieve the number of prompt and completion tokens
             let token_info = get_token_info_by_graph(graph)?;
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "prompt tokens: {}, completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
+            info!(target: "stdout", "prompt tokens: {}, completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
 
             let created = SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -822,7 +822,7 @@ fn compute_by_graph(
                     let err_msg = format!("Failed to get the current time. Reason: {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     LlamaCoreError::Operation(err_msg)
                 })?;
@@ -838,7 +838,7 @@ fn compute_by_graph(
                         let err_msg = "The tool use is only supported for 'mistral-chat' and 'chatml' prompt templates.";
 
                         #[cfg(feature = "logging")]
-                        error!(target: "llama_core", "{}", &err_msg);
+                        error!(target: "stdout", "{}", &err_msg);
 
                         return Err(LlamaCoreError::Operation(err_msg.into()));
                     }
@@ -917,7 +917,7 @@ fn compute_by_graph(
                 );
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -927,7 +927,7 @@ fn compute_by_graph(
                 let err_msg = format!("Failed to post-process the output. {}", e);
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -936,7 +936,7 @@ fn compute_by_graph(
             let token_info = get_token_info_by_graph(graph)?;
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "prompt tokens: {}, completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
+            info!(target: "stdout", "prompt tokens: {}, completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
 
             let created = SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -944,7 +944,7 @@ fn compute_by_graph(
                     let err_msg = format!("Failed to get the current time. Reason: {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     LlamaCoreError::Operation(err_msg)
                 })?;
@@ -977,7 +977,7 @@ fn compute_by_graph(
             wasmedge_wasi_nn::BackendError::PromptTooLong,
         )) => {
             #[cfg(feature = "logging")]
-            warn!(target: "llama_core", "The prompt is too long. Please reduce the length of your input and try again.");
+            warn!(target: "stdout", "The prompt is too long. Please reduce the length of your input and try again.");
 
             // Retrieve the output.
             let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
@@ -988,7 +988,7 @@ fn compute_by_graph(
                 );
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -998,7 +998,7 @@ fn compute_by_graph(
                 let err_msg = format!("Failed to post-process the output. {}", e);
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -1007,7 +1007,7 @@ fn compute_by_graph(
             let token_info = get_token_info_by_graph(graph)?;
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "prompt tokens: {}, completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
+            info!(target: "stdout", "prompt tokens: {}, completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
 
             let created = SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -1015,7 +1015,7 @@ fn compute_by_graph(
                     let err_msg = format!("Failed to get the current time. Reason: {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     LlamaCoreError::Operation(err_msg)
                 })?;
@@ -1048,7 +1048,7 @@ fn compute_by_graph(
             let err_msg = format!("Failed to compute the chat completion. Reason: {}", e);
 
             #[cfg(feature = "logging")]
-            error!(target: "llama_core", "{}", &err_msg);
+            error!(target: "stdout", "{}", &err_msg);
 
             Err(LlamaCoreError::Backend(BackendError::Compute(err_msg)))
         }
@@ -1067,7 +1067,7 @@ fn parse_tool_calls(
                     let matched = &cap[0];
 
                     #[cfg(feature = "logging")]
-                    info!(target: "llama_core", "captured: {}", matched);
+                    info!(target: "stdout", "captured: {}", matched);
 
                     match serde_json::from_str::<Vec<serde_json::Value>>(matched) {
                         Ok(group) => values.extend(group),
@@ -1078,7 +1078,7 @@ fn parse_tool_calls(
                             );
 
                             #[cfg(feature = "logging")]
-                            error!(target: "llama_core", "{}", &err_msg);
+                            error!(target: "stdout", "{}", &err_msg);
 
                             return Err(LlamaCoreError::Operation(err_msg));
                         }
@@ -1096,7 +1096,7 @@ fn parse_tool_calls(
                             );
 
                             #[cfg(feature = "logging")]
-                            error!(target: "llama_core", "{}", &err_msg);
+                            error!(target: "stdout", "{}", &err_msg);
 
                             return Err(LlamaCoreError::Operation(err_msg));
                         }
@@ -1111,7 +1111,7 @@ fn parse_tool_calls(
                             );
 
                             #[cfg(feature = "logging")]
-                            error!(target: "llama_core", "{}", &err_msg);
+                            error!(target: "stdout", "{}", &err_msg);
 
                             return Err(LlamaCoreError::Operation(err_msg));
                         }
@@ -1135,7 +1135,7 @@ fn parse_tool_calls(
                 };
 
                 #[cfg(feature = "logging")]
-                info!(target: "llama_core", "parsed result: {:?}", parsed);
+                info!(target: "stdout", "parsed result: {:?}", parsed);
 
                 Ok(parsed)
             }
@@ -1143,7 +1143,7 @@ fn parse_tool_calls(
                 let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 Err(LlamaCoreError::Operation(err_msg))
             }
@@ -1156,7 +1156,7 @@ fn parse_tool_calls(
                         let matched = cap[1].replace("\\n", ""); // Remove "\\n" from the captured group
 
                         #[cfg(feature = "logging")]
-                        info!(target: "llama_core", "captured: {}", &matched);
+                        info!(target: "stdout", "captured: {}", &matched);
 
                         match serde_json::from_str::<serde_json::Value>(&matched) {
                             Ok(value) => values.push(value),
@@ -1167,7 +1167,7 @@ fn parse_tool_calls(
                                 );
 
                                 #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", &err_msg);
+                                error!(target: "stdout", "{}", &err_msg);
 
                                 return Err(LlamaCoreError::Operation(err_msg));
                             }
@@ -1185,7 +1185,7 @@ fn parse_tool_calls(
                                 );
 
                                 #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", &err_msg);
+                                error!(target: "stdout", "{}", &err_msg);
 
                                 return Err(LlamaCoreError::Operation(err_msg));
                             }
@@ -1200,7 +1200,7 @@ fn parse_tool_calls(
                                 );
 
                                 #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", &err_msg);
+                                error!(target: "stdout", "{}", &err_msg);
 
                                 return Err(LlamaCoreError::Operation(err_msg));
                             }
@@ -1224,7 +1224,7 @@ fn parse_tool_calls(
                     };
 
                     #[cfg(feature = "logging")]
-                    info!(target: "llama_core", "parsed result: {:?}", parsed);
+                    info!(target: "stdout", "parsed result: {:?}", parsed);
 
                     Ok(parsed)
                 }
@@ -1232,7 +1232,7 @@ fn parse_tool_calls(
                     let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     Err(LlamaCoreError::Operation(err_msg))
                 }
@@ -1247,7 +1247,7 @@ fn parse_tool_calls(
                         let matched = cleaned.trim();
 
                         #[cfg(feature = "logging")]
-                        info!(target: "llama_core", "captured: {}", matched);
+                        info!(target: "stdout", "captured: {}", matched);
 
                         match serde_json::from_str::<serde_json::Value>(matched) {
                             Ok(value) => values.push(value),
@@ -1258,7 +1258,7 @@ fn parse_tool_calls(
                                 );
 
                                 #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", &err_msg);
+                                error!(target: "stdout", "{}", &err_msg);
 
                                 return Err(LlamaCoreError::Operation(err_msg));
                             }
@@ -1276,7 +1276,7 @@ fn parse_tool_calls(
                                 );
 
                                 #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", &err_msg);
+                                error!(target: "stdout", "{}", &err_msg);
 
                                 return Err(LlamaCoreError::Operation(err_msg));
                             }
@@ -1291,7 +1291,7 @@ fn parse_tool_calls(
                                 );
 
                                 #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", &err_msg);
+                                error!(target: "stdout", "{}", &err_msg);
 
                                 return Err(LlamaCoreError::Operation(err_msg));
                             }
@@ -1315,7 +1315,7 @@ fn parse_tool_calls(
                     };
 
                     #[cfg(feature = "logging")]
-                    info!(target: "llama_core", "parsed result: {:?}", parsed);
+                    info!(target: "stdout", "parsed result: {:?}", parsed);
 
                     Ok(parsed)
                 }
@@ -1323,7 +1323,7 @@ fn parse_tool_calls(
                     let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     Err(LlamaCoreError::Operation(err_msg))
                 }
@@ -1331,7 +1331,7 @@ fn parse_tool_calls(
         }
         PromptTemplateType::Llama3Tool => {
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "raw input: {}", input);
+            info!(target: "stdout", "raw input: {}", input);
 
             let re = match regex::Regex::new(r"^\{.*\}$") {
                 Ok(re) => re,
@@ -1339,7 +1339,7 @@ fn parse_tool_calls(
                     let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     return Err(LlamaCoreError::Operation(err_msg));
                 }
@@ -1361,7 +1361,7 @@ fn parse_tool_calls(
                                     );
 
                                     #[cfg(feature = "logging")]
-                                    error!(target: "llama_core", "{}", &err_msg);
+                                    error!(target: "stdout", "{}", &err_msg);
 
                                     return Err(LlamaCoreError::Operation(err_msg));
                                 }
@@ -1376,7 +1376,7 @@ fn parse_tool_calls(
                                     );
 
                                     #[cfg(feature = "logging")]
-                                    error!(target: "llama_core", "{}", &err_msg);
+                                    error!(target: "stdout", "{}", &err_msg);
 
                                     return Err(LlamaCoreError::Operation(err_msg));
                                 }
@@ -1400,7 +1400,7 @@ fn parse_tool_calls(
                         };
 
                         #[cfg(feature = "logging")]
-                        info!(target: "llama_core", "parsed result: {:?}", parsed);
+                        info!(target: "stdout", "parsed result: {:?}", parsed);
 
                         Ok(parsed)
                     }
@@ -1409,7 +1409,7 @@ fn parse_tool_calls(
                             format!("Failed to deserialize generated tool calls. Reason: {}", e);
 
                         #[cfg(feature = "logging")]
-                        error!(target: "llama_core", "{}", &err_msg);
+                        error!(target: "stdout", "{}", &err_msg);
 
                         Err(LlamaCoreError::Operation(err_msg))
                     }
@@ -1422,19 +1422,19 @@ fn parse_tool_calls(
                 };
 
                 #[cfg(feature = "logging")]
-                info!(target: "llama_core", "parsed result: {:?}", parsed);
+                info!(target: "stdout", "parsed result: {:?}", parsed);
 
                 Ok(parsed)
             }
         }
         PromptTemplateType::InternLM2Tool => {
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "raw input: {}", input);
+            info!(target: "stdout", "raw input: {}", input);
 
             let blocks: Vec<&str> = input.trim().split("<|action_start|><|plugin|>").collect();
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "blocks: {:?}", blocks);
+            info!(target: "stdout", "blocks: {:?}", blocks);
 
             let mut tool_calls: Vec<ToolCall> = vec![];
             let mut content = String::new();
@@ -1445,7 +1445,7 @@ fn parse_tool_calls(
                         let value = block.trim().trim_end_matches("<|action_end|>");
 
                         #[cfg(feature = "logging")]
-                        info!(target: "llama_core", "tool call: {}", value);
+                        info!(target: "stdout", "tool call: {}", value);
 
                         match serde_json::from_str::<serde_json::Value>(value) {
                             Ok(value) => {
@@ -1458,7 +1458,7 @@ fn parse_tool_calls(
                                         );
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "llama_core", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", &err_msg);
 
                                         return Err(LlamaCoreError::Operation(err_msg));
                                     }
@@ -1473,7 +1473,7 @@ fn parse_tool_calls(
                                         );
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "llama_core", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", &err_msg);
 
                                         return Err(LlamaCoreError::Operation(err_msg));
                                     }
@@ -1496,7 +1496,7 @@ fn parse_tool_calls(
                                 );
 
                                 #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", &err_msg);
+                                error!(target: "stdout", "{}", &err_msg);
 
                                 return Err(LlamaCoreError::Operation(err_msg));
                             }
@@ -1522,7 +1522,7 @@ fn parse_tool_calls(
             };
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "parsed result: {:?}", parsed);
+            info!(target: "stdout", "parsed result: {:?}", parsed);
 
             Ok(parsed)
         }
@@ -1541,7 +1541,7 @@ async fn check_model_metadata(
     chat_request: &ChatCompletionRequest,
 ) -> Result<Metadata, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Check model metadata.");
+    info!(target: "stdout", "Check model metadata.");
 
     let mut should_update = false;
     let mut metadata = get_model_metadata(chat_request.model.as_ref())?;
@@ -1646,7 +1646,7 @@ async fn update_n_predict(
     // check if necessary to update n_predict with max_tokens
     if let Some(max_tokens) = chat_request.max_tokens {
         #[cfg(feature = "logging")]
-        info!(target: "llama_core", "available_completion_tokens: {}, max_tokens from request: {}, n_predict: {}", available_completion_tokens, max_tokens, metadata.n_predict);
+        info!(target: "stdout", "available_completion_tokens: {}, max_tokens from request: {}, n_predict: {}", available_completion_tokens, max_tokens, metadata.n_predict);
 
         let max_completion_tokens = match available_completion_tokens < max_tokens {
             true => available_completion_tokens,
@@ -1656,7 +1656,7 @@ async fn update_n_predict(
         // update n_predict
         if metadata.n_predict != max_completion_tokens {
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "update n_predict from {} to {}", metadata.n_predict, max_completion_tokens);
+            info!(target: "stdout", "update n_predict from {} to {}", metadata.n_predict, max_completion_tokens);
 
             metadata.n_predict = max_completion_tokens;
 
@@ -1666,7 +1666,7 @@ async fn update_n_predict(
         }
     } else if metadata.n_predict < available_completion_tokens {
         #[cfg(feature = "logging")]
-        info!(target: "llama_core", "Update n_predict from {} to {}", metadata.n_predict, available_completion_tokens);
+        info!(target: "stdout", "Update n_predict from {} to {}", metadata.n_predict, available_completion_tokens);
 
         // update n_predict
         metadata.n_predict = available_completion_tokens;
@@ -1689,7 +1689,7 @@ fn post_process(
     template_ty: &PromptTemplateType,
 ) -> Result<String, String> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Post-process the generated output.");
+    info!(target: "stdout", "Post-process the generated output.");
 
     let output = if *template_ty == PromptTemplateType::Baichuan2 {
         if output.as_ref().contains("用户:") {
@@ -1829,7 +1829,7 @@ fn build_prompt(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<(String, u64, bool), LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Build the chat prompt from the chat messages.");
+    info!(target: "stdout", "Build the chat prompt from the chat messages.");
 
     let metadata = get_model_metadata(model_name)?;
     let ctx_size = metadata.ctx_size as u64;
@@ -1847,7 +1847,7 @@ fn build_prompt(
         //         let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
 
         //         #[cfg(feature = "logging")]
-        //         error!(target: "llama_core", "{}", &err_msg);
+        //         error!(target: "stdout", "{}", &err_msg);
 
         //         return Err(LlamaCoreError::Operation(err_msg));
         //     }
@@ -1857,7 +1857,7 @@ fn build_prompt(
             let err_msg = "The messages in the chat request are empty.";
 
             #[cfg(feature = "logging")]
-            error!(target: "llama_core", "{}", err_msg);
+            error!(target: "stdout", "{}", err_msg);
 
             return Err(LlamaCoreError::Operation(err_msg.to_owned()));
         }
@@ -1871,7 +1871,7 @@ fn build_prompt(
                             let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
 
                             #[cfg(feature = "logging")]
-                            error!(target: "llama_core", "{}", &err_msg);
+                            error!(target: "stdout", "{}", &err_msg);
 
                             return Err(LlamaCoreError::Operation(err_msg));
                         }
@@ -1886,14 +1886,14 @@ fn build_prompt(
                             let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
 
                             #[cfg(feature = "logging")]
-                            error!(target: "llama_core", "{}", &err_msg);
+                            error!(target: "stdout", "{}", &err_msg);
 
                             return Err(LlamaCoreError::Operation(err_msg));
                         }
                     },
                     None => {
                         #[cfg(feature = "logging")]
-                        warn!(target: "llama_core", "The tool choice without tools is not supported.");
+                        warn!(target: "stdout", "The tool choice without tools is not supported.");
 
                         match chat_prompt.build_with_tools(&mut chat_request.messages, None) {
                             Ok(prompt) => (prompt, false),
@@ -1901,7 +1901,7 @@ fn build_prompt(
                                 let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
 
                                 #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", &err_msg);
+                                error!(target: "stdout", "{}", &err_msg);
 
                                 return Err(LlamaCoreError::Operation(err_msg));
                             }
@@ -1915,7 +1915,7 @@ fn build_prompt(
                     let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     return Err(LlamaCoreError::Operation(err_msg));
                 }
@@ -1968,7 +1968,7 @@ fn build_prompt(
                                 );
 
                             #[cfg(feature = "logging")]
-                            error!(target: "llama_core", "{}", &err_msg);
+                            error!(target: "stdout", "{}", &err_msg);
 
                             return Err(LlamaCoreError::Operation(err_msg));
                         } else {
@@ -2009,7 +2009,7 @@ fn build_prompt(
                                 );
 
                             #[cfg(feature = "logging")]
-                            error!(target: "llama_core", "{}", &err_msg);
+                            error!(target: "stdout", "{}", &err_msg);
 
                             return Err(LlamaCoreError::Operation(err_msg));
                         } else {
@@ -2018,7 +2018,7 @@ fn build_prompt(
                     }
                     _ => {
                         #[cfg(feature = "logging")]
-                        info!(target: "llama_core", "remove a {} message from the message queue", chat_request.messages[0].role());
+                        info!(target: "stdout", "remove a {} message from the message queue", chat_request.messages[0].role());
 
                         chat_request.messages.remove(0);
                     }
@@ -2034,14 +2034,14 @@ fn build_prompt(
 /// Downloads an image from the given URL and returns the file name.
 async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Download image from the URL.");
+    info!(target: "stdout", "Download image from the URL.");
 
     let image_url = image_url.as_ref();
     let url = reqwest::Url::parse(image_url).map_err(|e| {
         let err_msg = format!("Fail to parse the image URL: {}. Reason: {}", image_url, e);
 
         #[cfg(feature = "logging")]
-        error!(target: "llama_core", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         LlamaCoreError::Operation(err_msg)
     })?;
@@ -2053,7 +2053,7 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
         );
 
         #[cfg(feature = "logging")]
-        error!(target: "llama_core", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         LlamaCoreError::Operation(err_msg)
     })?;
@@ -2076,7 +2076,7 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
         );
 
         #[cfg(feature = "logging")]
-        error!(target: "llama_core", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         LlamaCoreError::Operation(err_msg)
     })?;
@@ -2090,14 +2090,14 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
             );
 
             #[cfg(feature = "logging")]
-            error!(target: "llama_core", "{}", &err_msg);
+            error!(target: "stdout", "{}", &err_msg);
 
             LlamaCoreError::Operation(err_msg)
         })?;
     }
 
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "The image is downloaded successfully.");
+    info!(target: "stdout", "The image is downloaded successfully.");
 
     Ok(fname)
 }
@@ -2106,7 +2106,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
     match model_name {
         Some(model_name) => {
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "Set prompt to the chat model named {}.", model_name);
+            info!(target: "stdout", "Set prompt to the chat model named {}.", model_name);
 
             let chat_graphs = match CHAT_GRAPHS.get() {
                 Some(chat_graphs) => chat_graphs,
@@ -2114,7 +2114,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
                     let err_msg = format!("Fail to get the underlying value of `CHAT_GRAPHS` while trying to set prompt to the model named {}.", model_name);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", err_msg);
+                    error!(target: "stdout", "{}", err_msg);
 
                     return Err(LlamaCoreError::Operation(err_msg));
                 }
@@ -2124,7 +2124,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
                 let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS` while trying to set prompt to the model named {}. Reason: {}", model_name, e);
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -2141,7 +2141,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
                     );
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     Err(LlamaCoreError::Operation(err_msg))
                 }
@@ -2149,7 +2149,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
         }
         None => {
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "Set prompt to the default chat model.");
+            info!(target: "stdout", "Set prompt to the default chat model.");
 
             let chat_graphs = match CHAT_GRAPHS.get() {
                 Some(chat_graphs) => chat_graphs,
@@ -2157,7 +2157,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
                     let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS` while trying to set prompt to the default model.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", err_msg);
+                    error!(target: "stdout", "{}", err_msg);
 
                     return Err(LlamaCoreError::Operation(err_msg.into()));
                 }
@@ -2167,7 +2167,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
                 let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`while trying to set prompt to the default model. Reason: {}", e);
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -2181,7 +2181,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
                     let err_msg = "There is no model available in the chat graphs while trying to set prompt to the default model.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", err_msg);
+                    error!(target: "stdout", "{}", err_msg);
 
                     Err(LlamaCoreError::Operation(err_msg.into()))
                 }
@@ -2210,7 +2210,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
 /// Get a copy of the metadata of the model.
 fn get_model_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Get the model metadata.");
+    info!(target: "stdout", "Get the model metadata.");
 
     match model_name {
         Some(model_name) => {
@@ -2220,7 +2220,7 @@ fn get_model_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCore
                     let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", err_msg);
+                    error!(target: "stdout", "{}", err_msg);
 
                     return Err(LlamaCoreError::Operation(err_msg.into()));
                 }
@@ -2230,7 +2230,7 @@ fn get_model_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCore
                 let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -2243,7 +2243,7 @@ fn get_model_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCore
                     );
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     Err(LlamaCoreError::Operation(err_msg))
                 }
@@ -2256,7 +2256,7 @@ fn get_model_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCore
                     let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", err_msg);
+                    error!(target: "stdout", "{}", err_msg);
 
                     return Err(LlamaCoreError::Operation(err_msg.into()));
                 }
@@ -2266,7 +2266,7 @@ fn get_model_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCore
                 let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -2277,7 +2277,7 @@ fn get_model_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCore
                     let err_msg = "There is no model available in the chat graphs.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", err_msg);
+                    error!(target: "stdout", "{}", err_msg);
 
                     Err(LlamaCoreError::Operation(err_msg.into()))
                 }
@@ -2291,7 +2291,7 @@ fn update_model_metadata(
     metadata: &Metadata,
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Update the model metadata.");
+    info!(target: "stdout", "Update the model metadata.");
 
     let config = match serde_json::to_string(metadata) {
         Ok(config) => config,
@@ -2299,7 +2299,7 @@ fn update_model_metadata(
             let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
 
             #[cfg(feature = "logging")]
-            error!(target: "llama_core", "{}", &err_msg);
+            error!(target: "stdout", "{}", &err_msg);
 
             return Err(LlamaCoreError::Operation(err_msg));
         }
@@ -2313,7 +2313,7 @@ fn update_model_metadata(
                     let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", err_msg);
+                    error!(target: "stdout", "{}", err_msg);
 
                     return Err(LlamaCoreError::Operation(err_msg.into()));
                 }
@@ -2323,7 +2323,7 @@ fn update_model_metadata(
                 let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. Reason: {}", e);
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -2340,7 +2340,7 @@ fn update_model_metadata(
                     );
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     Err(LlamaCoreError::Operation(err_msg))
                 }
@@ -2353,7 +2353,7 @@ fn update_model_metadata(
                     let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", err_msg);
+                    error!(target: "stdout", "{}", err_msg);
 
                     return Err(LlamaCoreError::Operation(err_msg.into()));
                 }
@@ -2363,7 +2363,7 @@ fn update_model_metadata(
                 let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. Reason: {}", e);
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -2377,7 +2377,7 @@ fn update_model_metadata(
                     let err_msg = "There is no model available in the chat graphs.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", err_msg);
+                    error!(target: "stdout", "{}", err_msg);
 
                     Err(LlamaCoreError::Operation(err_msg.into()))
                 }
@@ -2446,7 +2446,7 @@ impl Drop for ChatStream {
     fn drop(&mut self) {
         if self.cache.is_none() {
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "Clean up the context of the stream work environment.");
+            info!(target: "stdout", "Clean up the context of the stream work environment.");
 
             match &self.model {
                 Some(model_name) => {
@@ -2461,7 +2461,7 @@ impl Drop for ChatStream {
                                         );
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "llama_core", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", &err_msg);
 
                                         #[cfg(not(feature = "logging"))]
                                         println!(
@@ -2477,7 +2477,7 @@ impl Drop for ChatStream {
                                     );
 
                                     #[cfg(feature = "logging")]
-                                    error!(target: "llama_core", "{}", &err_msg);
+                                    error!(target: "stdout", "{}", &err_msg);
 
                                     #[cfg(not(feature = "logging"))]
                                     println!(
@@ -2491,7 +2491,7 @@ impl Drop for ChatStream {
                                     format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
                                 #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", &err_msg);
+                                error!(target: "stdout", "{}", &err_msg);
 
                                 #[cfg(not(feature = "logging"))]
                                 println!(
@@ -2504,7 +2504,7 @@ impl Drop for ChatStream {
                             let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                             #[cfg(feature = "logging")]
-                            error!(target: "llama_core", "{}", &err_msg);
+                            error!(target: "stdout", "{}", &err_msg);
 
                             #[cfg(not(feature = "logging"))]
                             println!(
@@ -2526,7 +2526,7 @@ impl Drop for ChatStream {
                                         );
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "llama_core", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", &err_msg);
 
                                         #[cfg(not(feature = "logging"))]
                                         println!(
@@ -2539,7 +2539,7 @@ impl Drop for ChatStream {
                                     let err_msg = "There is no model available in the chat graphs.";
 
                                     #[cfg(feature = "logging")]
-                                    error!(target: "llama_core", "{}", err_msg);
+                                    error!(target: "stdout", "{}", err_msg);
 
                                     #[cfg(not(feature = "logging"))]
                                     println!(
@@ -2553,7 +2553,7 @@ impl Drop for ChatStream {
                                     format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
                                 #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", &err_msg);
+                                error!(target: "stdout", "{}", &err_msg);
 
                                 #[cfg(not(feature = "logging"))]
                                 println!(
@@ -2566,7 +2566,7 @@ impl Drop for ChatStream {
                             let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                             #[cfg(feature = "logging")]
-                            error!(target: "llama_core", "{}", &err_msg);
+                            error!(target: "stdout", "{}", &err_msg);
 
                             #[cfg(not(feature = "logging"))]
                             println!(
@@ -2579,7 +2579,7 @@ impl Drop for ChatStream {
             }
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "Cleanup done!");
+            info!(target: "stdout", "Cleanup done!");
         }
     }
 }
@@ -2599,7 +2599,7 @@ impl futures::Stream for ChatStream {
             );
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "Get the next item: {:?}", &x);
+            info!(target: "stdout", "Get the next item: {:?}", &x);
 
             match x {
                 Ok(x) => {
@@ -2618,7 +2618,7 @@ impl futures::Stream for ChatStream {
             let x = this.cache.as_mut().unwrap().pop_front();
 
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "Get the next item from the cache: {:?}", &x);
+            info!(target: "stdout", "Get the next item from the cache: {:?}", &x);
 
             match x {
                 Some(x) => Poll::Ready(Some(Ok(x))),
@@ -2637,7 +2637,7 @@ fn compute_stream(
     stream_state: &mut StreamState,
 ) -> Result<String, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Compute the chat stream chunk.");
+    info!(target: "stdout", "Compute the chat stream chunk.");
 
     if *prompt_too_long_state == PromptTooLongState::EndOfSequence
         || *context_full_state == ContextFullState::EndOfSequence
@@ -2655,7 +2655,7 @@ fn compute_stream(
                     let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     return Err(LlamaCoreError::Operation(err_msg.into()));
                 }
@@ -2665,7 +2665,7 @@ fn compute_stream(
                 let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -2691,7 +2691,7 @@ fn compute_stream(
                                             );
 
                                             #[cfg(feature = "logging")]
-                                            error!(target: "llama_core", "{}", &err_msg);
+                                            error!(target: "stdout", "{}", &err_msg);
 
 
                                             LlamaCoreError::Operation(err_msg)
@@ -2713,7 +2713,7 @@ fn compute_stream(
                                                 let err_msg = "The length of the invalid utf8 bytes exceed 4.";
 
                                                 #[cfg(feature = "logging")]
-                                                error!(target: "llama_core", "{}", &err_msg);
+                                                error!(target: "stdout", "{}", &err_msg);
 
                                                 return Err(LlamaCoreError::Operation(
                                                     err_msg.into(),
@@ -2733,7 +2733,7 @@ fn compute_stream(
                                     format!("Failed to get the current time. Reason: {}", e);
 
                                 #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", &err_msg);
+                                error!(target: "stdout", "{}", &err_msg);
 
                                 LlamaCoreError::Operation(err_msg)
                             })?;
@@ -2766,7 +2766,7 @@ fn compute_stream(
                                     );
 
                                     #[cfg(feature = "logging")]
-                                    error!(target: "llama_core", "{}", &err_msg);
+                                    error!(target: "stdout", "{}", &err_msg);
 
                                     LlamaCoreError::Operation(err_msg)
                                 })?;
@@ -2791,7 +2791,7 @@ fn compute_stream(
                                     });
 
                                     #[cfg(feature = "logging")]
-                                    info!(target: "llama_core", "token_info: {} prompt tokens, {} completion tokens", token_info.prompt_tokens, token_info.completion_tokens);
+                                    info!(target: "stdout", "token_info: {} prompt tokens, {} completion tokens", token_info.prompt_tokens, token_info.completion_tokens);
 
                                     let created = SystemTime::now()
                                         .duration_since(std::time::UNIX_EPOCH)
@@ -2802,7 +2802,7 @@ fn compute_stream(
                                             );
 
                                             #[cfg(feature = "logging")]
-                                            error!(target: "llama_core", "{}", &err_msg);
+                                            error!(target: "stdout", "{}", &err_msg);
 
                                             LlamaCoreError::Operation(err_msg)
                                         })?;
@@ -2826,7 +2826,7 @@ fn compute_stream(
                                         );
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "llama_core", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", &err_msg);
 
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
@@ -2847,7 +2847,7 @@ fn compute_stream(
                                         );
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "llama_core", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", &err_msg);
 
                                         return Err(LlamaCoreError::Backend(
                                             BackendError::FinishSingle(err_msg),
@@ -2877,7 +2877,7 @@ fn compute_stream(
                                             );
 
                                             #[cfg(feature = "logging")]
-                                            error!(target: "llama_core", "{}", &err_msg);
+                                            error!(target: "stdout", "{}", &err_msg);
 
                                             LlamaCoreError::Operation(err_msg)
                                         })?;
@@ -2912,7 +2912,7 @@ fn compute_stream(
                                         );
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "llama_core", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", &err_msg);
 
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
@@ -2941,7 +2941,7 @@ fn compute_stream(
                                             );
 
                                             #[cfg(feature = "logging")]
-                                            error!(target: "llama_core", "{}", &err_msg);
+                                            error!(target: "stdout", "{}", &err_msg);
 
                                             LlamaCoreError::Operation(err_msg)
                                         })?;
@@ -2965,7 +2965,7 @@ fn compute_stream(
                                         );
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "llama_core", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", &err_msg);
 
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
@@ -2986,7 +2986,7 @@ fn compute_stream(
                                         );
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "llama_core", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", &err_msg);
 
                                         return Err(LlamaCoreError::Backend(
                                             BackendError::FinishSingle(err_msg),
@@ -3016,7 +3016,7 @@ fn compute_stream(
                                             );
 
                                             #[cfg(feature = "logging")]
-                                            error!(target: "llama_core", "{}", &err_msg);
+                                            error!(target: "stdout", "{}", &err_msg);
 
                                             LlamaCoreError::Operation(err_msg)
                                         })?;
@@ -3049,7 +3049,7 @@ fn compute_stream(
                                         );
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "llama_core", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", &err_msg);
 
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
@@ -3078,7 +3078,7 @@ fn compute_stream(
                                             );
 
                                             #[cfg(feature = "logging")]
-                                            error!(target: "llama_core", "{}", &err_msg);
+                                            error!(target: "stdout", "{}", &err_msg);
 
                                             LlamaCoreError::Operation(err_msg)
                                         })?;
@@ -3102,7 +3102,7 @@ fn compute_stream(
                                         );
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "llama_core", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", &err_msg);
 
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
@@ -3123,7 +3123,7 @@ fn compute_stream(
                                         );
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "llama_core", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", &err_msg);
 
                                         return Err(LlamaCoreError::Backend(
                                             BackendError::FinishSingle(err_msg),
@@ -3141,7 +3141,7 @@ fn compute_stream(
                                     format!("Failed to clean up the context. Reason: {}", e);
 
                                 #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", &err_msg);
+                                error!(target: "stdout", "{}", &err_msg);
 
                                 return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
                                     err_msg,
@@ -3152,7 +3152,7 @@ fn compute_stream(
                                 format!("Failed to compute the chat completion. Reason: {}", e);
 
                             #[cfg(feature = "logging")]
-                            error!(target: "llama_core", "{}", &err_msg);
+                            error!(target: "stdout", "{}", &err_msg);
 
                             Err(LlamaCoreError::Backend(BackendError::ComputeSingle(
                                 err_msg,
@@ -3167,7 +3167,7 @@ fn compute_stream(
                     );
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     Err(LlamaCoreError::Operation(err_msg))
                 }
@@ -3180,7 +3180,7 @@ fn compute_stream(
                     let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     return Err(LlamaCoreError::Operation(err_msg.into()));
                 }
@@ -3190,7 +3190,7 @@ fn compute_stream(
                 let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama_core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -3215,7 +3215,7 @@ fn compute_stream(
                                             );
 
                                             #[cfg(feature = "logging")]
-                                            error!(target: "llama_core", "{}", &err_msg);
+                                            error!(target: "stdout", "{}", &err_msg);
 
                                             LlamaCoreError::Operation(err_msg)
                                         })?;
@@ -3235,7 +3235,7 @@ fn compute_stream(
                                                 let err_msg = "The length of the invalid utf8 bytes exceed 4.";
 
                                                 #[cfg(feature = "logging")]
-                                                error!(target: "llama_core", "{}", &err_msg);
+                                                error!(target: "stdout", "{}", &err_msg);
 
                                                 return Err(LlamaCoreError::Operation(
                                                     err_msg.into(),
@@ -3255,7 +3255,7 @@ fn compute_stream(
                                     format!("Failed to get the current time. Reason: {}", e);
 
                                 #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", &err_msg);
+                                error!(target: "stdout", "{}", &err_msg);
 
                                 LlamaCoreError::Operation(err_msg)
                             })?;
@@ -3288,7 +3288,7 @@ fn compute_stream(
                                     );
 
                                     #[cfg(feature = "logging")]
-                                    error!(target: "llama_core", "{}", &err_msg);
+                                    error!(target: "stdout", "{}", &err_msg);
 
                                     LlamaCoreError::Operation(err_msg)
                                 })?;
@@ -3313,7 +3313,7 @@ fn compute_stream(
                                     });
 
                                     #[cfg(feature = "logging")]
-                                    info!(target: "llama_core", "token_info: {} prompt tokens, {} completion tokens", token_info.prompt_tokens, token_info.completion_tokens);
+                                    info!(target: "stdout", "token_info: {} prompt tokens, {} completion tokens", token_info.prompt_tokens, token_info.completion_tokens);
 
                                     let created = SystemTime::now()
                                         .duration_since(std::time::UNIX_EPOCH)
@@ -3324,7 +3324,7 @@ fn compute_stream(
                                             );
 
                                             #[cfg(feature = "logging")]
-                                            error!(target: "llama_core", "{}", &err_msg);
+                                            error!(target: "stdout", "{}", &err_msg);
 
                                             LlamaCoreError::Operation(err_msg)
                                         })?;
@@ -3348,7 +3348,7 @@ fn compute_stream(
                                         );
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "llama_core", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", &err_msg);
 
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
@@ -3369,7 +3369,7 @@ fn compute_stream(
                                         );
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "llama_core", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", &err_msg);
 
                                         return Err(LlamaCoreError::Backend(
                                             BackendError::FinishSingle(err_msg),
@@ -3399,7 +3399,7 @@ fn compute_stream(
                                             );
 
                                             #[cfg(feature = "logging")]
-                                            error!(target: "llama_core", "{}", &err_msg);
+                                            error!(target: "stdout", "{}", &err_msg);
 
                                             LlamaCoreError::Operation(err_msg)
                                         })?;
@@ -3434,7 +3434,7 @@ fn compute_stream(
                                         );
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "llama_core", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", &err_msg);
 
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
@@ -3463,7 +3463,7 @@ fn compute_stream(
                                             );
 
                                             #[cfg(feature = "logging")]
-                                            error!(target: "llama_core", "{}", &err_msg);
+                                            error!(target: "stdout", "{}", &err_msg);
 
                                             LlamaCoreError::Operation(err_msg)
                                         })?;
@@ -3487,7 +3487,7 @@ fn compute_stream(
                                         );
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "llama_core", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", &err_msg);
 
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
@@ -3508,7 +3508,7 @@ fn compute_stream(
                                         );
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "llama_core", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", &err_msg);
 
                                         return Err(LlamaCoreError::Backend(
                                             BackendError::FinishSingle(err_msg),
@@ -3538,7 +3538,7 @@ fn compute_stream(
                                             );
 
                                             #[cfg(feature = "logging")]
-                                            error!(target: "llama_core", "{}", &err_msg);
+                                            error!(target: "stdout", "{}", &err_msg);
 
                                             LlamaCoreError::Operation(err_msg)
                                         })?;
@@ -3571,7 +3571,7 @@ fn compute_stream(
                                         );
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "llama_core", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", &err_msg);
 
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
@@ -3600,7 +3600,7 @@ fn compute_stream(
                                             );
 
                                             #[cfg(feature = "logging")]
-                                            error!(target: "llama_core", "{}", &err_msg);
+                                            error!(target: "stdout", "{}", &err_msg);
 
                                             LlamaCoreError::Operation(err_msg)
                                         })?;
@@ -3624,7 +3624,7 @@ fn compute_stream(
                                         );
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "llama_core", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", &err_msg);
 
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
@@ -3645,7 +3645,7 @@ fn compute_stream(
                                         );
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "llama_core", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", &err_msg);
 
                                         return Err(LlamaCoreError::Backend(
                                             BackendError::FinishSingle(err_msg),
@@ -3663,7 +3663,7 @@ fn compute_stream(
                                     format!("Failed to clean up the context. Reason: {}", e);
 
                                 #[cfg(feature = "logging")]
-                                error!(target: "llama_core", "{}", &err_msg);
+                                error!(target: "stdout", "{}", &err_msg);
 
                                 return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
                                     err_msg,
@@ -3674,7 +3674,7 @@ fn compute_stream(
                                 format!("Failed to compute the chat completion. Reason: {}", e);
 
                             #[cfg(feature = "logging")]
-                            error!(target: "llama_core", "{}", &err_msg);
+                            error!(target: "stdout", "{}", &err_msg);
 
                             Err(LlamaCoreError::Backend(BackendError::ComputeSingle(
                                 err_msg,
@@ -3686,7 +3686,7 @@ fn compute_stream(
                     let err_msg = "There is no model available in the chat graphs.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     Err(LlamaCoreError::Operation(err_msg.into()))
                 }
@@ -3695,7 +3695,7 @@ fn compute_stream(
     };
 
     #[cfg(feature = "logging")]
-    info!(target: "llama_core", "Return the chat stream chunk!");
+    info!(target: "stdout", "Return the chat stream chunk!");
 
     res
 }

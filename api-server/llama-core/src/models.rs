@@ -6,7 +6,7 @@ use endpoints::models::{ListModelsResponse, Model};
 /// Lists models available
 pub async fn models() -> Result<ListModelsResponse, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "List models");
+    info!(target: "stdout", "List models");
 
     let mut models = vec![];
 
@@ -16,7 +16,7 @@ pub async fn models() -> Result<ListModelsResponse, LlamaCoreError> {
                 let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama-core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;

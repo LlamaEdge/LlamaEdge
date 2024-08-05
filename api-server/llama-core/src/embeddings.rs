@@ -25,7 +25,7 @@ pub async fn embeddings(
     embedding_request: &EmbeddingRequest,
 ) -> Result<EmbeddingsResponse, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Computing embeddings");
+    info!(target: "stdout", "Computing embeddings");
 
     let running_mode = running_mode()?;
     if running_mode == RunningMode::Chat {
@@ -35,7 +35,7 @@ pub async fn embeddings(
         );
 
         #[cfg(feature = "logging")]
-        error!(target: "llama-core", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         return Err(LlamaCoreError::Operation(err_msg));
     }
@@ -52,7 +52,7 @@ pub async fn embeddings(
                 let err_msg = "No embedding model is available.";
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama-core", "{}", err_msg);
+                error!(target: "stdout", "{}", err_msg);
 
                 return Err(LlamaCoreError::Operation(err_msg.into()));
             }
@@ -63,7 +63,7 @@ pub async fn embeddings(
         let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}", e);
 
         #[cfg(feature = "logging")]
-        error!(target: "llama-core", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         LlamaCoreError::Operation(err_msg)
     })?;
@@ -77,7 +77,7 @@ pub async fn embeddings(
             );
 
             #[cfg(feature = "logging")]
-            error!(target: "llama-core", "{}", &err_msg);
+            error!(target: "stdout", "{}", &err_msg);
 
             return Err(LlamaCoreError::Operation(err_msg));
         }
@@ -120,7 +120,7 @@ pub async fn embeddings(
     };
 
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Embeddings computed successfully.");
+    info!(target: "stdout", "Embeddings computed successfully.");
 
     Ok(embedding_reponse)
 }
@@ -130,7 +130,7 @@ fn compute_embeddings(
     input: &[String],
 ) -> Result<(Vec<EmbeddingObject>, Usage), LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Compute embeddings for {} chunks", input.len());
+    info!(target: "stdout", "Compute embeddings for {} chunks", input.len());
 
     // compute embeddings
     let mut embeddings: Vec<EmbeddingObject> = Vec::new();
@@ -144,13 +144,13 @@ fn compute_embeddings(
                 let err_msg = e.to_string();
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama-core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Backend(BackendError::SetInput(err_msg))
             })?;
 
         #[cfg(feature = "logging")]
-        info!(target: "llama-core", "compute embeddings for chunk {}", idx + 1);
+        info!(target: "stdout", "compute embeddings for chunk {}", idx + 1);
 
         match graph.compute() {
             Ok(_) => {
@@ -165,7 +165,7 @@ fn compute_embeddings(
                     );
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama-core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     LlamaCoreError::Operation(err_msg)
                 })?;
@@ -176,7 +176,7 @@ fn compute_embeddings(
                         format!("Failed to deserialize the embedding data. Reason: {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama-core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     LlamaCoreError::Operation(err_msg)
                 })?;
@@ -200,7 +200,7 @@ fn compute_embeddings(
                 let err_msg = format!("Failed to compute embeddings. Reason: {}", e);
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama-core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 return Err(LlamaCoreError::Backend(BackendError::Compute(err_msg)));
             }
@@ -208,7 +208,7 @@ fn compute_embeddings(
     }
 
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "token usage of embeddings: {} prompt tokens, {} comletion tokens", usage.prompt_tokens, usage.completion_tokens);
+    info!(target: "stdout", "token usage of embeddings: {} prompt tokens, {} comletion tokens", usage.prompt_tokens, usage.completion_tokens);
 
     Ok((embeddings, usage))
 }
@@ -234,7 +234,7 @@ pub fn dimension(name: Option<&str>) -> Result<u64, LlamaCoreError> {
             let err_msg = "Fail to get the underlying value of `EMBEDDING_GRAPHS`.";
 
             #[cfg(feature = "logging")]
-            error!(target: "llama-core", "{}", err_msg);
+            error!(target: "stdout", "{}", err_msg);
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
@@ -244,7 +244,7 @@ pub fn dimension(name: Option<&str>) -> Result<u64, LlamaCoreError> {
         let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}", e);
 
         #[cfg(feature = "logging")]
-        error!(target: "llama-core", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         LlamaCoreError::Operation(err_msg)
     })?;
@@ -259,7 +259,7 @@ pub fn dimension(name: Option<&str>) -> Result<u64, LlamaCoreError> {
                 );
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama-core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 Err(LlamaCoreError::Operation(err_msg))
             }
@@ -272,7 +272,7 @@ pub fn dimension(name: Option<&str>) -> Result<u64, LlamaCoreError> {
                         let err_msg = "Fail to get the underlying value of `EMBEDDING_GRAPHS`.";
 
                         #[cfg(feature = "logging")]
-                        error!(target: "llama-core", "{}", err_msg);
+                        error!(target: "stdout", "{}", err_msg);
 
                         return Err(LlamaCoreError::Operation(err_msg.into()));
                     }
@@ -283,7 +283,7 @@ pub fn dimension(name: Option<&str>) -> Result<u64, LlamaCoreError> {
                 let err_msg = "There is no model available in the embedding graphs.";
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama-core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 Err(LlamaCoreError::Operation(err_msg.into()))
             }
