@@ -92,7 +92,24 @@ pub async fn embeddings(
     // compute embeddings
     let (data, usage) = match &embedding_request.input {
         InputText::String(text) => compute_embeddings(graph, &[text.to_owned()])?,
-        InputText::Array(texts) => compute_embeddings(graph, texts.as_slice())?,
+        InputText::ArrayOfStrings(texts) => compute_embeddings(graph, texts.as_slice())?,
+        InputText::ArrayOfTokens(tokens) => {
+            let texts: Vec<String> = tokens.iter().map(|t| t.to_string()).collect();
+            compute_embeddings(graph, texts.as_slice())?
+        }
+        InputText::ArrayOfTokenArrays(token_arrays) => {
+            let texts: Vec<String> = token_arrays
+                .iter()
+                .map(|tokens| {
+                    tokens
+                        .iter()
+                        .map(|t| t.to_string())
+                        .collect::<Vec<String>>()
+                        .join(" ")
+                })
+                .collect();
+            compute_embeddings(graph, texts.as_slice())?
+        }
     };
 
     let embedding_reponse = EmbeddingsResponse {

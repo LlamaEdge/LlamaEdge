@@ -66,7 +66,12 @@ pub async fn rag_doc_chunks_to_embeddings(
 
     let chunks = match &embedding_request.input {
         InputText::String(text) => vec![text.clone()],
-        InputText::Array(texts) => texts.clone(),
+        InputText::ArrayOfStrings(texts) => texts.clone(),
+        InputText::ArrayOfTokens(tokens) => tokens.iter().map(|t| t.to_string()).collect(),
+        InputText::ArrayOfTokenArrays(token_arrays) => token_arrays
+            .iter()
+            .map(|tokens| tokens.iter().map(|t| t.to_string()).collect())
+            .collect(),
     };
 
     // create and upsert points
