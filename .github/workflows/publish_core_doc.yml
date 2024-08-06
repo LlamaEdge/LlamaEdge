@@ -23,9 +23,12 @@ jobs:
           target: wasm32-wasip1
 
       - name: Build API document
+        env:
+          RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
+          RUSTDOCFLAGS: "--cfg docsrs"
         run: |
           cd api-server
-          RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc -p llama-core --no-deps --target wasm32-wasip1 --features full --target-dir=./target
+          cargo +nightly doc -p llama-core --no-deps --target wasm32-wasip1 --features full --target-dir=./target
 
       - name: Deploy API document
         if: github.ref == 'refs/heads/dev'
