@@ -28,6 +28,8 @@ jobs:
 
       - name: Build simple
         id: build_simple
+        env:
+          RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
         run: |
           cd simple
           cargo build --target wasm32-wasip1 --release
@@ -35,6 +37,8 @@ jobs:
 
       - name: Build chat
         id: build_chat
+        env:
+          RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
         run: |
           cd chat
           cargo build --target wasm32-wasip1 --release
@@ -42,19 +46,13 @@ jobs:
 
       - name: Build api-server
         id: build_api_server
+        env:
+          RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
         run: |
           cd api-server
           cargo clean
           cargo build --target wasm32-wasip1 --release
           cp ./target/wasm32-wasip1/release/llama-api-server.wasm ../llama-api-server.wasm
-
-      - name: Build api-server-full
-        id: build_api_server_full
-        run: |
-          cd api-server
-          cargo clean
-          cargo build --target wasm32-wasip1 --release --features full
-          cp ./target/wasm32-wasip1/release/llama-api-server.wasm ../llama-api-server-full.wasm
 
       - name: Calculate checksum
         id: checksum
@@ -81,7 +79,6 @@ jobs:
           prerelease: true
           files: |
             llama-api-server.wasm
-            llama-api-server-full.wasm
             llama-chat.wasm
             llama-simple.wasm
             SHA256SUM
