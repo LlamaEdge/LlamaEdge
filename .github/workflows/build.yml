@@ -66,19 +66,23 @@ jobs:
 
       - name: Build simple
         id: build_simple
+        env:
+          RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
         run: |
           cd simple
-          RUSTFLAGS="--cfg wasmedge --cfg tokio_unstable" cargo +nightly fmt --all -- --check
-          RUSTFLAGS="--cfg wasmedge --cfg tokio_unstable" cargo +nightly clippy --target wasm32-wasip1 -- -D warnings
-          RUSTFLAGS="--cfg wasmedge --cfg tokio_unstable" cargo build --target wasm32-wasip1 --release
+          cargo +nightly fmt --all -- --check
+          cargo +nightly clippy --target wasm32-wasip1 -- -D warnings
+          cargo build --target wasm32-wasip1 --release
 
       - name: Build chat
         id: build_chat
+        env:
+          RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
         run: |
           cd chat
-          RUSTFLAGS="--cfg wasmedge --cfg tokio_unstable" cargo +nightly fmt --all -- --check
-          RUSTFLAGS="--cfg wasmedge --cfg tokio_unstable" cargo +nightly clippy --target wasm32-wasip1 -- -D warnings
-          RUSTFLAGS="--cfg wasmedge --cfg tokio_unstable" cargo build --target wasm32-wasip1 --release
+          cargo +nightly fmt --all -- --check
+          cargo +nightly clippy --target wasm32-wasip1 -- -D warnings
+          cargo build --target wasm32-wasip1 --release
 
       - name: Build api-server for linux
         id: build_api_server_linux
