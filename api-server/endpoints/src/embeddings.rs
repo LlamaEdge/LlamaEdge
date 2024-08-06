@@ -73,8 +73,14 @@ fn test_embedding_deserialize_embedding_request() {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum InputText {
+    /// The string that will be turned into an embedding.
     String(String),
-    Array(Vec<String>),
+    /// The array of strings that will be turned into an embedding.
+    ArrayOfStrings(Vec<String>),
+    /// The array of integers that will be turned into an embedding.
+    ArrayOfTokens(Vec<i64>),
+    /// The array of arrays containing integers that will be turned into an embedding.
+    ArrayOfTokenArrays(Vec<Vec<i64>>),
 }
 impl From<&str> for InputText {
     fn from(s: &str) -> Self {
@@ -88,17 +94,32 @@ impl From<&String> for InputText {
 }
 impl From<&[String]> for InputText {
     fn from(s: &[String]) -> Self {
-        InputText::Array(s.to_vec())
+        InputText::ArrayOfStrings(s.to_vec())
     }
 }
 impl From<Vec<&str>> for InputText {
     fn from(s: Vec<&str>) -> Self {
-        InputText::Array(s.iter().map(|s| s.to_string()).collect())
+        InputText::ArrayOfStrings(s.iter().map(|s| s.to_string()).collect())
     }
 }
 impl From<Vec<String>> for InputText {
     fn from(s: Vec<String>) -> Self {
-        InputText::Array(s)
+        InputText::ArrayOfStrings(s)
+    }
+}
+impl From<&[i64]> for InputText {
+    fn from(s: &[i64]) -> Self {
+        InputText::ArrayOfTokens(s.to_vec())
+    }
+}
+impl From<Vec<i64>> for InputText {
+    fn from(s: Vec<i64>) -> Self {
+        InputText::ArrayOfTokens(s)
+    }
+}
+impl From<Vec<Vec<i64>>> for InputText {
+    fn from(s: Vec<Vec<i64>>) -> Self {
+        InputText::ArrayOfTokenArrays(s)
     }
 }
 
