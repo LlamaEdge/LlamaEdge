@@ -21,7 +21,8 @@ use endpoints::{
     chat::{
         ChatCompletionChunk, ChatCompletionChunkChoice, ChatCompletionChunkChoiceDelta,
         ChatCompletionObject, ChatCompletionObjectChoice, ChatCompletionObjectMessage,
-        ChatCompletionRequest, ChatCompletionRole, Function, ToolCall, ToolChoice,
+        ChatCompletionRequest, ChatCompletionRole, Function, ToolCall, ToolCallForChunk,
+        ToolChoice,
     },
     common::{FinishReason, Usage},
 };
@@ -299,6 +300,18 @@ fn chat_stream_by_graph(
                 None => Some(parsed_result.raw),
             };
 
+            let tool_calls: Vec<ToolCallForChunk> = parsed_result
+                .tool_calls
+                .into_iter()
+                .enumerate()
+                .map(|(index, tool_call)| ToolCallForChunk {
+                    index,
+                    id: tool_call.id,
+                    ty: tool_call.ty,
+                    function: tool_call.function,
+                })
+                .collect();
+
             // tool_calls chunk
             let tool_call_chunk = {
                 let chat_completion_chunk = ChatCompletionChunk {
@@ -312,7 +325,7 @@ fn chat_stream_by_graph(
                         delta: ChatCompletionChunkChoiceDelta {
                             role: ChatCompletionRole::Assistant,
                             content,
-                            tool_calls: parsed_result.tool_calls,
+                            tool_calls,
                         },
                         logprobs: None,
                         finish_reason: None,

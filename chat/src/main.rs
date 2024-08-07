@@ -30,10 +30,10 @@ struct Cli {
     #[arg(short = 'g', long, default_value = "100")]
     n_gpu_layers: u64,
     /// The main GPU to use.
-    #[arg(long, requires = "tensor_split")]
+    #[arg(long)]
     main_gpu: Option<u64>,
     /// How split tensors should be distributed accross GPUs. If None the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1.
-    #[arg(long, requires = "main_gpu")]
+    #[arg(long)]
     tensor_split: Option<String>,
     /// Disable memory mapping for file access of chat models
     #[arg(long)]
