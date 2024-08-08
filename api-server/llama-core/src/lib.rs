@@ -10,6 +10,8 @@ pub mod embeddings;
 pub mod error;
 pub mod models;
 pub mod rag;
+#[cfg(feature = "search")]
+pub mod search;
 pub mod utils;
 
 pub use error::LlamaCoreError;
