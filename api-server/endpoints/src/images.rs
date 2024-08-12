@@ -19,7 +19,7 @@ impl ImageCreateRequestBuilder {
                 model: model.into(),
                 prompt: prompt.into(),
                 n: Some(1),
-                response_format: Some(ResponseFormat::B64Json),
+                response_format: Some(ResponseFormat::Url),
                 ..Default::default()
             },
         }
@@ -166,7 +166,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     .ok_or_else(|| de::Error::invalid_length(1, &self))?;
                 let n = seq.next_element()?.unwrap_or(Some(1));
                 let quality = seq.next_element()?;
-                let response_format = seq.next_element()?.unwrap_or(Some(ResponseFormat::B64Json));
+                let response_format = seq.next_element()?.unwrap_or(Some(ResponseFormat::Url));
                 let size = seq.next_element()?;
                 let style = seq.next_element()?;
                 let user = seq.next_element()?;
@@ -252,7 +252,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     model: model.ok_or_else(|| de::Error::missing_field("model"))?,
                     n: n.unwrap_or(Some(1)),
                     quality,
-                    response_format: response_format.unwrap_or(Some(ResponseFormat::B64Json)),
+                    response_format: response_format.unwrap_or(Some(ResponseFormat::Url)),
                     size,
                     style,
                     user,
@@ -281,14 +281,14 @@ fn test_serialize_image_create_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"prompt":"This is a prompt","model":"test-model-name","n":1,"response_format":"b64_json"}"#
+            r#"{"prompt":"This is a prompt","model":"test-model-name","n":1,"response_format":"url"}"#
         );
     }
 
     {
         let req = ImageCreateRequestBuilder::new("test-model-name", "This is a prompt")
             .with_number_of_images(2)
-            .with_response_format(ResponseFormat::Url)
+            .with_response_format(ResponseFormat::B64Json)
             .with_size("1024x1024")
             .with_style("vivid")
             .with_user("user")
@@ -296,7 +296,7 @@ fn test_serialize_image_create_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"prompt":"This is a prompt","model":"test-model-name","n":2,"response_format":"url","size":"1024x1024","style":"vivid","user":"user"}"#
+            r#"{"prompt":"This is a prompt","model":"test-model-name","n":2,"response_format":"b64_json","size":"1024x1024","style":"vivid","user":"user"}"#
         );
     }
 }
@@ -309,7 +309,7 @@ fn test_deserialize_image_create_request() {
         assert_eq!(req.prompt, "This is a prompt");
         assert_eq!(req.model, "test-model-name");
         assert_eq!(req.n, Some(1));
-        assert_eq!(req.response_format, Some(ResponseFormat::B64Json));
+        assert_eq!(req.response_format, Some(ResponseFormat::Url));
     }
 
     {
@@ -399,7 +399,7 @@ pub struct ImageEditRequest {
     /// The size of the generated images. Defaults to 1024x1024.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub size: Option<String>,
-    /// The format in which the generated images are returned. Must be one of `url` or `b64_json`. Defaults to `b64_json`.
+    /// The format in which the generated images are returned. Must be one of `url` or `b64_json`. Defaults to `url`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_format: Option<ResponseFormat>,
     /// A unique identifier representing your end-user, which can help monitor and detect abuse.
