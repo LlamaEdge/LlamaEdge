@@ -76,7 +76,7 @@ pub async fn image_generation(
 
             // log
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "file_id: {}, file_name: {}", &id, &filename);
+            info!(target: "stdout", "file_id: {}, file_name: {}", &id, &filename);
 
             // convert the image to base64 string
             let base64_string = match image_to_base64(output_image_file) {
@@ -93,7 +93,7 @@ pub async fn image_generation(
 
             // log
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "base64 string: {}", &base64_string.chars().take(10).collect::<String>());
+            info!(target: "stdout", "base64 string: {}", &base64_string.chars().take(10).collect::<String>());
 
             let created: u64 =
                 match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
@@ -205,7 +205,7 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
 
             // log
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "file_id: {}, file_name: {}", &id, &filename);
+            info!(target: "stdout", "file_id: {}, file_name: {}", &id, &filename);
 
             // convert the image to base64 string
             let base64_string = match image_to_base64(output_image_file) {
@@ -222,7 +222,7 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
 
             // log
             #[cfg(feature = "logging")]
-            info!(target: "llama_core", "base64 string: {}", &base64_string.chars().take(10).collect::<String>());
+            info!(target: "stdout", "base64 string: {}", &base64_string.chars().take(10).collect::<String>());
 
             let created: u64 =
                 match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
