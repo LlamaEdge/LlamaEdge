@@ -2,6 +2,7 @@ use crate::{error::LlamaCoreError, SD_IMAGE_TO_IMAGE, SD_TEXT_TO_IMAGE};
 use base64::{engine::general_purpose, Engine as _};
 use endpoints::images::{
     ImageCreateRequest, ImageEditRequest, ImageObject, ImageVariationRequest, ListImagesResponse,
+    ResponseFormat,
 };
 use std::{
     fs::{self, File},
@@ -78,22 +79,42 @@ pub async fn image_generation(
             #[cfg(feature = "logging")]
             info!(target: "stdout", "file_id: {}, file_name: {}", &id, &filename);
 
-            // convert the image to base64 string
-            let base64_string = match image_to_base64(output_image_file) {
-                Ok(base64_string) => base64_string,
-                Err(e) => {
-                    let err_msg = format!("Fail to convert the image to base64 string. {}", e);
+            let image = match req.response_format {
+                Some(ResponseFormat::B64Json) => {
+                    // convert the image to base64 string
+                    let base64_string = match image_to_base64(output_image_file) {
+                        Ok(base64_string) => base64_string,
+                        Err(e) => {
+                            let err_msg =
+                                format!("Fail to convert the image to base64 string. {}", e);
 
+                            #[cfg(feature = "logging")]
+                            error!(target: "llama_core", "{}", &err_msg);
+
+                            return Err(LlamaCoreError::Operation(err_msg));
+                        }
+                    };
+
+                    // log
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    info!(target: "stdout", "base64 string: {}", &base64_string.chars().take(10).collect::<String>());
 
-                    return Err(LlamaCoreError::Operation(err_msg));
+                    // create an image object
+                    ImageObject {
+                        b64_json: Some(base64_string),
+                        url: None,
+                        prompt: Some(req.prompt.clone()),
+                    }
+                }
+                Some(ResponseFormat::Url) | None => {
+                    // create an image object
+                    ImageObject {
+                        b64_json: None,
+                        url: Some(format!("/archives/{}/{}", &id, &filename)),
+                        prompt: Some(req.prompt.clone()),
+                    }
                 }
             };
-
-            // log
-            #[cfg(feature = "logging")]
-            info!(target: "stdout", "base64 string: {}", &base64_string.chars().take(10).collect::<String>());
 
             let created: u64 =
                 match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
@@ -108,13 +129,6 @@ pub async fn image_generation(
                         return Err(LlamaCoreError::Operation(err_msg.into()));
                     }
                 };
-
-            // create an image object
-            let image = ImageObject {
-                b64_json: Some(base64_string),
-                url: None,
-                prompt: Some(req.prompt.clone()),
-            };
 
             Ok(ListImagesResponse {
                 created,
@@ -207,22 +221,42 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
             #[cfg(feature = "logging")]
             info!(target: "stdout", "file_id: {}, file_name: {}", &id, &filename);
 
-            // convert the image to base64 string
-            let base64_string = match image_to_base64(output_image_file) {
-                Ok(base64_string) => base64_string,
-                Err(e) => {
-                    let err_msg = format!("Fail to convert the image to base64 string. {}", e);
+            let image = match req.response_format {
+                Some(ResponseFormat::B64Json) => {
+                    // convert the image to base64 string
+                    let base64_string = match image_to_base64(output_image_file) {
+                        Ok(base64_string) => base64_string,
+                        Err(e) => {
+                            let err_msg =
+                                format!("Fail to convert the image to base64 string. {}", e);
 
+                            #[cfg(feature = "logging")]
+                            error!(target: "llama_core", "{}", &err_msg);
+
+                            return Err(LlamaCoreError::Operation(err_msg));
+                        }
+                    };
+
+                    // log
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    info!(target: "stdout", "base64 string: {}", &base64_string.chars().take(10).collect::<String>());
 
-                    return Err(LlamaCoreError::Operation(err_msg));
+                    // create an image object
+                    ImageObject {
+                        b64_json: Some(base64_string),
+                        url: None,
+                        prompt: Some(req.prompt.clone()),
+                    }
+                }
+                Some(ResponseFormat::Url) | None => {
+                    // create an image object
+                    ImageObject {
+                        b64_json: None,
+                        url: Some(format!("/archives/{}/{}", &id, &filename)),
+                        prompt: Some(req.prompt.clone()),
+                    }
                 }
             };
-
-            // log
-            #[cfg(feature = "logging")]
-            info!(target: "stdout", "base64 string: {}", &base64_string.chars().take(10).collect::<String>());
 
             let created: u64 =
                 match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
@@ -237,13 +271,6 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
                         return Err(LlamaCoreError::Operation(err_msg.into()));
                     }
                 };
-
-            // create an image object
-            let image = ImageObject {
-                b64_json: Some(base64_string),
-                url: None,
-                prompt: Some(req.prompt.clone()),
-            };
 
             Ok(ListImagesResponse {
                 created,
