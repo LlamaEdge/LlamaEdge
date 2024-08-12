@@ -80,7 +80,7 @@ pub struct ImageCreateRequest {
     /// The quality of the image that will be generated. hd creates images with finer details and greater consistency across the image. Defaults to "standard". This param is only supported for OpenAI `dall-e-3`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub quality: Option<String>,
-    /// The format in which the generated images are returned. Must be one of `url` or `b64_json`. Defaults to `b64_json`.
+    /// The format in which the generated images are returned. Must be one of `url` or `b64_json`. Defaults to `Url`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_format: Option<ResponseFormat>,
     /// The size of the generated images. Defaults to 1024x1024.
@@ -339,7 +339,7 @@ impl ImageEditRequestBuilder {
                 mask: None,
                 model: model.into(),
                 n: Some(1),
-                response_format: Some(ResponseFormat::B64Json),
+                response_format: Some(ResponseFormat::Url),
                 ..Default::default()
             },
         }
@@ -538,7 +538,7 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                     model: model.ok_or_else(|| de::Error::missing_field("model"))?,
                     n: n.unwrap_or(Some(1)),
                     size,
-                    response_format: response_format.unwrap_or(Some(ResponseFormat::B64Json)),
+                    response_format: response_format.unwrap_or(Some(ResponseFormat::Url)),
                     user,
                 })
             }
@@ -577,7 +577,7 @@ fn test_serialize_image_edit_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","model":"test-model-name","n":1,"response_format":"b64_json"}"#
+            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","model":"test-model-name","n":1,"response_format":"url"}"#
         );
     }
 
@@ -595,14 +595,14 @@ fn test_serialize_image_edit_request() {
             "This is a prompt",
         )
         .with_number_of_images(2)
-        .with_response_format(ResponseFormat::Url)
+        .with_response_format(ResponseFormat::B64Json)
         .with_size("256x256")
         .with_user("user")
         .build();
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","model":"test-model-name","n":2,"size":"256x256","response_format":"url","user":"user"}"#
+            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","model":"test-model-name","n":2,"size":"256x256","response_format":"b64_json","user":"user"}"#
         );
     }
 }
@@ -622,11 +622,11 @@ fn test_deserialize_image_edit_request() {
         assert!(req.mask.is_none());
         assert_eq!(req.model, "test-model-name");
         assert_eq!(req.n, Some(1));
-        assert_eq!(req.response_format, Some(ResponseFormat::B64Json));
+        assert_eq!(req.response_format, Some(ResponseFormat::Url));
     }
 
     {
-        let json = r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","model":"test-model-name","n":2,"size":"256x256","response_format":"url","user":"user"}"#;
+        let json = r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","model":"test-model-name","n":2,"size":"256x256","response_format":"b64_json","user":"user"}"#;
         let req: ImageEditRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.image.id, "test-image-id");
         assert_eq!(req.image.bytes, 1024);
@@ -639,7 +639,7 @@ fn test_deserialize_image_edit_request() {
         assert_eq!(req.model, "test-model-name");
         assert_eq!(req.n, Some(2));
         assert_eq!(req.size, Some("256x256".to_string()));
-        assert_eq!(req.response_format, Some(ResponseFormat::Url));
+        assert_eq!(req.response_format, Some(ResponseFormat::B64Json));
         assert_eq!(req.user, Some("user".to_string()));
     }
 }
