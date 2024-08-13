@@ -74,6 +74,9 @@ struct Cli {
     /// How split tensors should be distributed accross GPUs. If None the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1.
     #[arg(long)]
     tensor_split: Option<String>,
+    /// Number of threads to use during computation
+    #[arg(long, default_value = "2")]
+    threads: u64,
     /// Disable memory mapping for file access of chat models
     #[arg(long)]
     no_mmap: Option<bool>,
@@ -231,6 +234,9 @@ async fn main() -> Result<(), ServerError> {
         info!(target: "server_config", "tensor_split: {}", tensor_split);
     }
 
+    // log threads
+    info!(target: "stdout", "threads: {}", cli.threads);
+
     // log no_mmap
     if let Some(no_mmap) = &cli.no_mmap {
         info!(
@@ -273,6 +279,9 @@ async fn main() -> Result<(), ServerError> {
                 )
                 .with_ctx_size(cli.ctx_size[0])
                 .with_batch_size(cli.batch_size[0])
+                .with_main_gpu(cli.main_gpu)
+                .with_tensor_split(cli.tensor_split)
+                .with_threads(cli.threads)
                 .enable_plugin_log(true)
                 .enable_debug_log(plugin_debug)
                 .build();
@@ -303,6 +312,7 @@ async fn main() -> Result<(), ServerError> {
                 .with_n_gpu_layers(cli.n_gpu_layers)
                 .with_main_gpu(cli.main_gpu)
                 .with_tensor_split(cli.tensor_split)
+                .with_threads(cli.threads)
                 .disable_mmap(cli.no_mmap)
                 .with_temperature(cli.temp)
                 .with_top_p(cli.top_p)
@@ -349,6 +359,9 @@ async fn main() -> Result<(), ServerError> {
         .with_batch_size(cli.batch_size[0])
         .with_n_predict(cli.n_predict)
         .with_n_gpu_layers(cli.n_gpu_layers)
+        .with_main_gpu(cli.main_gpu)
+        .with_tensor_split(cli.tensor_split.clone())
+        .with_threads(cli.threads)
         .disable_mmap(cli.no_mmap)
         .with_temperature(cli.temp)
         .with_top_p(cli.top_p)
@@ -387,6 +400,9 @@ async fn main() -> Result<(), ServerError> {
         )
         .with_ctx_size(cli.ctx_size[1])
         .with_batch_size(cli.batch_size[1])
+        .with_main_gpu(cli.main_gpu)
+        .with_tensor_split(cli.tensor_split)
+        .with_threads(cli.threads)
         .enable_plugin_log(true)
         .enable_debug_log(plugin_debug)
         .build();
