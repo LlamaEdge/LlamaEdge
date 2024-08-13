@@ -576,6 +576,10 @@ Options:
           Repeat alpha presence penalty. 0.0 = disabled [default: 0.0]
       --frequency-penalty <FREQUENCY_PENALTY>
           Repeat alpha frequency penalty. 0.0 = disabled [default: 0.0]
+      --grammar <GRAMMAR>
+          BNF-like grammar to constrain generations (see samples in grammars/ dir) [default: ]
+      --json-schema <JSON_SCHEMA>
+          JSON schema to constrain generations (https://json-schema.org/), e.g. `{}` for any JSON object. For schemas w/ external $refs, use --grammar + example/json_schema_to_grammar.py instead
       --llava-mmproj <LLAVA_MMPROJ>
           Path to the multimodal projector file
       --socket-addr <SOCKET_ADDR>
