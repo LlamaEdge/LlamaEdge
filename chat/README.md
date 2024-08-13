@@ -145,6 +145,10 @@ Options:
           Repeat alpha presence penalty. 0.0 = disabled [default: 0.0]
       --frequency-penalty <FREQUENCY_PENALTY>
           Repeat alpha frequency penalty. 0.0 = disabled [default: 0.0]
+      --grammar <GRAMMAR>
+          BNF-like grammar to constrain generations (see samples in grammars/ dir) [default: ]
+      --json-schema <JSON_SCHEMA>
+          JSON schema to constrain generations (https://json-schema.org/), e.g. `{}` for any JSON object. For schemas w/ external $refs, use --grammar + example/json_schema_to_grammar.py instead
   -p, --prompt-template <PROMPT_TEMPLATE>
           Sets the prompt template [possible values: llama-2-chat, llama-3-chat, llama-3-tool, mistral-instruct, mistral-tool, mistrallite, openchat, codellama-instruct, codellama-super-instruct, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, chatml-tool, internlm-2-tool, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, deepseek-chat-2, solar-instruct, phi-2-chat, phi-2-instruct, phi-3-chat, phi-3-instruct, gemma-instruct, octopus, glm-4-chat, groq-llama3-tool, embedding]
   -r, --reverse-prompt <REVERSE_PROMPT>
