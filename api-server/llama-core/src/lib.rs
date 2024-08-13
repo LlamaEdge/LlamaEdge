@@ -93,6 +93,8 @@ pub struct Metadata {
     pub ctx_size: u64,
     #[serde(rename = "batch-size")]
     pub batch_size: u64,
+    #[serde(rename = "threads")]
+    pub threads: u64,
 
     // * Sampling parameters (used by the llama sampling context).
     #[serde(rename = "temp")]
@@ -126,6 +128,7 @@ impl Default for Metadata {
             use_mmap: Some(true),
             ctx_size: 512,
             batch_size: 512,
+            threads: 2,
             temperature: 1.0,
             top_p: 1.0,
             repeat_penalty: 1.1,
@@ -199,6 +202,11 @@ impl MetadataBuilder {
 
     pub fn with_tensor_split(mut self, split: Option<String>) -> Self {
         self.metadata.tensor_split = split;
+        self
+    }
+
+    pub fn with_threads(mut self, threads: u64) -> Self {
+        self.metadata.threads = threads;
         self
     }
 
