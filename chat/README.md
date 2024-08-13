@@ -129,6 +129,8 @@ Options:
           The main GPU to use
       --tensor-split <TENSOR_SPLIT>
           How split tensors should be distributed accross GPUs. If None the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1
+      --threads <THREADS>
+          Number of threads to use during computation [default: 2]
       --no-mmap <NO_MMAP>
           Disable memory mapping for file access of chat models [possible values: true, false]
   -b, --batch-size <BATCH_SIZE>
