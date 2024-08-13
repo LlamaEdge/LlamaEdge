@@ -107,6 +107,13 @@ pub struct Metadata {
     pub presence_penalty: f64,
     #[serde(rename = "frequency-penalty")]
     pub frequency_penalty: f64,
+
+    // * grammar parameters
+    /// BNF-like grammar to constrain generations (see samples in grammars/ dir). Defaults to empty string.
+    pub grammar: String,
+    /// JSON schema to constrain generations (https://json-schema.org/), e.g. `{}` for any JSON object. For schemas w/ external $refs, use --grammar + example/json_schema_to_grammar.py instead.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub json_schema: Option<String>,
 }
 impl Default for Metadata {
     fn default() -> Self {
@@ -134,6 +141,8 @@ impl Default for Metadata {
             repeat_penalty: 1.1,
             presence_penalty: 0.0,
             frequency_penalty: 0.0,
+            grammar: String::new(),
+            json_schema: None,
         }
     }
 }
@@ -267,6 +276,16 @@ impl MetadataBuilder {
 
     pub fn with_frequency_penalty(mut self, penalty: f64) -> Self {
         self.metadata.frequency_penalty = penalty;
+        self
+    }
+
+    pub fn with_grammar(mut self, grammar: impl Into<String>) -> Self {
+        self.metadata.grammar = grammar.into();
+        self
+    }
+
+    pub fn with_json_schema(mut self, schema: Option<String>) -> Self {
+        self.metadata.json_schema = schema;
         self
     }
 
