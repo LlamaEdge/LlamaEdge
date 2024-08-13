@@ -531,9 +531,11 @@ async fn handle_request(
                 None => 0,
             };
 
-            info!(target: "stdout", "method: {}, endpoint: {}, http_version: {}, content-length: {}", method, path, version, size);
+            info!(target: "stdout", "method: {}, http_version: {}, content-length: {}", method, version, size);
+            info!(target: "stdout", "endpoint: {}", path);
         } else {
-            info!(target: "stdout", "method: {}, endpoint: {}, http_version: {}", method, path, version);
+            info!(target: "stdout", "method: {}, http_version: {}", method, version);
+            info!(target: "stdout", "endpoint: {}", path);
         }
     }
 
@@ -549,26 +551,26 @@ async fn handle_request(
         if status_code.as_u16() < 400 {
             // log response
             let response_version = format!("{:?}", response.version());
+            info!(target: "stdout", "response_version: {}", response_version);
             let response_body_size: u64 = response.body().size_hint().lower();
+            info!(target: "stdout", "response_body_size: {}", response_body_size);
             let response_status = status_code.as_u16();
-            let response_is_informational = status_code.is_informational();
+            info!(target: "stdout", "response_status: {}", response_status);
             let response_is_success = status_code.is_success();
-            let response_is_redirection = status_code.is_redirection();
-            let response_is_client_error = status_code.is_client_error();
-            let response_is_server_error = status_code.is_server_error();
-
-            info!(target: "stdout", "version: {}, body_size: {}, status: {}, is_informational: {}, is_success: {}, is_redirection: {}, is_client_error: {}, is_server_error: {}", response_version, response_body_size, response_status, response_is_informational, response_is_success, response_is_redirection, response_is_client_error, response_is_server_error);
+            info!(target: "stdout", "response_is_success: {}", response_is_success);
         } else {
             let response_version = format!("{:?}", response.version());
+            error!(target: "stdout", "response_version: {}", response_version);
             let response_body_size: u64 = response.body().size_hint().lower();
+            error!(target: "stdout", "response_body_size: {}", response_body_size);
             let response_status = status_code.as_u16();
-            let response_is_informational = status_code.is_informational();
+            error!(target: "stdout", "response_status: {}", response_status);
             let response_is_success = status_code.is_success();
-            let response_is_redirection = status_code.is_redirection();
+            error!(target: "stdout", "response_is_success: {}", response_is_success);
             let response_is_client_error = status_code.is_client_error();
+            error!(target: "stdout", "response_is_client_error: {}", response_is_client_error);
             let response_is_server_error = status_code.is_server_error();
-
-            error!(target: "stdout", "version: {}, body_size: {}, status: {}, is_informational: {}, is_success: {}, is_redirection: {}, is_client_error: {}, is_server_error: {}", response_version, response_body_size, response_status, response_is_informational, response_is_success, response_is_redirection, response_is_client_error, response_is_server_error);
+            error!(target: "stdout", "response_is_server_error: {}", response_is_server_error);
         }
     }
 
