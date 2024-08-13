@@ -35,6 +35,9 @@ struct Cli {
     /// How split tensors should be distributed accross GPUs. If None the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1.
     #[arg(long)]
     tensor_split: Option<String>,
+    /// Number of threads to use during computation
+    #[arg(long, default_value = "2")]
+    threads: u64,
     /// Disable memory mapping for file access of chat models
     #[arg(long)]
     no_mmap: Option<bool>,
@@ -130,6 +133,7 @@ async fn main() -> anyhow::Result<()> {
     if let Some(tensor_split) = &cli.tensor_split {
         log(format!("[INFO] Tensor split: {}", tensor_split));
     }
+    log(format!("[INFO] Threads: {}", &cli.threads));
     // no_mmap
     if let Some(no_mmap) = &cli.no_mmap {
         log(format!(
@@ -178,6 +182,7 @@ async fn main() -> anyhow::Result<()> {
         .with_n_gpu_layers(cli.n_gpu_layers)
         .with_main_gpu(cli.main_gpu)
         .with_tensor_split(cli.tensor_split)
+        .with_threads(cli.threads)
         .disable_mmap(cli.no_mmap)
         .with_batch_size(cli.batch_size)
         .with_repeat_penalty(cli.repeat_penalty)
