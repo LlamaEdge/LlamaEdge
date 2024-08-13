@@ -59,6 +59,12 @@ struct Cli {
     /// Repeat alpha frequency penalty. 0.0 = disabled
     #[arg(long, default_value = "0.0")]
     frequency_penalty: f64,
+    /// BNF-like grammar to constrain generations (see samples in grammars/ dir).
+    #[arg(long, default_value = "")]
+    pub grammar: String,
+    /// JSON schema to constrain generations (https://json-schema.org/), e.g. `{}` for any JSON object. For schemas w/ external $refs, use --grammar + example/json_schema_to_grammar.py instead.
+    #[arg(long)]
+    pub json_schema: Option<String>,
     /// Sets the prompt template.
     #[arg(short, long, value_parser = clap::value_parser!(PromptTemplateType), required = true)]
     prompt_template: PromptTemplateType,
@@ -170,6 +176,12 @@ async fn main() -> anyhow::Result<()> {
         "[INFO] Frequency penalty (0.0 = disabled): {}",
         &cli.frequency_penalty
     ));
+    // grammar
+    log(format!("[INFO] BNF-like grammar: {}", &cli.grammar));
+    // json schema
+    if let Some(json_schema) = &cli.json_schema {
+        log(format!("[INFO] JSON schema: {}", json_schema));
+    }
     // log prompts
     log(format!("[INFO] Enable prompt log: {}", &cli.log_prompts));
     // log statistics
@@ -188,6 +200,8 @@ async fn main() -> anyhow::Result<()> {
         .with_repeat_penalty(cli.repeat_penalty)
         .with_presence_penalty(cli.presence_penalty)
         .with_frequency_penalty(cli.frequency_penalty)
+        .with_grammar(cli.grammar)
+        .with_json_schema(cli.json_schema)
         .with_reverse_prompt(cli.reverse_prompt)
         .enable_prompts_log(cli.log_prompts || cli.log_all)
         .enable_plugin_log(cli.log_stat || cli.log_all)
