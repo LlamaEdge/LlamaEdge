@@ -95,6 +95,12 @@ struct Cli {
     /// Repeat alpha frequency penalty. 0.0 = disabled
     #[arg(long, default_value = "0.0")]
     frequency_penalty: f64,
+    /// BNF-like grammar to constrain generations (see samples in grammars/ dir).
+    #[arg(long, default_value = "")]
+    pub grammar: String,
+    /// JSON schema to constrain generations (https://json-schema.org/), e.g. `{}` for any JSON object. For schemas w/ external $refs, use --grammar + example/json_schema_to_grammar.py instead.
+    #[arg(long)]
+    pub json_schema: Option<String>,
     /// Path to the multimodal projector file
     #[arg(long)]
     llava_mmproj: Option<String>,
@@ -260,6 +266,16 @@ async fn main() -> Result<(), ServerError> {
     // log frequency penalty
     info!(target: "server_config", "frequency_penalty: {}", cli.frequency_penalty);
 
+    // log grammar
+    if !cli.grammar.is_empty() {
+        info!(target: "stdout", "grammar: {}", &cli.grammar);
+    }
+
+    // log json schema
+    if let Some(json_schema) = &cli.json_schema {
+        info!(target: "stdout", "json_schema: {}", json_schema);
+    }
+
     // log multimodal projector
     if let Some(llava_mmproj) = &cli.llava_mmproj {
         info!(target: "server_config", "llava_mmproj: {}", llava_mmproj);
@@ -319,6 +335,8 @@ async fn main() -> Result<(), ServerError> {
                 .with_repeat_penalty(cli.repeat_penalty)
                 .with_presence_penalty(cli.presence_penalty)
                 .with_frequency_penalty(cli.frequency_penalty)
+                .with_grammar(cli.grammar)
+                .with_json_schema(cli.json_schema)
                 .with_reverse_prompt(cli.reverse_prompt)
                 .with_mmproj(cli.llava_mmproj.clone())
                 .enable_plugin_log(true)
@@ -368,6 +386,8 @@ async fn main() -> Result<(), ServerError> {
         .with_repeat_penalty(cli.repeat_penalty)
         .with_presence_penalty(cli.presence_penalty)
         .with_frequency_penalty(cli.frequency_penalty)
+        .with_grammar(cli.grammar)
+        .with_json_schema(cli.json_schema)
         .with_reverse_prompt(cli.reverse_prompt)
         .with_mmproj(cli.llava_mmproj.clone())
         .enable_plugin_log(true)
