@@ -564,6 +564,8 @@ Options:
           The main GPU to use
       --tensor-split <TENSOR_SPLIT>
           How split tensors should be distributed accross GPUs. If None the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1
+      --threads <THREADS>
+          Number of threads to use during computation [default: 2]
       --no-mmap <NO_MMAP>
           Disable memory mapping for file access of chat models [possible values: true, false]
       --temp <TEMP>
@@ -576,6 +578,10 @@ Options:
           Repeat alpha presence penalty. 0.0 = disabled [default: 0.0]
       --frequency-penalty <FREQUENCY_PENALTY>
           Repeat alpha frequency penalty. 0.0 = disabled [default: 0.0]
+      --grammar <GRAMMAR>
+          BNF-like grammar to constrain generations (see samples in grammars/ dir) [default: ]
+      --json-schema <JSON_SCHEMA>
+          JSON schema to constrain generations (https://json-schema.org/), e.g. `{}` for any JSON object. For schemas w/ external $refs, use --grammar + example/json_schema_to_grammar.py instead
       --llava-mmproj <LLAVA_MMPROJ>
           Path to the multimodal projector file
       --socket-addr <SOCKET_ADDR>

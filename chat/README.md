@@ -129,6 +129,8 @@ Options:
           The main GPU to use
       --tensor-split <TENSOR_SPLIT>
           How split tensors should be distributed accross GPUs. If None the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1
+      --threads <THREADS>
+          Number of threads to use during computation [default: 2]
       --no-mmap <NO_MMAP>
           Disable memory mapping for file access of chat models [possible values: true, false]
   -b, --batch-size <BATCH_SIZE>
@@ -143,6 +145,10 @@ Options:
           Repeat alpha presence penalty. 0.0 = disabled [default: 0.0]
       --frequency-penalty <FREQUENCY_PENALTY>
           Repeat alpha frequency penalty. 0.0 = disabled [default: 0.0]
+      --grammar <GRAMMAR>
+          BNF-like grammar to constrain generations (see samples in grammars/ dir) [default: ]
+      --json-schema <JSON_SCHEMA>
+          JSON schema to constrain generations (https://json-schema.org/), e.g. `{}` for any JSON object. For schemas w/ external $refs, use --grammar + example/json_schema_to_grammar.py instead
   -p, --prompt-template <PROMPT_TEMPLATE>
           Sets the prompt template [possible values: llama-2-chat, llama-3-chat, llama-3-tool, mistral-instruct, mistral-tool, mistrallite, openchat, codellama-instruct, codellama-super-instruct, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, chatml-tool, internlm-2-tool, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, deepseek-chat-2, solar-instruct, phi-2-chat, phi-2-instruct, phi-3-chat, phi-3-instruct, gemma-instruct, octopus, glm-4-chat, groq-llama3-tool, embedding]
   -r, --reverse-prompt <REVERSE_PROMPT>

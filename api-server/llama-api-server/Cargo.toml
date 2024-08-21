@@ -1,18 +1,18 @@
 [package]
 name = "llama-api-server"
-version = "0.13.2"
+version = "0.14.0"
 edition = "2021"
 
 [dependencies]
 llama-core = { path = "../llama-core", features = ["logging"] }
+endpoints.workspace = true
+chat-prompts.workspace = true
 futures = { version = "0.3.6", default-features = false, features = ["async-await", "std"] }
 serde.workspace = true
 serde_json.workspace = true
-endpoints.workspace = true
-chat-prompts.workspace = true
 serde_yaml = "0.9"
-hyper_wasi = { version = "0.15", features = ["full"] }
-tokio_wasi = { version = "1", features = ["full"] }
+hyper = { version = "0.14", features = ["full"] }
+tokio = { version = "^1.36", features = ["io-util", "fs", "net", "time", "rt", "macros"] }
 thiserror.workspace = true
 uuid.workspace = true
 clap.workspace = true
@@ -28,5 +28,3 @@ walkdir = "2.5.0"
 
 [features]
 default = []
-full = ["https"]
-https = ["llama-core/https"]

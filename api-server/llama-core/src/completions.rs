@@ -15,7 +15,7 @@ use std::time::SystemTime;
 /// Given a prompt, the model will return one or more predicted completions along with the probabilities of alternative tokens at each position.
 pub async fn completions(request: &CompletionRequest) -> Result<CompletionObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Generate completions");
+    info!(target: "stdout", "Generate completions");
 
     let running_mode = running_mode()?;
     if running_mode == RunningMode::Embeddings || running_mode == RunningMode::Rag {
@@ -25,7 +25,7 @@ pub async fn completions(request: &CompletionRequest) -> Result<CompletionObject
         );
 
         #[cfg(feature = "logging")]
-        error!(target: "llama-core", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         return Err(LlamaCoreError::Operation(err_msg));
     }
@@ -43,12 +43,12 @@ fn compute(
     model_name: Option<&String>,
 ) -> std::result::Result<CompletionObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Compute completions");
+    info!(target: "stdout", "Compute completions");
 
     match model_name {
         Some(model_name) => {
             #[cfg(feature = "logging")]
-            info!(target: "llama-core", "Model: {}", model_name);
+            info!(target: "stdout", "Model: {}", model_name);
 
             let chat_graphs = match CHAT_GRAPHS.get() {
                 Some(chat_graphs) => chat_graphs,
@@ -56,7 +56,7 @@ fn compute(
                     let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama-core", "{}", err_msg);
+                    error!(target: "stdout", "{}", err_msg);
 
                     return Err(LlamaCoreError::Operation(err_msg.into()));
                 }
@@ -66,7 +66,7 @@ fn compute(
                 let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama-core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -80,7 +80,7 @@ fn compute(
                     );
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama-core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     Err(LlamaCoreError::Operation(err_msg))
                 }
@@ -93,7 +93,7 @@ fn compute(
                     let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama-core", "{}", err_msg);
+                    error!(target: "stdout", "{}", err_msg);
 
                     return Err(LlamaCoreError::Operation(err_msg.into()));
                 }
@@ -103,7 +103,7 @@ fn compute(
                 let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
                 #[cfg(feature = "logging")]
-                error!(target: "llama-core", "{}", &err_msg);
+                error!(target: "stdout", "{}", &err_msg);
 
                 LlamaCoreError::Operation(err_msg)
             })?;
@@ -114,7 +114,7 @@ fn compute(
                     let err_msg = "There is no model available in the chat graphs.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama-core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     Err(LlamaCoreError::Operation(err_msg.into()))
                 }
@@ -129,14 +129,14 @@ fn compute_by_graph(
     prompt: impl AsRef<str>,
 ) -> std::result::Result<CompletionObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Compute completions by graph");
+    info!(target: "stdout", "Compute completions by graph");
 
     // check if the `embedding` model is disabled or not
     if graph.metadata.embeddings {
         graph.metadata.embeddings = false;
 
         #[cfg(feature = "logging")]
-        info!(target: "llama-core", "The `embedding` field of metadata sets to false.");
+        info!(target: "stdout", "The `embedding` field of metadata sets to false.");
 
         graph.update_metadata()?;
     }
@@ -149,7 +149,7 @@ fn compute_by_graph(
             let err_msg = format!("Failed to set the input tensor. {}", e);
 
             #[cfg(feature = "logging")]
-            error!(target: "llama-core", "{}", &err_msg);
+            error!(target: "stdout", "{}", &err_msg);
 
             LlamaCoreError::Backend(BackendError::SetInput(err_msg))
         })?;
@@ -159,7 +159,7 @@ fn compute_by_graph(
         let err_msg = format!("Failed to execute the inference. {}", e);
 
         #[cfg(feature = "logging")]
-        error!(target: "llama-core", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         LlamaCoreError::Backend(BackendError::Compute(err_msg))
     })?;
@@ -175,7 +175,7 @@ fn compute_by_graph(
         );
 
         #[cfg(feature = "logging")]
-        error!(target: "llama-core", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         LlamaCoreError::Operation(err_msg)
     })?;
@@ -185,7 +185,7 @@ fn compute_by_graph(
     let token_info = get_token_info_by_graph(graph)?;
 
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Prompt tokens: {}, Completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
+    info!(target: "stdout", "Prompt tokens: {}, Completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
 
     let created = SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -193,13 +193,13 @@ fn compute_by_graph(
             let err_msg = format!("Failed to get the current time. {}", e);
 
             #[cfg(feature = "logging")]
-            error!(target: "llama-core", "{}", &err_msg);
+            error!(target: "stdout", "{}", &err_msg);
 
             LlamaCoreError::Operation(err_msg)
         })?;
 
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Completions generated successfully.");
+    info!(target: "stdout", "Completions generated successfully.");
 
     Ok(CompletionObject {
         id: uuid::Uuid::new_v4().to_string(),

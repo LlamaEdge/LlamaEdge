@@ -35,6 +35,9 @@ struct Cli {
     /// How split tensors should be distributed accross GPUs. If None the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1.
     #[arg(long)]
     tensor_split: Option<String>,
+    /// Number of threads to use during computation
+    #[arg(long, default_value = "2")]
+    threads: u64,
     /// Disable memory mapping for file access of chat models
     #[arg(long)]
     no_mmap: Option<bool>,
@@ -56,6 +59,12 @@ struct Cli {
     /// Repeat alpha frequency penalty. 0.0 = disabled
     #[arg(long, default_value = "0.0")]
     frequency_penalty: f64,
+    /// BNF-like grammar to constrain generations (see samples in grammars/ dir).
+    #[arg(long, default_value = "")]
+    pub grammar: String,
+    /// JSON schema to constrain generations (https://json-schema.org/), e.g. `{}` for any JSON object. For schemas w/ external $refs, use --grammar + example/json_schema_to_grammar.py instead.
+    #[arg(long)]
+    pub json_schema: Option<String>,
     /// Sets the prompt template.
     #[arg(short, long, value_parser = clap::value_parser!(PromptTemplateType), required = true)]
     prompt_template: PromptTemplateType,
@@ -130,6 +139,7 @@ async fn main() -> anyhow::Result<()> {
     if let Some(tensor_split) = &cli.tensor_split {
         log(format!("[INFO] Tensor split: {}", tensor_split));
     }
+    log(format!("[INFO] Threads: {}", &cli.threads));
     // no_mmap
     if let Some(no_mmap) = &cli.no_mmap {
         log(format!(
@@ -166,6 +176,12 @@ async fn main() -> anyhow::Result<()> {
         "[INFO] Frequency penalty (0.0 = disabled): {}",
         &cli.frequency_penalty
     ));
+    // grammar
+    log(format!("[INFO] BNF-like grammar: {}", &cli.grammar));
+    // json schema
+    if let Some(json_schema) = &cli.json_schema {
+        log(format!("[INFO] JSON schema: {}", json_schema));
+    }
     // log prompts
     log(format!("[INFO] Enable prompt log: {}", &cli.log_prompts));
     // log statistics
@@ -178,11 +194,14 @@ async fn main() -> anyhow::Result<()> {
         .with_n_gpu_layers(cli.n_gpu_layers)
         .with_main_gpu(cli.main_gpu)
         .with_tensor_split(cli.tensor_split)
+        .with_threads(cli.threads)
         .disable_mmap(cli.no_mmap)
         .with_batch_size(cli.batch_size)
         .with_repeat_penalty(cli.repeat_penalty)
         .with_presence_penalty(cli.presence_penalty)
         .with_frequency_penalty(cli.frequency_penalty)
+        .with_grammar(cli.grammar)
+        .with_json_schema(cli.json_schema)
         .with_reverse_prompt(cli.reverse_prompt)
         .enable_prompts_log(cli.log_prompts || cli.log_all)
         .enable_plugin_log(cli.log_stat || cli.log_all)

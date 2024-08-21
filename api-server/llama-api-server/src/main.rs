@@ -20,6 +20,7 @@ use llama_core::MetadataBuilder;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
+use tokio::net::TcpListener;
 use utils::LogLevel;
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
@@ -74,6 +75,9 @@ struct Cli {
     /// How split tensors should be distributed accross GPUs. If None the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1.
     #[arg(long)]
     tensor_split: Option<String>,
+    /// Number of threads to use during computation
+    #[arg(long, default_value = "2")]
+    threads: u64,
     /// Disable memory mapping for file access of chat models
     #[arg(long)]
     no_mmap: Option<bool>,
@@ -92,6 +96,12 @@ struct Cli {
     /// Repeat alpha frequency penalty. 0.0 = disabled
     #[arg(long, default_value = "0.0")]
     frequency_penalty: f64,
+    /// BNF-like grammar to constrain generations (see samples in grammars/ dir).
+    #[arg(long, default_value = "")]
+    pub grammar: String,
+    /// JSON schema to constrain generations (https://json-schema.org/), e.g. `{}` for any JSON object. For schemas w/ external $refs, use --grammar + example/json_schema_to_grammar.py instead.
+    #[arg(long)]
+    pub json_schema: Option<String>,
     /// Path to the multimodal projector file
     #[arg(long)]
     llava_mmproj: Option<String>,
@@ -116,11 +126,15 @@ struct Cli {
 async fn main() -> Result<(), ServerError> {
     let mut plugin_debug = false;
 
-    // get the environment variable `LLAMA_LOG`
-    let log_level: LogLevel = std::env::var("LLAMA_LOG")
-        .unwrap_or("info".to_string())
-        .parse()
-        .unwrap_or(LogLevel::Info);
+    // get the environment variable `RUST_LOG`
+    let rust_log = std::env::var("RUST_LOG").unwrap_or_default().to_lowercase();
+    let (_, log_level) = match rust_log.is_empty() {
+        true => ("stdout", LogLevel::Info),
+        false => match rust_log.split_once("=") {
+            Some((target, level)) => (target, level.parse().unwrap_or(LogLevel::Info)),
+            None => ("stdout", rust_log.parse().unwrap_or(LogLevel::Info)),
+        },
+    };
 
     if log_level == LogLevel::Debug || log_level == LogLevel::Trace {
         plugin_debug = true;
@@ -134,7 +148,7 @@ async fn main() -> Result<(), ServerError> {
     let cli = Cli::parse();
 
     // log the version of the server
-    info!(target: "server_config", "server version: {}", env!("CARGO_PKG_VERSION"));
+    info!(target: "stdout", "server version: {}", env!("CARGO_PKG_VERSION"));
 
     // log model names
     if cli.model_name.is_empty() && cli.model_name.len() > 2 {
@@ -142,7 +156,7 @@ async fn main() -> Result<(), ServerError> {
             "Invalid setting for model name. For running chat or embedding model, please specify a single model name. For running both chat and embedding models, please specify two model names: the first one for chat model, the other for embedding model.".to_owned(),
         ));
     }
-    info!(target: "server_config", "model_name: {}", cli.model_name.join(",").to_string());
+    info!(target: "stdout", "model_name: {}", cli.model_name.join(",").to_string());
 
     // log model alias
     let mut model_alias = String::new();
@@ -151,7 +165,7 @@ async fn main() -> Result<(), ServerError> {
     } else if cli.model_alias.len() == 2 {
         model_alias = cli.model_alias.join(",").to_string();
     }
-    info!(target: "server_config", "model_alias: {}", model_alias);
+    info!(target: "stdout", "model_alias: {}", model_alias);
 
     // log context size
     if cli.ctx_size.is_empty() && cli.ctx_size.len() > 2 {
@@ -170,7 +184,7 @@ async fn main() -> Result<(), ServerError> {
             .collect::<Vec<String>>()
             .join(",");
     }
-    info!(target: "server_config", "ctx_size: {}", ctx_sizes_str);
+    info!(target: "stdout", "ctx_size: {}", ctx_sizes_str);
 
     // log batch size
     if cli.batch_size.is_empty() && cli.batch_size.len() > 2 {
@@ -189,7 +203,7 @@ async fn main() -> Result<(), ServerError> {
             .collect::<Vec<String>>()
             .join(",");
     }
-    info!(target: "server_config", "batch_size: {}", batch_sizes_str);
+    info!(target: "stdout", "batch_size: {}", batch_sizes_str);
 
     // log prompt template
     if cli.prompt_template.is_empty() && cli.prompt_template.len() > 2 {
@@ -203,7 +217,7 @@ async fn main() -> Result<(), ServerError> {
         .map(|n| n.to_string())
         .collect::<Vec<String>>()
         .join(",");
-    info!(target: "server_config", "prompt_template: {}", prompt_template_str);
+    info!(target: "stdout", "prompt_template: {}", prompt_template_str);
     if cli.model_name.len() != cli.prompt_template.len() {
         return Err(ServerError::ArgumentError(
             "The number of model names and prompt templates must be the same.".to_owned(),
@@ -212,51 +226,61 @@ async fn main() -> Result<(), ServerError> {
 
     // log reverse prompt
     if let Some(reverse_prompt) = &cli.reverse_prompt {
-        info!(target: "server_config", "reverse_prompt: {}", reverse_prompt);
+        info!(target: "stdout", "reverse_prompt: {}", reverse_prompt);
     }
 
     // log n_predict
-    info!(target: "server_config", "n_predict: {}", cli.n_predict);
+    info!(target: "stdout", "n_predict: {}", cli.n_predict);
 
     // log n_gpu_layers
-    info!(target: "server_config", "n_gpu_layers: {}", cli.n_gpu_layers);
+    info!(target: "stdout", "n_gpu_layers: {}", cli.n_gpu_layers);
 
     // log main_gpu
     if let Some(main_gpu) = &cli.main_gpu {
-        info!(target: "server_config", "main_gpu: {}", main_gpu);
+        info!(target: "stdout", "main_gpu: {}", main_gpu);
     }
 
     // log tensor_split
     if let Some(tensor_split) = &cli.tensor_split {
-        info!(target: "server_config", "tensor_split: {}", tensor_split);
+        info!(target: "stdout", "tensor_split: {}", tensor_split);
     }
+
+    // log threads
+    info!(target: "stdout", "threads: {}", cli.threads);
 
     // log no_mmap
     if let Some(no_mmap) = &cli.no_mmap {
-        info!(
-            "[INFO] Disable memory mapping for file access of chat models : {}",
-            no_mmap
-        );
+        info!(target: "stdout", "no_mmap: {}", no_mmap);
     }
 
     // log temperature
-    info!(target: "server_config", "temp: {}", cli.temp);
+    info!(target: "stdout", "temp: {}", cli.temp);
 
     // log top-p sampling
-    info!(target: "server_config", "top_p: {}", cli.top_p);
+    info!(target: "stdout", "top_p: {}", cli.top_p);
 
     // repeat penalty
-    info!(target: "server_config", "repeat_penalty: {}", cli.repeat_penalty);
+    info!(target: "stdout", "repeat_penalty: {}", cli.repeat_penalty);
 
     // log presence penalty
-    info!(target: "server_config", "presence_penalty: {}", cli.presence_penalty);
+    info!(target: "stdout", "presence_penalty: {}", cli.presence_penalty);
 
     // log frequency penalty
-    info!(target: "server_config", "frequency_penalty: {}", cli.frequency_penalty);
+    info!(target: "stdout", "frequency_penalty: {}", cli.frequency_penalty);
+
+    // log grammar
+    if !cli.grammar.is_empty() {
+        info!(target: "stdout", "grammar: {}", &cli.grammar);
+    }
+
+    // log json schema
+    if let Some(json_schema) = &cli.json_schema {
+        info!(target: "stdout", "json_schema: {}", json_schema);
+    }
 
     // log multimodal projector
     if let Some(llava_mmproj) = &cli.llava_mmproj {
-        info!(target: "server_config", "llava_mmproj: {}", llava_mmproj);
+        info!(target: "stdout", "llava_mmproj: {}", llava_mmproj);
     }
 
     // initialize the core context
@@ -273,6 +297,9 @@ async fn main() -> Result<(), ServerError> {
                 )
                 .with_ctx_size(cli.ctx_size[0])
                 .with_batch_size(cli.batch_size[0])
+                .with_main_gpu(cli.main_gpu)
+                .with_tensor_split(cli.tensor_split)
+                .with_threads(cli.threads)
                 .enable_plugin_log(true)
                 .enable_debug_log(plugin_debug)
                 .build();
@@ -303,12 +330,15 @@ async fn main() -> Result<(), ServerError> {
                 .with_n_gpu_layers(cli.n_gpu_layers)
                 .with_main_gpu(cli.main_gpu)
                 .with_tensor_split(cli.tensor_split)
+                .with_threads(cli.threads)
                 .disable_mmap(cli.no_mmap)
                 .with_temperature(cli.temp)
                 .with_top_p(cli.top_p)
                 .with_repeat_penalty(cli.repeat_penalty)
                 .with_presence_penalty(cli.presence_penalty)
                 .with_frequency_penalty(cli.frequency_penalty)
+                .with_grammar(cli.grammar)
+                .with_json_schema(cli.json_schema)
                 .with_reverse_prompt(cli.reverse_prompt)
                 .with_mmproj(cli.llava_mmproj.clone())
                 .enable_plugin_log(true)
@@ -349,12 +379,17 @@ async fn main() -> Result<(), ServerError> {
         .with_batch_size(cli.batch_size[0])
         .with_n_predict(cli.n_predict)
         .with_n_gpu_layers(cli.n_gpu_layers)
+        .with_main_gpu(cli.main_gpu)
+        .with_tensor_split(cli.tensor_split.clone())
+        .with_threads(cli.threads)
         .disable_mmap(cli.no_mmap)
         .with_temperature(cli.temp)
         .with_top_p(cli.top_p)
         .with_repeat_penalty(cli.repeat_penalty)
         .with_presence_penalty(cli.presence_penalty)
         .with_frequency_penalty(cli.frequency_penalty)
+        .with_grammar(cli.grammar)
+        .with_json_schema(cli.json_schema)
         .with_reverse_prompt(cli.reverse_prompt)
         .with_mmproj(cli.llava_mmproj.clone())
         .enable_plugin_log(true)
@@ -387,6 +422,9 @@ async fn main() -> Result<(), ServerError> {
         )
         .with_ctx_size(cli.ctx_size[1])
         .with_batch_size(cli.batch_size[1])
+        .with_main_gpu(cli.main_gpu)
+        .with_tensor_split(cli.tensor_split)
+        .with_threads(cli.threads)
         .enable_plugin_log(true)
         .enable_debug_log(plugin_debug)
         .build();
@@ -413,7 +451,7 @@ async fn main() -> Result<(), ServerError> {
         build_number = plugin_info.build_number,
         commit_id = plugin_info.commit_id,
     );
-    info!(target: "server_config", "plugin_ggml_version: {}", plugin_version);
+    info!(target: "stdout", "plugin_ggml_version: {}", plugin_version);
 
     // socket address
     let addr = cli
@@ -423,14 +461,14 @@ async fn main() -> Result<(), ServerError> {
     let port = addr.port().to_string();
 
     // log socket address
-    info!(target: "server_config", "socket_address: {}", addr.to_string());
+    info!(target: "stdout", "socket_address: {}", addr.to_string());
 
     // get the environment variable `NODE_VERSION`
     // Note that this is for satisfying the requirement of `gaianet-node` project.
     let node = std::env::var("NODE_VERSION").ok();
     if node.is_some() {
         // log node version
-        info!(target: "server_config", "gaianet_node_version: {}", node.as_ref().unwrap());
+        info!(target: "stdout", "gaianet_node_version: {}", node.as_ref().unwrap());
     }
 
     // create server info
@@ -452,7 +490,7 @@ async fn main() -> Result<(), ServerError> {
 
     let new_service = make_service_fn(move |conn: &AddrStream| {
         // log socket address
-        info!(target: "connection", "remote_addr: {}, local_addr: {}", conn.remote_addr().to_string(), conn.local_addr().to_string());
+        info!(target: "stdout", "remote_addr: {}, local_addr: {}", conn.remote_addr().to_string(), conn.local_addr().to_string());
 
         // web ui
         let web_ui = cli.web_ui.to_string_lossy().to_string();
@@ -460,13 +498,10 @@ async fn main() -> Result<(), ServerError> {
         async move { Ok::<_, Error>(service_fn(move |req| handle_request(req, web_ui.clone()))) }
     });
 
-    let server = Server::bind(&addr).serve(new_service);
-
-    // println!(
-    //     "LlamaEdge API server listening on http://{}:{}",
-    //     addr.ip(),
-    //     addr.port()
-    // );
+    let tcp_listener = TcpListener::bind(addr).await.unwrap();
+    let server = Server::from_tcp(tcp_listener.into_std().unwrap())
+        .unwrap()
+        .serve(new_service);
 
     match server.await {
         Ok(_) => Ok(()),
@@ -496,9 +531,11 @@ async fn handle_request(
                 None => 0,
             };
 
-            info!(target: "request", "method: {}, endpoint: {}, http_version: {}, content-length: {}", method, path, version, size);
+            info!(target: "stdout", "method: {}, http_version: {}, content-length: {}", method, version, size);
+            info!(target: "stdout", "endpoint: {}", path);
         } else {
-            info!(target: "request", "method: {}, endpoint: {}, http_version: {}", method, path, version);
+            info!(target: "stdout", "method: {}, http_version: {}", method, version);
+            info!(target: "stdout", "endpoint: {}", path);
         }
     }
 
@@ -514,26 +551,26 @@ async fn handle_request(
         if status_code.as_u16() < 400 {
             // log response
             let response_version = format!("{:?}", response.version());
+            info!(target: "stdout", "response_version: {}", response_version);
             let response_body_size: u64 = response.body().size_hint().lower();
+            info!(target: "stdout", "response_body_size: {}", response_body_size);
             let response_status = status_code.as_u16();
-            let response_is_informational = status_code.is_informational();
+            info!(target: "stdout", "response_status: {}", response_status);
             let response_is_success = status_code.is_success();
-            let response_is_redirection = status_code.is_redirection();
-            let response_is_client_error = status_code.is_client_error();
-            let response_is_server_error = status_code.is_server_error();
-
-            info!(target: "response", "version: {}, body_size: {}, status: {}, is_informational: {}, is_success: {}, is_redirection: {}, is_client_error: {}, is_server_error: {}", response_version, response_body_size, response_status, response_is_informational, response_is_success, response_is_redirection, response_is_client_error, response_is_server_error);
+            info!(target: "stdout", "response_is_success: {}", response_is_success);
         } else {
             let response_version = format!("{:?}", response.version());
+            error!(target: "stdout", "response_version: {}", response_version);
             let response_body_size: u64 = response.body().size_hint().lower();
+            error!(target: "stdout", "response_body_size: {}", response_body_size);
             let response_status = status_code.as_u16();
-            let response_is_informational = status_code.is_informational();
+            error!(target: "stdout", "response_status: {}", response_status);
             let response_is_success = status_code.is_success();
-            let response_is_redirection = status_code.is_redirection();
+            error!(target: "stdout", "response_is_success: {}", response_is_success);
             let response_is_client_error = status_code.is_client_error();
+            error!(target: "stdout", "response_is_client_error: {}", response_is_client_error);
             let response_is_server_error = status_code.is_server_error();
-
-            error!(target: "response", "version: {}, body_size: {}, status: {}, is_informational: {}, is_success: {}, is_redirection: {}, is_client_error: {}, is_server_error: {}", response_version, response_body_size, response_status, response_is_informational, response_is_success, response_is_redirection, response_is_client_error, response_is_server_error);
+            error!(target: "stdout", "response_is_server_error: {}", response_is_server_error);
         }
     }
 

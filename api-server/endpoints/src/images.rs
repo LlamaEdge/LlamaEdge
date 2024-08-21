@@ -5,7 +5,7 @@ use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
     Deserialize, Deserializer, Serialize,
 };
-use std::fmt;
+use std::{fmt, str::FromStr};
 
 /// Builder for creating a `ImageCreateRequest` instance.
 pub struct ImageCreateRequestBuilder {
@@ -19,7 +19,7 @@ impl ImageCreateRequestBuilder {
                 model: model.into(),
                 prompt: prompt.into(),
                 n: Some(1),
-                response_format: Some(ResponseFormat::B64Json),
+                response_format: Some(ResponseFormat::Url),
                 ..Default::default()
             },
         }
@@ -80,7 +80,7 @@ pub struct ImageCreateRequest {
     /// The quality of the image that will be generated. hd creates images with finer details and greater consistency across the image. Defaults to "standard". This param is only supported for OpenAI `dall-e-3`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub quality: Option<String>,
-    /// The format in which the generated images are returned. Must be one of `url` or `b64_json`. Defaults to `b64_json`.
+    /// The format in which the generated images are returned. Must be one of `url` or `b64_json`. Defaults to `Url`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_format: Option<ResponseFormat>,
     /// The size of the generated images. Defaults to 1024x1024.
@@ -166,7 +166,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     .ok_or_else(|| de::Error::invalid_length(1, &self))?;
                 let n = seq.next_element()?.unwrap_or(Some(1));
                 let quality = seq.next_element()?;
-                let response_format = seq.next_element()?.unwrap_or(Some(ResponseFormat::B64Json));
+                let response_format = seq.next_element()?.unwrap_or(Some(ResponseFormat::Url));
                 let size = seq.next_element()?;
                 let style = seq.next_element()?;
                 let user = seq.next_element()?;
@@ -252,7 +252,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     model: model.ok_or_else(|| de::Error::missing_field("model"))?,
                     n: n.unwrap_or(Some(1)),
                     quality,
-                    response_format: response_format.unwrap_or(Some(ResponseFormat::B64Json)),
+                    response_format: response_format.unwrap_or(Some(ResponseFormat::Url)),
                     size,
                     style,
                     user,
@@ -281,14 +281,14 @@ fn test_serialize_image_create_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"prompt":"This is a prompt","model":"test-model-name","n":1,"response_format":"b64_json"}"#
+            r#"{"prompt":"This is a prompt","model":"test-model-name","n":1,"response_format":"url"}"#
         );
     }
 
     {
         let req = ImageCreateRequestBuilder::new("test-model-name", "This is a prompt")
             .with_number_of_images(2)
-            .with_response_format(ResponseFormat::Url)
+            .with_response_format(ResponseFormat::B64Json)
             .with_size("1024x1024")
             .with_style("vivid")
             .with_user("user")
@@ -296,7 +296,7 @@ fn test_serialize_image_create_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"prompt":"This is a prompt","model":"test-model-name","n":2,"response_format":"url","size":"1024x1024","style":"vivid","user":"user"}"#
+            r#"{"prompt":"This is a prompt","model":"test-model-name","n":2,"response_format":"b64_json","size":"1024x1024","style":"vivid","user":"user"}"#
         );
     }
 }
@@ -309,7 +309,7 @@ fn test_deserialize_image_create_request() {
         assert_eq!(req.prompt, "This is a prompt");
         assert_eq!(req.model, "test-model-name");
         assert_eq!(req.n, Some(1));
-        assert_eq!(req.response_format, Some(ResponseFormat::B64Json));
+        assert_eq!(req.response_format, Some(ResponseFormat::Url));
     }
 
     {
@@ -339,7 +339,7 @@ impl ImageEditRequestBuilder {
                 mask: None,
                 model: model.into(),
                 n: Some(1),
-                response_format: Some(ResponseFormat::B64Json),
+                response_format: Some(ResponseFormat::Url),
                 ..Default::default()
             },
         }
@@ -399,7 +399,7 @@ pub struct ImageEditRequest {
     /// The size of the generated images. Defaults to 1024x1024.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub size: Option<String>,
-    /// The format in which the generated images are returned. Must be one of `url` or `b64_json`. Defaults to `b64_json`.
+    /// The format in which the generated images are returned. Must be one of `url` or `b64_json`. Defaults to `url`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_format: Option<ResponseFormat>,
     /// A unique identifier representing your end-user, which can help monitor and detect abuse.
@@ -538,7 +538,7 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                     model: model.ok_or_else(|| de::Error::missing_field("model"))?,
                     n: n.unwrap_or(Some(1)),
                     size,
-                    response_format: response_format.unwrap_or(Some(ResponseFormat::B64Json)),
+                    response_format: response_format.unwrap_or(Some(ResponseFormat::Url)),
                     user,
                 })
             }
@@ -577,7 +577,7 @@ fn test_serialize_image_edit_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","model":"test-model-name","n":1,"response_format":"b64_json"}"#
+            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","model":"test-model-name","n":1,"response_format":"url"}"#
         );
     }
 
@@ -595,14 +595,14 @@ fn test_serialize_image_edit_request() {
             "This is a prompt",
         )
         .with_number_of_images(2)
-        .with_response_format(ResponseFormat::Url)
+        .with_response_format(ResponseFormat::B64Json)
         .with_size("256x256")
         .with_user("user")
         .build();
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","model":"test-model-name","n":2,"size":"256x256","response_format":"url","user":"user"}"#
+            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","model":"test-model-name","n":2,"size":"256x256","response_format":"b64_json","user":"user"}"#
         );
     }
 }
@@ -622,11 +622,11 @@ fn test_deserialize_image_edit_request() {
         assert!(req.mask.is_none());
         assert_eq!(req.model, "test-model-name");
         assert_eq!(req.n, Some(1));
-        assert_eq!(req.response_format, Some(ResponseFormat::B64Json));
+        assert_eq!(req.response_format, Some(ResponseFormat::Url));
     }
 
     {
-        let json = r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","model":"test-model-name","n":2,"size":"256x256","response_format":"url","user":"user"}"#;
+        let json = r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","model":"test-model-name","n":2,"size":"256x256","response_format":"b64_json","user":"user"}"#;
         let req: ImageEditRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.image.id, "test-image-id");
         assert_eq!(req.image.bytes, 1024);
@@ -639,8 +639,155 @@ fn test_deserialize_image_edit_request() {
         assert_eq!(req.model, "test-model-name");
         assert_eq!(req.n, Some(2));
         assert_eq!(req.size, Some("256x256".to_string()));
-        assert_eq!(req.response_format, Some(ResponseFormat::Url));
+        assert_eq!(req.response_format, Some(ResponseFormat::B64Json));
         assert_eq!(req.user, Some("user".to_string()));
+    }
+}
+
+/// Request to generate an image variation.
+#[derive(Debug, Serialize, Default)]
+pub struct ImageVariationRequest {
+    /// The image to use as the basis for the variation(s).
+    pub image: FileObject,
+    /// Name of the model to use for image generation.
+    pub model: String,
+    /// The number of images to generate. Defaults to 1.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub n: Option<u64>,
+    /// The format in which the generated images are returned. Must be one of `url` or `b64_json`. Defaults to `b64_json`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_format: Option<ResponseFormat>,
+    /// The size of the generated images. Defaults to 1024x1024.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size: Option<String>,
+    /// A unique identifier representing your end-user, which can help monitor and detect abuse.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user: Option<String>,
+}
+impl<'de> Deserialize<'de> for ImageVariationRequest {
+    fn deserialize<D>(deserializer: D) -> Result<ImageVariationRequest, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        enum Field {
+            Image,
+            Model,
+            N,
+            ResponseFormat,
+            Size,
+            User,
+        }
+
+        impl<'de> Deserialize<'de> for Field {
+            fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                struct FieldVisitor;
+
+                impl<'de> Visitor<'de> for FieldVisitor {
+                    type Value = Field;
+
+                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                        formatter.write_str("field identifier")
+                    }
+
+                    fn visit_str<E>(self, value: &str) -> Result<Field, E>
+                    where
+                        E: de::Error,
+                    {
+                        match value {
+                            "image" => Ok(Field::Image),
+                            "model" => Ok(Field::Model),
+                            "n" => Ok(Field::N),
+                            "response_format" => Ok(Field::ResponseFormat),
+                            "size" => Ok(Field::Size),
+                            "user" => Ok(Field::User),
+                            _ => Err(de::Error::unknown_field(value, FIELDS)),
+                        }
+                    }
+                }
+
+                deserializer.deserialize_identifier(FieldVisitor)
+            }
+        }
+
+        struct ImageVariationRequestVisitor;
+
+        impl<'de> Visitor<'de> for ImageVariationRequestVisitor {
+            type Value = ImageVariationRequest;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("struct ImageVariationRequest")
+            }
+
+            fn visit_map<V>(self, mut map: V) -> Result<ImageVariationRequest, V::Error>
+            where
+                V: MapAccess<'de>,
+            {
+                let mut image = None;
+                let mut model = None;
+                let mut n = None;
+                let mut response_format = None;
+                let mut size = None;
+                let mut user = None;
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::Image => {
+                            if image.is_some() {
+                                return Err(de::Error::duplicate_field("image"));
+                            }
+                            image = Some(map.next_value()?);
+                        }
+                        Field::Model => {
+                            if model.is_some() {
+                                return Err(de::Error::duplicate_field("model"));
+                            }
+                            model = Some(map.next_value()?);
+                        }
+                        Field::N => {
+                            if n.is_some() {
+                                return Err(de::Error::duplicate_field("n"));
+                            }
+                            n = Some(map.next_value()?);
+                        }
+                        Field::ResponseFormat => {
+                            if response_format.is_some() {
+                                return Err(de::Error::duplicate_field("response_format"));
+                            }
+                            response_format = Some(map.next_value()?);
+                        }
+                        Field::Size => {
+                            if size.is_some() {
+                                return Err(de::Error::duplicate_field("size"));
+                            }
+                            size = Some(map.next_value()?);
+                        }
+                        Field::User => {
+                            if user.is_some() {
+                                return Err(de::Error::duplicate_field("user"));
+                            }
+                            user = Some(map.next_value()?);
+                        }
+                    }
+                }
+                Ok(ImageVariationRequest {
+                    image: image.ok_or_else(|| de::Error::missing_field("image"))?,
+                    model: model.ok_or_else(|| de::Error::missing_field("model"))?,
+                    n: n.unwrap_or(Some(1)),
+                    response_format: response_format.unwrap_or(Some(ResponseFormat::B64Json)),
+                    size,
+                    user,
+                })
+            }
+        }
+
+        const FIELDS: &[&str] = &["image", "model", "n", "response_format", "size", "user"];
+        deserializer.deserialize_struct(
+            "ImageVariationRequest",
+            FIELDS,
+            ImageVariationRequestVisitor,
+        )
     }
 }
 
@@ -651,6 +798,29 @@ pub enum ResponseFormat {
     Url,
     #[serde(rename = "b64_json")]
     B64Json,
+}
+impl FromStr for ResponseFormat {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "url" => Ok(ResponseFormat::Url),
+            "b64_json" => Ok(ResponseFormat::B64Json),
+            _ => Err(ParseError),
+        }
+    }
+}
+
+// Custom error type for conversion errors
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParseError;
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "provided string did not match any ResponseFormat variants"
+        )
+    }
 }
 
 /// Represents the url or the content of an image generated.
@@ -665,4 +835,13 @@ pub struct ImageObject {
     /// The prompt that was used to generate the image, if there was any revision to the prompt.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prompt: Option<String>,
+}
+
+/// Represent the response from the `images` endpoint.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ListImagesResponse {
+    /// The Unix timestamp (in seconds) for when the response was created.
+    pub created: u64,
+    /// The list of file objects.
+    pub data: Vec<ImageObject>,
 }
