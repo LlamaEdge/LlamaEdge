@@ -4,6 +4,7 @@
 #[macro_use]
 extern crate log;
 
+pub mod audio;
 pub mod chat;
 pub mod completions;
 pub mod embeddings;
