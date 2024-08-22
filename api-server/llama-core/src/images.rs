@@ -1,3 +1,5 @@
+//! Define APIs for image generation and edit.
+
 use crate::{error::LlamaCoreError, SD_IMAGE_TO_IMAGE, SD_TEXT_TO_IMAGE};
 use base64::{engine::general_purpose, Engine as _};
 use endpoints::images::{
