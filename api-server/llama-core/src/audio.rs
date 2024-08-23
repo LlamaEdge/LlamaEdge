@@ -13,10 +13,14 @@ pub async fn audio_transcriptions(
     let path = Path::new("archives")
         .join(&request.file.id)
         .join(&request.file.filename);
+
+    #[cfg(feature = "logging")]
     info!(target: "stdout", "audio file path: {:?}", &path);
 
     // load the audio waveform
     let wav_buf = load_audio_waveform(path)?;
+
+    #[cfg(feature = "logging")]
     info!(target: "stdout", "read input tensor, size in bytes: {}", wav_buf.len());
 
     #[cfg(feature = "logging")]
@@ -76,6 +80,8 @@ pub async fn audio_transcriptions(
 
         LlamaCoreError::Operation(err_msg)
     })?;
+
+    #[cfg(feature = "logging")]
     info!(target: "stdout", "Output buffer size: {}", output_size);
 
     // decode the output buffer
