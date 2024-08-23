@@ -16,6 +16,7 @@ on:
       - '**/Cargo.toml'
       - '**/*.rs'
       - '**/*.sh'
+      - '**/.cargo/config.toml'
   pull_request:
     branches:
       - dev
@@ -76,6 +77,9 @@ jobs:
 
       - name: Build chat for linux
         id: build_chat_linux
+        if: startsWith(matrix.os, 'ubuntu')
+        env:
+          RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
         run: |
           cd chat
           cargo +nightly fmt --all -- --check
@@ -88,6 +92,7 @@ jobs:
         env:
           WASI_SDK_PATH: /Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0
           CC: "/Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0/bin/clang --sysroot=/Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0/share/wasi-sysroot"
+          RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
         run: |
           cd chat
           cargo +nightly fmt --all -- --check
