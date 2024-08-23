@@ -41,6 +41,8 @@ pub(crate) static RUNNING_MODE: OnceCell<RwLock<RunningMode>> = OnceCell::new();
 pub(crate) static SD_TEXT_TO_IMAGE: OnceCell<Mutex<StableDiffusion>> = OnceCell::new();
 // stable diffusion context for the image-to-image task
 pub(crate) static SD_IMAGE_TO_IMAGE: OnceCell<Mutex<StableDiffusion>> = OnceCell::new();
+// context for the audio task
+pub(crate) static AUDIO_GRAPH: OnceCell<Mutex<Graph>> = OnceCell::new();
 
 pub(crate) const MAX_BUFFER_SIZE: usize = 2usize.pow(14) * 15 + 128;
 pub(crate) const OUTPUT_TENSOR: usize = 0;
@@ -840,7 +842,7 @@ pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
 /// Initialize the stable diffusion context
 pub fn init_stable_diffusion_context(gguf: impl AsRef<str>) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "Initializing the stable diffusion context");
+    info!(target: "stdout", "Initializing the stable diffusion context");
 
     // create the stable diffusion context for the text-to-image task
     let sd = StableDiffusion::new(Task::TextToImage, gguf.as_ref());
@@ -848,13 +850,13 @@ pub fn init_stable_diffusion_context(gguf: impl AsRef<str>) -> Result<(), LlamaC
         let err_msg = "Failed to initialize the stable diffusion context. Reason: The `SD_TEXT_TO_IMAGE` has already been initialized";
 
         #[cfg(feature = "logging")]
-        error!(target: "llama-core", "{}", err_msg);
+        error!(target: "stdout", , "{}", err_msg);
 
         LlamaCoreError::InitContext(err_msg.into())
     })?;
 
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "The stable diffusion text-to-image context has been initialized");
+    info!(target: "stdout", "The stable diffusion text-to-image context has been initialized");
 
     // create the stable diffusion context for the image-to-image task
     let sd = StableDiffusion::new(Task::ImageToImage, gguf.as_ref());
@@ -862,13 +864,35 @@ pub fn init_stable_diffusion_context(gguf: impl AsRef<str>) -> Result<(), LlamaC
         let err_msg = "Failed to initialize the stable diffusion context. Reason: The `SD_IMAGE_TO_IMAGE` has already been initialized";
 
         #[cfg(feature = "logging")]
-        error!(target: "llama-core", "{}", err_msg);
+        error!(target: "stdout", , "{}", err_msg);
 
         LlamaCoreError::InitContext(err_msg.into())
     })?;
 
     #[cfg(feature = "logging")]
-    info!(target: "llama-core", "The stable diffusion image-to-image context has been initialized");
+    info!(target: "stdout", "The stable diffusion image-to-image context has been initialized");
+
+    Ok(())
+}
+
+/// Initialize the whisper context
+pub fn init_audio_context(metadata: &Metadata) -> Result<(), LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Initializing the audio context");
+
+    // create and initialize the audio context
+    let graph = Graph::new(&metadata)?;
+    AUDIO_GRAPH.set(Mutex::new(graph)).map_err(|_| {
+            let err_msg = "Failed to initialize the audio context. Reason: The `AUDIO_GRAPH` has already been initialized";
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", , "{}", err_msg);
+
+            LlamaCoreError::InitContext(err_msg.into())
+        })?;
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "The audio context has been initialized");
 
     Ok(())
 }
