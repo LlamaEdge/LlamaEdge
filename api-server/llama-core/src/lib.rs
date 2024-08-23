@@ -760,9 +760,9 @@ pub fn init_whisper_context(
 
     // create and initialize the audio context
     let graph = GraphBuilder::new(EngineType::Whisper)?
-        .with_config(&metadata)?
+        .with_config(metadata)?
         .use_cpu()
-        .build_from_files(&[model_file.as_ref()])?;
+        .build_from_files([model_file.as_ref()])?;
 
     AUDIO_GRAPH.set(Mutex::new(graph)).map_err(|_| {
             let err_msg = "Failed to initialize the audio context. Reason: The `AUDIO_GRAPH` has already been initialized";
