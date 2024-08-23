@@ -48,7 +48,7 @@ pub async fn audio_transcriptions(
     // set the input tensor
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Feed the audio data to the model.");
-    set_tensor_data(&mut graph, 0, &wav_buf, &[1, wav_buf.len()])?;
+    set_tensor_data(&mut graph, 0, &wav_buf, [1, wav_buf.len()])?;
 
     // compute the graph
     #[cfg(feature = "logging")]
