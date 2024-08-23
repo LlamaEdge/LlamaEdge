@@ -363,7 +363,9 @@ pub(crate) struct TokenInfo {
 
 pub(crate) trait TensorType {
     fn tensor_type() -> wasmedge_wasi_nn::TensorType;
-    fn shape(len: usize) -> Vec<usize>;
+    fn shape(shape: impl AsRef<[usize]>) -> Vec<usize> {
+        shape.as_ref().to_vec()
+    }
 }
 
 impl TensorType for u8 {
@@ -371,8 +373,8 @@ impl TensorType for u8 {
         wasmedge_wasi_nn::TensorType::U8
     }
 
-    fn shape(_len: usize) -> Vec<usize> {
-        vec![1]
+    fn shape(shape: impl AsRef<[usize]>) -> Vec<usize> {
+        shape.as_ref().to_vec()
     }
 }
 
@@ -380,24 +382,16 @@ impl TensorType for f32 {
     fn tensor_type() -> wasmedge_wasi_nn::TensorType {
         wasmedge_wasi_nn::TensorType::F32
     }
-
-    fn shape(len: usize) -> Vec<usize> {
-        vec![1, len]
-    }
 }
 
 pub(crate) fn set_tensor_data<T: TensorType>(
     graph: &mut Graph,
     idx: usize,
     tensor_data: &[T],
+    shape: impl AsRef<[usize]>,
 ) -> Result<(), LlamaCoreError> {
     if graph
-        .set_input(
-            idx,
-            T::tensor_type(),
-            &T::shape(tensor_data.len()),
-            tensor_data,
-        )
+        .set_input(idx, T::tensor_type(), &T::shape(shape), tensor_data)
         .is_err()
     {
         let err_msg = format!("Fail to set input tensor at index {}", idx);
