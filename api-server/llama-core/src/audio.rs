@@ -1,10 +1,11 @@
 //! Define APIs for audio generation, transcription, and translation.
 
-use crate::{error::LlamaCoreError, MAX_BUFFER_SIZE};
-use endpoints::{
-    audio::transcription::{TranscriptionObject, TranscriptionRequest},
-    files::FileObject,
+use crate::{
+    error::LlamaCoreError,
+    utils::{get_output_buffer, set_tensor_data},
+    AUDIO_GRAPH, OUTPUT_TENSOR,
 };
+use endpoints::audio::transcription::{TranscriptionObject, TranscriptionRequest};
 use hound::{self, SampleFormat};
 use std::path::Path;
 
@@ -24,7 +25,7 @@ pub async fn audio_transcriptions(
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Get the model instance.");
-    let graph = match GRAPH.get() {
+    let graph = match AUDIO_GRAPH.get() {
         Some(graph) => graph,
         None => {
             let err_msg = "The GRAPH is not initialized.";
@@ -48,54 +49,46 @@ pub async fn audio_transcriptions(
         }
     };
 
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Initialize the execution context.");
-    graph.init_execution_context()?;
-
     // set the input tensor
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Feed the audio data to the model.");
-    graph.set_input(
-        0,
-        wasmedge_wasi_nn::TensorType::F32,
-        &[1, waveform.len()],
-        &waveform,
-    )?;
+    set_tensor_data(&mut graph, 0, &waveform)?;
 
     // compute the graph
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Transcribe audio to text.");
-    graph.compute()?;
+    if let Err(e) = graph.compute() {
+        let err_msg = format!("Failed to compute the graph. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        return Err(LlamaCoreError::Operation(err_msg));
+    }
 
     // get the output tensor
     #[cfg(feature = "logging")]
     info!(target: "stdout", "[INFO] Retrieve the transcription data.");
-    let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
-    let size = graph.get_output(0, &mut output_buffer)?;
-    unsafe {
-        output_buffer.set_len(size);
-    }
-    info!(target: "stdout", "Output buffer size: {}", size);
+    let output_buffer = get_output_buffer(&graph, OUTPUT_TENSOR)?;
 
     // decode the output buffer
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Decode the transcription data to plain text.");
-    let text = match std::str::from_utf8(&output_buffer[..]) {
-        Ok(output) => output.to_string(),
-        Err(e) => {
-            let err_msg = format!(
-                "Failed to decode the gerated buffer to a utf-8 string. {}",
-                e
-            );
+    let text = std::str::from_utf8(&output_buffer[..]).map_err(|e| {
+        let err_msg = format!(
+            "Failed to decode the gerated buffer to a utf-8 string. {}",
+            e
+        );
 
-            #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", &err_msg);
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
 
-            return Err(LlamaCoreError::Operation(err_msg));
-        }
+        LlamaCoreError::Operation(err_msg)
+    })?;
+
+    let obj = TranscriptionObject {
+        text: text.to_owned(),
     };
-
-    let obj = TranscriptionObject { text };
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "End of the chat completion.");
