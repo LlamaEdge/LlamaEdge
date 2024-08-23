@@ -173,16 +173,6 @@ impl MetadataBuilder {
         Self { metadata }
     }
 
-    pub fn with_model_name(mut self, name: impl Into<String>) -> Self {
-        self.metadata.model_name = name.into();
-        self
-    }
-
-    pub fn with_model_alias(mut self, alias: impl Into<String>) -> Self {
-        self.metadata.model_alias = alias.into();
-        self
-    }
-
     pub fn with_prompt_template(mut self, template: PromptTemplateType) -> Self {
         self.metadata.prompt_template = template;
         self
@@ -295,6 +285,38 @@ impl MetadataBuilder {
 
     pub fn with_json_schema(mut self, schema: Option<String>) -> Self {
         self.metadata.json_schema = schema;
+        self
+    }
+
+    pub fn build(self) -> Metadata {
+        self.metadata
+    }
+}
+
+/// Builder for creating an audio metadata
+#[derive(Debug)]
+pub struct AudioMetadataBuilder {
+    metadata: Metadata,
+}
+impl AudioMetadataBuilder {
+    pub fn new<S: Into<String>>(model_name: S, model_alias: S) -> Self {
+        let metadata = Metadata {
+            model_name: model_name.into(),
+            model_alias: model_alias.into(),
+            prompt_template: PromptTemplateType::Null,
+            ..Default::default()
+        };
+
+        Self { metadata }
+    }
+
+    pub fn enable_plugin_log(mut self, enable: bool) -> Self {
+        self.metadata.log_enable = enable;
+        self
+    }
+
+    pub fn enable_debug_log(mut self, enable: bool) -> Self {
+        self.metadata.debug_log = enable;
         self
     }
 
@@ -850,7 +872,7 @@ pub fn init_stable_diffusion_context(gguf: impl AsRef<str>) -> Result<(), LlamaC
         let err_msg = "Failed to initialize the stable diffusion context. Reason: The `SD_TEXT_TO_IMAGE` has already been initialized";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", , "{}", err_msg);
+        error!(target: "stdout", "{}", err_msg);
 
         LlamaCoreError::InitContext(err_msg.into())
     })?;
@@ -864,7 +886,7 @@ pub fn init_stable_diffusion_context(gguf: impl AsRef<str>) -> Result<(), LlamaC
         let err_msg = "Failed to initialize the stable diffusion context. Reason: The `SD_IMAGE_TO_IMAGE` has already been initialized";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", , "{}", err_msg);
+        error!(target: "stdout", "{}", err_msg);
 
         LlamaCoreError::InitContext(err_msg.into())
     })?;
@@ -886,7 +908,7 @@ pub fn init_audio_context(metadata: &Metadata) -> Result<(), LlamaCoreError> {
             let err_msg = "Failed to initialize the audio context. Reason: The `AUDIO_GRAPH` has already been initialized";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", , "{}", err_msg);
+            error!(target: "stdout", "{}", err_msg);
 
             LlamaCoreError::InitContext(err_msg.into())
         })?;
