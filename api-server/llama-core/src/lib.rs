@@ -748,16 +748,6 @@ pub fn init_whisper_context(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Initializing the audio context");
 
-    let model_bin = std::fs::read(model_file.as_ref()).map_err(|e| {
-        let err_msg = format!("Failed to read the model. Reason: {}", e);
-
-        #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", err_msg);
-
-        LlamaCoreError::InitContext(err_msg)
-    })?;
-    info!(target: "stdout", "Read model, size in bytes: {}", model_bin.len());
-
     // create and initialize the audio context
     let graph = GraphBuilder::new(EngineType::Whisper)?
         .with_config(metadata)?
