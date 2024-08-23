@@ -130,7 +130,7 @@ impl SearchConfig {
             }
         };
 
-        let mut req = client.request(method_as_string, url);
+        let mut req = client.request(method_as_string.clone(), url);
 
         // check headers.
         req = req.headers(
@@ -153,8 +153,22 @@ impl SearchConfig {
             },
         );
 
-        req = match self.content_type {
-            ContentType::JSON => req.json(search_input),
+        // For POST requests, search_input goes into the request body. For GET requests, in the
+        // params.
+        req = match method_as_string {
+            reqwest::Method::POST => match self.content_type {
+                ContentType::JSON => req.json(search_input),
+            },
+            reqwest::Method::GET => req.query(search_input),
+            _ => {
+                let msg = format!(
+                    "Unsupported request method: {}",
+                    method_as_string.to_owned()
+                );
+                #[cfg(feature = "logging")]
+                error!(target: "search", "perform_search: {}", msg);
+                return Err(LlamaCoreError::Search(msg));
+            }
         };
 
         let res = match req.send().await {
