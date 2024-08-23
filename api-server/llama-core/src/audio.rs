@@ -1,12 +1,7 @@
 //! Define APIs for audio generation, transcription, and translation.
 
-use crate::{
-    error::LlamaCoreError,
-    utils::{get_output_buffer, set_tensor_data},
-    AUDIO_GRAPH, OUTPUT_TENSOR,
-};
+use crate::{error::LlamaCoreError, utils::set_tensor_data, AUDIO_GRAPH, MAX_BUFFER_SIZE};
 use endpoints::audio::transcription::{TranscriptionObject, TranscriptionRequest};
-use hound::{self, SampleFormat};
 use std::path::Path;
 
 pub async fn audio_transcriptions(
@@ -18,10 +13,11 @@ pub async fn audio_transcriptions(
     let path = Path::new("archives")
         .join(&request.file.id)
         .join(&request.file.filename);
+    info!(target: "stdout", "audio file path: {:?}", &path);
 
     // load the audio waveform
-    let (waveform, sample_rate) = load_audio_waveform(path)?;
-    assert_eq!(sample_rate, 16000, "The audio sample rate must be 16k.");
+    let wav_buf = load_audio_waveform(path)?;
+    info!(target: "stdout", "read input tensor, size in bytes: {}", wav_buf.len());
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Get the model instance.");
@@ -52,7 +48,7 @@ pub async fn audio_transcriptions(
     // set the input tensor
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Feed the audio data to the model.");
-    set_tensor_data(&mut graph, 0, &waveform)?;
+    set_tensor_data(&mut graph, 0, &wav_buf, &[1, wav_buf.len()])?;
 
     // compute the graph
     #[cfg(feature = "logging")]
@@ -69,12 +65,24 @@ pub async fn audio_transcriptions(
     // get the output tensor
     #[cfg(feature = "logging")]
     info!(target: "stdout", "[INFO] Retrieve the transcription data.");
-    let output_buffer = get_output_buffer(&graph, OUTPUT_TENSOR)?;
+
+    // Retrieve the output.
+    let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
+    let output_size = graph.get_output(0, &mut output_buffer).map_err(|e| {
+        let err_msg = format!("Failed to get the output tensor. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
+    info!(target: "stdout", "Output buffer size: {}", output_size);
 
     // decode the output buffer
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Decode the transcription data to plain text.");
-    let text = std::str::from_utf8(&output_buffer[..]).map_err(|e| {
+
+    let text = std::str::from_utf8(&output_buffer[..output_size]).map_err(|e| {
         let err_msg = format!(
             "Failed to decode the gerated buffer to a utf-8 string. {}",
             e
@@ -87,7 +95,7 @@ pub async fn audio_transcriptions(
     })?;
 
     let obj = TranscriptionObject {
-        text: text.to_owned(),
+        text: text.trim().to_owned(),
     };
 
     #[cfg(feature = "logging")]
@@ -96,35 +104,15 @@ pub async fn audio_transcriptions(
     Ok(obj)
 }
 
-fn load_audio_waveform(
-    filename: impl AsRef<std::path::Path>,
-) -> Result<(Vec<f32>, usize), LlamaCoreError> {
-    let reader =
-        hound::WavReader::open(filename).map_err(|e| LlamaCoreError::Operation(e.to_string()))?;
-    let spec = reader.spec();
+fn load_audio_waveform(filename: impl AsRef<std::path::Path>) -> Result<Vec<u8>, LlamaCoreError> {
+    std::fs::read(filename)
+        .map_err(|e| {
+            let err_msg = format!("Failed to read the input tensor. {}", e);
 
-    // let duration = reader.duration() as usize;
-    let channels = spec.channels as usize;
-    let sample_rate = spec.sample_rate as usize;
-    // let bits_per_sample = spec.bits_per_sample;
-    let sample_format = spec.sample_format;
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
 
-    assert_eq!(sample_rate, 16000, "The audio sample rate must be 16k.");
-    assert_eq!(channels, 1, "The audio must be single-channel.");
-
-    let max_int_val = 2_u32.pow(spec.bits_per_sample as u32 - 1) - 1;
-
-    let floats = match sample_format {
-        SampleFormat::Float => reader
-            .into_samples::<f32>()
-            .collect::<hound::Result<_>>()
-            .map_err(|e| LlamaCoreError::Operation(e.to_string()))?,
-        SampleFormat::Int => reader
-            .into_samples::<i32>()
-            .map(|s| s.map(|s| s as f32 / max_int_val as f32))
-            .collect::<hound::Result<_>>()
-            .map_err(|e| LlamaCoreError::Operation(e.to_string()))?,
-    };
-
-    Ok((floats, sample_rate))
+            LlamaCoreError::Operation(err_msg)
+        })
+        .map_err(|e| LlamaCoreError::Operation(e.to_string()))
 }
