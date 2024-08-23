@@ -903,7 +903,7 @@ pub fn init_audio_context(metadata: &Metadata) -> Result<(), LlamaCoreError> {
     info!(target: "stdout", "Initializing the audio context");
 
     // create and initialize the audio context
-    let graph = Graph::new(&metadata)?;
+    let graph = Graph::new(metadata)?;
     AUDIO_GRAPH.set(Mutex::new(graph)).map_err(|_| {
             let err_msg = "Failed to initialize the audio context. Reason: The `AUDIO_GRAPH` has already been initialized";
 
