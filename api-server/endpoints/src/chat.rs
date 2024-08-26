@@ -1241,9 +1241,13 @@ fn test_chat_serialize_tool_function() {
     );
 }
 
-/// The parameters the functions accepts, described as a JSON Schema object. See the [guide](https://platform.openai.com/docs/guides/gpt/function-calling) for examples, and the [JSON Schema reference](https://json-schema.org/understanding-json-schema/) for documentation about the format.
+/// The parameters the functions accepts, described as a JSON Schema object. See the
+/// [guide](https://platform.openai.com/docs/guides/gpt/function-calling) for examples,
+/// and the [JSON Schema reference](https://json-schema.org/understanding-json-schema/)
+/// for documentation about the format.
 ///
-/// To describe a function that accepts no parameters, provide the value `{"type": "object", "properties": {}}`.
+/// To describe a function that accepts no parameters, provide the value
+/// `{"type": "object", "properties": {}}`.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ToolFunctionParameters {
     #[serde(rename = "type")]
@@ -2082,9 +2086,13 @@ pub struct ChatCompletionRequestFunction {
     parameters: ChatCompletionRequestFunctionParameters,
 }
 
-/// The parameters the functions accepts, described as a JSON Schema object. See the [guide](https://platform.openai.com/docs/guides/gpt/function-calling) for examples, and the [JSON Schema reference](https://json-schema.org/understanding-json-schema/) for documentation about the format.
+/// The parameters the functions accepts, described as a JSON Schema object. See the
+/// [guide](https://platform.openai.com/docs/guides/gpt/function-calling) for examples,
+/// and the [JSON Schema reference](https://json-schema.org/understanding-json-schema/)
+/// for documentation about the format.
 ///
-/// To describe a function that accepts no parameters, provide the value `{"type": "object", "properties": {}}`.
+/// To describe a function that accepts no parameters, provide the value
+/// `{"type": "object", "properties": {}}`.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ChatCompletionRequestFunctionParameters {
     #[serde(rename = "type")]
