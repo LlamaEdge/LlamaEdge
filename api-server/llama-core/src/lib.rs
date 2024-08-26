@@ -120,7 +120,7 @@ pub struct Metadata {
     // * grammar parameters
     /// BNF-like grammar to constrain generations (see samples in grammars/ dir). Defaults to empty string.
     pub grammar: String,
-    /// JSON schema to constrain generations (https://json-schema.org/), e.g. `{}` for any JSON object. For schemas w/ external $refs, use --grammar + example/json_schema_to_grammar.py instead.
+    /// JSON schema to constrain generations (<https://json-schema.org/>), e.g. `{}` for any JSON object. For schemas w/ external $refs, use --grammar + example/json_schema_to_grammar.py instead.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub json_schema: Option<String>,
 }
