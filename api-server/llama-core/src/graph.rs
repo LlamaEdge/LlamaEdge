@@ -1,3 +1,5 @@
+//! Define Graph and GraphBuilder APIs for creating a new computation graph.
+
 use crate::{error::LlamaCoreError, utils::set_tensor_data_u8, Metadata};
 use chat_prompts::PromptTemplateType;
 use wasmedge_wasi_nn::{
