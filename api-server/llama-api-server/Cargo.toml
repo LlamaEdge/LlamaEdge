@@ -7,10 +7,8 @@ edition = "2021"
 llama-core = { path = "../llama-core", features = ["logging"] }
 endpoints.workspace = true
 chat-prompts.workspace = true
-futures = { version = "0.3.6", default-features = false, features = ["async-await", "std"] }
 serde.workspace = true
 serde_json.workspace = true
-serde_yaml = "0.9"
 hyper = { version = "0.14", features = ["full"] }
 tokio = { version = "^1.36", features = ["io-util", "fs", "net", "time", "rt", "macros"] }
 thiserror.workspace = true

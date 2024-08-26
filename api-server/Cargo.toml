@@ -1,5 +1,5 @@
 [workspace]
-members = ["llama-api-server", "chat-prompts", "endpoints", "llama-core"]
+members = ["chat-prompts", "endpoints", "llama-api-server", "llama-core"]
 resolver = "2"
 
 [workspace.dependencies]
