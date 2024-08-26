@@ -4,6 +4,7 @@ use crate::{error::LlamaCoreError, utils::set_tensor_data, AUDIO_GRAPH, MAX_BUFF
 use endpoints::audio::transcription::{TranscriptionObject, TranscriptionRequest};
 use std::path::Path;
 
+/// Transcribe audio into the input language.
 pub async fn audio_transcriptions(
     request: TranscriptionRequest,
 ) -> Result<TranscriptionObject, LlamaCoreError> {
