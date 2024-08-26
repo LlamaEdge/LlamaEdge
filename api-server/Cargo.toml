@@ -1,12 +1,12 @@
 [workspace]
-members = ["llama-api-server", "chat-prompts", "endpoints", "llama-core"]
+members = ["chat-prompts", "endpoints", "llama-api-server", "llama-core"]
 resolver = "2"
 
 [workspace.dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 endpoints = { path = "endpoints", version = "^0.13" }
-chat-prompts = { path = "chat-prompts", version = "^0.11" }
+chat-prompts = { path = "chat-prompts", version = "^0.12" }
 thiserror = "1"
 uuid = { version = "1.4", features = ["v4", "fast-rng", "macro-diagnostics"] }
 clap = { version = "4.4.6", features = ["cargo", "derive"] }

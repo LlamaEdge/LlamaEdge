@@ -1241,9 +1241,12 @@ fn test_chat_serialize_tool_function() {
     );
 }
 
-/// The parameters the functions accepts, described as a JSON Schema object. See the [guide](https://platform.openai.com/docs/guides/gpt/function-calling) for examples, and the [JSON Schema reference](https://json-schema.org/understanding-json-schema/) for documentation about the format.
+/// The parameters the functions accepts, described as a JSON Schema object.
 ///
-/// To describe a function that accepts no parameters, provide the value `{"type": "object", "properties": {}}`.
+/// See the [guide](https://platform.openai.com/docs/guides/gpt/function-calling) for examples, and the [JSON Schema reference](https://json-schema.org/understanding-json-schema/) for documentation about the format.
+///
+/// To describe a function that accepts no parameters, provide the value
+/// `{"type": "object", "properties": {}}`.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ToolFunctionParameters {
     #[serde(rename = "type")]
@@ -2082,9 +2085,12 @@ pub struct ChatCompletionRequestFunction {
     parameters: ChatCompletionRequestFunctionParameters,
 }
 
-/// The parameters the functions accepts, described as a JSON Schema object. See the [guide](https://platform.openai.com/docs/guides/gpt/function-calling) for examples, and the [JSON Schema reference](https://json-schema.org/understanding-json-schema/) for documentation about the format.
+/// The parameters the functions accepts, described as a JSON Schema object.
 ///
-/// To describe a function that accepts no parameters, provide the value `{"type": "object", "properties": {}}`.
+/// See the [guide](https://platform.openai.com/docs/guides/gpt/function-calling) for examples, and the [JSON Schema reference](https://json-schema.org/understanding-json-schema/) for documentation about the format.
+///
+/// To describe a function that accepts no parameters, provide the value
+/// `{"type": "object", "properties": {}}`.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ChatCompletionRequestFunctionParameters {
     #[serde(rename = "type")]
@@ -2425,7 +2431,7 @@ fn test_serialize_chat_completion_chunk() {
     let json = serde_json::to_string(&chunk).unwrap();
     assert_eq!(
         json,
-        r#"{"id":"chatcmpl-1d0ff773-e8ab-4254-a222-96e97e3c295a","choices":[{"index":0,"delta":{"content":".","tool_calls":[],"role":"assistant"},"logprobs":null,"finish_reason":null}],"created":1722433423,"model":"default","system_fingerprint":"fp_44709d6fcb","object":"chat.completion.chunk"}"#
+        r#"{"id":"chatcmpl-1d0ff773-e8ab-4254-a222-96e97e3c295a","choices":[{"index":0,"delta":{"content":".","role":"assistant"},"logprobs":null,"finish_reason":null}],"created":1722433423,"model":"default","system_fingerprint":"fp_44709d6fcb","object":"chat.completion.chunk"}"#
     );
 }
 

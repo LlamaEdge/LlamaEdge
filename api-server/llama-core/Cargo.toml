@@ -1,6 +1,6 @@
 [package]
 name = "llama-core"
-version = "0.15.0"
+version = "0.16.0"
 edition = "2021"
 readme = "README.md"
 repository = "https://github.com/LlamaEdge/LlamaEdge"
@@ -19,9 +19,8 @@ serde_json.workspace = true
 uuid.workspace = true
 once_cell = "1.18"
 futures = { version = "0.3.6", default-features = false, features = ["async-await", "std"] }
-futures-util = "0.3"
 reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "rustls-tls"] }
-qdrant_rest_client = "0.1.1"
+qdrant = { package = "qdrant_rest_client", version = "0.1.1" }
 text-splitter = { version = "^0.7", features = ["tiktoken-rs", "markdown"] }
 tiktoken-rs = "^0.5"
 wasi-logger = { workspace = true, optional = true }
@@ -30,6 +29,9 @@ regex = "1"
 either.workspace = true
 wasmedge_stable_diffusion = { version = "0.1.0", git = "https://github.com/WasmEdge/wasmedge-stable-diffusion.git" }
 base64.workspace = true
+
+[package.metadata.cargo-machete]
+ignored = ["wasi-logger"]
 
 [features]
 default = []

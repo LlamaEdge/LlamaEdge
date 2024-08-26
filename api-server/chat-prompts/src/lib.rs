@@ -81,6 +81,8 @@ pub enum PromptTemplateType {
     GroqLlama3Tool,
     #[value(name = "embedding")]
     Embedding,
+    #[value(name = "none")]
+    Null,
 }
 impl PromptTemplateType {
     pub fn has_system_prompt(&self) -> bool {
@@ -118,7 +120,8 @@ impl PromptTemplateType {
             | PromptTemplateType::SolarInstruct
             | PromptTemplateType::Vicuna11Chat
             | PromptTemplateType::StableLMZephyr
-            | PromptTemplateType::Embedding => false,
+            | PromptTemplateType::Embedding
+            | PromptTemplateType::Null => false,
         }
     }
 }
@@ -162,6 +165,7 @@ impl FromStr for PromptTemplateType {
             "glm-4-chat" => Ok(PromptTemplateType::Glm4Chat),
             "groq-llama3-tool" => Ok(PromptTemplateType::GroqLlama3Tool),
             "embedding" => Ok(PromptTemplateType::Embedding),
+            "none" => Ok(PromptTemplateType::Null),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
                 template.to_string(),
             )),
@@ -205,6 +209,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::Glm4Chat => write!(f, "glm-4-chat"),
             PromptTemplateType::GroqLlama3Tool => write!(f, "groq-llama3-tool"),
             PromptTemplateType::Embedding => write!(f, "embedding"),
+            PromptTemplateType::Null => write!(f, "none"),
         }
     }
 }

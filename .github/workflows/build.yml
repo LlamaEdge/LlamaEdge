@@ -16,6 +16,7 @@ on:
       - '**/Cargo.toml'
       - '**/*.rs'
       - '**/*.sh'
+      - '**/.cargo/config.toml'
   pull_request:
     branches:
       - dev
@@ -74,9 +75,23 @@ jobs:
           cargo +nightly clippy --target wasm32-wasip1 -- -D warnings
           cargo build --target wasm32-wasip1 --release
 
-      - name: Build chat
-        id: build_chat
+      - name: Build chat for linux
+        id: build_chat_linux
+        if: startsWith(matrix.os, 'ubuntu')
         env:
+          RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
+        run: |
+          cd chat
+          cargo +nightly fmt --all -- --check
+          cargo +nightly clippy --target wasm32-wasip1 -- -D warnings
+          cargo build --target wasm32-wasip1 --release
+
+      - name: Build chat for macos
+        id: build_chat_macos
+        if: startsWith(matrix.os, 'macos')
+        env:
+          WASI_SDK_PATH: /Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0
+          CC: "/Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0/bin/clang --sysroot=/Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0/share/wasi-sysroot"
           RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
         run: |
           cd chat

@@ -1865,7 +1865,7 @@ fn build_prompt(
         let (prompt, tool_use) = match chat_request.tool_choice.as_ref() {
             Some(tool_choice) => match tool_choice {
                 ToolChoice::None => {
-                    match chat_prompt.build_with_tools(&mut chat_request.messages, None) {
+                    match chat_prompt.build_with_tools(&mut chat_request.messages, Some(&[])) {
                         Ok(prompt) => (prompt, false),
                         Err(e) => {
                             let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
