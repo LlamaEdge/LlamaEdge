@@ -49,7 +49,7 @@ pub struct SearchConfig {
     pub summarize_ctx_size: Option<usize>,
 }
 
-// output format for individual results in the final output.
+/// output format for individual results in the final output.
 #[derive(Serialize, Deserialize)]
 pub struct SearchResult {
     pub url: String,
@@ -57,7 +57,7 @@ pub struct SearchResult {
     pub text_content: String,
 }
 
-// Final output format for consumption by the LLM.
+/// Final output format for consumption by the LLM.
 #[derive(Serialize, Deserialize)]
 pub struct SearchOutput {
     pub results: Vec<SearchResult>,
@@ -109,7 +109,7 @@ impl SearchConfig {
             Err(_) => {
                 let msg = "Malformed endpoint url";
                 #[cfg(feature = "logging")]
-                error!(target: "search", "perform_search: {}", msg);
+                error!(target: "stdout", "perform_search: {}", msg);
                 return Err(LlamaCoreError::Search(format!(
                     "When parsing endpoint url: {}",
                     msg
@@ -122,7 +122,7 @@ impl SearchConfig {
             _ => {
                 let msg = "Non Standard or unknown method";
                 #[cfg(feature = "logging")]
-                error!(target: "search", "perform_search: {}", msg);
+                error!(target: "stdout", "perform_search: {}", msg);
                 return Err(LlamaCoreError::Search(format!(
                     "When converting method from bytes: {}",
                     msg
@@ -144,7 +144,7 @@ impl SearchConfig {
                 Err(_) => {
                     let msg = "Failed to convert headers from HashMaps to HeaderMaps";
                     #[cfg(feature = "logging")]
-                    error!(target: "search", "perform_search: {}", msg);
+                    error!(target: "stdout", "perform_search: {}", msg);
                     return Err(LlamaCoreError::Search(format!(
                         "On converting headers: {}",
                         msg
@@ -166,7 +166,7 @@ impl SearchConfig {
                     method_as_string.to_owned()
                 );
                 #[cfg(feature = "logging")]
-                error!(target: "search", "perform_search: {}", msg);
+                error!(target: "stdout", "perform_search: {}", msg);
                 return Err(LlamaCoreError::Search(msg));
             }
         };
@@ -176,7 +176,7 @@ impl SearchConfig {
             Err(e) => {
                 let msg = e.to_string();
                 #[cfg(feature = "logging")]
-                error!(target: "search", "perform_search: {}", msg);
+                error!(target: "stdout", "perform_search: {}", msg);
                 return Err(LlamaCoreError::Search(format!(
                     "When recieving response: {}",
                     msg
@@ -189,7 +189,7 @@ impl SearchConfig {
                 if length == 0 {
                     let msg = "Empty response from server";
                     #[cfg(feature = "logging")]
-                    error!(target: "search", "perform_search: {}", msg);
+                    error!(target: "stdout", "perform_search: {}", msg);
                     return Err(LlamaCoreError::Search(format!(
                         "Unexpected content length: {}",
                         msg
@@ -199,7 +199,7 @@ impl SearchConfig {
             None => {
                 let msg = "Content length returned None";
                 #[cfg(feature = "logging")]
-                error!(target: "search", "perform_search: {}", msg);
+                error!(target: "stdout", "perform_search: {}", msg);
                 return Err(LlamaCoreError::Search(format!(
                     "Content length field not found: {}",
                     msg
@@ -219,7 +219,7 @@ impl SearchConfig {
                     Err(e) => {
                         let msg = e.to_string();
                         #[cfg(feature = "logging")]
-                        error!(target: "search", "perform_search: {}", msg);
+                        error!(target: "stdout", "perform_search: {}", msg);
                         return Err(LlamaCoreError::Search(format!(
                             "When accessing response body: {}",
                             msg
@@ -232,7 +232,7 @@ impl SearchConfig {
                     Err(e) => {
                         let msg = e.to_string();
                         #[cfg(feature = "logging")]
-                        error!(target: "search", "perform_search: {}", msg);
+                        error!(target: "stdout", "perform_search: {}", msg);
                         return Err(LlamaCoreError::Search(format!(
                             "When converting to a JSON object: {}",
                             msg
@@ -250,7 +250,7 @@ impl SearchConfig {
             Err(e) => {
                 let msg = e.to_string();
                 #[cfg(feature = "logging")]
-                error!(target: "search", "perform_search: {}", msg);
+                error!(target: "stdout", "perform_search: {}", msg);
                 return Err(LlamaCoreError::Search(format!(
                     "When calling parse_into_results: {}",
                     msg
@@ -319,7 +319,7 @@ fn summarize(
         let err_msg = "Summarization is not supported in the EMBEDDINGS running mode.";
 
         #[cfg(feature = "logging")]
-        error!(target: "search", "{}", err_msg);
+        error!(target: "stdout", "{}", err_msg);
 
         return Err(LlamaCoreError::Search(err_msg.into()));
     }
@@ -331,7 +331,7 @@ fn summarize(
             let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
             #[cfg(feature = "logging")]
-            error!(target: "search", "{}", err_msg);
+            error!(target: "stdout", "{}", err_msg);
 
             return Err(LlamaCoreError::Search(err_msg.into()));
         }
@@ -341,7 +341,7 @@ fn summarize(
         let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
         #[cfg(feature = "logging")]
-        error!(target: "search", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         LlamaCoreError::Search(err_msg)
     })?;
@@ -357,7 +357,7 @@ fn summarize(
             let err_msg = "No available chat graph.";
 
             #[cfg(feature = "logging")]
-            error!(target: "search", "{}", err_msg);
+            error!(target: "stdout", "{}", err_msg);
 
             return Err(LlamaCoreError::Search(err_msg.into()));
         }
@@ -368,7 +368,7 @@ fn summarize(
         .expect("Failed to set prompt as the input tensor");
 
     #[cfg(feature = "logging")]
-    info!(target: "search", "Generating a summary for search results...");
+    info!(target: "stdout", "Generating a summary for search results...");
     // Execute the inference.
     graph.compute().expect("Failed to complete inference");
 
@@ -383,7 +383,7 @@ fn summarize(
     let output = String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
 
     #[cfg(feature = "logging")]
-    info!(target: "search", "Summary generated.");
+    info!(target: "stdout", "Summary generated.");
 
     Ok(output)
 }
