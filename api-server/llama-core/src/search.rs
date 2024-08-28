@@ -296,7 +296,12 @@ impl SearchConfig {
             .summarize_ctx_size
             .unwrap_or((self.size_limit_per_result * self.max_search_results as u16) as usize);
 
-        summarize(search_output, summarize_ctx_size, summarization_prompts)
+        summarize(
+            search_output,
+            summarize_ctx_size,
+            summarization_prompts.0,
+            summarization_prompts.1,
+        )
     }
 }
 
@@ -304,7 +309,8 @@ impl SearchConfig {
 fn summarize(
     search_output: SearchOutput,
     summarize_ctx_size: usize,
-    (initial_prompt, final_prompt): (String, String),
+    initial_prompt: String,
+    final_prompt: String,
 ) -> Result<String, LlamaCoreError> {
     let mut search_output_string: String = String::new();
 
