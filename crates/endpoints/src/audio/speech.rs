@@ -138,8 +138,7 @@ impl<'de> Deserialize<'de> for SpeechRequest {
             }
         }
 
-        const FIELDS: &'static [&'static str] =
-            &["model", "input", "voice", "response_format", "speed"];
+        const FIELDS: &[&str] = &["model", "input", "voice", "response_format", "speed"];
         deserializer.deserialize_struct("SpeechRequest", FIELDS, SpeechRequestVisitor)
     }
 }
