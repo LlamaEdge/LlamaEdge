@@ -1,8 +1,16 @@
 //! Define APIs for audio generation, transcription, and translation.
 
-use crate::{error::LlamaCoreError, utils::set_tensor_data, AUDIO_GRAPH, MAX_BUFFER_SIZE};
-use endpoints::audio::transcription::{TranscriptionObject, TranscriptionRequest};
-use std::path::Path;
+use crate::{
+    error::LlamaCoreError, utils::set_tensor_data, AUDIO_GRAPH, MAX_BUFFER_SIZE, PIPER_GRAPH,
+};
+use endpoints::{
+    audio::{
+        speech::SpeechRequest,
+        transcription::{TranscriptionObject, TranscriptionRequest},
+    },
+    files::FileObject,
+};
+use std::{fs, io::Write, path::Path, time::SystemTime};
 
 /// Transcribe audio into the input language.
 pub async fn audio_transcriptions(
@@ -29,7 +37,7 @@ pub async fn audio_transcriptions(
     let graph = match AUDIO_GRAPH.get() {
         Some(graph) => graph,
         None => {
-            let err_msg = "The GRAPH is not initialized.";
+            let err_msg = "The AUDIO_GRAPH is not initialized.";
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -122,4 +130,124 @@ fn load_audio_waveform(filename: impl AsRef<std::path::Path>) -> Result<Vec<u8>,
             LlamaCoreError::Operation(err_msg)
         })
         .map_err(|e| LlamaCoreError::Operation(e.to_string()))
+}
+
+/// Generate audio from the input text.
+pub async fn create_speech(request: SpeechRequest) -> Result<FileObject, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "processing audio speech request");
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Get the model instance.");
+    let graph = match PIPER_GRAPH.get() {
+        Some(graph) => graph,
+        None => {
+            let err_msg = "The PIPER_GRAPH is not initialized.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.to_owned()));
+        }
+    };
+
+    let mut graph = match graph.lock() {
+        Ok(graph) => graph,
+        Err(e) => {
+            let err_msg = format!("Failed to lock the graph. {}", e);
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg));
+        }
+    };
+
+    // set the input tensor
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Feed the text to the model.");
+    set_tensor_data(&mut graph, 0, request.input.as_bytes(), [1])?;
+
+    // compute the graph
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "create audio.");
+    if let Err(e) = graph.compute() {
+        let err_msg = format!("Failed to compute the graph. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        return Err(LlamaCoreError::Operation(err_msg));
+    }
+
+    // get the output tensor
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "[INFO] Retrieve the audio.");
+
+    let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
+    let output_size = graph.get_output(0, &mut output_buffer).map_err(|e| {
+        let err_msg = format!("Failed to get the output tensor. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Output buffer size: {}", output_size);
+
+    // * save the audio data to a file
+
+    // create a unique file id
+    let id = format!("file_{}", uuid::Uuid::new_v4());
+
+    // save the file
+    let path = Path::new("archives");
+    if !path.exists() {
+        fs::create_dir(path).unwrap();
+    }
+    let file_path = path.join(&id);
+    if !file_path.exists() {
+        fs::create_dir(&file_path).unwrap();
+    }
+    let filename = "output.wav";
+    let mut audio_file = match fs::File::create(file_path.join(filename)) {
+        Ok(file) => file,
+        Err(e) => {
+            let err_msg = format!("Failed to create the output file. {}", e);
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg));
+        }
+    };
+    audio_file.write_all(&output_buffer[..output_size]).unwrap();
+
+    // log
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "file_id: {}, file_name: {}", &id, &filename);
+
+    let created_at = match SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+        Ok(n) => n.as_secs(),
+        Err(_) => {
+            let err_msg = "Failed to get the current time.";
+
+            // log
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.to_owned()));
+        }
+    };
+
+    Ok(FileObject {
+        id,
+        bytes: output_size as u64,
+        created_at,
+        filename: filename.to_owned(),
+        object: "file".to_owned(),
+        purpose: "assistants_output".to_owned(),
+    })
 }
