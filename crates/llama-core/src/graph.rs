@@ -18,6 +18,7 @@ impl GraphBuilder {
         let encoding = match ty {
             EngineType::Ggml => wasmedge_wasi_nn::GraphEncoding::Ggml,
             EngineType::Whisper => wasmedge_wasi_nn::GraphEncoding::Whisper,
+            EngineType::Piper => wasmedge_wasi_nn::GraphEncoding::Piper,
         };
 
         let wasi_nn_graph_builder =
@@ -371,4 +372,5 @@ impl Graph {
 pub enum EngineType {
     Ggml,
     Whisper,
+    Piper,
 }
