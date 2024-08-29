@@ -45,6 +45,8 @@ pub(crate) static SD_TEXT_TO_IMAGE: OnceCell<Mutex<StableDiffusion>> = OnceCell:
 pub(crate) static SD_IMAGE_TO_IMAGE: OnceCell<Mutex<StableDiffusion>> = OnceCell::new();
 // context for the audio task
 pub(crate) static AUDIO_GRAPH: OnceCell<Mutex<Graph>> = OnceCell::new();
+// context for the piper task
+pub(crate) static PIPER_GRAPH: OnceCell<Mutex<Graph>> = OnceCell::new();
 
 pub(crate) const MAX_BUFFER_SIZE: usize = 2usize.pow(14) * 15 + 128;
 pub(crate) const OUTPUT_TENSOR: usize = 0;
@@ -910,6 +912,50 @@ pub fn init_whisper_context(
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "The audio context has been initialized");
+
+    Ok(())
+}
+
+/// Initialize the piper context
+///
+/// # Arguments
+///
+/// * `voice_model` - Path to the voice model file.
+///
+/// * `voice_config` - Path to the voice config file.
+///
+/// * `espeak_ng_data` - Path to the espeak-ng data directory.
+///
+pub fn init_piper_context(
+    voice_model: impl AsRef<Path>,
+    voice_config: impl AsRef<Path>,
+    espeak_ng_data: impl AsRef<Path>,
+) -> Result<(), LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Initializing the piper context");
+
+    let config = serde_json::json!({
+        "model": voice_model.as_ref().to_owned(),
+        "config": voice_config.as_ref().to_owned(),
+        "espeak_data": espeak_ng_data.as_ref().to_owned(),
+    });
+
+    // create and initialize the audio context
+    let graph = GraphBuilder::new(EngineType::Piper)?
+        .use_cpu()
+        .build_from_buffer([config.to_string()])?;
+
+    PIPER_GRAPH.set(Mutex::new(graph)).map_err(|_| {
+            let err_msg = "Failed to initialize the piper context. Reason: The `PIPER_GRAPH` has already been initialized";
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            LlamaCoreError::InitContext(err_msg.into())
+        })?;
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "The piper context has been initialized");
 
     Ok(())
 }
