@@ -14,6 +14,10 @@ pub enum LlamaCoreError {
     /// Errors thrown by the wasi-nn-ggml plugin and runtime.
     #[error("{0}")]
     Backend(#[from] BackendError),
+    /// Errors thrown by the Search Backend
+    #[cfg(feature = "search")]
+    #[error("{0}")]
+    Search(String),
 }
 
 /// Error types for wasi-nn errors.

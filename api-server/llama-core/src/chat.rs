@@ -1239,12 +1239,11 @@ fn parse_tool_calls(
             }
         }
         PromptTemplateType::GroqLlama3Tool => {
-            match regex::Regex::new(r"(?s)<tool_call>(.*?)</tool_call>") {
+            match regex::Regex::new(r"(?s)<tool_call>((.|\r|\n)*?)</tool_call>") {
                 Ok(re) => {
                     let mut values: Vec<serde_json::Value> = vec![];
                     for cap in re.captures_iter(input) {
-                        let cleaned = cap[1].replace("\\n", ""); // Remove "\\n" from the captured group
-                        let matched = cleaned.trim();
+                        let matched = cap[1].trim();
 
                         #[cfg(feature = "logging")]
                         info!(target: "stdout", "captured: {}", matched);
@@ -1333,7 +1332,7 @@ fn parse_tool_calls(
             #[cfg(feature = "logging")]
             info!(target: "stdout", "raw input: {}", input);
 
-            let re = match regex::Regex::new(r"^\{.*\}$") {
+            let re = match regex::Regex::new(r"^\{(.|\r|\n)*\}$") {
                 Ok(re) => re,
                 Err(e) => {
                     let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
@@ -1748,6 +1747,7 @@ fn post_process(
         || *template_ty == PromptTemplateType::MistralLite
         || *template_ty == PromptTemplateType::MistralTool
         || *template_ty == PromptTemplateType::MistralInstruct
+        || *template_ty == PromptTemplateType::BreezeInstruct
     {
         if output.as_ref().contains("</s><") {
             output.as_ref().trim_end_matches("</s><").trim().to_owned()

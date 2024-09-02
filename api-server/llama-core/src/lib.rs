@@ -13,6 +13,8 @@ pub mod graph;
 pub mod images;
 pub mod models;
 pub mod rag;
+#[cfg(feature = "search")]
+pub mod search;
 pub mod utils;
 
 pub use error::LlamaCoreError;

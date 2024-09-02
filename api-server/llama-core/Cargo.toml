@@ -1,6 +1,6 @@
 [package]
 name = "llama-core"
-version = "0.16.0"
+version = "0.16.1"
 edition = "2021"
 readme = "README.md"
 repository = "https://github.com/LlamaEdge/LlamaEdge"
@@ -35,5 +35,6 @@ ignored = ["wasi-logger"]
 
 [features]
 default = []
-full = ["logging"]
+full = ["logging", "search"]
 logging = ["wasi-logger", "log"]
+search = []
