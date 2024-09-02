@@ -7,6 +7,7 @@ pub mod glm;
 pub mod groq;
 pub mod intel;
 pub mod llama;
+pub mod mediatek;
 pub mod mistral;
 pub mod octopus;
 pub mod openchat;
@@ -27,6 +28,7 @@ use glm::*;
 use groq::*;
 use intel::*;
 use llama::*;
+use mediatek::BreezeInstructPrompt;
 use mistral::*;
 use octopus::*;
 use openchat::*;
@@ -87,6 +89,7 @@ pub enum ChatPrompt {
     OctopusPrompt,
     Glm4ChatPrompt,
     GroqLlama3ToolPrompt,
+    BreezeInstructPrompt,
 }
 impl From<PromptTemplateType> for ChatPrompt {
     fn from(ty: PromptTemplateType) -> Self {
@@ -145,6 +148,9 @@ impl From<PromptTemplateType> for ChatPrompt {
             PromptTemplateType::Glm4Chat => ChatPrompt::Glm4ChatPrompt(Glm4ChatPrompt),
             PromptTemplateType::GroqLlama3Tool => {
                 ChatPrompt::GroqLlama3ToolPrompt(GroqLlama3ToolPrompt)
+            }
+            PromptTemplateType::BreezeInstruct => {
+                ChatPrompt::BreezeInstructPrompt(BreezeInstructPrompt)
             }
             PromptTemplateType::Embedding => {
                 panic!("Embedding prompt template is not used for building chat prompts")
