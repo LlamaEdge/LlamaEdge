@@ -196,6 +196,15 @@ The available prompt templates are listed below:
     {{ user_message_2 }}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
     ```
 
+- `mediatek-breeze`
+  - Prompt string
+
+    ```text
+    <s>{system_message}  [INST] {user_message_1} [/INST] {assistant_message_1} [INST] {user_message_2} [/INST]
+    ```
+
+  - Example: [second-state/Breeze-7B-Instruct-v1_0-GGUF](https://huggingface.co/second-state/Breeze-7B-Instruct-v1_0-GGUF)
+
 - `mistral-instruct`
   - Prompt string
 
