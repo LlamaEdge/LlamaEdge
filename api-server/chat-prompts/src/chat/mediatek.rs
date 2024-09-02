@@ -2,8 +2,7 @@ use super::BuildChatPrompt;
 use crate::error::{PromptError, Result};
 use endpoints::chat::{
     ChatCompletionAssistantMessage, ChatCompletionRequestMessage, ChatCompletionSystemMessage,
-     ChatCompletionUserMessage, ChatCompletionUserMessageContent,
-    ContentPart,
+    ChatCompletionUserMessage, ChatCompletionUserMessageContent, ContentPart,
 };
 
 /// Generate prompts for the `Breeze-7B-Instruct-v1_0` model
