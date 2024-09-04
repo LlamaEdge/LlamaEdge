@@ -1,0 +1,3 @@
+[build]
+target = "wasm32-wasip1"
+rustflags = ["--cfg", "wasmedge", "--cfg", "tokio_unstable"]
