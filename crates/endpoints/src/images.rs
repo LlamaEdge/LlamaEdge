@@ -25,6 +25,12 @@ impl ImageCreateRequestBuilder {
         }
     }
 
+    /// Set negative prompt
+    pub fn with_negative_prompt(mut self, negative_prompt: impl Into<String>) -> Self {
+        self.req.negative_prompt = Some(negative_prompt.into());
+        self
+    }
+
     /// Set the number of images to generate.
     pub fn with_number_of_images(mut self, n: u64) -> Self {
         self.req.n = Some(n);
@@ -72,6 +78,9 @@ impl ImageCreateRequestBuilder {
 pub struct ImageCreateRequest {
     /// A text description of the desired image.
     pub prompt: String,
+    /// Negative prompt for the image generation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub negative_prompt: Option<String>,
     /// Name of the model to use for image generation.
     pub model: String,
     /// Number of images to generate. Defaults to 1.
@@ -100,6 +109,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
     {
         enum Field {
             Prompt,
+            NegativePrompt,
             Model,
             N,
             Quality,
@@ -129,6 +139,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     {
                         match value {
                             "prompt" => Ok(Field::Prompt),
+                            "negative_prompt" => Ok(Field::NegativePrompt),
                             "model" => Ok(Field::Model),
                             "n" => Ok(Field::N),
                             "quality" => Ok(Field::Quality),
@@ -161,6 +172,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                 let prompt = seq
                     .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let negative_prompt = seq.next_element()?;
                 let model = seq
                     .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(1, &self))?;
@@ -173,6 +185,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
 
                 Ok(ImageCreateRequest {
                     prompt,
+                    negative_prompt,
                     model,
                     n,
                     quality,
@@ -188,6 +201,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                 V: MapAccess<'de>,
             {
                 let mut prompt = None;
+                let mut negative_prompt = None;
                 let mut model = None;
                 let mut n = None;
                 let mut quality = None;
@@ -202,6 +216,12 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                                 return Err(de::Error::duplicate_field("prompt"));
                             }
                             prompt = Some(map.next_value()?);
+                        }
+                        Field::NegativePrompt => {
+                            if negative_prompt.is_some() {
+                                return Err(de::Error::duplicate_field("negative_prompt"));
+                            }
+                            negative_prompt = Some(map.next_value()?);
                         }
                         Field::Model => {
                             if model.is_some() {
@@ -249,6 +269,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                 }
                 Ok(ImageCreateRequest {
                     prompt: prompt.ok_or_else(|| de::Error::missing_field("prompt"))?,
+                    negative_prompt,
                     model: model.ok_or_else(|| de::Error::missing_field("model"))?,
                     n: n.unwrap_or(Some(1)),
                     quality,
@@ -262,6 +283,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
 
         const FIELDS: &[&str] = &[
             "prompt",
+            "negative_prompt",
             "model",
             "n",
             "quality",
@@ -277,11 +299,13 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
 #[test]
 fn test_serialize_image_create_request() {
     {
-        let req = ImageCreateRequestBuilder::new("test-model-name", "This is a prompt").build();
+        let req = ImageCreateRequestBuilder::new("test-model-name", "This is a prompt")
+            .with_negative_prompt("This is the negative prompt.")
+            .build();
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"prompt":"This is a prompt","model":"test-model-name","n":1,"response_format":"url"}"#
+            r#"{"prompt":"This is a prompt","negative_prompt":"This is the negative prompt.","model":"test-model-name","n":1,"response_format":"url"}"#
         );
     }
 
@@ -304,9 +328,14 @@ fn test_serialize_image_create_request() {
 #[test]
 fn test_deserialize_image_create_request() {
     {
-        let json = r#"{"prompt":"This is a prompt","model":"test-model-name"}"#;
+        let json = r#"{"prompt":"This is a prompt","negative_prompt":"This is the negative prompt.","model":"test-model-name"}"#;
         let req: ImageCreateRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.prompt, "This is a prompt");
+        assert!(req.negative_prompt.is_some());
+        assert_eq!(
+            req.negative_prompt,
+            Some("This is the negative prompt.".to_string())
+        );
         assert_eq!(req.model, "test-model-name");
         assert_eq!(req.n, Some(1));
         assert_eq!(req.response_format, Some(ResponseFormat::Url));
