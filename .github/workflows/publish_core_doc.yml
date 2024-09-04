@@ -27,7 +27,6 @@ jobs:
           RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
           RUSTDOCFLAGS: "--cfg docsrs"
         run: |
-          cd api-server
           cargo +nightly doc -p llama-core --no-deps --target wasm32-wasip1 --features full --target-dir=./target
 
       - name: Deploy API document
@@ -36,5 +35,5 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
-          publish_dir: api-server/target/wasm32-wasip1/doc/
+          publish_dir: target/wasm32-wasip1/doc/
           force_orphan: true

@@ -26,37 +26,28 @@ jobs:
         with:
           target: wasm32-wasip1
 
-      - name: Build simple
-        id: build_simple
+      - name: Build llama-simple
         env:
           RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
         run: |
-          cd simple
-          cargo build --target wasm32-wasip1 --release
-          cp ./target/wasm32-wasip1/release/llama-simple.wasm ../llama-simple.wasm
+          cargo build -p llama-simple --release
 
-      - name: Build chat
-        id: build_chat
+      - name: Build llama-chat
         env:
           RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
         run: |
-          cd chat
-          cargo build --target wasm32-wasip1 --release
-          cp ./target/wasm32-wasip1/release/llama-chat.wasm ../llama-chat.wasm
+          cargo build -p llama-chat --release
 
-      - name: Build api-server
-        id: build_api_server
+      - name: Build llama-api-server
         env:
           RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
         run: |
-          cd api-server
-          cargo clean
-          cargo build --target wasm32-wasip1 --release
-          cp ./target/wasm32-wasip1/release/llama-api-server.wasm ../llama-api-server.wasm
+          cargo build -p llama-api-server --release
 
       - name: Calculate checksum
         id: checksum
         run: |
+          cp target/wasm32-wasi/release/*.wasm .
           sha256sum *.wasm > SHA256SUM
 
           echo "Debug info(SHA256SUM):"
