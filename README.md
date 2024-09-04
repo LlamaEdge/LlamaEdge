@@ -41,9 +41,9 @@ Follow the on-screen instructions to install the WasmEdge Runtime and download y
 
 The Rust source code for the inference applications are all open source and you can modify and use them freely for your own purposes.
 
-* The folder `simple` contains the source code project to generate text from a prompt using run llama2 models.
-* The folder `chat` contains the source code project to "chat" with a llama2 model on the command line.
-* The folder `api-server` contains the source code project for a web server. It provides an OpenAI-compatible API service, as well as an optional web UI, for llama2 models.
+* The folder `llama-simple` contains the source code project to generate text from a prompt using run llama2 models.
+* The folder `llama-chat` contains the source code project to "chat" with a llama2 model on the command line.
+* The folder `llama-api-server` contains the source code project for a web server. It provides an OpenAI-compatible API service, as well as an optional web UI, for llama2 models.
 
 ## The tech stack
 
