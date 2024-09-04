@@ -64,8 +64,10 @@ pub async fn image_generation(
             let output_image_file = output_image_file.to_str().unwrap();
 
             // create and dump the generated image
+            let negative_prompt = req.negative_prompt.clone().unwrap_or_default();
             text_to_image
                 .set_prompt(&req.prompt)
+                .set_negative_prompt(negative_prompt)
                 .set_output_path(output_image_file)
                 .generate()
                 .map_err(|e| {
