@@ -1,12 +1,19 @@
 [workspace]
-members = ["chat-prompts", "endpoints", "llama-api-server", "llama-core"]
+members = [
+    "llama-api-server",
+    "llama-simple",
+    "llama-chat",
+    "crates/endpoints",
+    "crates/chat-prompts",
+    "crates/llama-core",
+]
 resolver = "2"
 
 [workspace.dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-endpoints = { path = "endpoints", version = "^0.13" }
-chat-prompts = { path = "chat-prompts", version = "^0.13" }
+endpoints = { path = "crates/endpoints", version = "^0.13" }
+chat-prompts = { path = "crates/chat-prompts", version = "^0.13" }
 thiserror = "1"
 uuid = { version = "1.4", features = ["v4", "fast-rng", "macro-diagnostics"] }
 clap = { version = "4.4.6", features = ["cargo", "derive"] }
@@ -14,6 +21,12 @@ log = { version = "0.4.21", features = ["std", "kv", "kv_serde"] }
 wasi-logger = { version = "0.1.2", features = ["kv"] }
 either = "1.12.0"
 base64 = "=0.22.0"
+llama-core = { path = "crates/llama-core", features = ["logging"] }
+tokio = { version = "^1.36", features = ["io-util", "fs", "net", "time", "rt", "macros"] }
+anyhow = "1.0"
+once_cell = "1.18"
+wasmedge-wasi-nn = "0.8.0"
+futures = { version = "0.3.6", default-features = false, features = ["async-await", "std"] }
 
 [patch.crates-io]
 socket2 = { git = "https://github.com/second-state/socket2.git", branch = "v0.5.x" }

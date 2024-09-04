@@ -12,13 +12,13 @@ description = "The core library of LlamaEdge"
 [dependencies]
 endpoints.workspace = true
 chat-prompts.workspace = true
-wasmedge-wasi-nn = "0.8.0"
+wasmedge-wasi-nn.workspace = true
 thiserror.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 uuid.workspace = true
-once_cell = "1.18"
-futures = { version = "0.3.6", default-features = false, features = ["async-await", "std"] }
+once_cell.workspace = true
+futures.workspace = true
 reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "rustls-tls"] }
 qdrant = { package = "qdrant_rest_client", version = "0.1.1" }
 text-splitter = { version = "^0.7", features = ["tiktoken-rs", "markdown"] }
