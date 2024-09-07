@@ -303,19 +303,22 @@ pub(crate) fn get_token_info_by_graph_name(
                 LlamaCoreError::Operation(err_msg)
             })?;
 
-            match chat_graphs.get(model_name) {
-                Some(graph) => get_token_info_by_graph(graph),
-                None => {
-                    let err_msg = format!(
-                        "The model `{}` does not exist in the chat graphs.",
-                        &model_name
-                    );
-
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", &err_msg);
-
-                    Err(LlamaCoreError::Operation(err_msg))
+            match chat_graphs.contains_key(model_name) {
+                true => {
+                    let graph = chat_graphs.get(model_name).unwrap();
+                    get_token_info_by_graph(graph)
                 }
+                false => match chat_graphs.iter().next() {
+                    Some((_, graph)) => get_token_info_by_graph(graph),
+                    None => {
+                        let err_msg = "There is no model available in the chat graphs.";
+
+                        #[cfg(feature = "logging")]
+                        error!(target: "stdout", "{}", &err_msg);
+
+                        Err(LlamaCoreError::Operation(err_msg.into()))
+                    }
+                },
             }
         }
         None => {
