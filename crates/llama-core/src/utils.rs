@@ -361,10 +361,6 @@ impl TensorType for u8 {
     fn tensor_type() -> wasmedge_wasi_nn::TensorType {
         wasmedge_wasi_nn::TensorType::U8
     }
-
-    fn shape(shape: impl AsRef<[usize]>) -> Vec<usize> {
-        shape.as_ref().to_vec()
-    }
 }
 
 impl TensorType for f32 {
