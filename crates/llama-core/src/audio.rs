@@ -7,6 +7,7 @@ use endpoints::{
     audio::{
         speech::SpeechRequest,
         transcription::{TranscriptionObject, TranscriptionRequest},
+        translation::{TranslationObject, TranslationRequest},
     },
     files::FileObject,
 };
@@ -19,21 +20,6 @@ pub async fn audio_transcriptions(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "processing audio transcription request");
 
-    let path = Path::new("archives")
-        .join(&request.file.id)
-        .join(&request.file.filename);
-
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "audio file path: {:?}", &path);
-
-    // load the audio waveform
-    let wav_buf = load_audio_waveform(path)?;
-
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "read input tensor, size in bytes: {}", wav_buf.len());
-
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Get the model instance.");
     let graph = match AUDIO_GRAPH.get() {
         Some(graph) => graph,
         None => {
@@ -57,6 +43,51 @@ pub async fn audio_transcriptions(
             return Err(LlamaCoreError::Operation(err_msg));
         }
     };
+
+    let mut metadata = graph.metadata.clone();
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "translation enabled: {}", metadata.translate);
+
+    // check if translation is disabled so that transcription tasks can be done
+    if metadata.translate {
+        // enable translation
+        metadata.translate = false;
+
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Update the model metadata to disable translation.");
+
+        match serde_json::to_string(&metadata) {
+            Ok(config) => {
+                // update metadata
+                set_tensor_data(&mut graph, 1, config.as_bytes(), [1])?;
+            }
+            Err(e) => {
+                let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", &err_msg);
+
+                return Err(LlamaCoreError::Operation(err_msg));
+            }
+        };
+
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Disabled translation");
+    }
+
+    let path = Path::new("archives")
+        .join(&request.file.id)
+        .join(&request.file.filename);
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "audio file path: {:?}", &path);
+
+    // load the audio waveform
+    let wav_buf = load_audio_waveform(path)?;
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "read input tensor, size in bytes: {}", wav_buf.len());
 
     // set the input tensor
     #[cfg(feature = "logging")]
@@ -114,7 +145,7 @@ pub async fn audio_transcriptions(
     };
 
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "End of the chat completion.");
+    info!(target: "stdout", "End of the audio transcription.");
 
     Ok(obj)
 }
@@ -250,4 +281,140 @@ pub async fn create_speech(request: SpeechRequest) -> Result<FileObject, LlamaCo
         object: "file".to_owned(),
         purpose: "assistants_output".to_owned(),
     })
+}
+
+/// Translate audio into the target language
+pub async fn audio_translations(
+    request: TranslationRequest,
+) -> Result<TranslationObject, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "processing audio translation request");
+
+    let graph = match AUDIO_GRAPH.get() {
+        Some(graph) => graph,
+        None => {
+            let err_msg = "The AUDIO_GRAPH is not initialized.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.to_owned()));
+        }
+    };
+
+    let mut graph = match graph.lock() {
+        Ok(graph) => graph,
+        Err(e) => {
+            let err_msg = format!("Failed to lock the graph. {}", e);
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg));
+        }
+    };
+
+    let mut metadata = graph.metadata.clone();
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "translation enabled: {}", metadata.translate);
+
+    if !metadata.translate {
+        // enable translation
+        metadata.translate = true;
+
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Update the model metadata to enable translation.");
+
+        match serde_json::to_string(&metadata) {
+            Ok(config) => {
+                // update metadata
+                set_tensor_data(&mut graph, 1, config.as_bytes(), [1])?;
+            }
+            Err(e) => {
+                let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", &err_msg);
+
+                return Err(LlamaCoreError::Operation(err_msg));
+            }
+        };
+
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "enabled translation");
+    }
+
+    let path = Path::new("archives")
+        .join(&request.file.id)
+        .join(&request.file.filename);
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "audio file path: {:?}", &path);
+
+    // load the audio waveform
+    let wav_buf = load_audio_waveform(path)?;
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "read input tensor, size in bytes: {}", wav_buf.len());
+
+    // set the input tensor
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "feed the audio data to the model.");
+    set_tensor_data(&mut graph, 0, &wav_buf, [1, wav_buf.len()])?;
+
+    // compute the graph
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "translate audio to text.");
+    if let Err(e) = graph.compute() {
+        let err_msg = format!("Failed to compute the graph. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        return Err(LlamaCoreError::Operation(err_msg));
+    }
+
+    // get the output tensor
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "[INFO] retrieve the translation data.");
+
+    // Retrieve the output.
+    let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
+    let output_size = graph.get_output(0, &mut output_buffer).map_err(|e| {
+        let err_msg = format!("Failed to get the output tensor. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "output buffer size: {}", output_size);
+
+    // decode the output buffer
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "decode the translation data to plain text.");
+
+    let text = std::str::from_utf8(&output_buffer[..output_size]).map_err(|e| {
+        let err_msg = format!(
+            "Failed to decode the gerated buffer to a utf-8 string. {}",
+            e
+        );
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
+
+    let obj = TranslationObject {
+        text: text.trim().to_owned(),
+    };
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "End of the audio translation.");
+
+    Ok(obj)
 }
