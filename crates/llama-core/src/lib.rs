@@ -127,6 +127,11 @@ pub struct Metadata {
     /// JSON schema to constrain generations (<https://json-schema.org/>), e.g. `{}` for any JSON object. For schemas w/ external $refs, use --grammar + example/json_schema_to_grammar.py instead.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub json_schema: Option<String>,
+
+    // * parameters for whisper
+    pub translate: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
 }
 impl Default for Metadata {
     fn default() -> Self {
@@ -156,6 +161,8 @@ impl Default for Metadata {
             frequency_penalty: 0.0,
             grammar: String::new(),
             json_schema: None,
+            translate: false,
+            language: None,
         }
     }
 }
@@ -321,6 +328,16 @@ impl AudioMetadataBuilder {
 
     pub fn enable_debug_log(mut self, enable: bool) -> Self {
         self.metadata.debug_log = enable;
+        self
+    }
+
+    pub fn enable_translate(mut self, enable: bool) -> Self {
+        self.metadata.translate = enable;
+        self
+    }
+
+    pub fn target_language(mut self, language: Option<String>) -> Self {
+        self.metadata.language = language;
         self
     }
 
