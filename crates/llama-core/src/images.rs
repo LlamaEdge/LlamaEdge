@@ -65,6 +65,11 @@ pub async fn image_generation(
 
             // create and dump the generated image
             let negative_prompt = req.negative_prompt.clone().unwrap_or_default();
+
+            // log
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "negative prompt: {}", &negative_prompt);
+
             text_to_image
                 .set_prompt(&req.prompt)
                 .set_negative_prompt(negative_prompt)
