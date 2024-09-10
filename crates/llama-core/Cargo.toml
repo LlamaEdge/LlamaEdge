@@ -27,7 +27,7 @@ wasi-logger = { workspace = true, optional = true }
 log = { workspace = true, optional = true }
 regex = "1"
 either.workspace = true
-wasmedge_stable_diffusion = { version = "=0.2.0", git = "https://github.com/WasmEdge/wasmedge-stable-diffusion.git", branch = "main" }
+wasmedge_stable_diffusion = { version = "=0.2.0", git = "https://github.com/apepkuss/wasmedge-stable-diffusion.git", branch = "feat-support-flux" }
 base64.workspace = true
 
 [package.metadata.cargo-machete]
