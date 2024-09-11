@@ -765,7 +765,7 @@ pub fn init_stable_diffusion_context_with_standalone_diffusion_model(
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", err_msg);
 
-            LlamaCoreError::InitContext(err_msg.into())
+            LlamaCoreError::InitContext(err_msg)
         })?
         .with_vae_path(vae.as_ref())
         .map_err(|e| {
@@ -777,7 +777,7 @@ pub fn init_stable_diffusion_context_with_standalone_diffusion_model(
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", err_msg);
 
-            LlamaCoreError::InitContext(err_msg.into())
+            LlamaCoreError::InitContext(err_msg)
         })?
         .with_clip_l_path(clip_l.as_ref())
         .map_err(|e| {
@@ -789,7 +789,7 @@ pub fn init_stable_diffusion_context_with_standalone_diffusion_model(
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", err_msg);
 
-            LlamaCoreError::InitContext(err_msg.into())
+            LlamaCoreError::InitContext(err_msg)
         })?
         .with_t5xxl_path(t5xxl.as_ref())
         .map_err(|e| {
@@ -801,7 +801,7 @@ pub fn init_stable_diffusion_context_with_standalone_diffusion_model(
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", err_msg);
 
-            LlamaCoreError::InitContext(err_msg.into())
+            LlamaCoreError::InitContext(err_msg)
         })?
         .with_n_threads(n_threads)
         .build();
@@ -829,7 +829,7 @@ pub fn init_stable_diffusion_context_with_standalone_diffusion_model(
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", err_msg);
 
-            LlamaCoreError::InitContext(err_msg.into())
+            LlamaCoreError::InitContext(err_msg)
         })?
         .with_vae_path(vae.as_ref())
         .map_err(|e| {
@@ -841,7 +841,7 @@ pub fn init_stable_diffusion_context_with_standalone_diffusion_model(
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", err_msg);
 
-            LlamaCoreError::InitContext(err_msg.into())
+            LlamaCoreError::InitContext(err_msg)
         })?
         .with_clip_l_path(clip_l.as_ref())
         .map_err(|e| {
@@ -853,7 +853,7 @@ pub fn init_stable_diffusion_context_with_standalone_diffusion_model(
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", err_msg);
 
-            LlamaCoreError::InitContext(err_msg.into())
+            LlamaCoreError::InitContext(err_msg)
         })?
         .with_t5xxl_path(t5xxl.as_ref())
         .map_err(|e| {
@@ -865,7 +865,7 @@ pub fn init_stable_diffusion_context_with_standalone_diffusion_model(
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", err_msg);
 
-            LlamaCoreError::InitContext(err_msg.into())
+            LlamaCoreError::InitContext(err_msg)
         })?
         .with_n_threads(n_threads)
         .build();
