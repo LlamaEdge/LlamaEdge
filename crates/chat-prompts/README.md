@@ -105,7 +105,7 @@ The available prompt templates are listed below:
   - Prompt string
 
     ```text
-    <|begin_of_sentence|>{system_message}<|User|>{user_message_1}<|Assistant|>{assistant_message_1}<|end▁of▁sentence|><|User|>{user_message_2}<|Assistant|>
+    <|begin_of_sentence|>{system_message}<|User|>{user_message_1}<|Assistant|>{assistant_message_1}<|end_of_sentence|><|User|>{user_message_2}<|Assistant|>
     ```
 
 - `deepseek-coder`
