@@ -707,12 +707,14 @@ pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
 }
 
 /// Initialize the stable diffusion context
-pub fn init_stable_diffusion_context(gguf: impl AsRef<str>) -> Result<(), LlamaCoreError> {
+pub fn init_stable_diffusion_context_with_full_model(
+    model_file: impl AsRef<str>,
+) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "Initializing the stable diffusion context");
+    info!(target: "stdout", "Initializing the stable diffusion context with the full model");
 
     // create the stable diffusion context for the text-to-image task
-    let sd = StableDiffusion::new(Task::TextToImage, gguf.as_ref());
+    let sd = StableDiffusion::new(Task::TextToImage, model_file.as_ref());
     SD_TEXT_TO_IMAGE.set(Mutex::new(sd)).map_err(|_| {
         let err_msg = "Failed to initialize the stable diffusion context. Reason: The `SD_TEXT_TO_IMAGE` has already been initialized";
 
@@ -726,7 +728,148 @@ pub fn init_stable_diffusion_context(gguf: impl AsRef<str>) -> Result<(), LlamaC
     info!(target: "stdout", "The stable diffusion text-to-image context has been initialized");
 
     // create the stable diffusion context for the image-to-image task
-    let sd = StableDiffusion::new(Task::ImageToImage, gguf.as_ref());
+    let sd = StableDiffusion::new(Task::ImageToImage, model_file.as_ref());
+    SD_IMAGE_TO_IMAGE.set(Mutex::new(sd)).map_err(|_| {
+        let err_msg = "Failed to initialize the stable diffusion context. Reason: The `SD_IMAGE_TO_IMAGE` has already been initialized";
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", err_msg);
+
+        LlamaCoreError::InitContext(err_msg.into())
+    })?;
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "The stable diffusion image-to-image context has been initialized");
+
+    Ok(())
+}
+
+pub fn init_stable_diffusion_context_with_standalone_diffusion_model(
+    model_file: impl AsRef<str>,
+    vae: impl AsRef<str>,
+    clip_l: impl AsRef<str>,
+    t5xxl: impl AsRef<str>,
+    n_threads: i32,
+) -> Result<(), LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Initializing the stable diffusion context with the standalone diffusion model");
+
+    // create the stable diffusion context for the text-to-image task
+    let sd = SDBuidler::new_with_standalone_model(Task::TextToImage, model_file.as_ref())
+        .map_err(|e| {
+            let err_msg = format!(
+                "Failed to initialize the stable diffusion context. Reason: {}",
+                e
+            );
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            LlamaCoreError::InitContext(err_msg.into())
+        })?
+        .with_vae_path(vae.as_ref())
+        .map_err(|e| {
+            let err_msg = format!(
+                "Failed to initialize the stable diffusion context. Reason: {}",
+                e
+            );
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            LlamaCoreError::InitContext(err_msg.into())
+        })?
+        .with_clip_l_path(clip_l.as_ref())
+        .map_err(|e| {
+            let err_msg = format!(
+                "Failed to initialize the stable diffusion context. Reason: {}",
+                e
+            );
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            LlamaCoreError::InitContext(err_msg.into())
+        })?
+        .with_t5xxl_path(t5xxl.as_ref())
+        .map_err(|e| {
+            let err_msg = format!(
+                "Failed to initialize the stable diffusion context. Reason: {}",
+                e
+            );
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            LlamaCoreError::InitContext(err_msg.into())
+        })?
+        .with_n_threads(n_threads)
+        .build();
+
+    SD_TEXT_TO_IMAGE.set(Mutex::new(sd)).map_err(|_| {
+            let err_msg = "Failed to initialize the stable diffusion context. Reason: The `SD_TEXT_TO_IMAGE` has already been initialized";
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            LlamaCoreError::InitContext(err_msg.into())
+        })?;
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "The stable diffusion text-to-image context has been initialized");
+
+    // create the stable diffusion context for the image-to-image task
+    let sd = SDBuidler::new_with_standalone_model(Task::TextToImage, model_file.as_ref())
+        .map_err(|e| {
+            let err_msg = format!(
+                "Failed to initialize the stable diffusion context. Reason: {}",
+                e
+            );
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            LlamaCoreError::InitContext(err_msg.into())
+        })?
+        .with_vae_path(vae.as_ref())
+        .map_err(|e| {
+            let err_msg = format!(
+                "Failed to initialize the stable diffusion context. Reason: {}",
+                e
+            );
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            LlamaCoreError::InitContext(err_msg.into())
+        })?
+        .with_clip_l_path(clip_l.as_ref())
+        .map_err(|e| {
+            let err_msg = format!(
+                "Failed to initialize the stable diffusion context. Reason: {}",
+                e
+            );
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            LlamaCoreError::InitContext(err_msg.into())
+        })?
+        .with_t5xxl_path(t5xxl.as_ref())
+        .map_err(|e| {
+            let err_msg = format!(
+                "Failed to initialize the stable diffusion context. Reason: {}",
+                e
+            );
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            LlamaCoreError::InitContext(err_msg.into())
+        })?
+        .with_n_threads(n_threads)
+        .build();
+
     SD_IMAGE_TO_IMAGE.set(Mutex::new(sd)).map_err(|_| {
         let err_msg = "Failed to initialize the stable diffusion context. Reason: The `SD_IMAGE_TO_IMAGE` has already been initialized";
 
