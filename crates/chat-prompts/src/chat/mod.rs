@@ -80,6 +80,7 @@ pub enum ChatPrompt {
     DeepseekChatPrompt,
     DeepseekCoderPrompt,
     DeepseekChat2Prompt,
+    DeepseekChat25Prompt,
     SolarInstructPrompt,
     Phi2ChatPrompt,
     Phi2InstructPrompt,
@@ -133,6 +134,9 @@ impl From<PromptTemplateType> for ChatPrompt {
             }
             PromptTemplateType::DeepseekChat2 => {
                 ChatPrompt::DeepseekChat2Prompt(DeepseekChat2Prompt)
+            }
+            PromptTemplateType::DeepseekChat25 => {
+                ChatPrompt::DeepseekChat25Prompt(DeepseekChat25Prompt)
             }
             PromptTemplateType::SolarInstruct => {
                 ChatPrompt::SolarInstructPrompt(SolarInstructPrompt)
