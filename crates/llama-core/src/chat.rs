@@ -1662,7 +1662,7 @@ async fn update_n_predict(
             if !should_update {
                 should_update = true;
             }
-        } 
+        }
         if metadata.n_predict < available_completion_tokens {
             #[cfg(feature = "logging")]
             info!(target: "stdout", "Update n_predict from {} to {}", metadata.n_predict, available_completion_tokens);
