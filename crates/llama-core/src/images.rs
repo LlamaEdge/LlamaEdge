@@ -17,6 +17,9 @@ use wasmedge_stable_diffusion::{stable_diffusion_interface::ImageType, BaseFunct
 pub async fn image_generation(
     req: &mut ImageCreateRequest,
 ) -> Result<ListImagesResponse, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Processing the image generation request.");
+
     let sd = match SD_TEXT_TO_IMAGE.get() {
         Some(sd) => sd,
         None => {
@@ -37,6 +40,12 @@ pub async fn image_generation(
 
         LlamaCoreError::Operation(err_msg)
     })?;
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "create computation context.");
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "config of sd: {:?}", &sd_locked);
 
     match sd_locked.create_context().map_err(|e| {
         let err_msg = format!("Fail to create the context. {}", e);
@@ -63,12 +72,20 @@ pub async fn image_generation(
             let output_image_file = file_path.join(filename);
             let output_image_file = output_image_file.to_str().unwrap();
 
+            // log
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "prompt: {}", &req.prompt);
+
             // create and dump the generated image
             let negative_prompt = req.negative_prompt.clone().unwrap_or_default();
 
             // log
             #[cfg(feature = "logging")]
             info!(target: "stdout", "negative prompt: {}", &negative_prompt);
+
+            // log
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "generate image");
 
             text_to_image
                 .set_prompt(&req.prompt)
@@ -139,10 +156,15 @@ pub async fn image_generation(
                     }
                 };
 
-            Ok(ListImagesResponse {
+            let res = ListImagesResponse {
                 created,
                 data: vec![image],
-            })
+            };
+
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "End of the image generation.");
+
+            Ok(res)
         }
         _ => {
             let err_msg = "Fail to get the `TextToImage` context.";
