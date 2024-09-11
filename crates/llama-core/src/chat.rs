@@ -1662,16 +1662,17 @@ async fn update_n_predict(
             if !should_update {
                 should_update = true;
             }
-        }
-    } else if metadata.n_predict < available_completion_tokens {
-        #[cfg(feature = "logging")]
-        info!(target: "stdout", "Update n_predict from {} to {}", metadata.n_predict, available_completion_tokens);
+        } 
+        if metadata.n_predict < available_completion_tokens {
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "Update n_predict from {} to {}", metadata.n_predict, available_completion_tokens);
 
-        // update n_predict
-        metadata.n_predict = available_completion_tokens;
+            // update n_predict
+            metadata.n_predict = available_completion_tokens;
 
-        if !should_update {
-            should_update = true;
+            if !should_update {
+                should_update = true;
+            }
         }
     }
 
