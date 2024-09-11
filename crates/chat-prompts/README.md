@@ -101,6 +101,13 @@ The available prompt templates are listed below:
 
   - Example: [second-state/DeepSeek-Coder-V2-Lite-Instruct-GGUF](https://huggingface.co/second-state/DeepSeek-Coder-V2-Lite-Instruct-GGUF)
 
+- `deepseek-chat-25`
+  - Prompt string
+
+    ```text
+    <|begin_of_sentence|>{system_message}<|User|>{user_message_1}<|Assistant|>{assistant_message_1}<｜end▁of▁sentence｜><|User|>{user_message_2}<|Assistant|>
+    ```
+
 - `deepseek-coder`
   - Prompt string
 
