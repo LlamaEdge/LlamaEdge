@@ -4,7 +4,7 @@ use crate::{error::LlamaCoreError, SD_IMAGE_TO_IMAGE, SD_TEXT_TO_IMAGE};
 use base64::{engine::general_purpose, Engine as _};
 use endpoints::images::{
     ImageCreateRequest, ImageEditRequest, ImageObject, ImageVariationRequest, ListImagesResponse,
-    ResponseFormat,
+    ResponseFormat, SamplingMethod,
 };
 use std::{
     fs::{self, File},
@@ -76,12 +76,75 @@ pub async fn image_generation(
             #[cfg(feature = "logging")]
             info!(target: "stdout", "prompt: {}", &req.prompt);
 
-            // create and dump the generated image
+            // negative prompt
             let negative_prompt = req.negative_prompt.clone().unwrap_or_default();
 
             // log
             #[cfg(feature = "logging")]
             info!(target: "stdout", "negative prompt: {}", &negative_prompt);
+
+            // cfg_scale
+            let cfg_scale = req.cfg_scale.unwrap_or(7.0);
+
+            // log
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "cfg_scale: {}", cfg_scale);
+
+            // sampling method
+            let sample_method = req.sample_method.unwrap_or(SamplingMethod::EulerA);
+
+            // log
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "sample_method: {}", sample_method);
+
+            // convert sample method to value of `SampleMethodT` type
+            let sample_method = match sample_method {
+                SamplingMethod::Euler => {
+                    wasmedge_stable_diffusion::stable_diffusion_interface::SampleMethodT::EULER
+                }
+                SamplingMethod::EulerA => {
+                    wasmedge_stable_diffusion::stable_diffusion_interface::SampleMethodT::EULERA
+                }
+                SamplingMethod::Heun => {
+                    wasmedge_stable_diffusion::stable_diffusion_interface::SampleMethodT::HEUN
+                }
+                SamplingMethod::Dpm2 => {
+                    wasmedge_stable_diffusion::stable_diffusion_interface::SampleMethodT::DPM2
+                }
+                SamplingMethod::DpmPlusPlus2sA => {
+                    wasmedge_stable_diffusion::stable_diffusion_interface::SampleMethodT::DPMPP2SA
+                }
+                SamplingMethod::DpmPlusPlus2m => {
+                    wasmedge_stable_diffusion::stable_diffusion_interface::SampleMethodT::DPMPP2M
+                }
+                SamplingMethod::DpmPlusPlus2mv2 => {
+                    wasmedge_stable_diffusion::stable_diffusion_interface::SampleMethodT::DPMPP2Mv2
+                }
+                SamplingMethod::Ipndm => {
+                    wasmedge_stable_diffusion::stable_diffusion_interface::SampleMethodT::IPNDM
+                }
+                SamplingMethod::IpndmV => {
+                    wasmedge_stable_diffusion::stable_diffusion_interface::SampleMethodT::IPNDMV
+                }
+                SamplingMethod::Lcm => {
+                    wasmedge_stable_diffusion::stable_diffusion_interface::SampleMethodT::LCM
+                }
+            };
+
+            // steps
+            let steps = req.steps.unwrap_or(20);
+
+            // log
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "steps: {}", steps);
+
+            // size
+            let height = req.height.unwrap_or(512);
+            let width = req.width.unwrap_or(512);
+
+            // log
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "height: {}, width: {}", height, width);
 
             // log
             #[cfg(feature = "logging")]
@@ -91,6 +154,11 @@ pub async fn image_generation(
                 .set_prompt(&req.prompt)
                 .set_negative_prompt(negative_prompt)
                 .set_output_path(output_image_file)
+                .set_cfg_scale(cfg_scale)
+                .set_sample_method(sample_method)
+                .set_sample_steps(steps as i32)
+                .set_height(height as i32)
+                .set_width(width as i32)
                 .generate()
                 .map_err(|e| {
                     let err_msg = format!("Fail to dump the image. {}", e);
