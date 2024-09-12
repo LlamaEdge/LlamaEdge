@@ -23,4 +23,28 @@ Content-Type: application/json
 ```
 HTTP 200
 [Asserts]
+jsonpath "$.model" == "Qwen2-1.5B-Instruct"
+jsonpath "$.choices[0].message.content" contains "Paris"
+
+
+# test /v1/chat/completions endpoint
+# Test purpose: The model name is incorrect
+POST http://localhost:8080/v1/chat/completions
+Accept: application/json
+Content-Type: application/json
+```json
+{
+    "messages": [
+        {
+            "role": "user",
+            "content": "What is the capital of France?"
+        }
+    ],
+    "model": "Qwen2-1.5B-Instruct-invalid",
+    "stream": false
+}
+```
+HTTP 200
+[Asserts]
+jsonpath "$.model" == "Qwen2-1.5B-Instruct"
 jsonpath "$.choices[0].message.content" contains "Paris"
