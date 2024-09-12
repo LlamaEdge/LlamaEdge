@@ -90,7 +90,7 @@ jobs:
           sleep 5
           cat start-llamaedge.log
 
-      - name: Run test
+      - name: Run test_embeddings.hurl
         run: |
           hurl --test --jobs 1 ./tests/test_embeddings.hurl
 
