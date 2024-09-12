@@ -157,7 +157,7 @@ impl<'de> Deserialize<'de> for TranslationRequest {
             }
         }
 
-        const FIELDS: &'static [&'static str] = &[
+        const FIELDS: &[&str] = &[
             "file",
             "model",
             "prompt",
