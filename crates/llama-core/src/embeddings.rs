@@ -115,7 +115,7 @@ pub async fn embeddings(
     let embedding_reponse = EmbeddingsResponse {
         object: String::from("list"),
         data,
-        model: model_name.into(),
+        model: graph.name().to_owned(),
         usage,
     };
 
