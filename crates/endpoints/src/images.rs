@@ -23,6 +23,8 @@ impl ImageCreateRequestBuilder {
                 cfg_scale: Some(7.0),
                 sample_method: Some(SamplingMethod::EulerA),
                 steps: Some(20),
+                height: Some(512),
+                width: Some(512),
                 ..Default::default()
             },
         }
@@ -52,12 +54,6 @@ impl ImageCreateRequestBuilder {
         self
     }
 
-    /// Set the size of the generated images.
-    pub fn with_size(mut self, size: impl Into<String>) -> Self {
-        self.req.size = Some(size.into());
-        self
-    }
-
     /// This param is only supported for `dall-e-3`.
     pub fn with_style(mut self, style: impl Into<String>) -> Self {
         self.req.style = Some(style.into());
@@ -71,7 +67,7 @@ impl ImageCreateRequestBuilder {
     }
 
     /// Set the unconditional guidance scale. This param is only supported for `stable-diffusion.cpp`.
-    pub fn with_cfg_scale(mut self, cfg_scale: f64) -> Self {
+    pub fn with_cfg_scale(mut self, cfg_scale: f32) -> Self {
         self.req.cfg_scale = Some(cfg_scale);
         self
     }
@@ -85,6 +81,13 @@ impl ImageCreateRequestBuilder {
     /// Set the number of sample steps. This param is only supported for `stable-diffusion.cpp`.
     pub fn with_steps(mut self, steps: usize) -> Self {
         self.req.steps = Some(steps);
+        self
+    }
+
+    /// Set the image size.
+    pub fn with_image_size(mut self, height: usize, width: usize) -> Self {
+        self.req.height = Some(height);
+        self.req.width = Some(width);
         self
     }
 
@@ -113,7 +116,7 @@ pub struct ImageCreateRequest {
     /// The format in which the generated images are returned. Must be one of `url` or `b64_json`. Defaults to `Url`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_format: Option<ResponseFormat>,
-    /// The size of the generated images. Defaults to 1024x1024.
+    /// The size of the generated images. Defaults to use the values of `height` and `width` fields.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub size: Option<String>,
     /// The style of the generated images. Must be one of `vivid` or `natural`. Vivid causes the model to lean towards generating hyper-real and dramatic images. Natural causes the model to produce more natural, less hyper-real looking images. This param is only supported for `dall-e-3`.
@@ -124,11 +127,15 @@ pub struct ImageCreateRequest {
     pub user: Option<String>,
 
     /// Unconditional guidance scale. Defaults to 7.0. This param is only supported for `stable-diffusion.cpp`.
-    pub cfg_scale: Option<f64>,
+    pub cfg_scale: Option<f32>,
     /// Sampling method. Defaults to "euler_a". This param is only supported for `stable-diffusion.cpp`.
     pub sample_method: Option<SamplingMethod>,
-    /// number of sample steps. Defaults to 20. This param is only supported for `stable-diffusion.cpp`.
+    /// Number of sample steps. Defaults to 20. This param is only supported for `stable-diffusion.cpp`.
     pub steps: Option<usize>,
+    /// Image height, in pixel space. Defaults to 512. If `size` is provided, this field will be ignored.
+    pub height: Option<usize>,
+    /// Image width, in pixel space. Defaults to 512. If `size` is provided, this field will be ignored.
+    pub width: Option<usize>,
 }
 impl<'de> Deserialize<'de> for ImageCreateRequest {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -148,6 +155,8 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
             CfgScale,
             SampleMethod,
             Steps,
+            Height,
+            Width,
         }
 
         impl<'de> Deserialize<'de> for Field {
@@ -181,6 +190,8 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                             "cfg_scale" => Ok(Field::CfgScale),
                             "sample_method" => Ok(Field::SampleMethod),
                             "steps" => Ok(Field::Steps),
+                            "height" => Ok(Field::Height),
+                            "width" => Ok(Field::Width),
                             _ => Err(de::Error::unknown_field(value, FIELDS)),
                         }
                     }
@@ -219,6 +230,8 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                 let cfg_scale = seq.next_element()?;
                 let sample_method = seq.next_element()?;
                 let steps = seq.next_element()?;
+                let height = seq.next_element()?;
+                let width = seq.next_element()?;
 
                 Ok(ImageCreateRequest {
                     prompt,
@@ -233,6 +246,8 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     cfg_scale,
                     sample_method,
                     steps,
+                    height,
+                    width,
                 })
             }
 
@@ -246,12 +261,14 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                 let mut n = None;
                 let mut quality = None;
                 let mut response_format = None;
-                let mut size = None;
+                let mut size: Option<String> = None;
                 let mut style = None;
                 let mut user = None;
                 let mut cfg_scale = None;
                 let mut sample_method = None;
                 let mut steps = None;
+                let mut height = None;
+                let mut width = None;
 
                 while let Some(key) = map.next_key()? {
                     match key {
@@ -327,6 +344,18 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                             }
                             steps = Some(map.next_value()?);
                         }
+                        Field::Height => {
+                            if height.is_some() {
+                                return Err(de::Error::duplicate_field("height"));
+                            }
+                            height = Some(map.next_value()?);
+                        }
+                        Field::Width => {
+                            if width.is_some() {
+                                return Err(de::Error::duplicate_field("width"));
+                            }
+                            width = Some(map.next_value()?);
+                        }
                     }
                 }
 
@@ -350,6 +379,25 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     steps = Some(20);
                 }
 
+                match &size {
+                    Some(size) => {
+                        let parts: Vec<&str> = size.split('x').collect();
+                        if parts.len() != 2 {
+                            return Err(de::Error::custom("invalid size format"));
+                        }
+                        height = Some(parts[0].parse().unwrap());
+                        width = Some(parts[1].parse().unwrap());
+                    }
+                    None => {
+                        if height.is_none() {
+                            height = Some(512);
+                        }
+                        if width.is_none() {
+                            width = Some(512);
+                        }
+                    }
+                }
+
                 Ok(ImageCreateRequest {
                     prompt: prompt.ok_or_else(|| de::Error::missing_field("prompt"))?,
                     negative_prompt,
@@ -363,6 +411,8 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     cfg_scale,
                     sample_method,
                     steps,
+                    height,
+                    width,
                 })
             }
         }
@@ -380,13 +430,15 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
             "cfg_scale",
             "sample_method",
             "steps",
+            "height",
+            "width",
         ];
         deserializer.deserialize_struct("CreateImageRequest", FIELDS, CreateImageRequestVisitor)
     }
 }
 
 /// Sampling method
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 pub enum SamplingMethod {
     #[serde(rename = "euler")]
     Euler,
@@ -409,6 +461,22 @@ pub enum SamplingMethod {
     #[serde(rename = "lcm")]
     Lcm,
 }
+impl fmt::Display for SamplingMethod {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            SamplingMethod::Euler => write!(f, "euler"),
+            SamplingMethod::EulerA => write!(f, "euler_a"),
+            SamplingMethod::Heun => write!(f, "heun"),
+            SamplingMethod::Dpm2 => write!(f, "dpm2"),
+            SamplingMethod::DpmPlusPlus2sA => write!(f, "dpm++2s_a"),
+            SamplingMethod::DpmPlusPlus2m => write!(f, "dpm++2m"),
+            SamplingMethod::DpmPlusPlus2mv2 => write!(f, "dpm++2mv2"),
+            SamplingMethod::Ipndm => write!(f, "ipndm"),
+            SamplingMethod::IpndmV => write!(f, "ipndm_v"),
+            SamplingMethod::Lcm => write!(f, "lcm"),
+        }
+    }
+}
 
 #[test]
 fn test_serialize_image_create_request() {
@@ -419,7 +487,7 @@ fn test_serialize_image_create_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"prompt":"This is a prompt","negative_prompt":"This is the negative prompt.","model":"test-model-name","n":1,"response_format":"url","cfg_scale":7.0,"sample_method":"euler_a","steps":20}"#
+            r#"{"prompt":"This is a prompt","negative_prompt":"This is the negative prompt.","model":"test-model-name","n":1,"response_format":"url","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512}"#
         );
     }
 
@@ -427,7 +495,6 @@ fn test_serialize_image_create_request() {
         let req = ImageCreateRequestBuilder::new("test-model-name", "This is a prompt")
             .with_number_of_images(2)
             .with_response_format(ResponseFormat::B64Json)
-            .with_size("1024x1024")
             .with_style("vivid")
             .with_user("user")
             .with_cfg_scale(1.0)
@@ -437,7 +504,7 @@ fn test_serialize_image_create_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"prompt":"This is a prompt","model":"test-model-name","n":2,"response_format":"b64_json","size":"1024x1024","style":"vivid","user":"user","cfg_scale":1.0,"sample_method":"euler","steps":4}"#
+            r#"{"prompt":"This is a prompt","model":"test-model-name","n":2,"response_format":"b64_json","size":"1024x1024","style":"vivid","user":"user","cfg_scale":1.0,"sample_method":"euler","steps":4,"height":512,"width":512}"#
         );
     }
 }
@@ -459,6 +526,8 @@ fn test_deserialize_image_create_request() {
         assert_eq!(req.cfg_scale, Some(7.0));
         assert_eq!(req.sample_method, Some(SamplingMethod::EulerA));
         assert_eq!(req.steps, Some(20));
+        assert_eq!(req.height, Some(512));
+        assert_eq!(req.width, Some(512));
     }
 
     {
@@ -474,6 +543,25 @@ fn test_deserialize_image_create_request() {
         assert_eq!(req.cfg_scale, Some(1.0));
         assert_eq!(req.sample_method, Some(SamplingMethod::Euler));
         assert_eq!(req.steps, Some(4));
+        assert_eq!(req.height, Some(1024));
+        assert_eq!(req.width, Some(1024));
+    }
+
+    {
+        let json = r#"{"prompt":"This is a prompt","model":"test-model-name","n":2,"response_format":"url","size":"1024x1024","style":"vivid","user":"user","cfg_scale":1.0,"sample_method":"euler","steps":4,"height":512,"width":512}"#;
+        let req: ImageCreateRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.prompt, "This is a prompt");
+        assert_eq!(req.model, "test-model-name");
+        assert_eq!(req.n, Some(2));
+        assert_eq!(req.response_format, Some(ResponseFormat::Url));
+        assert_eq!(req.size, Some("1024x1024".to_string()));
+        assert_eq!(req.style, Some("vivid".to_string()));
+        assert_eq!(req.user, Some("user".to_string()));
+        assert_eq!(req.cfg_scale, Some(1.0));
+        assert_eq!(req.sample_method, Some(SamplingMethod::Euler));
+        assert_eq!(req.steps, Some(4));
+        assert_eq!(req.height, Some(1024));
+        assert_eq!(req.width, Some(1024));
     }
 }
 
