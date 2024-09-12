@@ -45,70 +45,34 @@ fn compute(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Compute completions");
 
-    match model_name {
-        Some(model_name) => {
-            #[cfg(feature = "logging")]
-            info!(target: "stdout", "Model: {}", model_name);
-
-            let chat_graphs = match CHAT_GRAPHS.get() {
-                Some(chat_graphs) => chat_graphs,
-                None => {
-                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
-
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
-
-                    return Err(LlamaCoreError::Operation(err_msg.into()));
-                }
-            };
-
-            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
-
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
-            match chat_graphs.get_mut(model_name) {
-                Some(graph) => compute_by_graph(graph, prompt),
-                None => {
-                    let err_msg = format!(
-                        "The model `{}` does not exist in the chat graphs.",
-                        model_name
-                    );
-
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", &err_msg);
-
-                    Err(LlamaCoreError::Operation(err_msg))
-                }
-            }
-        }
+    let chat_graphs = match CHAT_GRAPHS.get() {
+        Some(chat_graphs) => chat_graphs,
         None => {
-            let chat_graphs = match CHAT_GRAPHS.get() {
-                Some(chat_graphs) => chat_graphs,
-                None => {
-                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+            let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
 
-                    return Err(LlamaCoreError::Operation(err_msg.into()));
-                }
-            };
+            return Err(LlamaCoreError::Operation(err_msg.into()));
+        }
+    };
 
-            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+    let mut chat_graphs = chat_graphs.lock().map_err(|e| {
+        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
 
-                LlamaCoreError::Operation(err_msg)
-            })?;
+        LlamaCoreError::Operation(err_msg)
+    })?;
 
-            match chat_graphs.iter_mut().next() {
+    match model_name {
+        Some(model_name) => match chat_graphs.contains_key(model_name) {
+            true => {
+                let graph = chat_graphs.get_mut(model_name).unwrap();
+                compute_by_graph(graph, prompt)
+            }
+            false => match chat_graphs.iter_mut().next() {
                 Some((_, graph)) => compute_by_graph(graph, prompt),
                 None => {
                     let err_msg = "There is no model available in the chat graphs.";
@@ -118,8 +82,19 @@ fn compute(
 
                     Err(LlamaCoreError::Operation(err_msg.into()))
                 }
+            },
+        },
+        None => match chat_graphs.iter_mut().next() {
+            Some((_, graph)) => compute_by_graph(graph, prompt),
+            None => {
+                let err_msg = "There is no model available in the chat graphs.";
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", &err_msg);
+
+                Err(LlamaCoreError::Operation(err_msg.into()))
             }
-        }
+        },
     }
 }
 
