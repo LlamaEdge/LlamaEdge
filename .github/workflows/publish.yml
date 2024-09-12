@@ -47,7 +47,7 @@ jobs:
       - name: Calculate checksum
         id: checksum
         run: |
-          cp target/wasm32-wasi/release/*.wasm .
+          cp target/wasm32-wasip1/release/*.wasm .
           sha256sum *.wasm > SHA256SUM
 
           echo "Debug info(SHA256SUM):"
