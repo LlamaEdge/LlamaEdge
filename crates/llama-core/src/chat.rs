@@ -134,94 +134,47 @@ async fn chat_stream(
 
     let stream = match tool_use {
         false => ChatStream::new(model_name, id, include_usage, None),
-        true => match model_name {
-            Some(model_name) => {
-                let chat_graphs = match CHAT_GRAPHS.get() {
-                    Some(chat_graphs) => chat_graphs,
-                    None => {
-                        let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
-
-                        #[cfg(feature = "logging")]
-                        error!(target: "stdout", "{}", &err_msg);
-
-                        return Err(LlamaCoreError::Operation(err_msg.into()));
-                    }
-                };
-
-                let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                    let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+        true => {
+            let chat_graphs = match CHAT_GRAPHS.get() {
+                Some(chat_graphs) => chat_graphs,
+                None => {
+                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
 
-                    LlamaCoreError::Operation(err_msg)
-                })?;
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                }
+            };
 
-                match chat_graphs.get_mut(&model_name) {
-                    Some(graph) => chat_stream_by_graph(graph, id, include_usage)?,
-                    None => {
-                        #[cfg(feature = "logging")]
-                        warn!(target: "stdout", "The model named {} is not available in the chat graphs. Use the default model to perform the task.", model_name);
+            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
+                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
-                        let chat_graphs = match CHAT_GRAPHS.get() {
-                            Some(chat_graphs) => chat_graphs,
-                            None => {
-                                let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", &err_msg);
 
-                                #[cfg(feature = "logging")]
-                                error!(target: "stdout", "{}", &err_msg);
+                LlamaCoreError::Operation(err_msg)
+            })?;
 
-                                return Err(LlamaCoreError::Operation(err_msg.into()));
-                            }
-                        };
-
-                        let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                            let err_msg =
-                                format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+            match model_name {
+                Some(model_name) => match chat_graphs.contains_key(&model_name) {
+                    true => {
+                        let graph = chat_graphs.get_mut(&model_name).unwrap();
+                        chat_stream_by_graph(graph, id, include_usage)?
+                    }
+                    false => match chat_graphs.iter_mut().next() {
+                        Some((_, graph)) => chat_stream_by_graph(graph, id, include_usage)?,
+                        None => {
+                            let err_msg = "There is no model available in the chat graphs.";
 
                             #[cfg(feature = "logging")]
                             error!(target: "stdout", "{}", &err_msg);
 
-                            LlamaCoreError::Operation(err_msg)
-                        })?;
-
-                        match chat_graphs.iter_mut().next() {
-                            Some((_, graph)) => chat_stream_by_graph(graph, id, include_usage)?,
-                            None => {
-                                let err_msg = "There is no model available in the chat graphs.";
-
-                                #[cfg(feature = "logging")]
-                                error!(target: "stdout", "{}", &err_msg);
-
-                                return Err(LlamaCoreError::Operation(err_msg.into()));
-                            }
+                            return Err(LlamaCoreError::Operation(err_msg.into()));
                         }
-                    }
-                }
-            }
-            None => {
-                let chat_graphs = match CHAT_GRAPHS.get() {
-                    Some(chat_graphs) => chat_graphs,
-                    None => {
-                        let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
-
-                        #[cfg(feature = "logging")]
-                        error!(target: "stdout", "{}", &err_msg);
-
-                        return Err(LlamaCoreError::Operation(err_msg.into()));
-                    }
-                };
-
-                let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                    let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
-
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", &err_msg);
-
-                    LlamaCoreError::Operation(err_msg)
-                })?;
-
-                match chat_graphs.iter_mut().next() {
+                    },
+                },
+                None => match chat_graphs.iter_mut().next() {
                     Some((_, graph)) => chat_stream_by_graph(graph, id, include_usage)?,
                     None => {
                         let err_msg = "There is no model available in the chat graphs.";
@@ -231,9 +184,9 @@ async fn chat_stream(
 
                         return Err(LlamaCoreError::Operation(err_msg.into()));
                     }
-                }
+                },
             }
-        },
+        }
     };
 
     #[cfg(feature = "logging")]
@@ -727,70 +680,34 @@ fn compute(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Compute chat completion.");
 
-    match model_name {
-        Some(model_name) => {
-            let chat_graphs = match CHAT_GRAPHS.get() {
-                Some(chat_graphs) => chat_graphs,
-                None => {
-                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
-
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", &err_msg);
-
-                    return Err(LlamaCoreError::Operation(err_msg.into()));
-                }
-            };
-
-            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
-
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
-            match chat_graphs.contains_key(model_name) {
-                true => {
-                    let graph = chat_graphs.get_mut(model_name).unwrap();
-                    compute_by_graph(graph, id, tool_use)
-                }
-                false => match chat_graphs.iter_mut().next() {
-                    Some((_, graph)) => compute_by_graph(graph, id, tool_use),
-                    None => {
-                        let err_msg = "There is no model available in the chat graphs.";
-
-                        #[cfg(feature = "logging")]
-                        error!(target: "stdout", "{}", &err_msg);
-
-                        Err(LlamaCoreError::Operation(err_msg.into()))
-                    }
-                },
-            }
-        }
+    let chat_graphs = match CHAT_GRAPHS.get() {
+        Some(chat_graphs) => chat_graphs,
         None => {
-            let chat_graphs = match CHAT_GRAPHS.get() {
-                Some(chat_graphs) => chat_graphs,
-                None => {
-                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+            let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", &err_msg);
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
 
-                    return Err(LlamaCoreError::Operation(err_msg.into()));
-                }
-            };
+            return Err(LlamaCoreError::Operation(err_msg.into()));
+        }
+    };
 
-            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+    let mut chat_graphs = chat_graphs.lock().map_err(|e| {
+        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
 
-                LlamaCoreError::Operation(err_msg)
-            })?;
+        LlamaCoreError::Operation(err_msg)
+    })?;
 
-            match chat_graphs.iter_mut().next() {
+    match model_name {
+        Some(model_name) => match chat_graphs.contains_key(model_name) {
+            true => {
+                let graph = chat_graphs.get_mut(model_name).unwrap();
+                compute_by_graph(graph, id, tool_use)
+            }
+            false => match chat_graphs.iter_mut().next() {
                 Some((_, graph)) => compute_by_graph(graph, id, tool_use),
                 None => {
                     let err_msg = "There is no model available in the chat graphs.";
@@ -800,8 +717,19 @@ fn compute(
 
                     Err(LlamaCoreError::Operation(err_msg.into()))
                 }
+            },
+        },
+        None => match chat_graphs.iter_mut().next() {
+            Some((_, graph)) => compute_by_graph(graph, id, tool_use),
+            None => {
+                let err_msg = "There is no model available in the chat graphs.";
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", &err_msg);
+
+                Err(LlamaCoreError::Operation(err_msg.into()))
             }
-        }
+        },
     }
 }
 
@@ -2134,31 +2062,31 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
 }
 
 fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<(), LlamaCoreError> {
+    let chat_graphs = match CHAT_GRAPHS.get() {
+        Some(chat_graphs) => chat_graphs,
+        None => {
+            let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.into()));
+        }
+    };
+
+    let mut chat_graphs = chat_graphs.lock().map_err(|e| {
+        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
+
     match model_name {
         Some(model_name) => {
             #[cfg(feature = "logging")]
             info!(target: "stdout", "Set prompt to the chat model named {}.", model_name);
-
-            let chat_graphs = match CHAT_GRAPHS.get() {
-                Some(chat_graphs) => chat_graphs,
-                None => {
-                    let err_msg = format!("Fail to get the underlying value of `CHAT_GRAPHS` while trying to set prompt to the model named {}.", model_name);
-
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
-
-                    return Err(LlamaCoreError::Operation(err_msg));
-                }
-            };
-
-            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS` while trying to set prompt to the model named {}. Reason: {}", model_name, e);
-
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
 
             match chat_graphs.contains_key(model_name) {
                 true => {
@@ -2185,27 +2113,6 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
         None => {
             #[cfg(feature = "logging")]
             info!(target: "stdout", "Set prompt to the default chat model.");
-
-            let chat_graphs = match CHAT_GRAPHS.get() {
-                Some(chat_graphs) => chat_graphs,
-                None => {
-                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS` while trying to set prompt to the default model.";
-
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
-
-                    return Err(LlamaCoreError::Operation(err_msg.into()));
-                }
-            };
-
-            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`while trying to set prompt to the default model. Reason: {}", e);
-
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
 
             match chat_graphs.iter_mut().next() {
                 Some((_, graph)) => {
@@ -2247,81 +2154,56 @@ fn get_model_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCore
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Get the model metadata.");
 
-    match model_name {
-        Some(model_name) => {
-            let chat_graphs = match CHAT_GRAPHS.get() {
-                Some(chat_graphs) => chat_graphs,
-                None => {
-                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
-
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
-
-                    return Err(LlamaCoreError::Operation(err_msg.into()));
-                }
-            };
-
-            let chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
-
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
-            match chat_graphs.contains_key(model_name) {
-                true => {
-                    let graph = chat_graphs.get(model_name).unwrap();
-                    Ok(graph.metadata.clone())
-                }
-                false => match chat_graphs.iter().next() {
-                    Some((_, graph)) => Ok(graph.metadata.clone()),
-                    None => {
-                        let err_msg = "There is no model available in the chat graphs.";
-
-                        #[cfg(feature = "logging")]
-                        error!(target: "stdout", "{}", &err_msg);
-
-                        Err(LlamaCoreError::Operation(err_msg.into()))
-                    }
-                },
-            }
-        }
+    let chat_graphs = match CHAT_GRAPHS.get() {
+        Some(chat_graphs) => chat_graphs,
         None => {
-            let chat_graphs = match CHAT_GRAPHS.get() {
-                Some(chat_graphs) => chat_graphs,
-                None => {
-                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+            let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
 
-                    return Err(LlamaCoreError::Operation(err_msg.into()));
-                }
-            };
+            return Err(LlamaCoreError::Operation(err_msg.into()));
+        }
+    };
 
-            let chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+    let chat_graphs = chat_graphs.lock().map_err(|e| {
+        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
 
-                LlamaCoreError::Operation(err_msg)
-            })?;
+        LlamaCoreError::Operation(err_msg)
+    })?;
 
-            match chat_graphs.iter().next() {
+    match model_name {
+        Some(model_name) => match chat_graphs.contains_key(model_name) {
+            true => {
+                let graph = chat_graphs.get(model_name).unwrap();
+                Ok(graph.metadata.clone())
+            }
+            false => match chat_graphs.iter().next() {
                 Some((_, graph)) => Ok(graph.metadata.clone()),
                 None => {
                     let err_msg = "There is no model available in the chat graphs.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     Err(LlamaCoreError::Operation(err_msg.into()))
                 }
+            },
+        },
+        None => match chat_graphs.iter().next() {
+            Some((_, graph)) => Ok(graph.metadata.clone()),
+            None => {
+                let err_msg = "There is no model available in the chat graphs.";
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", err_msg);
+
+                Err(LlamaCoreError::Operation(err_msg.into()))
             }
-        }
+        },
     }
 }
 
@@ -2344,69 +2226,52 @@ fn update_model_metadata(
         }
     };
 
+    let chat_graphs = match CHAT_GRAPHS.get() {
+        Some(chat_graphs) => chat_graphs,
+        None => {
+            let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.into()));
+        }
+    };
+
+    let mut chat_graphs = chat_graphs.lock().map_err(|e| {
+        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. Reason: {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
+
     match model_name {
         Some(model_name) => {
-            let chat_graphs = match CHAT_GRAPHS.get() {
-                Some(chat_graphs) => chat_graphs,
-                None => {
-                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
-
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
-
-                    return Err(LlamaCoreError::Operation(err_msg.into()));
-                }
-            };
-
-            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. Reason: {}", e);
-
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
-            match chat_graphs.get_mut(model_name) {
-                Some(graph) => {
+            match chat_graphs.contains_key(model_name) {
+                true => {
+                    let graph = chat_graphs.get_mut(model_name).unwrap();
                     // update metadata
                     set_tensor_data_u8(graph, 1, config.as_bytes())
                 }
-                None => {
-                    let err_msg = format!(
-                        "The model `{}` does not exist in the chat graphs.",
-                        &model_name
-                    );
+                false => match chat_graphs.iter_mut().next() {
+                    Some((_, graph)) => {
+                        // update metadata
+                        set_tensor_data_u8(graph, 1, config.as_bytes())
+                    }
+                    None => {
+                        let err_msg = "There is no model available in the chat graphs.";
 
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", &err_msg);
+                        #[cfg(feature = "logging")]
+                        error!(target: "stdout", "{}", &err_msg);
 
-                    Err(LlamaCoreError::Operation(err_msg))
-                }
+                        Err(LlamaCoreError::Operation(err_msg.into()))
+                    }
+                },
             }
         }
         None => {
-            let chat_graphs = match CHAT_GRAPHS.get() {
-                Some(chat_graphs) => chat_graphs,
-                None => {
-                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
-
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
-
-                    return Err(LlamaCoreError::Operation(err_msg.into()));
-                }
-            };
-
-            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. Reason: {}", e);
-
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
             match chat_graphs.iter_mut().next() {
                 Some((_, graph)) => {
                     // update metadata
@@ -2704,30 +2569,30 @@ fn compute_stream(
         return Ok("[GGML] End of sequence".to_string());
     }
 
+    let chat_graphs = match CHAT_GRAPHS.get() {
+        Some(chat_graphs) => chat_graphs,
+        None => {
+            let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.into()));
+        }
+    };
+
+    let mut chat_graphs = chat_graphs.lock().map_err(|e| {
+        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
+
     // get graph
     let res = match &model_name {
         Some(model_name) => {
-            let chat_graphs = match CHAT_GRAPHS.get() {
-                Some(chat_graphs) => chat_graphs,
-                None => {
-                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
-
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", &err_msg);
-
-                    return Err(LlamaCoreError::Operation(err_msg.into()));
-                }
-            };
-
-            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
-
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
             match chat_graphs.contains_key(model_name) {
                 true => {
                     let graph = chat_graphs.get_mut(model_name).unwrap();
@@ -3747,27 +3612,6 @@ fn compute_stream(
             }
         }
         None => {
-            let chat_graphs = match CHAT_GRAPHS.get() {
-                Some(chat_graphs) => chat_graphs,
-                None => {
-                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
-
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", &err_msg);
-
-                    return Err(LlamaCoreError::Operation(err_msg.into()));
-                }
-            };
-
-            let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
-
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
             match chat_graphs.iter_mut().next() {
                 Some((_, graph)) => {
                     // compute
