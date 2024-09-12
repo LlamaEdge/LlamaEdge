@@ -68,19 +68,19 @@ pub async fn embeddings(
         LlamaCoreError::Operation(err_msg)
     })?;
 
-    let graph = match embedding_graphs.get_mut(model_name) {
-        Some(graph) => graph,
-        None => {
-            let err_msg = format!(
-                "The model `{}` does not exist in the embedding graphs.",
-                model_name
-            );
+    let graph = match embedding_graphs.contains_key(model_name) {
+        true => embedding_graphs.get_mut(model_name).unwrap(),
+        false => match embedding_graphs.iter_mut().next() {
+            Some((_, graph)) => graph,
+            None => {
+                let err_msg = "There is no model available in the chat graphs.";
 
-            #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", &err_msg);
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", &err_msg);
 
-            return Err(LlamaCoreError::Operation(err_msg));
-        }
+                return Err(LlamaCoreError::Operation(err_msg.into()));
+            }
+        },
     };
 
     // check if the `embedding` option of metadata is enabled
