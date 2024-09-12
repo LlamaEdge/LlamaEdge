@@ -1,0 +1,99 @@
+name: Test API Server
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+      - release-*
+      - feat-*
+      - ci-*
+      - refactor-*
+      - fix-*
+      - test-*
+    paths:
+      - '.github/workflows/test_api_server.yml'
+      - '**/Cargo.toml'
+      - '**/*.rs'
+      - '**/*.sh'
+      - '**/.cargo/config.toml'
+  pull_request:
+    branches:
+      - dev
+      - main
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/**'
+      - '**/Cargo.toml'
+      - '**/*.rs'
+      - '**/*.sh'
+
+jobs:
+  test-api-server:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        wasmedge_version: [0.14.0]
+    steps:
+      - name: Clone project
+        id: checkout
+        uses: actions/checkout@v3
+
+      - name: Install Rust-nightly
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: nightly
+          target: wasm32-wasip1
+          components: rustfmt, clippy
+
+      - name: Install Rust-stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: wasm32-wasip1
+
+      - name: Install WasmEdge
+        run: |
+          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v ${{ matrix.wasmedge_version }}
+          ls -al $HOME/.wasmedge/bin
+
+      - name: Install Hurl
+        run: |
+          curl --location --remote-name https://github.com/Orange-OpenSource/hurl/releases/download/5.0.1/hurl_5.0.1_amd64.deb
+          sudo apt update && sudo apt install ./hurl_5.0.1_amd64.deb
+
+      - name: Build llama-api-server on linux
+        env:
+          RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
+        run: |
+          cargo build -p llama-api-server --release
+          cp target/wasm32-wasip1/release/llama-api-server.wasm ./llama-api-server.wasm
+
+      - name: Start llama-api-server for testing chat completions
+        run: |
+          curl -LO https://huggingface.co/second-state/Qwen2-1.5B-Instruct-GGUF/resolve/main/Qwen2-1.5B-Instruct-Q3_K_M.gguf
+          nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:Qwen2-1.5B-Instruct-Q3_K_M.gguf llama-api-server.wasm --model-name Qwen2-1.5B-Instruct --prompt-template chatml --ctx-size 4096 --socket-addr 0.0.0.0:8080 > ./start-llamaedge.log 2>&1 &
+          sleep 5
+          cat start-llamaedge.log
+
+      - name: Run test_chat.hurl
+        run: |
+          hurl --test --jobs 1 ./tests/test_chat.hurl
+
+      - name: Stop llama-api-server for testing chat completions
+        run: |
+          pkill -f wasmedge
+
+      - name: Start llama-api-server for testing embeddings
+        run: |
+          curl -LO https://huggingface.co/second-state/Nomic-embed-text-v1.5-Embedding-GGUF/resolve/main/nomic-embed-text-v1.5-f16.gguf
+          nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:nomic-embed-text-v1.5-f16.gguf llama-api-server.wasm --model-name nomic-embed-text-v1.5 --prompt-template embedding --ctx-size 512 --socket-addr 0.0.0.0:8080 > ./start-llamaedge.log 2>&1 &
+          sleep 5
+          cat start-llamaedge.log
+
+      - name: Run test_embeddings.hurl
+        run: |
+          hurl --test --jobs 1 ./tests/test_embeddings.hurl
+
+      - name: Stop llama-api-server for testing chat completions
+        run: |
+          pkill -f wasmedge

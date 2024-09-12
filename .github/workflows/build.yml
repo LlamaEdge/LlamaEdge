@@ -12,7 +12,7 @@ on:
       - fix-*
       - test-*
     paths:
-      - '.github/workflows/**'
+      - '.github/workflows/build.yml'
       - '**/Cargo.toml'
       - '**/*.rs'
       - '**/*.sh'
@@ -33,7 +33,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-22.04, ubuntu-20.04, macos-13, macos-14]
+        os: [ubuntu-22.04, macos-13, macos-14]
     steps:
       - name: Clone project
         id: checkout
@@ -65,60 +65,68 @@ jobs:
           tar -xzvf wasi-sdk-24.0-arm64-macos.tar.gz
           mv wasi-sdk-24.0-arm64-macos wasi-sdk-24.0
 
-      - name: Build simple
-        id: build_simple
-        env:
-          RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
-        run: |
-          cd simple
-          cargo +nightly fmt --all -- --check
-          cargo +nightly clippy --target wasm32-wasip1 -- -D warnings
-          cargo build --target wasm32-wasip1 --release
-
-      - name: Build chat for linux
-        id: build_chat_linux
+      - name: Run clippy
         if: startsWith(matrix.os, 'ubuntu')
         env:
           RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
         run: |
-          cd chat
-          cargo +nightly fmt --all -- --check
           cargo +nightly clippy --target wasm32-wasip1 -- -D warnings
-          cargo build --target wasm32-wasip1 --release
 
-      - name: Build chat for macos
-        id: build_chat_macos
+      - name: Run fmt
+        if: startsWith(matrix.os, 'ubuntu')
+        env:
+          RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
+        run: |
+          cargo +nightly fmt --all -- --check
+
+      - name: Run tests on linux
+        if: startsWith(matrix.os, 'ubuntu')
+        env:
+          RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
+        run: |
+          cargo test -p endpoints --target x86_64-unknown-linux-gnu
+
+      - name: Run tests on macos-14
+        if: matrix.os == 'macos-14'
+        env:
+          RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
+        run: |
+          cargo test -p endpoints --target aarch64-apple-darwin
+
+      - name: Build llama-simple
+        env:
+          RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
+        run: |
+          cargo build -p llama-simple --release
+
+      - name: Build llama-chat on linux
+        if: startsWith(matrix.os, 'ubuntu')
+        env:
+          RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
+        run: |
+          cargo build -p llama-chat --release
+
+      - name: Build llama-chat on macos
         if: startsWith(matrix.os, 'macos')
         env:
           WASI_SDK_PATH: /Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0
           CC: "/Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0/bin/clang --sysroot=/Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0/share/wasi-sysroot"
           RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
         run: |
-          cd chat
-          cargo +nightly fmt --all -- --check
-          cargo +nightly clippy --target wasm32-wasip1 -- -D warnings
-          cargo build --target wasm32-wasip1 --release
+          cargo build -p llama-chat --release
 
-      - name: Build api-server for linux
-        id: build_api_server_linux
+      - name: Build llama-api-server on linux
         if: startsWith(matrix.os, 'ubuntu')
         env:
           RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
         run: |
-          cd api-server
-          cargo +nightly fmt --all -- --check
-          cargo +nightly clippy --target wasm32-wasip1 -- -D warnings
-          cargo build --target wasm32-wasip1 --release
+          cargo build -p llama-api-server --release
 
-      - name: Build api-server for macos
-        id: build_api_server_macos
+      - name: Build api-server on macos
         if: startsWith(matrix.os, 'macos')
         env:
           WASI_SDK_PATH: /Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0
           CC: "/Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0/bin/clang --sysroot=/Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0/share/wasi-sysroot"
           RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
         run: |
-          cd api-server
-          cargo +nightly fmt --all -- --check
-          cargo +nightly clippy --target wasm32-wasip1 -- -D warnings
-          cargo build --target wasm32-wasip1 --release
+          cargo build -p llama-api-server --release
