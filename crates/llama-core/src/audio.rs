@@ -74,6 +74,9 @@ pub async fn audio_transcriptions(
 
         #[cfg(feature = "logging")]
         info!(target: "stdout", "Disabled translation");
+
+        // update the metadata
+        graph.metadata.translate = false;
     }
 
     let path = Path::new("archives")
@@ -343,6 +346,9 @@ pub async fn audio_translations(
 
         #[cfg(feature = "logging")]
         info!(target: "stdout", "enabled translation");
+
+        // update the metadata
+        graph.metadata.translate = true;
     }
 
     let path = Path::new("archives")
