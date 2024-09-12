@@ -44,15 +44,16 @@ pub async fn audio_transcriptions(
         }
     };
 
-    let mut metadata = graph.metadata.clone();
-
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "translation enabled: {}", metadata.translate);
+    info!(target: "stdout", "translation enabled: {}", graph.metadata.translate);
 
     // check if translation is disabled so that transcription tasks can be done
-    if metadata.translate {
+    if graph.metadata.translate {
         // enable translation
-        metadata.translate = false;
+        graph.metadata.translate = false;
+
+        // set the metadata to the model
+        let metadata = graph.metadata.clone();
 
         #[cfg(feature = "logging")]
         info!(target: "stdout", "Update the model metadata to disable translation.");
@@ -317,14 +318,16 @@ pub async fn audio_translations(
         }
     };
 
-    let mut metadata = graph.metadata.clone();
-
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "translation enabled: {}", metadata.translate);
+    info!(target: "stdout", "translation enabled: {}", graph.metadata.translate);
 
-    if !metadata.translate {
-        // enable translation
-        metadata.translate = true;
+    // update metadata
+    if !graph.metadata.translate {
+        // update the metadata
+        graph.metadata.translate = true;
+
+        // set the metadata to the model
+        let metadata = graph.metadata.clone();
 
         #[cfg(feature = "logging")]
         info!(target: "stdout", "Update the model metadata to enable translation.");
@@ -346,9 +349,6 @@ pub async fn audio_translations(
 
         #[cfg(feature = "logging")]
         info!(target: "stdout", "enabled translation");
-
-        // update the metadata
-        graph.metadata.translate = true;
     }
 
     let path = Path::new("archives")
