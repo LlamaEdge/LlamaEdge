@@ -8,7 +8,7 @@ use serde::{
 use std::fmt;
 
 /// Represents a rquest for translating audio into English.
-#[derive(Debug, Serialize, Default)]
+#[derive(Debug, Serialize)]
 pub struct TranslationRequest {
     /// The audio file object (not file name) to transcribe, in one of these formats: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm.
     pub file: FileObject,
@@ -17,7 +17,7 @@ pub struct TranslationRequest {
     /// An optional text to guide the model's style or continue a previous audio segment. The prompt should be in English.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prompt: Option<String>,
-    /// The format of the transcript output, in one of these options: `json`, `text`, `srt`, `verbose_json`, or `vtt`.
+    /// The format of the transcript output, in one of these options: `json`, `text`, `srt`, `verbose_json`, or `vtt`. Defaults to `json`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_format: Option<String>,
     /// The sampling temperature, between 0 and 1. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic. If set to 0, the model will use [log probability](https://en.wikipedia.org/wiki/Log_probability) to automatically increase the temperature until certain thresholds are hit. Defaults to 0.0.
@@ -138,6 +138,10 @@ impl<'de> Deserialize<'de> for TranslationRequest {
 
                 let file = file.ok_or_else(|| de::Error::missing_field("file"))?;
 
+                if response_format.is_none() {
+                    response_format = Some("json".to_string());
+                }
+
                 if temperature.is_none() {
                     temperature = Some(0.0);
                 }
@@ -166,6 +170,18 @@ impl<'de> Deserialize<'de> for TranslationRequest {
             "language",
         ];
         deserializer.deserialize_struct("TranslationRequest", FIELDS, TranslationRequestVisitor)
+    }
+}
+impl Default for TranslationRequest {
+    fn default() -> Self {
+        TranslationRequest {
+            file: FileObject::default(),
+            model: None,
+            prompt: None,
+            response_format: Some("json".to_string()),
+            temperature: Some(0.0),
+            language: Some("en".to_string()),
+        }
     }
 }
 
