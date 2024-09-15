@@ -31,7 +31,7 @@ use intel::*;
 use llama::*;
 use mediatek::BreezeInstructPrompt;
 use mistral::*;
-use nvidia::NemotronChatPrompt;
+use nvidia::{NemotronChatPrompt, NemotronToolPrompt};
 use octopus::*;
 use openchat::*;
 use phi::*;
@@ -94,6 +94,7 @@ pub enum ChatPrompt {
     GroqLlama3ToolPrompt,
     BreezeInstructPrompt,
     NemotronChatPrompt,
+    NemotronToolPrompt,
 }
 impl From<PromptTemplateType> for ChatPrompt {
     fn from(ty: PromptTemplateType) -> Self {
@@ -160,6 +161,7 @@ impl From<PromptTemplateType> for ChatPrompt {
                 ChatPrompt::BreezeInstructPrompt(BreezeInstructPrompt)
             }
             PromptTemplateType::NemotronChat => ChatPrompt::NemotronChatPrompt(NemotronChatPrompt),
+            PromptTemplateType::NemotronTool => ChatPrompt::NemotronToolPrompt(NemotronToolPrompt),
             PromptTemplateType::Embedding => {
                 panic!("Embedding prompt template is not used for building chat prompts")
             }
