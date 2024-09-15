@@ -245,6 +245,23 @@ The available prompt templates are listed below:
 
   - Example: [second-state/Mistral-7B-Instruct-v0.3-GGUF](https://huggingface.co/second-state/Mistral-7B-Instruct-v0.3-GGUF)
 
+- `nemotron-chat`
+
+  ```text
+  <extra_id_0>System
+  {system_message}
+  <extra_id_1>User
+  {user_message_1}<extra_id_1>Assistant
+  {assistant_message_1}
+  <extra_id_1>User
+  {user_message_2}<extra_id_1>Assistant
+  {assistant_message_2}
+  <extra_id_1>User
+  {user_message_3}<extra_id_1>Assistant\n
+  ```
+
+  - Example: [second-state/Nemotron-Mini-4B-Instruct-GGUF](https://huggingface.co/second-state/Nemotron-Mini-4B-Instruct-GGUF)
+
 - `octopus`
   - Prompt string
 
