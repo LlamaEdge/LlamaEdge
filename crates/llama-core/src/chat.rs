@@ -792,6 +792,7 @@ fn compute_by_graph(
                         && graph.metadata.prompt_template != PromptTemplateType::GroqLlama3Tool
                         && graph.metadata.prompt_template != PromptTemplateType::Llama3Tool
                         && graph.metadata.prompt_template != PromptTemplateType::InternLM2Tool
+                        && graph.metadata.prompt_template != PromptTemplateType::NemotronTool
                     {
                         let err_msg = "The tool use is only supported for 'mistral-chat' and 'chatml' prompt templates.";
 
@@ -1482,6 +1483,12 @@ fn parse_tool_calls(
             info!(target: "stdout", "parsed result: {:?}", parsed);
 
             Ok(parsed)
+        }
+        PromptTemplateType::NemotronTool => {
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "raw input: {}", input);
+
+            unimplemented!("The tool use is not supported for the prompt template: NemotronTool.");
         }
         _ => Err(LlamaCoreError::Operation(format!(
             "The tool use is only supported for prompt templates: {}, {}, {}, {}, and {}.",
