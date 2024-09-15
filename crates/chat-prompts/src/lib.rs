@@ -83,6 +83,8 @@ pub enum PromptTemplateType {
     GroqLlama3Tool,
     #[value(name = "mediatek-breeze")]
     BreezeInstruct,
+    #[value(name = "nemotron-chat")]
+    NemotronChat,
     #[value(name = "embedding")]
     Embedding,
     #[value(name = "none")]
@@ -112,7 +114,8 @@ impl PromptTemplateType {
             | PromptTemplateType::Glm4Chat
             | PromptTemplateType::GroqLlama3Tool
             | PromptTemplateType::BreezeInstruct
-            | PromptTemplateType::DeepseekChat25 => true,
+            | PromptTemplateType::DeepseekChat25
+            | PromptTemplateType::NemotronChat => true,
             PromptTemplateType::MistralInstruct
             | PromptTemplateType::MistralTool
             | PromptTemplateType::MistralLite
@@ -172,6 +175,7 @@ impl FromStr for PromptTemplateType {
             "glm-4-chat" => Ok(PromptTemplateType::Glm4Chat),
             "groq-llama3-tool" => Ok(PromptTemplateType::GroqLlama3Tool),
             "mediatek-breeze" => Ok(PromptTemplateType::BreezeInstruct),
+            "nemotron-chat" => Ok(PromptTemplateType::NemotronChat),
             "embedding" => Ok(PromptTemplateType::Embedding),
             "none" => Ok(PromptTemplateType::Null),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
@@ -218,6 +222,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::Glm4Chat => write!(f, "glm-4-chat"),
             PromptTemplateType::GroqLlama3Tool => write!(f, "groq-llama3-tool"),
             PromptTemplateType::BreezeInstruct => write!(f, "mediatek-breeze"),
+            PromptTemplateType::NemotronChat => write!(f, "nemotron-chat"),
             PromptTemplateType::Embedding => write!(f, "embedding"),
             PromptTemplateType::Null => write!(f, "none"),
         }
