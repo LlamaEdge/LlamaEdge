@@ -257,7 +257,8 @@ The available prompt templates are listed below:
   {user_message_2}<extra_id_1>Assistant
   {assistant_message_2}
   <extra_id_1>User
-  {user_message_3}<extra_id_1>Assistant\n
+  {user_message_3}
+  <extra_id_1>Assistant\n
   ```
 
   - Example: [second-state/Nemotron-Mini-4B-Instruct-GGUF](https://huggingface.co/second-state/Nemotron-Mini-4B-Instruct-GGUF)
