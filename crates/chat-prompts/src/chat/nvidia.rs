@@ -105,7 +105,7 @@ impl BuildChatPrompt for NemotronChatPrompt {
             }
         }
 
-        prompt.push_str("<extra_id_1>Assistant\n");
+        prompt.push_str("\n<extra_id_1>Assistant\n");
 
         Ok(prompt)
     }
