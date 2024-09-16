@@ -288,12 +288,18 @@ impl BuildChatPrompt for NemotronToolPrompt {
             }
             _ => match tools {
                 Some(tools) => {
-                    let available_tools = serde_json::to_string(tools).unwrap();
-                    let tools = format!("<tool> {} </tool>", available_tools);
+                    let mut tools_s = String::new();
+                    for tool in tools {
+                        let available_tool = serde_json::to_string(&tool.function).unwrap();
+
+                        let tool = format!("<tool> {} </tool>\n", available_tool);
+
+                        tools_s.push_str(&tool);
+                    }
 
                     let begin = r#"<extra_id_0>System\nYou are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe."#;
 
-                    format!("{}\n\n{}", begin, tools)
+                    format!("{}\n{}", begin, tools_s.trim())
                 }
                 None => {
                     String::from("<|im_start|>system\nAnswer as concisely as possible.<|im_end|>")
