@@ -263,6 +263,25 @@ The available prompt templates are listed below:
 
   - Example: [second-state/Nemotron-Mini-4B-Instruct-GGUF](https://huggingface.co/second-state/Nemotron-Mini-4B-Instruct-GGUF)
 
+- `nemotron-tool`
+
+  ```text
+  <extra_id_0>System
+  {system_message}
+  <tool> {tool_1} </tool>
+  <tool> {tool_2} </tool>
+
+
+  <extra_id_1>User
+  {user_message_1}<extra_id_1>Assistant
+  <toolcall> {tool_call_message} </toolcall>
+  <extra_id_1>Tool
+  {tool_result_message}
+  <extra_id_1>Assistant\n
+  ```
+
+  - Example: [second-state/Nemotron-Mini-4B-Instruct-GGUF](https://huggingface.co/second-state/Nemotron-Mini-4B-Instruct-GGUF)
+
 - `octopus`
   - Prompt string
 
