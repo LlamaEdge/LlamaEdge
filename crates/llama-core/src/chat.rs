@@ -2711,8 +2711,14 @@ fn compute_stream(
                     // compute
                     match graph.compute_single() {
                         Ok(_) => {
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "Compute the chat stream chunk successfully.");
+
                             // Retrieve the output
                             let output_buffer = get_output_buffer_single(graph, OUTPUT_TENSOR)?;
+
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "retrieved the output buffer");
 
                             // decode the output buffer to a utf8 string
                             let output = match String::from_utf8(output_buffer.clone()) {
@@ -2762,6 +2768,9 @@ fn compute_stream(
                                 }
                             };
 
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "decoded the output buffer");
+
                             let created = SystemTime::now()
                                 .duration_since(std::time::UNIX_EPOCH)
                                 .map_err(|e| {
@@ -2792,6 +2801,9 @@ fn compute_stream(
                                 }],
                                 usage: None,
                             };
+
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "created chat completion chunk");
 
                             // serialize chat completion chunk
                             let chunk_str =
@@ -3202,9 +3214,15 @@ fn compute_stream(
                             // compute
                             match graph.compute_single() {
                                 Ok(_) => {
+                                    #[cfg(feature = "logging")]
+                                    info!(target: "stdout", "Compute the chat stream chunk successfully.");
+
                                     // Retrieve the output
                                     let output_buffer =
                                         get_output_buffer_single(graph, OUTPUT_TENSOR)?;
+
+                                    #[cfg(feature = "logging")]
+                                    info!(target: "stdout", "retrieved the output buffer");
 
                                     // decode the output buffer to a utf8 string
                                     let output = match String::from_utf8(output_buffer.clone()) {
@@ -3254,6 +3272,9 @@ fn compute_stream(
                                         }
                                     };
 
+                                    #[cfg(feature = "logging")]
+                                    info!(target: "stdout", "decoded the output buffer");
+
                                     let created = SystemTime::now()
                                         .duration_since(std::time::UNIX_EPOCH)
                                         .map_err(|e| {
@@ -3286,6 +3307,9 @@ fn compute_stream(
                                         }],
                                         usage: None,
                                     };
+
+                                    #[cfg(feature = "logging")]
+                                    info!(target: "stdout", "created chat completion chunk");
 
                                     // serialize chat completion chunk
                                     let chunk_str = serde_json::to_string(&chat_completion_chunk)
@@ -3729,8 +3753,15 @@ fn compute_stream(
                     // compute
                     match graph.compute_single() {
                         Ok(_) => {
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "Compute the chat stream chunk successfully.");
+
                             // Retrieve the output
                             let output_buffer = get_output_buffer_single(graph, OUTPUT_TENSOR)?;
+
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "retrieved the output buffer");
+
                             // decode the output buffer to a utf8 string
                             let output = match String::from_utf8(output_buffer.clone()) {
                                 Ok(token) => token,
@@ -3777,6 +3808,9 @@ fn compute_stream(
                                 }
                             };
 
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "decoded the output buffer");
+
                             let created = SystemTime::now()
                                 .duration_since(std::time::UNIX_EPOCH)
                                 .map_err(|e| {
@@ -3807,6 +3841,9 @@ fn compute_stream(
                                 }],
                                 usage: None,
                             };
+
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "created chat completion chunk");
 
                             // serialize chat completion chunk
                             let chunk_str =
