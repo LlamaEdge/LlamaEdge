@@ -453,6 +453,10 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     n_choice = Some(1);
                 }
 
+                if stream.is_none() {
+                    stream = Some(false);
+                }
+
                 // Construct ChatCompletionRequest with all fields
                 Ok(ChatCompletionRequest {
                     model,
