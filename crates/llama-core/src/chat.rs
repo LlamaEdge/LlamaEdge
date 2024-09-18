@@ -2633,11 +2633,11 @@ impl futures::Stream for ChatStream {
                 &mut this.stream_state,
             );
 
-            #[cfg(feature = "logging")]
-            info!(target: "stdout", "Get the next item: {:?}", &x);
-
             match x {
                 Ok(x) => {
+                    #[cfg(feature = "logging")]
+                    info!(target: "stdout", "next item: {}", &x);
+
                     if x != "[GGML] End of sequence" && !x.is_empty() {
                         Poll::Ready(Some(Ok(x)))
                     } else {
@@ -2678,6 +2678,9 @@ fn compute_stream(
         || *context_full_state == ContextFullState::EndOfSequence
         || *stream_state == StreamState::EndOfSequence
     {
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Return the chat stream chunk!");
+
         return Ok("[GGML] End of sequence".to_string());
     }
 
