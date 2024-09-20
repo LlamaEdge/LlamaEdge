@@ -45,10 +45,13 @@ pub async fn audio_transcriptions(
     };
 
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "translation enabled: {}", graph.metadata.translate);
+    info!(target: "stdout", "transcription status: {}", !graph.metadata.translate);
 
     // check if translation is disabled so that transcription tasks can be done
     if graph.metadata.translate {
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "switch to the transcription mode");
+
         // enable translation
         graph.metadata.translate = false;
 
@@ -56,7 +59,10 @@ pub async fn audio_transcriptions(
         let metadata = graph.metadata.clone();
 
         #[cfg(feature = "logging")]
-        info!(target: "stdout", "Update the model metadata to disable translation.");
+        info!(target: "stdout", "metadata: {:?}", &metadata);
+
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "set the metadata to the model.");
 
         match serde_json::to_string(&metadata) {
             Ok(config) => {
@@ -74,10 +80,7 @@ pub async fn audio_transcriptions(
         };
 
         #[cfg(feature = "logging")]
-        info!(target: "stdout", "Disabled translation");
-
-        // update the metadata
-        graph.metadata.translate = false;
+        info!(target: "stdout", "enabled transcription mode");
     }
 
     let path = Path::new("archives")
@@ -319,10 +322,13 @@ pub async fn audio_translations(
     };
 
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "translation enabled: {}", graph.metadata.translate);
+    info!(target: "stdout", "translation status: {}", graph.metadata.translate);
 
     // update metadata
     if !graph.metadata.translate {
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "switch to the translation mode");
+
         // update the metadata
         graph.metadata.translate = true;
 
@@ -330,7 +336,10 @@ pub async fn audio_translations(
         let metadata = graph.metadata.clone();
 
         #[cfg(feature = "logging")]
-        info!(target: "stdout", "Update the model metadata to enable translation.");
+        info!(target: "stdout", "metadata: {:?}", &metadata);
+
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "set the metadata to the model.");
 
         match serde_json::to_string(&metadata) {
             Ok(config) => {
@@ -348,7 +357,7 @@ pub async fn audio_translations(
         };
 
         #[cfg(feature = "logging")]
-        info!(target: "stdout", "enabled translation");
+        info!(target: "stdout", "enabled translation mode");
     }
 
     let path = Path::new("archives")

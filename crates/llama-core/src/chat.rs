@@ -792,6 +792,7 @@ fn compute_by_graph(
                         && graph.metadata.prompt_template != PromptTemplateType::GroqLlama3Tool
                         && graph.metadata.prompt_template != PromptTemplateType::Llama3Tool
                         && graph.metadata.prompt_template != PromptTemplateType::InternLM2Tool
+                        && graph.metadata.prompt_template != PromptTemplateType::NemotronTool
                     {
                         let err_msg = "The tool use is only supported for 'mistral-chat' and 'chatml' prompt templates.";
 
@@ -1197,6 +1198,9 @@ fn parse_tool_calls(
             }
         }
         PromptTemplateType::GroqLlama3Tool => {
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "raw input: {}", input);
+
             match regex::Regex::new(r"(?s)<tool_call>((.|\r|\n)*?)</tool_call>") {
                 Ok(re) => {
                     let mut values: Vec<serde_json::Value> = vec![];
@@ -1482,6 +1486,105 @@ fn parse_tool_calls(
             info!(target: "stdout", "parsed result: {:?}", parsed);
 
             Ok(parsed)
+        }
+        PromptTemplateType::NemotronTool => {
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "raw input: {}", input);
+
+            match regex::Regex::new(r"(?s)<toolcall>\s*(.*?)\s*</toolcall>") {
+                Ok(re) => {
+                    let mut values: Vec<serde_json::Value> = vec![];
+                    for cap in re.captures_iter(input) {
+                        #[cfg(feature = "logging")]
+                        info!(target: "stdout", "captured: {}", &cap[0]);
+
+                        #[cfg(feature = "logging")]
+                        info!(target: "stdout", "extracted: {}", &cap[1]);
+
+                        let matched = cap[1].trim();
+
+                        #[cfg(feature = "logging")]
+                        info!(target: "stdout", "captured: {}", matched);
+
+                        match serde_json::from_str::<serde_json::Value>(matched) {
+                            Ok(value) => values.push(value),
+                            Err(e) => {
+                                let err_msg = format!(
+                                    "Failed to deserialize generated tool calls. Reason: {}",
+                                    e
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "stdout", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            }
+                        }
+                    }
+
+                    let mut tool_calls: Vec<ToolCall> = vec![];
+                    for value in values.iter() {
+                        let name = match value.get("name") {
+                            Some(name) => name.to_string().replace("\"", ""),
+                            None => {
+                                let err_msg = format!(
+                                    "Failed to get the name of the function. Tool call: {:?}",
+                                    value
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "stdout", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            }
+                        };
+
+                        let arguments = match value.get("arguments") {
+                            Some(arguments) => arguments.to_string(),
+                            None => {
+                                let err_msg = format!(
+                                    "Failed to get the arguments of the function. Tool call: {:?}",
+                                    value
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "stdout", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            }
+                        };
+
+                        let function = Function { name, arguments };
+
+                        let tool_call = ToolCall {
+                            id: "call_abc123".to_string(),
+                            ty: "function".to_string(),
+                            function,
+                        };
+
+                        tool_calls.push(tool_call);
+                    }
+
+                    let parsed = ParseResult {
+                        raw: input.to_owned(),
+                        content: None,
+                        tool_calls,
+                    };
+
+                    #[cfg(feature = "logging")]
+                    info!(target: "stdout", "parsed result: {:?}", parsed);
+
+                    Ok(parsed)
+                }
+                Err(e) => {
+                    let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "stdout", "{}", &err_msg);
+
+                    Err(LlamaCoreError::Operation(err_msg))
+                }
+            }
         }
         _ => Err(LlamaCoreError::Operation(format!(
             "The tool use is only supported for prompt templates: {}, {}, {}, {}, and {}.",
@@ -1773,6 +1876,15 @@ fn post_process(
         let s = output.as_ref().trim();
         if s.ends_with("<|end|>") {
             s.trim_end_matches("<|end|>").trim().to_owned()
+        } else {
+            s.to_owned()
+        }
+    } else if *template_ty == PromptTemplateType::NemotronTool
+        || *template_ty == PromptTemplateType::NemotronChat
+    {
+        let s = output.as_ref().trim();
+        if s.ends_with("</s>") {
+            s.trim_end_matches("</s>").trim().to_owned()
         } else {
             s.to_owned()
         }
@@ -2521,11 +2633,11 @@ impl futures::Stream for ChatStream {
                 &mut this.stream_state,
             );
 
-            #[cfg(feature = "logging")]
-            info!(target: "stdout", "Get the next item: {:?}", &x);
-
             match x {
                 Ok(x) => {
+                    #[cfg(feature = "logging")]
+                    info!(target: "stdout", "next item: {}", &x);
+
                     if x != "[GGML] End of sequence" && !x.is_empty() {
                         Poll::Ready(Some(Ok(x)))
                     } else {
@@ -2566,6 +2678,9 @@ fn compute_stream(
         || *context_full_state == ContextFullState::EndOfSequence
         || *stream_state == StreamState::EndOfSequence
     {
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Return the chat stream chunk!");
+
         return Ok("[GGML] End of sequence".to_string());
     }
 
@@ -2599,8 +2714,14 @@ fn compute_stream(
                     // compute
                     match graph.compute_single() {
                         Ok(_) => {
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "Compute the chat stream chunk successfully.");
+
                             // Retrieve the output
                             let output_buffer = get_output_buffer_single(graph, OUTPUT_TENSOR)?;
+
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "retrieved the output buffer");
 
                             // decode the output buffer to a utf8 string
                             let output = match String::from_utf8(output_buffer.clone()) {
@@ -2650,6 +2771,9 @@ fn compute_stream(
                                 }
                             };
 
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "decoded the output buffer");
+
                             let created = SystemTime::now()
                                 .duration_since(std::time::UNIX_EPOCH)
                                 .map_err(|e| {
@@ -2680,6 +2804,9 @@ fn compute_stream(
                                 }],
                                 usage: None,
                             };
+
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "created chat completion chunk");
 
                             // serialize chat completion chunk
                             let chunk_str =
@@ -3090,9 +3217,15 @@ fn compute_stream(
                             // compute
                             match graph.compute_single() {
                                 Ok(_) => {
+                                    #[cfg(feature = "logging")]
+                                    info!(target: "stdout", "Compute the chat stream chunk successfully.");
+
                                     // Retrieve the output
                                     let output_buffer =
                                         get_output_buffer_single(graph, OUTPUT_TENSOR)?;
+
+                                    #[cfg(feature = "logging")]
+                                    info!(target: "stdout", "retrieved the output buffer");
 
                                     // decode the output buffer to a utf8 string
                                     let output = match String::from_utf8(output_buffer.clone()) {
@@ -3142,6 +3275,9 @@ fn compute_stream(
                                         }
                                     };
 
+                                    #[cfg(feature = "logging")]
+                                    info!(target: "stdout", "decoded the output buffer");
+
                                     let created = SystemTime::now()
                                         .duration_since(std::time::UNIX_EPOCH)
                                         .map_err(|e| {
@@ -3174,6 +3310,9 @@ fn compute_stream(
                                         }],
                                         usage: None,
                                     };
+
+                                    #[cfg(feature = "logging")]
+                                    info!(target: "stdout", "created chat completion chunk");
 
                                     // serialize chat completion chunk
                                     let chunk_str = serde_json::to_string(&chat_completion_chunk)
@@ -3617,8 +3756,15 @@ fn compute_stream(
                     // compute
                     match graph.compute_single() {
                         Ok(_) => {
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "Compute the chat stream chunk successfully.");
+
                             // Retrieve the output
                             let output_buffer = get_output_buffer_single(graph, OUTPUT_TENSOR)?;
+
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "retrieved the output buffer");
+
                             // decode the output buffer to a utf8 string
                             let output = match String::from_utf8(output_buffer.clone()) {
                                 Ok(token) => token,
@@ -3665,6 +3811,9 @@ fn compute_stream(
                                 }
                             };
 
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "decoded the output buffer");
+
                             let created = SystemTime::now()
                                 .duration_since(std::time::UNIX_EPOCH)
                                 .map_err(|e| {
@@ -3695,6 +3844,9 @@ fn compute_stream(
                                 }],
                                 usage: None,
                             };
+
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "created chat completion chunk");
 
                             // serialize chat completion chunk
                             let chunk_str =

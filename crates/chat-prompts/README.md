@@ -245,6 +245,43 @@ The available prompt templates are listed below:
 
   - Example: [second-state/Mistral-7B-Instruct-v0.3-GGUF](https://huggingface.co/second-state/Mistral-7B-Instruct-v0.3-GGUF)
 
+- `nemotron-chat`
+
+  ```text
+  <extra_id_0>System
+  {system_message}
+  <extra_id_1>User
+  {user_message_1}<extra_id_1>Assistant
+  {assistant_message_1}
+  <extra_id_1>User
+  {user_message_2}<extra_id_1>Assistant
+  {assistant_message_2}
+  <extra_id_1>User
+  {user_message_3}
+  <extra_id_1>Assistant\n
+  ```
+
+  - Example: [second-state/Nemotron-Mini-4B-Instruct-GGUF](https://huggingface.co/second-state/Nemotron-Mini-4B-Instruct-GGUF)
+
+- `nemotron-tool`
+
+  ```text
+  <extra_id_0>System
+  {system_message}
+  <tool> {tool_1} </tool>
+  <tool> {tool_2} </tool>
+
+
+  <extra_id_1>User
+  {user_message_1}<extra_id_1>Assistant
+  <toolcall> {tool_call_message} </toolcall>
+  <extra_id_1>Tool
+  {tool_result_message}
+  <extra_id_1>Assistant\n
+  ```
+
+  - Example: [second-state/Nemotron-Mini-4B-Instruct-GGUF](https://huggingface.co/second-state/Nemotron-Mini-4B-Instruct-GGUF)
+
 - `octopus`
   - Prompt string
 
@@ -288,6 +325,30 @@ The available prompt templates are listed below:
     ```
 
   - Example: [second-state/Phi-3-medium-4k-instruct-GGUF](https://huggingface.co/second-state/Phi-3-medium-4k-instruct-GGUF)
+
+- `qwen-2.5-coder`
+
+  - File-Level Code Completion (Fill in the middle)
+
+      ```text
+      <|fim_prefix|>{prefix_code}<|fim_suffix|>{suffix_code}<|fim_middle|>
+      ```
+
+      *Reference: https://github.com/QwenLM/Qwen2.5-Coder?tab=readme-ov-file#3-file-level-code-completion-fill-in-the-middle*
+
+  - Repository-Level Code Completion
+
+    ```text
+    <|repo_name|>{repo_name}
+    <|file_sep|>{file_path1}
+    {file_content1}
+    <|file_sep|>{file_path2}
+    {file_content2}
+    ```
+
+    *Reference: https://github.com/QwenLM/Qwen2.5-Coder?tab=readme-ov-file#4-repository-level-code-completion*
+
+  - Example: [second-state/Qwen2.5-Coder-7B-Instruct-GGUF](https://huggingface.co/second-state/Qwen2.5-Coder-7B-Instruct-GGUF)
 
 - `solar-instruct`
   - Prompt string

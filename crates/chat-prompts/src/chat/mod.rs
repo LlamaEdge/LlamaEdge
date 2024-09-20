@@ -9,9 +9,11 @@ pub mod intel;
 pub mod llama;
 pub mod mediatek;
 pub mod mistral;
+pub mod nvidia;
 pub mod octopus;
 pub mod openchat;
 pub mod phi;
+pub mod qwen;
 pub mod solar;
 pub mod vicuna;
 pub mod wizard;
@@ -30,9 +32,11 @@ use intel::*;
 use llama::*;
 use mediatek::BreezeInstructPrompt;
 use mistral::*;
+use nvidia::{NemotronChatPrompt, NemotronToolPrompt};
 use octopus::*;
 use openchat::*;
 use phi::*;
+use qwen::Qwen25CoderInstructPrompt;
 use solar::*;
 use vicuna::*;
 use wizard::*;
@@ -91,6 +95,9 @@ pub enum ChatPrompt {
     Glm4ChatPrompt,
     GroqLlama3ToolPrompt,
     BreezeInstructPrompt,
+    NemotronChatPrompt,
+    NemotronToolPrompt,
+    Qwen25CoderInstructPrompt,
 }
 impl From<PromptTemplateType> for ChatPrompt {
     fn from(ty: PromptTemplateType) -> Self {
@@ -155,6 +162,11 @@ impl From<PromptTemplateType> for ChatPrompt {
             }
             PromptTemplateType::BreezeInstruct => {
                 ChatPrompt::BreezeInstructPrompt(BreezeInstructPrompt)
+            }
+            PromptTemplateType::NemotronChat => ChatPrompt::NemotronChatPrompt(NemotronChatPrompt),
+            PromptTemplateType::NemotronTool => ChatPrompt::NemotronToolPrompt(NemotronToolPrompt),
+            PromptTemplateType::Qwen25Coder => {
+                ChatPrompt::Qwen25CoderInstructPrompt(Qwen25CoderInstructPrompt)
             }
             PromptTemplateType::Embedding => {
                 panic!("Embedding prompt template is not used for building chat prompts")
