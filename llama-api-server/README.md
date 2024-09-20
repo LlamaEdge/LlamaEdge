@@ -613,7 +613,7 @@ If the Web UI is ready, you can navigate to `http://127.0.0.1:8080` to open the 
 You can set the log level of the API server by setting the `LLAMA_LOG` environment variable. For example, to set the log level to `debug`, you can run the following command:
 
 ```bash
-wasmedge --dir .:. --env LLAMA_LOG=debug \
+wasmedge --dir .:. --env RUST_LOG=debug \
     --nn-preload default:GGML:AUTO:Meta-Llama-3-8B-Instruct-Q5_K_M.gguf \
     llama-api-server.wasm \
     --model-name llama-3-8b \
