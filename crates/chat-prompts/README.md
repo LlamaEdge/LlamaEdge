@@ -326,6 +326,30 @@ The available prompt templates are listed below:
 
   - Example: [second-state/Phi-3-medium-4k-instruct-GGUF](https://huggingface.co/second-state/Phi-3-medium-4k-instruct-GGUF)
 
+- `qwen-2.5-coder`
+
+  - File-Level Code Completion (Fill in the middle)
+
+      ```text
+      <|fim_prefix|>{prefix_code}<|fim_suffix|>{suffix_code}<|fim_middle|>
+      ```
+
+      *Reference: https://github.com/QwenLM/Qwen2.5-Coder?tab=readme-ov-file#3-file-level-code-completion-fill-in-the-middle*
+
+  - Repository-Level Code Completion
+
+    ```text
+    <|repo_name|>{repo_name}
+    <|file_sep|>{file_path1}
+    {file_content1}
+    <|file_sep|>{file_path2}
+    {file_content2}
+    ```
+
+    *Reference: https://github.com/QwenLM/Qwen2.5-Coder?tab=readme-ov-file#4-repository-level-code-completion*
+
+  - Example: [second-state/Qwen2.5-Coder-7B-Instruct-GGUF](https://huggingface.co/second-state/Qwen2.5-Coder-7B-Instruct-GGUF)
+
 - `solar-instruct`
   - Prompt string
 

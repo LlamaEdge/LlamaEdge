@@ -13,6 +13,7 @@ pub mod nvidia;
 pub mod octopus;
 pub mod openchat;
 pub mod phi;
+pub mod qwen;
 pub mod solar;
 pub mod vicuna;
 pub mod wizard;
@@ -35,6 +36,7 @@ use nvidia::{NemotronChatPrompt, NemotronToolPrompt};
 use octopus::*;
 use openchat::*;
 use phi::*;
+use qwen::Qwen25CoderInstructPrompt;
 use solar::*;
 use vicuna::*;
 use wizard::*;
@@ -95,6 +97,7 @@ pub enum ChatPrompt {
     BreezeInstructPrompt,
     NemotronChatPrompt,
     NemotronToolPrompt,
+    Qwen25CoderInstructPrompt,
 }
 impl From<PromptTemplateType> for ChatPrompt {
     fn from(ty: PromptTemplateType) -> Self {
@@ -162,6 +165,9 @@ impl From<PromptTemplateType> for ChatPrompt {
             }
             PromptTemplateType::NemotronChat => ChatPrompt::NemotronChatPrompt(NemotronChatPrompt),
             PromptTemplateType::NemotronTool => ChatPrompt::NemotronToolPrompt(NemotronToolPrompt),
+            PromptTemplateType::Qwen25Coder => {
+                ChatPrompt::Qwen25CoderInstructPrompt(Qwen25CoderInstructPrompt)
+            }
             PromptTemplateType::Embedding => {
                 panic!("Embedding prompt template is not used for building chat prompts")
             }
