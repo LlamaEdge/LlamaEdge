@@ -87,8 +87,6 @@ pub enum PromptTemplateType {
     NemotronChat,
     #[value(name = "nemotron-tool")]
     NemotronTool,
-    #[value(name = "qwen-2.5-coder")]
-    Qwen25Coder,
     #[value(name = "embedding")]
     Embedding,
     #[value(name = "none")]
@@ -134,7 +132,6 @@ impl PromptTemplateType {
             | PromptTemplateType::SolarInstruct
             | PromptTemplateType::Vicuna11Chat
             | PromptTemplateType::StableLMZephyr
-            | PromptTemplateType::Qwen25Coder
             | PromptTemplateType::Embedding
             | PromptTemplateType::Null => false,
         }
@@ -183,7 +180,6 @@ impl FromStr for PromptTemplateType {
             "mediatek-breeze" => Ok(PromptTemplateType::BreezeInstruct),
             "nemotron-chat" => Ok(PromptTemplateType::NemotronChat),
             "nemotron-tool" => Ok(PromptTemplateType::NemotronTool),
-            "qwen-2.5-coder" => Ok(PromptTemplateType::Qwen25Coder),
             "embedding" => Ok(PromptTemplateType::Embedding),
             "none" => Ok(PromptTemplateType::Null),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
@@ -232,7 +228,6 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::BreezeInstruct => write!(f, "mediatek-breeze"),
             PromptTemplateType::NemotronChat => write!(f, "nemotron-chat"),
             PromptTemplateType::NemotronTool => write!(f, "nemotron-tool"),
-            PromptTemplateType::Qwen25Coder => write!(f, "qwen-2.5-coder"),
             PromptTemplateType::Embedding => write!(f, "embedding"),
             PromptTemplateType::Null => write!(f, "none"),
         }
