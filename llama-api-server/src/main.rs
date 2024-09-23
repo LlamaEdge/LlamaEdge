@@ -7,7 +7,7 @@ mod utils;
 
 use anyhow::Result;
 use chat_prompts::PromptTemplateType;
-use clap::Parser;
+use clap::{ArgGroup, Parser};
 use error::ServerError;
 use hyper::{
     body::HttpBody,
@@ -28,11 +28,12 @@ type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 // server info
 pub(crate) static SERVER_INFO: OnceCell<ServerInfo> = OnceCell::new();
 
-// default socket address of LlamaEdge API Server instance
-const DEFAULT_SOCKET_ADDRESS: &str = "0.0.0.0:8080";
+// default port
+const DEFAULT_PORT: &str = "8080";
 
 #[derive(Debug, Parser)]
 #[command(name = "LlamaEdge API Server", version = env!("CARGO_PKG_VERSION"), author = env!("CARGO_PKG_AUTHORS"), about = "LlamaEdge API Server")]
+#[command(group = ArgGroup::new("socket_address_group").multiple(false).args(&["socket_addr", "port"]))]
 struct Cli {
     /// Sets names for chat and/or embedding models. To run both chat and embedding models, the names should be separated by comma without space, for example, '--model-name Llama-2-7b,all-minilm'. The first value is for the chat model, and the second is for the embedding model.
     #[arg(short, long, value_delimiter = ',', default_value = "default")]
@@ -105,9 +106,12 @@ struct Cli {
     /// Path to the multimodal projector file
     #[arg(long)]
     llava_mmproj: Option<String>,
-    /// Socket address of LlamaEdge API Server instance
-    #[arg(long, default_value = DEFAULT_SOCKET_ADDRESS)]
-    socket_addr: String,
+    /// Socket address of LlamaEdge API Server instance. For example, `0.0.0.0:8080`.
+    #[arg(long, default_value = None, value_parser = clap::value_parser!(SocketAddr), group = "socket_address_group")]
+    socket_addr: Option<SocketAddr>,
+    /// Port number
+    #[arg(long, default_value = DEFAULT_PORT, value_parser = clap::value_parser!(u16), group = "socket_address_group")]
+    port: u16,
     /// Root path for the Web UI files
     #[arg(long, default_value = "chatbot-ui")]
     web_ui: PathBuf,
@@ -454,14 +458,11 @@ async fn main() -> Result<(), ServerError> {
     info!(target: "stdout", "plugin_ggml_version: {}", plugin_version);
 
     // socket address
-    let addr = cli
-        .socket_addr
-        .parse::<SocketAddr>()
-        .map_err(|e| ServerError::SocketAddr(e.to_string()))?;
+    let addr = match cli.socket_addr {
+        Some(addr) => addr,
+        None => SocketAddr::from(([0, 0, 0, 0], cli.port)),
+    };
     let port = addr.port().to_string();
-
-    // log socket address
-    info!(target: "stdout", "socket_address: {}", addr.to_string());
 
     // get the environment variable `NODE_VERSION`
     // Note that this is for satisfying the requirement of `gaianet-node` project.
@@ -499,6 +500,8 @@ async fn main() -> Result<(), ServerError> {
     });
 
     let tcp_listener = TcpListener::bind(addr).await.unwrap();
+    info!(target: "stdout", "Listening on {}", addr);
+
     let server = Server::from_tcp(tcp_listener.into_std().unwrap())
         .unwrap()
         .serve(new_service);
