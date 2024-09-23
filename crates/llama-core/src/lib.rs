@@ -342,15 +342,29 @@ impl MetadataBuilder {
 
 /// Builder for creating an audio metadata
 #[derive(Debug)]
-pub struct AudioMetadataBuilder {
+pub struct WhisperMetadataBuilder {
     metadata: Metadata,
 }
-impl AudioMetadataBuilder {
+impl WhisperMetadataBuilder {
     pub fn new<S: Into<String>>(model_name: S, model_alias: S) -> Self {
         let metadata = Metadata {
             model_name: model_name.into(),
             model_alias: model_alias.into(),
             prompt_template: PromptTemplateType::Null,
+            threads: 4,
+            translate: false,
+            processors: 1,
+            offset_t: 0,
+            duration: 0,
+            max_context: -1,
+            max_len: 0,
+            split_on_word: false,
+            output_txt: false,
+            output_vtt: false,
+            output_srt: false,
+            output_lrc: false,
+            output_csv: false,
+            output_json: false,
             ..Default::default()
         };
 
@@ -1042,7 +1056,7 @@ pub fn init_sd_context_with_standalone_model(
 
 /// Initialize the whisper context
 pub fn init_whisper_context(
-    metadata: &Metadata,
+    whisper_metadata: &Metadata,
     model_file: impl AsRef<Path>,
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
@@ -1050,7 +1064,7 @@ pub fn init_whisper_context(
 
     // create and initialize the audio context
     let graph = GraphBuilder::new(EngineType::Whisper)?
-        .with_config(metadata)?
+        .with_config(whisper_metadata)?
         .use_cpu()
         .build_from_files([model_file.as_ref()])?;
 
