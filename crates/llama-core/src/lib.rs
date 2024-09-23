@@ -132,6 +132,30 @@ pub struct Metadata {
     pub translate: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,
+    /// Number of processors to use during computation. Defaults to 1.
+    pub processors: u32,
+    /// Time offset in milliseconds. Defaults to 0.
+    pub offset_t: u32,
+    /// Duration of audio to process in milliseconds. Defaults to 0.
+    pub duration: u32,
+    /// Maximum number of text context tokens to store. Defaults to -1.
+    pub max_context: i32,
+    /// Maximum segment length in characters. Defaults to 0.
+    pub max_len: u32,
+    /// Split on word rather than on token. Defaults to false.
+    pub split_on_word: bool,
+    /// Output result in a text file. Defaults to false.
+    pub output_txt: bool,
+    /// Output result in a vtt file. Defaults to false.
+    pub output_vtt: bool,
+    /// Output result in a srt file. Defaults to false.
+    pub output_srt: bool,
+    /// Output result in a lrc file. Defaults to false.
+    pub output_lrc: bool,
+    /// Output result in a CSV file. Defaults to false.
+    pub output_csv: bool,
+    /// Output result in a JSON file. Defaults to false.
+    pub output_json: bool,
 }
 impl Default for Metadata {
     fn default() -> Self {
@@ -163,6 +187,18 @@ impl Default for Metadata {
             json_schema: None,
             translate: false,
             language: None,
+            processors: 1,
+            offset_t: 0,
+            duration: 0,
+            max_context: -1,
+            max_len: 0,
+            split_on_word: false,
+            output_txt: false,
+            output_vtt: false,
+            output_srt: false,
+            output_lrc: false,
+            output_csv: false,
+            output_json: false,
         }
     }
 }
@@ -338,6 +374,66 @@ impl AudioMetadataBuilder {
 
     pub fn target_language(mut self, language: Option<String>) -> Self {
         self.metadata.language = language;
+        self
+    }
+
+    pub fn with_processors(mut self, processors: u32) -> Self {
+        self.metadata.processors = processors;
+        self
+    }
+
+    pub fn with_offset_t(mut self, offset_t: u32) -> Self {
+        self.metadata.offset_t = offset_t;
+        self
+    }
+
+    pub fn with_duration(mut self, duration: u32) -> Self {
+        self.metadata.duration = duration;
+        self
+    }
+
+    pub fn with_max_context(mut self, max_context: i32) -> Self {
+        self.metadata.max_context = max_context;
+        self
+    }
+
+    pub fn with_max_len(mut self, max_len: u32) -> Self {
+        self.metadata.max_len = max_len;
+        self
+    }
+
+    pub fn split_on_word(mut self, split_on_word: bool) -> Self {
+        self.metadata.split_on_word = split_on_word;
+        self
+    }
+
+    pub fn output_txt(mut self, output_txt: bool) -> Self {
+        self.metadata.output_txt = output_txt;
+        self
+    }
+
+    pub fn output_vtt(mut self, output_vtt: bool) -> Self {
+        self.metadata.output_vtt = output_vtt;
+        self
+    }
+
+    pub fn output_srt(mut self, output_srt: bool) -> Self {
+        self.metadata.output_srt = output_srt;
+        self
+    }
+
+    pub fn output_lrc(mut self, output_lrc: bool) -> Self {
+        self.metadata.output_lrc = output_lrc;
+        self
+    }
+
+    pub fn output_csv(mut self, output_csv: bool) -> Self {
+        self.metadata.output_csv = output_csv;
+        self
+    }
+
+    pub fn output_json(mut self, output_json: bool) -> Self {
+        self.metadata.output_json = output_json;
         self
     }
 
