@@ -26,7 +26,7 @@ pub async fn image_generation(
             let err_msg = "Fail to get the underlying value of `SD_TEXT_TO_IMAGE`.";
 
             #[cfg(feature = "logging")]
-            error!(target: "llama_core", "{}", &err_msg);
+            error!(target: "stdout", "{}", &err_msg);
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
@@ -36,7 +36,7 @@ pub async fn image_generation(
         let err_msg = format!("Fail to acquire the lock of `SD_TEXT_TO_IMAGE`. {}", e);
 
         #[cfg(feature = "logging")]
-        error!(target: "llama_core", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         LlamaCoreError::Operation(err_msg)
     })?;
@@ -51,7 +51,7 @@ pub async fn image_generation(
         let err_msg = format!("Fail to create the context. {}", e);
 
         #[cfg(feature = "logging")]
-        error!(target: "llama_core", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         LlamaCoreError::InitContext(err_msg)
     })? {
@@ -164,7 +164,7 @@ pub async fn image_generation(
                     let err_msg = format!("Fail to dump the image. {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     LlamaCoreError::Operation(err_msg)
                 })?;
@@ -183,7 +183,7 @@ pub async fn image_generation(
                                 format!("Fail to convert the image to base64 string. {}", e);
 
                             #[cfg(feature = "logging")]
-                            error!(target: "llama_core", "{}", &err_msg);
+                            error!(target: "stdout", "{}", &err_msg);
 
                             return Err(LlamaCoreError::Operation(err_msg));
                         }
@@ -218,7 +218,7 @@ pub async fn image_generation(
 
                         // log
                         #[cfg(feature = "logging")]
-                        error!(target: "llama_core", "{}", &err_msg);
+                        error!(target: "stdout", "{}", &err_msg);
 
                         return Err(LlamaCoreError::Operation(err_msg.into()));
                     }
@@ -238,7 +238,7 @@ pub async fn image_generation(
             let err_msg = "Fail to get the `TextToImage` context.";
 
             #[cfg(feature = "logging")]
-            error!(target: "llama_core", "{}", &err_msg);
+            error!(target: "stdout", "{}", &err_msg);
 
             Err(LlamaCoreError::Operation(err_msg.into()))
         }
@@ -253,7 +253,7 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
             let err_msg = "Fail to get the underlying value of `SD_IMAGE_TO_IMAGE`.";
 
             #[cfg(feature = "logging")]
-            error!(target: "llama_core", "{}", &err_msg);
+            error!(target: "stdout", "{}", &err_msg);
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
@@ -263,7 +263,7 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
         let err_msg = format!("Fail to acquire the lock of `SD_IMAGE_TO_IMAGE`. {}", e);
 
         #[cfg(feature = "logging")]
-        error!(target: "llama_core", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         LlamaCoreError::Operation(err_msg)
     })?;
@@ -272,7 +272,7 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
         let err_msg = format!("Fail to create the context. {}", e);
 
         #[cfg(feature = "logging")]
-        error!(target: "llama_core", "{}", &err_msg);
+        error!(target: "stdout", "{}", &err_msg);
 
         LlamaCoreError::InitContext(err_msg)
     })? {
@@ -311,7 +311,7 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
                     let err_msg = format!("Fail to dump the image. {}", e);
 
                     #[cfg(feature = "logging")]
-                    error!(target: "llama_core", "{}", &err_msg);
+                    error!(target: "stdout", "{}", &err_msg);
 
                     LlamaCoreError::Operation(err_msg)
                 })?;
@@ -330,7 +330,7 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
                                 format!("Fail to convert the image to base64 string. {}", e);
 
                             #[cfg(feature = "logging")]
-                            error!(target: "llama_core", "{}", &err_msg);
+                            error!(target: "stdout", "{}", &err_msg);
 
                             return Err(LlamaCoreError::Operation(err_msg));
                         }
@@ -365,7 +365,7 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
 
                         // log
                         #[cfg(feature = "logging")]
-                        error!(target: "llama_core", "{}", &err_msg);
+                        error!(target: "stdout", "{}", &err_msg);
 
                         return Err(LlamaCoreError::Operation(err_msg.into()));
                     }
@@ -380,7 +380,7 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
             let err_msg = "Fail to get the `ImageToImage` context.";
 
             #[cfg(feature = "logging")]
-            error!(target: "llama_core", "{}", &err_msg);
+            error!(target: "stdout", "{}", &err_msg);
 
             Err(LlamaCoreError::Operation(err_msg.into()))
         }
