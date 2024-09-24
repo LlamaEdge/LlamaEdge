@@ -726,6 +726,10 @@ pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
 }
 
 /// Initialize the stable diffusion context
+///
+/// # Arguments
+///
+/// * `model_file` - Path to the stable diffusion model file.
 pub fn init_stable_diffusion_context_with_full_model(
     model_file: impl AsRef<str>,
 ) -> Result<(), LlamaCoreError> {
@@ -763,11 +767,25 @@ pub fn init_stable_diffusion_context_with_full_model(
     Ok(())
 }
 
+/// Initialize the stable diffusion context with the standalone diffusion model
+///
+/// # Arguments
+///
+/// * `model_file` - Path to the standalone diffusion model file.
+///
+/// * `vae` - Path to the VAE model file.
+///
+/// * `clip_l` - Path to the CLIP model file.
+///
+/// * `t5xxl` - Path to the T5-XXL model file.
+///
+/// * `lora_model_dir` - Path to the Lora model directory.
 pub fn init_stable_diffusion_context_with_standalone_diffusion_model(
     model_file: impl AsRef<str>,
     vae: impl AsRef<str>,
     clip_l: impl AsRef<str>,
     t5xxl: impl AsRef<str>,
+    lora_model_dir: impl AsRef<str>,
     n_threads: i32,
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
@@ -811,6 +829,18 @@ pub fn init_stable_diffusion_context_with_standalone_diffusion_model(
             LlamaCoreError::InitContext(err_msg)
         })?
         .with_t5xxl_path(t5xxl.as_ref())
+        .map_err(|e| {
+            let err_msg = format!(
+                "Failed to initialize the stable diffusion context. Reason: {}",
+                e
+            );
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            LlamaCoreError::InitContext(err_msg)
+        })?
+        .with_lora_model_dir(lora_model_dir.as_ref())
         .map_err(|e| {
             let err_msg = format!(
                 "Failed to initialize the stable diffusion context. Reason: {}",
@@ -875,6 +905,18 @@ pub fn init_stable_diffusion_context_with_standalone_diffusion_model(
             LlamaCoreError::InitContext(err_msg)
         })?
         .with_t5xxl_path(t5xxl.as_ref())
+        .map_err(|e| {
+            let err_msg = format!(
+                "Failed to initialize the stable diffusion context. Reason: {}",
+                e
+            );
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            LlamaCoreError::InitContext(err_msg)
+        })?
+        .with_lora_model_dir(lora_model_dir.as_ref())
         .map_err(|e| {
             let err_msg = format!(
                 "Failed to initialize the stable diffusion context. Reason: {}",
