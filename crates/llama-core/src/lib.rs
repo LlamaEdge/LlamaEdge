@@ -725,14 +725,12 @@ pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
     Ok(mode.to_owned())
 }
 
-/// Initialize the stable diffusion context
+/// Initialize the stable diffusion context with the given full diffusion model
 ///
 /// # Arguments
 ///
 /// * `model_file` - Path to the stable diffusion model file.
-pub fn init_stable_diffusion_context_with_full_model(
-    model_file: impl AsRef<str>,
-) -> Result<(), LlamaCoreError> {
+pub fn init_sd_context_with_full_model(model_file: impl AsRef<str>) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Initializing the stable diffusion context with the full model");
 
@@ -767,7 +765,7 @@ pub fn init_stable_diffusion_context_with_full_model(
     Ok(())
 }
 
-/// Initialize the stable diffusion context with the standalone diffusion model
+/// Initialize the stable diffusion context with the given standalone diffusion model
 ///
 /// # Arguments
 ///
@@ -780,7 +778,7 @@ pub fn init_stable_diffusion_context_with_full_model(
 /// * `t5xxl` - Path to the T5-XXL model file.
 ///
 /// * `lora_model_dir` - Path to the Lora model directory.
-pub fn init_stable_diffusion_context_with_standalone_diffusion_model(
+pub fn init_sd_context_with_standalone_model(
     model_file: impl AsRef<str>,
     vae: impl AsRef<str>,
     clip_l: impl AsRef<str>,
