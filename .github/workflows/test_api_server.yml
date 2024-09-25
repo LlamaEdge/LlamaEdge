@@ -17,6 +17,7 @@ on:
       - '**/*.rs'
       - '**/*.sh'
       - '**/.cargo/config.toml'
+      - 'tests/*.hurl'
   pull_request:
     branches:
       - dev
@@ -27,6 +28,7 @@ on:
       - '**/Cargo.toml'
       - '**/*.rs'
       - '**/*.sh'
+      - 'tests/*.hurl'
 
 jobs:
   test-api-server:

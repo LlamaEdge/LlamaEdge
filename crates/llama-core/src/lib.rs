@@ -132,6 +132,30 @@ pub struct Metadata {
     pub translate: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,
+    /// Number of processors to use during computation. Defaults to 1.
+    pub processors: u32,
+    /// Time offset in milliseconds. Defaults to 0.
+    pub offset_t: u32,
+    /// Duration of audio to process in milliseconds. Defaults to 0.
+    pub duration: u32,
+    /// Maximum number of text context tokens to store. Defaults to -1.
+    pub max_context: i32,
+    /// Maximum segment length in characters. Defaults to 0.
+    pub max_len: u32,
+    /// Split on word rather than on token. Defaults to false.
+    pub split_on_word: bool,
+    /// Output result in a text file. Defaults to false.
+    pub output_txt: bool,
+    /// Output result in a vtt file. Defaults to false.
+    pub output_vtt: bool,
+    /// Output result in a srt file. Defaults to false.
+    pub output_srt: bool,
+    /// Output result in a lrc file. Defaults to false.
+    pub output_lrc: bool,
+    /// Output result in a CSV file. Defaults to false.
+    pub output_csv: bool,
+    /// Output result in a JSON file. Defaults to false.
+    pub output_json: bool,
 }
 impl Default for Metadata {
     fn default() -> Self {
@@ -163,6 +187,18 @@ impl Default for Metadata {
             json_schema: None,
             translate: false,
             language: None,
+            processors: 1,
+            offset_t: 0,
+            duration: 0,
+            max_context: -1,
+            max_len: 0,
+            split_on_word: false,
+            output_txt: false,
+            output_vtt: false,
+            output_srt: false,
+            output_lrc: false,
+            output_csv: false,
+            output_json: false,
         }
     }
 }
@@ -306,15 +342,29 @@ impl MetadataBuilder {
 
 /// Builder for creating an audio metadata
 #[derive(Debug)]
-pub struct AudioMetadataBuilder {
+pub struct WhisperMetadataBuilder {
     metadata: Metadata,
 }
-impl AudioMetadataBuilder {
+impl WhisperMetadataBuilder {
     pub fn new<S: Into<String>>(model_name: S, model_alias: S) -> Self {
         let metadata = Metadata {
             model_name: model_name.into(),
             model_alias: model_alias.into(),
             prompt_template: PromptTemplateType::Null,
+            threads: 4,
+            translate: false,
+            processors: 1,
+            offset_t: 0,
+            duration: 0,
+            max_context: -1,
+            max_len: 0,
+            split_on_word: false,
+            output_txt: false,
+            output_vtt: false,
+            output_srt: false,
+            output_lrc: false,
+            output_csv: false,
+            output_json: false,
             ..Default::default()
         };
 
@@ -338,6 +388,66 @@ impl AudioMetadataBuilder {
 
     pub fn target_language(mut self, language: Option<String>) -> Self {
         self.metadata.language = language;
+        self
+    }
+
+    pub fn with_processors(mut self, processors: u32) -> Self {
+        self.metadata.processors = processors;
+        self
+    }
+
+    pub fn with_offset_t(mut self, offset_t: u32) -> Self {
+        self.metadata.offset_t = offset_t;
+        self
+    }
+
+    pub fn with_duration(mut self, duration: u32) -> Self {
+        self.metadata.duration = duration;
+        self
+    }
+
+    pub fn with_max_context(mut self, max_context: i32) -> Self {
+        self.metadata.max_context = max_context;
+        self
+    }
+
+    pub fn with_max_len(mut self, max_len: u32) -> Self {
+        self.metadata.max_len = max_len;
+        self
+    }
+
+    pub fn split_on_word(mut self, split_on_word: bool) -> Self {
+        self.metadata.split_on_word = split_on_word;
+        self
+    }
+
+    pub fn output_txt(mut self, output_txt: bool) -> Self {
+        self.metadata.output_txt = output_txt;
+        self
+    }
+
+    pub fn output_vtt(mut self, output_vtt: bool) -> Self {
+        self.metadata.output_vtt = output_vtt;
+        self
+    }
+
+    pub fn output_srt(mut self, output_srt: bool) -> Self {
+        self.metadata.output_srt = output_srt;
+        self
+    }
+
+    pub fn output_lrc(mut self, output_lrc: bool) -> Self {
+        self.metadata.output_lrc = output_lrc;
+        self
+    }
+
+    pub fn output_csv(mut self, output_csv: bool) -> Self {
+        self.metadata.output_csv = output_csv;
+        self
+    }
+
+    pub fn output_json(mut self, output_json: bool) -> Self {
+        self.metadata.output_json = output_json;
         self
     }
 
@@ -725,10 +835,12 @@ pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
     Ok(mode.to_owned())
 }
 
-/// Initialize the stable diffusion context
-pub fn init_stable_diffusion_context_with_full_model(
-    model_file: impl AsRef<str>,
-) -> Result<(), LlamaCoreError> {
+/// Initialize the stable diffusion context with the given full diffusion model
+///
+/// # Arguments
+///
+/// * `model_file` - Path to the stable diffusion model file.
+pub fn init_sd_context_with_full_model(model_file: impl AsRef<str>) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Initializing the stable diffusion context with the full model");
 
@@ -763,11 +875,25 @@ pub fn init_stable_diffusion_context_with_full_model(
     Ok(())
 }
 
-pub fn init_stable_diffusion_context_with_standalone_diffusion_model(
+/// Initialize the stable diffusion context with the given standalone diffusion model
+///
+/// # Arguments
+///
+/// * `model_file` - Path to the standalone diffusion model file.
+///
+/// * `vae` - Path to the VAE model file.
+///
+/// * `clip_l` - Path to the CLIP model file.
+///
+/// * `t5xxl` - Path to the T5-XXL model file.
+///
+/// * `lora_model_dir` - Path to the Lora model directory.
+pub fn init_sd_context_with_standalone_model(
     model_file: impl AsRef<str>,
     vae: impl AsRef<str>,
     clip_l: impl AsRef<str>,
     t5xxl: impl AsRef<str>,
+    lora_model_dir: impl AsRef<str>,
     n_threads: i32,
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
@@ -811,6 +937,18 @@ pub fn init_stable_diffusion_context_with_standalone_diffusion_model(
             LlamaCoreError::InitContext(err_msg)
         })?
         .with_t5xxl_path(t5xxl.as_ref())
+        .map_err(|e| {
+            let err_msg = format!(
+                "Failed to initialize the stable diffusion context. Reason: {}",
+                e
+            );
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            LlamaCoreError::InitContext(err_msg)
+        })?
+        .with_lora_model_dir(lora_model_dir.as_ref())
         .map_err(|e| {
             let err_msg = format!(
                 "Failed to initialize the stable diffusion context. Reason: {}",
@@ -886,6 +1024,18 @@ pub fn init_stable_diffusion_context_with_standalone_diffusion_model(
 
             LlamaCoreError::InitContext(err_msg)
         })?
+        .with_lora_model_dir(lora_model_dir.as_ref())
+        .map_err(|e| {
+            let err_msg = format!(
+                "Failed to initialize the stable diffusion context. Reason: {}",
+                e
+            );
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            LlamaCoreError::InitContext(err_msg)
+        })?
         .with_n_threads(n_threads)
         .build();
 
@@ -906,7 +1056,7 @@ pub fn init_stable_diffusion_context_with_standalone_diffusion_model(
 
 /// Initialize the whisper context
 pub fn init_whisper_context(
-    metadata: &Metadata,
+    whisper_metadata: &Metadata,
     model_file: impl AsRef<Path>,
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
@@ -914,7 +1064,7 @@ pub fn init_whisper_context(
 
     // create and initialize the audio context
     let graph = GraphBuilder::new(EngineType::Whisper)?
-        .with_config(metadata)?
+        .with_config(whisper_metadata)?
         .use_cpu()
         .build_from_files([model_file.as_ref()])?;
 

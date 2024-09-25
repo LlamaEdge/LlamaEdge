@@ -585,7 +585,9 @@ Options:
       --llava-mmproj <LLAVA_MMPROJ>
           Path to the multimodal projector file
       --socket-addr <SOCKET_ADDR>
-          Socket address of LlamaEdge API Server instance [default: 0.0.0.0:8080]
+          Socket address of LlamaEdge API Server instance. For example, `0.0.0.0:8080`
+      --port <PORT>
+          Port number [default: 8080]
       --web-ui <WEB_UI>
           Root path for the Web UI files [default: chatbot-ui]
       --log-prompts
@@ -613,7 +615,7 @@ If the Web UI is ready, you can navigate to `http://127.0.0.1:8080` to open the 
 You can set the log level of the API server by setting the `LLAMA_LOG` environment variable. For example, to set the log level to `debug`, you can run the following command:
 
 ```bash
-wasmedge --dir .:. --env LLAMA_LOG=debug \
+wasmedge --dir .:. --env RUST_LOG=debug \
     --nn-preload default:GGML:AUTO:Meta-Llama-3-8B-Instruct-Q5_K_M.gguf \
     llama-api-server.wasm \
     --model-name llama-3-8b \
