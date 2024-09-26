@@ -88,6 +88,7 @@ struct Cli {
     disable_stream: bool,
 }
 
+#[allow(clippy::needless_return)]
 #[allow(unreachable_code)]
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> anyhow::Result<()> {
