@@ -1041,7 +1041,7 @@ pub fn init_sd_context_with_standalone_model(
     info!(target: "stdout", "The stable diffusion text-to-image context has been initialized");
 
     // create the stable diffusion context for the image-to-image task
-    let sd = SDBuidler::new_with_standalone_model(Task::TextToImage, model_file.as_ref())
+    let sd = SDBuidler::new_with_standalone_model(Task::ImageToImage, model_file.as_ref())
         .map_err(|e| {
             let err_msg = format!(
                 "Failed to initialize the stable diffusion context. Reason: {}",
