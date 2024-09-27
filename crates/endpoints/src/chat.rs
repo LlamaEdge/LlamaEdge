@@ -881,6 +881,32 @@ fn test_chat_deserialize_chat_request() {
         let tool_choice = request.tool_choice.unwrap();
         assert_eq!(tool_choice, ToolChoice::None);
     }
+
+    {
+        let json = r#"{"messages":[{"content":"Send an email to John Doe with the subject 'Hello' and the body 'Hello, John!'. His email is jhon@example.com","role":"user"}],"model":"llama","tool_choice":"auto","tools":[{"function":{"description":"Action to fetch all emails from Gmail.","name":"GMAIL_FETCH_EMAILS","parameters":{"properties":{"include_spam_trash":{"default":false,"description":"Include messages from SPAM and TRASH in the results.","title":"Include Spam Trash","type":"boolean"},"label_ids":{"default":null,"description":"Filter messages by their label IDs. Labels identify the status or category of messages. Some of the in-built labels include 'INBOX', 'SPAM', 'TRASH', 'UNREAD', 'STARRED', 'IMPORTANT', 'CATEGORY_PERSONAL', 'CATEGORY_SOCIAL', 'CATEGORY_PROMOTIONS', 'CATEGORY_UPDATES', and 'CATEGORY_FORUMS'. The 'label_ids' for custom labels can be found in the response of the 'listLabels' action. Note: The label_ids is a list of label IDs to filter the messages by.","items":{"type":"string"},"title":"Label Ids","type":"array"},"max_results":{"default":10,"description":"Maximum number of messages to return.","maximum":500,"minimum":1,"title":"Max Results","type":"integer"},"page_token":{"default":null,"description":"Page token to retrieve a specific page of results in the list. The page token is returned in the response of this action if there are more results to be fetched. If not provided, the first page of results is returned.","title":"Page Token","type":"string"},"query":{"default":null,"description":"Only return messages matching the specified query.","title":"Query","type":"string"},"user_id":{"default":"me","description":"The user's email address or 'me' for the authenticated user.","title":"User Id","type":"string"}},"title":"FetchEmailsRequest","type":"object"}},"type":"function"}]}"#;
+
+        let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
+        assert!(request.model.is_some());
+        let tools = request.tools.unwrap();
+        assert!(tools.len() == 1);
+        let tool = &tools[0];
+        assert_eq!(tool.ty, "function");
+        assert_eq!(tool.function.name, "GMAIL_FETCH_EMAILS");
+        assert!(tool.function.parameters.is_some());
+        let params = tool.function.parameters.as_ref().unwrap();
+        assert!(params.properties.is_some());
+        let properties = params.properties.as_ref().unwrap();
+        assert!(properties.len() == 6);
+        assert!(properties.contains_key("max_results"));
+        let max_results = properties.get("max_results").unwrap();
+        assert!(max_results.description.is_some());
+        assert_eq!(
+            max_results.description.as_ref().unwrap(),
+            "Maximum number of messages to return."
+        );
+        assert!(max_results.schema_type.is_some());
+        assert_eq!(max_results.schema_type, Some(JSONSchemaType::Integer));
+    }
 }
 
 /// An object specifying the format that the model must output.
@@ -2110,6 +2136,7 @@ pub struct ChatCompletionRequestFunctionParameters {
 pub enum JSONSchemaType {
     Object,
     Number,
+    Integer,
     String,
     Array,
     Null,
