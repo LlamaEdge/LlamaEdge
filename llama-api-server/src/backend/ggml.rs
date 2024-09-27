@@ -114,6 +114,10 @@ pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body>
     let mut embedding_request: EmbeddingRequest = match serde_json::from_slice(&body_bytes) {
         Ok(embedding_request) => embedding_request,
         Err(e) => {
+            if let Ok(json_value) = serde_json::from_slice::<serde_json::Value>(&body_bytes) {
+                error!(target: "stdout", "json_value: {}", json_value);
+            }
+
             let err_msg = format!("Fail to deserialize embedding request: {msg}", msg = e);
 
             // log
@@ -222,6 +226,10 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
     let mut completion_request: CompletionRequest = match serde_json::from_slice(&body_bytes) {
         Ok(completion_request) => completion_request,
         Err(e) => {
+            if let Ok(json_value) = serde_json::from_slice::<serde_json::Value>(&body_bytes) {
+                error!(target: "stdout", "json_value: {}", json_value);
+            }
+
             let err_msg = format!("Fail to deserialize completions request: {msg}", msg = e);
 
             // log
@@ -331,6 +339,10 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
     let mut chat_request: ChatCompletionRequest = match serde_json::from_slice(&body_bytes) {
         Ok(chat_request) => chat_request,
         Err(e) => {
+            if let Ok(json_value) = serde_json::from_slice::<serde_json::Value>(&body_bytes) {
+                error!(target: "stdout", "json_value: {}", json_value);
+            }
+
             let err_msg = format!(
                 "Fail to deserialize chat completion request: {msg}",
                 msg = e
@@ -929,6 +941,10 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
     let chunks_request: ChunksRequest = match serde_json::from_slice(&body_bytes) {
         Ok(chunks_request) => chunks_request,
         Err(e) => {
+            if let Ok(json_value) = serde_json::from_slice::<serde_json::Value>(&body_bytes) {
+                error!(target: "stdout", "json_value: {}", json_value);
+            }
+
             let err_msg = format!("Fail to deserialize chunks request: {msg}", msg = e);
 
             // log
