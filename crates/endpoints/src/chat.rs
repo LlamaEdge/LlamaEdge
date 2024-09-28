@@ -76,6 +76,11 @@
 //!                     properties: None,
 //!                     required: None,
 //!                     items: None,
+//!                     default: None,
+//!                     maximum: None,
+//!                     minimum: None,
+//!                     title: None,
+//!                     examples: None,
 //!                 }),
 //!             ),
 //!             (
@@ -90,6 +95,11 @@
 //!                     properties: None,
 //!                     required: None,
 //!                     items: None,
+//!                     default: None,
+//!                     maximum: None,
+//!                     minimum: None,
+//!                     title: None,
+//!                     examples: None,
 //!                 }),
 //!             ),
 //!         ]
