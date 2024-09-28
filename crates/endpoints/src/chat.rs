@@ -141,6 +141,7 @@ use serde::{
     de::{self, MapAccess, Visitor},
     Deserialize, Deserializer, Serialize,
 };
+use serde_json::Value;
 use std::{collections::HashMap, fmt};
 
 /// Request builder for creating a new chat completion request.
@@ -603,6 +604,11 @@ fn test_chat_serialize_chat_request() {
                             properties: None,
                             required: None,
                             items: None,
+                            default: None,
+                            maximum: None,
+                            minimum: None,
+                            title: None,
+                            examples: None,
                         }),
                     ),
                     (
@@ -617,6 +623,11 @@ fn test_chat_serialize_chat_request() {
                             properties: None,
                             required: None,
                             items: None,
+                            default: None,
+                            maximum: None,
+                            minimum: None,
+                            title: None,
+                            examples: None,
                         }),
                     ),
                 ]
@@ -691,6 +702,11 @@ fn test_chat_serialize_chat_request() {
                             properties: None,
                             required: None,
                             items: None,
+                            default: None,
+                            maximum: None,
+                            minimum: None,
+                            title: None,
+                            examples: None,
                         }),
                     ),
                     (
@@ -705,6 +721,11 @@ fn test_chat_serialize_chat_request() {
                             properties: None,
                             required: None,
                             items: None,
+                            default: None,
+                            maximum: None,
+                            minimum: None,
+                            title: None,
+                            examples: None,
                         }),
                     ),
                 ]
@@ -906,6 +927,7 @@ fn test_chat_deserialize_chat_request() {
         );
         assert!(max_results.schema_type.is_some());
         assert_eq!(max_results.schema_type, Some(JSONSchemaType::Integer));
+        println!("{:?}", max_results);
     }
 }
 
@@ -1075,6 +1097,11 @@ fn test_chat_serialize_tool() {
                             properties: None,
                             required: None,
                             items: None,
+                            default: None,
+                            maximum: None,
+                            minimum: None,
+                            title: None,
+                            examples: None,
                         }),
                     ),
                     (
@@ -1089,6 +1116,11 @@ fn test_chat_serialize_tool() {
                             properties: None,
                             required: None,
                             items: None,
+                            default: None,
+                            maximum: None,
+                            minimum: None,
+                            title: None,
+                            examples: None,
                         }),
                     ),
                 ]
@@ -1138,6 +1170,11 @@ fn test_chat_serialize_tool() {
                             properties: None,
                             required: None,
                             items: None,
+                            default: None,
+                            maximum: None,
+                            minimum: None,
+                            title: None,
+                            examples: None,
                         }),
                     ),
                     (
@@ -1152,6 +1189,11 @@ fn test_chat_serialize_tool() {
                             properties: None,
                             required: None,
                             items: None,
+                            default: None,
+                            maximum: None,
+                            minimum: None,
+                            title: None,
+                            examples: None,
                         }),
                     ),
                 ]
@@ -1238,6 +1280,11 @@ fn test_chat_serialize_tool_function() {
                         properties: None,
                         required: None,
                         items: None,
+                        default: None,
+                        maximum: None,
+                        minimum: None,
+                        title: None,
+                        examples: None,
                     }),
                 ),
                 (
@@ -1249,6 +1296,11 @@ fn test_chat_serialize_tool_function() {
                         properties: None,
                         required: None,
                         items: None,
+                        default: None,
+                        maximum: None,
+                        minimum: None,
+                        title: None,
+                        examples: None,
                     }),
                 ),
             ]
@@ -1289,49 +1341,67 @@ pub struct ToolFunctionParameters {
 
 #[test]
 fn test_chat_serialize_tool_function_params() {
-    let params = ToolFunctionParameters {
-        schema_type: JSONSchemaType::Object,
-        properties: Some(
-            vec![
-                (
-                    "location".to_string(),
-                    Box::new(JSONSchemaDefine {
-                        schema_type: Some(JSONSchemaType::String),
-                        description: Some("The city and state, e.g. San Francisco, CA".to_string()),
-                        enum_values: None,
-                        properties: None,
-                        required: None,
-                        items: None,
-                    }),
-                ),
-                (
-                    "unit".to_string(),
-                    Box::new(JSONSchemaDefine {
-                        schema_type: Some(JSONSchemaType::String),
-                        description: None,
-                        enum_values: Some(vec!["celsius".to_string(), "fahrenheit".to_string()]),
-                        properties: None,
-                        required: None,
-                        items: None,
-                    }),
-                ),
-            ]
-            .into_iter()
-            .collect(),
-        ),
-        required: Some(vec!["location".to_string()]),
-    };
+    {
+        let params = ToolFunctionParameters {
+            schema_type: JSONSchemaType::Object,
+            properties: Some(
+                vec![
+                    (
+                        "location".to_string(),
+                        Box::new(JSONSchemaDefine {
+                            schema_type: Some(JSONSchemaType::String),
+                            description: Some(
+                                "The city and state, e.g. San Francisco, CA".to_string(),
+                            ),
+                            enum_values: None,
+                            properties: None,
+                            required: None,
+                            items: None,
+                            default: None,
+                            maximum: None,
+                            minimum: None,
+                            title: None,
+                            examples: None,
+                        }),
+                    ),
+                    (
+                        "unit".to_string(),
+                        Box::new(JSONSchemaDefine {
+                            schema_type: Some(JSONSchemaType::String),
+                            description: None,
+                            enum_values: Some(vec![
+                                "celsius".to_string(),
+                                "fahrenheit".to_string(),
+                            ]),
+                            properties: None,
+                            required: None,
+                            items: None,
+                            default: None,
+                            maximum: None,
+                            minimum: None,
+                            title: None,
+                            examples: None,
+                        }),
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+            ),
+            required: Some(vec!["location".to_string()]),
+        };
 
-    let json = serde_json::to_string(&params).unwrap();
-    assert_eq!(
-        json,
-        r#"{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}"#
-    );
+        let json = serde_json::to_string(&params).unwrap();
+        assert_eq!(
+            json,
+            r#"{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}"#
+        );
+    }
 }
 
 #[test]
 fn test_chat_deserialize_tool_function_params() {
-    let json = r###"
+    {
+        let json = r###"
     {
         "type": "object",
         "properties": {
@@ -1346,27 +1416,161 @@ fn test_chat_deserialize_tool_function_params() {
         },
         "required": ["location"]
     }"###;
-    let params: ToolFunctionParameters = serde_json::from_str(json).unwrap();
-    assert_eq!(params.schema_type, JSONSchemaType::Object);
-    let properties = params.properties.as_ref().unwrap();
-    assert_eq!(properties.len(), 2);
-    assert!(properties.contains_key("unit"));
-    assert!(properties.contains_key("location"));
-    let unit = properties.get("unit").unwrap();
-    assert_eq!(unit.schema_type, Some(JSONSchemaType::String));
-    assert_eq!(
-        unit.enum_values,
-        Some(vec!["celsius".to_string(), "fahrenheit".to_string()])
-    );
-    let location = properties.get("location").unwrap();
-    assert_eq!(location.schema_type, Some(JSONSchemaType::String));
-    assert_eq!(
-        location.description,
-        Some("The city and state, e.g. San Francisco, CA".to_string())
-    );
-    let required = params.required.as_ref().unwrap();
-    assert_eq!(required.len(), 1);
-    assert_eq!(required[0], "location");
+        let params: ToolFunctionParameters = serde_json::from_str(json).unwrap();
+        assert_eq!(params.schema_type, JSONSchemaType::Object);
+        let properties = params.properties.as_ref().unwrap();
+        assert_eq!(properties.len(), 2);
+        assert!(properties.contains_key("unit"));
+        assert!(properties.contains_key("location"));
+        let unit = properties.get("unit").unwrap();
+        assert_eq!(unit.schema_type, Some(JSONSchemaType::String));
+        assert_eq!(
+            unit.enum_values,
+            Some(vec!["celsius".to_string(), "fahrenheit".to_string()])
+        );
+        let location = properties.get("location").unwrap();
+        assert_eq!(location.schema_type, Some(JSONSchemaType::String));
+        assert_eq!(
+            location.description,
+            Some("The city and state, e.g. San Francisco, CA".to_string())
+        );
+        let required = params.required.as_ref().unwrap();
+        assert_eq!(required.len(), 1);
+        assert_eq!(required[0], "location");
+    }
+
+    {
+        let json = r###"{
+            "properties": {
+                "include_spam_trash": {
+                    "default": false,
+                    "description": "Include messages from SPAM and TRASH in the results.",
+                    "title": "Include Spam Trash",
+                    "type": "boolean"
+                },
+                "add_label_ids": {
+                    "default": [],
+                    "description": "A list of IDs of labels to add to this thread.",
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Add Label Ids",
+                    "type": "array"
+                },
+                "max_results": {
+                    "default": 10,
+                    "description": "Maximum number of messages to return.",
+                    "examples": [
+                        10,
+                        50,
+                        100
+                    ],
+                    "maximum": 500,
+                    "minimum": 1,
+                    "title": "Max Results",
+                    "type": "integer"
+                },
+                "query": {
+                    "default": null,
+                    "description": "Only return threads matching the specified query.",
+                    "examples": [
+                        "is:unread",
+                        "from:john.doe@example.com"
+                    ],
+                    "title": "Query",
+                    "type": "string"
+                }
+            },
+            "title": "FetchEmailsRequest",
+            "type": "object"
+        }"###;
+
+        let params: ToolFunctionParameters = serde_json::from_str(json).unwrap();
+        assert_eq!(params.schema_type, JSONSchemaType::Object);
+        let properties = params.properties.as_ref().unwrap();
+        assert_eq!(properties.len(), 4);
+        // println!("{:?}", properties);
+        assert!(properties.contains_key("include_spam_trash"));
+        assert!(properties.contains_key("add_label_ids"));
+        assert!(properties.contains_key("max_results"));
+        assert!(properties.contains_key("query"));
+
+        let include_spam_trash = properties.get("include_spam_trash").unwrap();
+        assert_eq!(
+            include_spam_trash.schema_type,
+            Some(JSONSchemaType::Boolean)
+        );
+        assert_eq!(
+            include_spam_trash.description,
+            Some("Include messages from SPAM and TRASH in the results.".to_string())
+        );
+        assert_eq!(
+            include_spam_trash.title,
+            Some("Include Spam Trash".to_string())
+        );
+        assert_eq!(
+            include_spam_trash.default,
+            Some(serde_json::Value::Bool(false))
+        );
+
+        let add_label_ids = properties.get("add_label_ids").unwrap();
+        assert_eq!(add_label_ids.schema_type, Some(JSONSchemaType::Array));
+        assert_eq!(
+            add_label_ids.description,
+            Some("A list of IDs of labels to add to this thread.".to_string())
+        );
+        assert_eq!(add_label_ids.title, Some("Add Label Ids".to_string()));
+        assert_eq!(
+            add_label_ids.default,
+            Some(serde_json::Value::Array(vec![]))
+        );
+        let items = add_label_ids.items.as_ref().unwrap();
+        assert_eq!(items.schema_type, Some(JSONSchemaType::String));
+
+        let max_results = properties.get("max_results").unwrap();
+        assert_eq!(max_results.schema_type, Some(JSONSchemaType::Integer));
+        assert_eq!(
+            max_results.description,
+            Some("Maximum number of messages to return.".to_string())
+        );
+        assert_eq!(
+            max_results.examples,
+            Some(vec![
+                Value::Number(serde_json::Number::from(10)),
+                Value::Number(serde_json::Number::from(50)),
+                Value::Number(serde_json::Number::from(100))
+            ])
+        );
+        assert_eq!(
+            max_results.maximum,
+            Some(Value::Number(serde_json::Number::from(500)))
+        );
+        assert_eq!(
+            max_results.minimum,
+            Some(Value::Number(serde_json::Number::from(1)))
+        );
+        assert_eq!(max_results.title, Some("Max Results".to_string()));
+        assert_eq!(
+            max_results.default,
+            Some(serde_json::Value::Number(10.into()))
+        );
+
+        let query = properties.get("query").unwrap();
+        assert_eq!(query.schema_type, Some(JSONSchemaType::String));
+        assert_eq!(
+            query.description,
+            Some("Only return threads matching the specified query.".to_string())
+        );
+        assert_eq!(
+            query.examples,
+            Some(vec![
+                Value::String("is:unread".to_string()),
+                Value::String("from:john.doe@example.com".to_string())
+            ])
+        );
+        assert_eq!(query.title, Some("Query".to_string()));
+        assert_eq!(query.default, None);
+    }
 }
 
 /// Message for comprising the conversation.
@@ -2157,6 +2361,16 @@ pub struct JSONSchemaDefine {
     pub required: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub items: Option<Box<JSONSchemaDefine>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub maximum: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub minimum: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub examples: Option<Vec<Value>>,
 }
 
 /// Represents a chat completion response returned by model, based on the provided input.
