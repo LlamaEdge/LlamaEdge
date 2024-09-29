@@ -547,6 +547,23 @@ impl fmt::Display for SamplingMethod {
         }
     }
 }
+impl From<&str> for SamplingMethod {
+    fn from(s: &str) -> Self {
+        match s {
+            "euler" => SamplingMethod::Euler,
+            "euler_a" => SamplingMethod::EulerA,
+            "heun" => SamplingMethod::Heun,
+            "dpm2" => SamplingMethod::Dpm2,
+            "dpm++2s_a" => SamplingMethod::DpmPlusPlus2sA,
+            "dpm++2m" => SamplingMethod::DpmPlusPlus2m,
+            "dpm++2mv2" => SamplingMethod::DpmPlusPlus2mv2,
+            "ipndm" => SamplingMethod::Ipndm,
+            "ipndm_v" => SamplingMethod::IpndmV,
+            "lcm" => SamplingMethod::Lcm,
+            _ => SamplingMethod::EulerA,
+        }
+    }
+}
 
 #[test]
 fn test_serialize_image_create_request() {
