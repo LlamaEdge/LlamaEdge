@@ -1,6 +1,6 @@
 [package]
 name = "endpoints"
-version = "0.14.2"
+version = "0.15.0"
 edition = "2021"
 readme = "README.md"
 repository = "https://github.com/LlamaEdge/LlamaEdge"
@@ -11,6 +11,7 @@ description = "A collection of data structures for the OpenAI-compatible endpoin
 
 [dependencies]
 serde.workspace = true
+serde_json.workspace = true
 url = "2.5"
 indexmap = { version = "^2.2", features = ["serde"] }
 
