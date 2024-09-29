@@ -41,9 +41,6 @@ pub async fn image_generation(
         LlamaCoreError::Operation(err_msg)
     })?;
 
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "sd text_to_image context: {:?}", &context);
-
     let ctx = &mut *context;
 
     // create a unique file id
@@ -141,11 +138,8 @@ pub async fn image_generation(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "seed: {}", seed);
 
-    // log
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "generate image");
-
-    ctx.set_prompt(&req.prompt)
+    let ctx = ctx
+        .set_prompt(&req.prompt)
         .set_negative_prompt(negative_prompt)
         .set_output_path(output_image_file)
         .set_cfg_scale(cfg_scale)
@@ -160,16 +154,23 @@ pub async fn image_generation(
         .set_width(width as i32)
         .set_control_strength(control_strength)
         .set_seed(seed)
-        .set_output_path(output_image_file)
-        .generate()
-        .map_err(|e| {
-            let err_msg = format!("Fail to dump the image. {}", e);
+        .set_output_path(output_image_file);
 
-            #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", &err_msg);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "sd text_to_image context: {:?}", &ctx);
 
-            LlamaCoreError::Operation(err_msg)
-        })?;
+    // log
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "generate image");
+
+    ctx.generate().map_err(|e| {
+        let err_msg = format!("Fail to dump the image. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
 
     // log
     #[cfg(feature = "logging")]
@@ -257,9 +258,6 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
 
         LlamaCoreError::Operation(err_msg)
     })?;
-
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "sd image_to_image context: {:?}", &context);
 
     let ctx = &mut *context;
 
@@ -361,12 +359,9 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
     #[cfg(feature = "logging")]
     info!(target: "stdout", "strength: {}", strength);
 
-    // log
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "generate image");
-
     // create and dump the generated image
-    ctx.set_prompt(&req.prompt)
+    let ctx = ctx
+        .set_prompt(&req.prompt)
         .set_image(ImageType::Path(path_origin_image.into()))
         .set_batch_count(n as i32)
         .set_cfg_scale(cfg_scale)
@@ -377,16 +372,23 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
         .set_control_strength(control_strength)
         .set_seed(seed)
         .set_strength(strength)
-        .set_output_path(output_image_file)
-        .generate()
-        .map_err(|e| {
-            let err_msg = format!("Fail to dump the image. {}", e);
+        .set_output_path(output_image_file);
 
-            #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", &err_msg);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "sd image_to_image context: {:?}", &ctx);
 
-            LlamaCoreError::Operation(err_msg)
-        })?;
+    // log
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "generate image");
+
+    ctx.generate().map_err(|e| {
+        let err_msg = format!("Fail to dump the image. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
 
     // log
     #[cfg(feature = "logging")]
