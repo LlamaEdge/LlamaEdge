@@ -335,6 +335,11 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
         }
     };
 
+    // steps
+    let steps = req.steps.unwrap_or(20);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "steps: {}", steps);
+
     // size
     let height = req.height.unwrap_or(512);
     let width = req.width.unwrap_or(512);
@@ -366,6 +371,7 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
         .set_batch_count(n as i32)
         .set_cfg_scale(cfg_scale)
         .set_sample_method(sample_method)
+        .set_sample_steps(steps as i32)
         .set_height(height as i32)
         .set_width(width as i32)
         .set_control_strength(control_strength)
