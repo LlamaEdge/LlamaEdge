@@ -2890,21 +2890,6 @@ fn compute_stream(
                                     Ok("data: [DONE]\n\n".to_string())
                                 }
                                 StreamState::EndOfSequence => {
-                                    // clear context
-                                    if let Err(e) = graph.finish_single() {
-                                        let err_msg = format!(
-                                            "Failed to clean up the context. Reason: {}",
-                                            e
-                                        );
-
-                                        #[cfg(feature = "logging")]
-                                        error!(target: "stdout", "{}", &err_msg);
-
-                                        return Err(LlamaCoreError::Backend(
-                                            BackendError::FinishSingle(err_msg),
-                                        ));
-                                    }
-
                                     Ok("[GGML] End of sequence".to_string())
                                 }
                             }
@@ -3029,21 +3014,6 @@ fn compute_stream(
                                     Ok("data: [DONE]\n\n".to_string())
                                 }
                                 ContextFullState::EndOfSequence => {
-                                    // clear context
-                                    if let Err(e) = graph.finish_single() {
-                                        let err_msg = format!(
-                                            "Failed to clean up the context. Reason: {}",
-                                            e
-                                        );
-
-                                        #[cfg(feature = "logging")]
-                                        error!(target: "stdout", "{}", &err_msg);
-
-                                        return Err(LlamaCoreError::Backend(
-                                            BackendError::FinishSingle(err_msg),
-                                        ));
-                                    }
-
                                     Ok("[GGML] End of sequence".to_string())
                                 }
                             }
@@ -3166,39 +3136,11 @@ fn compute_stream(
                                     Ok("data: [DONE]\n\n".to_string())
                                 }
                                 PromptTooLongState::EndOfSequence => {
-                                    // clear context
-                                    if let Err(e) = graph.finish_single() {
-                                        let err_msg = format!(
-                                            "Failed to clean up the context. Reason: {}",
-                                            e
-                                        );
-
-                                        #[cfg(feature = "logging")]
-                                        error!(target: "stdout", "{}", &err_msg);
-
-                                        return Err(LlamaCoreError::Backend(
-                                            BackendError::FinishSingle(err_msg),
-                                        ));
-                                    }
-
                                     Ok("[GGML] End of sequence".to_string())
                                 }
                             }
                         }
                         Err(e) => {
-                            // clear context
-                            if let Err(e) = graph.finish_single() {
-                                let err_msg =
-                                    format!("Failed to clean up the context. Reason: {}", e);
-
-                                #[cfg(feature = "logging")]
-                                error!(target: "stdout", "{}", &err_msg);
-
-                                return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
-                                    err_msg,
-                                )));
-                            }
-
                             let err_msg =
                                 format!("Failed to compute the chat completion. Reason: {}", e);
 
@@ -3397,21 +3339,6 @@ fn compute_stream(
                                             Ok("data: [DONE]\n\n".to_string())
                                         }
                                         StreamState::EndOfSequence => {
-                                            // clear context
-                                            if let Err(e) = graph.finish_single() {
-                                                let err_msg = format!(
-                                                    "Failed to clean up the context. Reason: {}",
-                                                    e
-                                                );
-
-                                                #[cfg(feature = "logging")]
-                                                error!(target: "stdout", "{}", &err_msg);
-
-                                                return Err(LlamaCoreError::Backend(
-                                                    BackendError::FinishSingle(err_msg),
-                                                ));
-                                            }
-
                                             Ok("[GGML] End of sequence".to_string())
                                         }
                                     }
@@ -3543,21 +3470,6 @@ fn compute_stream(
                                             Ok("data: [DONE]\n\n".to_string())
                                         }
                                         ContextFullState::EndOfSequence => {
-                                            // clear context
-                                            if let Err(e) = graph.finish_single() {
-                                                let err_msg = format!(
-                                                    "Failed to clean up the context. Reason: {}",
-                                                    e
-                                                );
-
-                                                #[cfg(feature = "logging")]
-                                                error!(target: "stdout", "{}", &err_msg);
-
-                                                return Err(LlamaCoreError::Backend(
-                                                    BackendError::FinishSingle(err_msg),
-                                                ));
-                                            }
-
                                             Ok("[GGML] End of sequence".to_string())
                                         }
                                     }
@@ -3689,41 +3601,11 @@ fn compute_stream(
                                             Ok("data: [DONE]\n\n".to_string())
                                         }
                                         PromptTooLongState::EndOfSequence => {
-                                            // clear context
-                                            if let Err(e) = graph.finish_single() {
-                                                let err_msg = format!(
-                                                    "Failed to clean up the context. Reason: {}",
-                                                    e
-                                                );
-
-                                                #[cfg(feature = "logging")]
-                                                error!(target: "stdout", "{}", &err_msg);
-
-                                                return Err(LlamaCoreError::Backend(
-                                                    BackendError::FinishSingle(err_msg),
-                                                ));
-                                            }
-
                                             Ok("[GGML] End of sequence".to_string())
                                         }
                                     }
                                 }
                                 Err(e) => {
-                                    // clear context
-                                    if let Err(e) = graph.finish_single() {
-                                        let err_msg = format!(
-                                            "Failed to clean up the context. Reason: {}",
-                                            e
-                                        );
-
-                                        #[cfg(feature = "logging")]
-                                        error!(target: "stdout", "{}", &err_msg);
-
-                                        return Err(LlamaCoreError::Backend(
-                                            BackendError::FinishSingle(err_msg),
-                                        ));
-                                    }
-
                                     let err_msg = format!(
                                         "Failed to compute the chat completion. Reason: {}",
                                         e
@@ -3930,21 +3812,6 @@ fn compute_stream(
                                     Ok("data: [DONE]\n\n".to_string())
                                 }
                                 StreamState::EndOfSequence => {
-                                    // clear context
-                                    if let Err(e) = graph.finish_single() {
-                                        let err_msg = format!(
-                                            "Failed to clean up the context. Reason: {}",
-                                            e
-                                        );
-
-                                        #[cfg(feature = "logging")]
-                                        error!(target: "stdout", "{}", &err_msg);
-
-                                        return Err(LlamaCoreError::Backend(
-                                            BackendError::FinishSingle(err_msg),
-                                        ));
-                                    }
-
                                     Ok("[GGML] End of sequence".to_string())
                                 }
                             }
@@ -4069,21 +3936,6 @@ fn compute_stream(
                                     Ok("data: [DONE]\n\n".to_string())
                                 }
                                 ContextFullState::EndOfSequence => {
-                                    // clear context
-                                    if let Err(e) = graph.finish_single() {
-                                        let err_msg = format!(
-                                            "Failed to clean up the context. Reason: {}",
-                                            e
-                                        );
-
-                                        #[cfg(feature = "logging")]
-                                        error!(target: "stdout", "{}", &err_msg);
-
-                                        return Err(LlamaCoreError::Backend(
-                                            BackendError::FinishSingle(err_msg),
-                                        ));
-                                    }
-
                                     Ok("[GGML] End of sequence".to_string())
                                 }
                             }
@@ -4206,39 +4058,11 @@ fn compute_stream(
                                     Ok("data: [DONE]\n\n".to_string())
                                 }
                                 PromptTooLongState::EndOfSequence => {
-                                    // clear context
-                                    if let Err(e) = graph.finish_single() {
-                                        let err_msg = format!(
-                                            "Failed to clean up the context. Reason: {}",
-                                            e
-                                        );
-
-                                        #[cfg(feature = "logging")]
-                                        error!(target: "stdout", "{}", &err_msg);
-
-                                        return Err(LlamaCoreError::Backend(
-                                            BackendError::FinishSingle(err_msg),
-                                        ));
-                                    }
-
                                     Ok("[GGML] End of sequence".to_string())
                                 }
                             }
                         }
                         Err(e) => {
-                            // clear context
-                            if let Err(e) = graph.finish_single() {
-                                let err_msg =
-                                    format!("Failed to clean up the context. Reason: {}", e);
-
-                                #[cfg(feature = "logging")]
-                                error!(target: "stdout", "{}", &err_msg);
-
-                                return Err(LlamaCoreError::Backend(BackendError::FinishSingle(
-                                    err_msg,
-                                )));
-                            }
-
                             let err_msg =
                                 format!("Failed to compute the chat completion. Reason: {}", e);
 
