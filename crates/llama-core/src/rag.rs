@@ -13,15 +13,11 @@ use tiktoken_rs::cl100k_base;
 ///
 /// # Arguments
 ///
-/// * `embedding_request` - A reference to an `EmbeddingRequest` object.
-///
-/// * `qdrant_url` - URL of the Qdrant server.
-///
-/// * `qdrant_collection_name` - Name of the Qdrant collection to be created.
+/// * `rag_embedding_request` - A reference to a `RagEmbeddingRequest` object.
 ///
 /// # Returns
 ///
-/// Name of the Qdrant collection if successful.
+/// An `EmbeddingsResponse` object.
 pub async fn rag_doc_chunks_to_embeddings(
     rag_embedding_request: &RagEmbeddingRequest,
 ) -> Result<EmbeddingsResponse, LlamaCoreError> {
