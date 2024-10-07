@@ -14,11 +14,11 @@ pub struct SpeechRequest {
     /// The text to generate audio for.
     pub input: String,
     /// The voice to use when generating the audio. Supported voices are `alloy`, `echo`, `fable`, `onyx`, `nova`, and `shimmer`.
-    pub voice: SpeechVoice,
-    /// The format to audio in. Supported formats are `mp3`, `opus`, `aac`, `flac`, `wav`, and `pcm`.
+    pub voice: Option<SpeechVoice>,
+    /// The format to audio in. Supported formats are `mp3`, `opus`, `aac`, `flac`, `wav`, and `pcm`. Defaults to `wav`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_format: Option<SpeechFormat>,
-    /// The speed of the generated audio. Select a value from `0.25` to `4.0`. `1.0` is the default.
+    /// The speed of the generated audio. Select a value from `0.25` to `4.0`. Defaults to `1.0`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub speed: Option<f64>,
 }
@@ -119,11 +119,13 @@ impl<'de> Deserialize<'de> for SpeechRequest {
                 }
 
                 let model = model.ok_or_else(|| de::Error::missing_field("model"))?;
+
                 let input = input.ok_or_else(|| de::Error::missing_field("input"))?;
-                let voice = voice.ok_or_else(|| de::Error::missing_field("voice"))?;
+
                 if response_format.is_none() {
                     response_format = Some(SpeechFormat::Wav);
                 }
+
                 if speed.is_none() {
                     speed = Some(1.0);
                 }
@@ -154,7 +156,7 @@ fn test_audio_deserialize_speech_request() {
         let speech_request: SpeechRequest = serde_json::from_str(json).unwrap();
         assert_eq!(speech_request.model, "test_model");
         assert_eq!(speech_request.input, "This is an input");
-        assert_eq!(speech_request.voice, SpeechVoice::Alloy);
+        assert_eq!(speech_request.voice, Some(SpeechVoice::Alloy));
         assert_eq!(speech_request.response_format, Some(SpeechFormat::Wav));
         assert_eq!(speech_request.speed, Some(1.0));
     }
@@ -163,14 +165,13 @@ fn test_audio_deserialize_speech_request() {
         let json = r#"{
             "model": "test_model",
             "input": "This is an input",
-            "voice": "alloy",
             "response_format": "wav",
             "speed": 1.5
         }"#;
         let speech_request: SpeechRequest = serde_json::from_str(json).unwrap();
         assert_eq!(speech_request.model, "test_model");
         assert_eq!(speech_request.input, "This is an input");
-        assert_eq!(speech_request.voice, SpeechVoice::Alloy);
+        assert_eq!(speech_request.voice, None);
         assert_eq!(speech_request.response_format, Some(SpeechFormat::Wav));
         assert_eq!(speech_request.speed, Some(1.5));
     }
