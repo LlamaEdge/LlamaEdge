@@ -7,7 +7,7 @@ use endpoints::chat::{
 
 use tera::{Context, Tera};
 
-/// Generate prompts for the models using ChatML template.
+/// Generate prompts for `functionary-v3.2` models.
 #[derive(Debug, Default, Clone)]
 pub struct FunctionaryV32ToolPrompt;
 impl FunctionaryV32ToolPrompt {
@@ -167,7 +167,7 @@ impl BuildChatPrompt for FunctionaryV32ToolPrompt {
     }
 }
 
-/// Generate prompts for the models using ChatML template.
+/// Generate prompts for `functionary-v3.1` models.
 #[derive(Debug, Default, Clone)]
 pub struct FunctionaryV31ToolPrompt;
 impl FunctionaryV31ToolPrompt {
