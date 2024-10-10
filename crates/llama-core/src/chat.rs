@@ -2126,35 +2126,18 @@ fn build_prompt(
             true => {
                 match chat_request.messages[0].role() {
                     ChatCompletionRole::System => {
-                        if chat_request.messages.len() >= 4 {
-                            // system -> user_1 -> assistant_1 (maybe tool_calls) -> ... -> user_latest
-
+                        if chat_request.messages.len() >= 3 {
+                            // remove user_1 if it exists
+                            // For example, `system -> user_1 -> ... -> user_2 -> ... -> user_latest` will be converted to `system -> ... -> user_2 -> ... -> user_latest`
                             if chat_request.messages[1].role() == ChatCompletionRole::User {
                                 chat_request.messages.remove(1);
                             }
-                            if chat_request.messages[1].role() == ChatCompletionRole::Assistant {
+
+                            // remove all messages until the message is of `user`
+                            // For example, `system -> ... -> user_2 -> ... -> user_latest` will be converted to `system -> user_2 -> ... -> user_latest`
+                            while chat_request.messages[1].role() != ChatCompletionRole::User {
                                 chat_request.messages.remove(1);
                             }
-
-                            // system -> user_1 -> assistant_1 (tool_calls) -> tool_1 -> ... -> user_latest
-                            if chat_request.messages.len() > 2
-                                && chat_request.messages[1].role() == ChatCompletionRole::Tool
-                            {
-                                chat_request.messages.remove(1);
-                            }
-
-                            // system -> user_1 -> assistant_1 (tool_calls) -> tool_1 -> assistant_1 -> ... -> user_latest
-                            if chat_request.messages.len() > 2
-                                && chat_request.messages[1].role() == ChatCompletionRole::Assistant
-                            {
-                                chat_request.messages.remove(1);
-                            }
-                        } else if chat_request.messages.len() == 3
-                            && chat_request.messages[1].role() == ChatCompletionRole::User
-                        {
-                            // system -> user_1 -> user_latest
-
-                            chat_request.messages.remove(1);
                         } else if token_info.prompt_tokens > ctx_size {
                             let err_msg = format!(
                                     "The number of prompt tokens is greater than the context size: {} > {}",
@@ -2171,25 +2154,18 @@ fn build_prompt(
                     }
                     ChatCompletionRole::User => {
                         if chat_request.messages.len() >= 3 {
-                            // case 1: user_1 -> assistant_1 -> user_latest
-                            // case 2: user_1 -> assistant_1 -> tool_1 -> assistant_2 -> user_latest
+                            // user_1 -> ... -> user_2 -> ... -> user_latest
 
-                            // deal with "user_1 -> assistant_1" of both case 1 and 2
+                            // remove user_1 if it exists
+                            // For example, `user_1 -> ... -> user_2 -> ... -> user_latest` will be converted to `... -> user_2 -> ... -> user_latest`
                             if chat_request.messages[0].role() == ChatCompletionRole::User {
                                 chat_request.messages.remove(0);
                             }
-                            if chat_request.messages[0].role() == ChatCompletionRole::Assistant {
-                                chat_request.messages.remove(0);
-                            }
 
-                            // deal with "tool_1 -> assistant_2" of case 2
-                            if chat_request.messages[0].role() == ChatCompletionRole::Tool {
-                                chat_request.messages.remove(0);
-
-                                if chat_request.messages[0].role() == ChatCompletionRole::Assistant
-                                {
-                                    chat_request.messages.remove(0);
-                                }
+                            // remove all messages until the message is of `user`
+                            // For example, `... -> user_2 -> ... -> user_latest` will be converted to `user_2 -> ... -> user_latest`
+                            while chat_request.messages[1].role() != ChatCompletionRole::User {
+                                chat_request.messages.remove(1);
                             }
                         } else if chat_request.messages.len() == 2
                             && chat_request.messages[0].role() == ChatCompletionRole::User
