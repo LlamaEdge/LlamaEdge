@@ -41,7 +41,7 @@ pub async fn image_generation(
         LlamaCoreError::Operation(err_msg)
     })?;
 
-    let ctx = &mut *context;
+    let mut ctx = &mut *context;
 
     // create a unique file id
     let id = format!("file_{}", uuid::Uuid::new_v4());
@@ -138,7 +138,7 @@ pub async fn image_generation(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "seed: {}", seed);
 
-    let ctx = ctx
+    ctx = ctx
         .set_prompt(&req.prompt)
         .set_negative_prompt(negative_prompt)
         .set_output_path(output_image_file)
@@ -259,7 +259,7 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
         LlamaCoreError::Operation(err_msg)
     })?;
 
-    let ctx = &mut *context;
+    let mut ctx = &mut *context;
 
     // create a unique file id
     let id = format!("file_{}", uuid::Uuid::new_v4());
@@ -360,7 +360,7 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
     info!(target: "stdout", "strength: {}", strength);
 
     // create and dump the generated image
-    let ctx = ctx
+    ctx = ctx
         .set_prompt(&req.prompt)
         .set_image(ImageType::Path(path_origin_image.into()))
         .set_batch_count(n as i32)
