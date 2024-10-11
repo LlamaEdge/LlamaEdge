@@ -811,6 +811,7 @@ pub fn init_whisper_context(
 /// * `espeak_ng_data` - Path to the espeak-ng data directory.
 ///
 pub fn init_piper_context(
+    piper_metadata: &PiperMetadata,
     voice_model: impl AsRef<Path>,
     voice_config: impl AsRef<Path>,
     espeak_ng_data: impl AsRef<Path>,
@@ -826,6 +827,7 @@ pub fn init_piper_context(
 
     // create and initialize the audio context
     let graph = GraphBuilder::new(EngineType::Piper)?
+        .with_config(piper_metadata.clone())?
         .use_cpu()
         .build_from_buffer([config.to_string()])?;
 
