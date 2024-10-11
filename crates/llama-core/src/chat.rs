@@ -1,12 +1,14 @@
 //! Define APIs for chat completion.
 
 use crate::{
-    error, running_mode,
+    error,
+    metadata::ggml::GgmlMetadata,
+    running_mode,
     utils::{
         gen_chat_id, get_output_buffer, get_output_buffer_single, get_token_info_by_graph,
         get_token_info_by_graph_name, set_tensor_data_u8,
     },
-    GgmlMetadata, Graph, RunningMode, CACHED_UTF8_ENCODINGS, CHAT_GRAPHS, OUTPUT_TENSOR,
+    Graph, RunningMode, CACHED_UTF8_ENCODINGS, CHAT_GRAPHS, OUTPUT_TENSOR,
 };
 use chat_prompts::{
     chat::{BuildChatPrompt, ChatPrompt},

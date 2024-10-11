@@ -2,9 +2,10 @@
 
 use crate::{
     error::{BackendError, LlamaCoreError},
+    metadata::ggml::GgmlMetadata,
     running_mode,
     utils::{get_output_buffer, get_token_info_by_graph},
-    GgmlMetadata, Graph, RunningMode, CHAT_GRAPHS, OUTPUT_TENSOR,
+    Graph, RunningMode, CHAT_GRAPHS, OUTPUT_TENSOR,
 };
 use endpoints::{
     common::{FinishReason, Usage},

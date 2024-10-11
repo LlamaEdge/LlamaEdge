@@ -1,7 +1,6 @@
 //! Define Graph and GraphBuilder APIs for creating a new computation graph.
 
 use crate::{error::LlamaCoreError, utils::set_tensor_data_u8, BaseMetadata};
-use chat_prompts::PromptTemplateType;
 use wasmedge_wasi_nn::{
     Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext, TensorType,
 };
@@ -286,11 +285,6 @@ impl<M: BaseMetadata + serde::Serialize + Clone + Default> Graph<M> {
     /// Get the alias of the model
     pub fn alias(&self) -> &str {
         self.metadata.model_alias()
-    }
-
-    /// Get the prompt template type
-    pub fn prompt_template(&self) -> PromptTemplateType {
-        self.metadata.prompt_template()
     }
 
     /// Update metadata
