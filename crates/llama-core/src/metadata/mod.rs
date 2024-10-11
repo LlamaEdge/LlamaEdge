@@ -1,4 +1,5 @@
 pub mod ggml;
+pub mod piper;
 pub mod whisper;
 
 pub trait BaseMetadata {
