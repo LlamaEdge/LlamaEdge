@@ -116,7 +116,7 @@ pub fn chat_prompt_template(name: Option<&str>) -> Result<PromptTemplateType, Ll
         Some(model_name) => match chat_graphs.contains_key(model_name) {
             true => {
                 let graph = chat_graphs.get(model_name).unwrap();
-                let prompt_template = graph.prompt_template();
+                let prompt_template = graph.metadata.prompt_template();
 
                 #[cfg(feature = "logging")]
                 info!(target: "stdout", "prompt_template: {}", &prompt_template);
@@ -125,7 +125,7 @@ pub fn chat_prompt_template(name: Option<&str>) -> Result<PromptTemplateType, Ll
             }
             false => match chat_graphs.iter().next() {
                 Some((_, graph)) => {
-                    let prompt_template = graph.prompt_template();
+                    let prompt_template = graph.metadata.prompt_template();
 
                     #[cfg(feature = "logging")]
                     info!(target: "stdout", "prompt_template: {}", &prompt_template);
@@ -144,7 +144,7 @@ pub fn chat_prompt_template(name: Option<&str>) -> Result<PromptTemplateType, Ll
         },
         None => match chat_graphs.iter().next() {
             Some((_, graph)) => {
-                let prompt_template = graph.prompt_template();
+                let prompt_template = graph.metadata.prompt_template();
 
                 #[cfg(feature = "logging")]
                 info!(target: "stdout", "prompt_template: {}", &prompt_template);
