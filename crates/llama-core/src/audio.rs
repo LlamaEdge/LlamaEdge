@@ -84,10 +84,10 @@ pub async fn audio_transcriptions(
             }
         }
 
-        if should_update {
-            #[cfg(feature = "logging")]
-            info!(target: "stdout", "metadata: {:?}", &metadata);
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "metadata: {:?}", &metadata);
 
+        if should_update {
             #[cfg(feature = "logging")]
             info!(target: "stdout", "Set the metadata to the model.");
 
@@ -386,10 +386,10 @@ pub async fn audio_translations(
             }
         }
 
-        if should_update {
-            #[cfg(feature = "logging")]
-            info!(target: "stdout", "metadata: {:?}", &metadata);
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "metadata: {:?}", &metadata);
 
+        if should_update {
             #[cfg(feature = "logging")]
             info!(target: "stdout", "Set the metadata to the model.");
 
