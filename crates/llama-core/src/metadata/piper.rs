@@ -1,6 +1,72 @@
 use super::BaseMetadata;
 use serde::{Deserialize, Serialize};
 
+/// Builder for creating a ggml metadata
+#[derive(Debug)]
+pub struct PiperMetadataBuilder {
+    metadata: PiperMetadata,
+}
+impl PiperMetadataBuilder {
+    pub fn new<S: Into<String>>(model_name: S, model_alias: S) -> Self {
+        let metadata = PiperMetadata {
+            model_name: model_name.into(),
+            model_alias: model_alias.into(),
+            ..Default::default()
+        };
+
+        Self { metadata }
+    }
+
+    pub fn enable_debug(mut self, enable: bool) -> Self {
+        self.metadata.debug_log = enable;
+        self
+    }
+
+    pub fn with_speed(mut self, speed: f64) -> Self {
+        self.metadata.speed = speed;
+        self
+    }
+
+    pub fn with_speaker_id(mut self, speaker_id: u32) -> Self {
+        self.metadata.speaker_id = speaker_id;
+        self
+    }
+
+    pub fn with_noise_scale(mut self, noise_scale: f64) -> Self {
+        self.metadata.noise_scale = noise_scale;
+        self
+    }
+
+    pub fn with_length_scale(mut self, length_scale: f64) -> Self {
+        self.metadata.length_scale = length_scale;
+        self
+    }
+
+    pub fn with_noise_w(mut self, noise_w: f64) -> Self {
+        self.metadata.noise_w = noise_w;
+        self
+    }
+
+    pub fn with_sentence_silence(mut self, sentence_silence: f64) -> Self {
+        self.metadata.sentence_silence = sentence_silence;
+        self
+    }
+
+    pub fn with_phoneme_silence(mut self, phoneme_silence: f64) -> Self {
+        self.metadata.phoneme_silence = Some(phoneme_silence);
+        self
+    }
+
+    pub fn enable_json_input(mut self, flag: bool) -> Self {
+        self.metadata.json_input = Some(flag);
+        self
+    }
+
+    pub fn build(self) -> PiperMetadata {
+        self.metadata
+    }
+}
+
 /// Metadata for chat and embeddings models
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PiperMetadata {
