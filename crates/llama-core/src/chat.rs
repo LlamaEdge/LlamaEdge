@@ -793,8 +793,10 @@ fn compute_by_graph(
                         && graph.metadata.prompt_template != PromptTemplateType::Llama3Tool
                         && graph.metadata.prompt_template != PromptTemplateType::InternLM2Tool
                         && graph.metadata.prompt_template != PromptTemplateType::NemotronTool
+                        && graph.metadata.prompt_template != PromptTemplateType::FunctionaryV32
+                        && graph.metadata.prompt_template != PromptTemplateType::FunctionaryV31
                     {
-                        let err_msg = "The tool use is only supported for 'mistral-chat' and 'chatml' prompt templates.";
+                        let err_msg = "The tool use is only supported for 'mistral-tool', 'chatml', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', and 'functionary-32' prompt templates.";
 
                         #[cfg(feature = "logging")]
                         error!(target: "stdout", "{}", &err_msg);
@@ -1586,14 +1588,125 @@ fn parse_tool_calls(
                 }
             }
         }
-        _ => Err(LlamaCoreError::Operation(format!(
-            "The tool use is only supported for prompt templates: {}, {}, {}, {}, and {}.",
-            PromptTemplateType::MistralTool,
-            PromptTemplateType::ChatMLTool,
-            PromptTemplateType::GroqLlama3Tool,
-            PromptTemplateType::Llama3Tool,
-            PromptTemplateType::InternLM2Tool
-        ))),
+        PromptTemplateType::FunctionaryV32 => {
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "raw input: {}", input);
+
+            match regex::Regex::new(r">>>\s*(\w+)\s*\{(.*)\}<\|eot_id\|>") {
+                Ok(re) => {
+                    let mut tool_calls: Vec<ToolCall> = vec![];
+                    for cap in re.captures_iter(input) {
+                        #[cfg(feature = "logging")]
+                        info!(target: "stdout", "func_name: {}", &cap[1]);
+
+                        #[cfg(feature = "logging")]
+                        info!(target: "stdout", "arguments: {}", &cap[2]);
+
+                        let tool_call = ToolCall {
+                            id: "call_abc123".to_string(),
+                            ty: "function".to_string(),
+                            function: Function {
+                                name: cap[1].to_string(),
+                                arguments: cap[2].to_string(),
+                            },
+                        };
+
+                        tool_calls.push(tool_call);
+                    }
+
+                    let parsed = ParseResult {
+                        raw: input.to_owned(),
+                        content: None,
+                        tool_calls,
+                    };
+
+                    #[cfg(feature = "logging")]
+                    info!(target: "stdout", "parsed result: {:?}", parsed);
+
+                    Ok(parsed)
+                }
+                Err(e) => {
+                    let warn_msg = format!("Failed to create a regex pattern. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    warn!(target: "stdout", "{}", &warn_msg);
+
+                    Ok(ParseResult {
+                        raw: input.to_owned(),
+                        content: None,
+                        tool_calls: vec![],
+                    })
+                }
+            }
+        }
+        PromptTemplateType::FunctionaryV31 => {
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "raw input: {}", input);
+
+            match regex::Regex::new(r"<function=(\w+)>\s*(\{.*?\})</function>") {
+                Ok(re) => {
+                    let mut tool_calls: Vec<ToolCall> = vec![];
+                    for cap in re.captures_iter(input) {
+                        #[cfg(feature = "logging")]
+                        info!(target: "stdout", "func_name: {}", &cap[1]);
+
+                        #[cfg(feature = "logging")]
+                        info!(target: "stdout", "arguments: {}", &cap[2]);
+
+                        let tool_call = ToolCall {
+                            id: "call_abc123".to_string(),
+                            ty: "function".to_string(),
+                            function: Function {
+                                name: cap[1].to_string(),
+                                arguments: cap[2].to_string(),
+                            },
+                        };
+
+                        tool_calls.push(tool_call);
+                    }
+
+                    let parsed = ParseResult {
+                        raw: input.to_owned(),
+                        content: None,
+                        tool_calls,
+                    };
+
+                    #[cfg(feature = "logging")]
+                    info!(target: "stdout", "parsed result: {:?}", parsed);
+
+                    Ok(parsed)
+                }
+                Err(e) => {
+                    let warn_msg = format!("Failed to create a regex pattern. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    warn!(target: "stdout", "{}", &warn_msg);
+
+                    Ok(ParseResult {
+                        raw: input.to_owned(),
+                        content: None,
+                        tool_calls: vec![],
+                    })
+                }
+            }
+        }
+        _ => {
+            let err_msg = format!(
+                "The tool use is only supported for prompt templates: {}, {}, {}, {}, {}, {}, and {}.",
+                PromptTemplateType::MistralTool,
+                PromptTemplateType::ChatMLTool,
+                PromptTemplateType::GroqLlama3Tool,
+                PromptTemplateType::Llama3Tool,
+                PromptTemplateType::InternLM2Tool,
+                PromptTemplateType::NemotronTool,
+                PromptTemplateType::FunctionaryV32,
+            );
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            Err(LlamaCoreError::Operation(err_msg))
+        }
     }
 }
 
@@ -1865,6 +1978,7 @@ fn post_process(
     } else if *template_ty == PromptTemplateType::Llama3Chat
         || *template_ty == PromptTemplateType::GroqLlama3Tool
         || *template_ty == PromptTemplateType::Llama3Tool
+        || *template_ty == PromptTemplateType::FunctionaryV32
     {
         let s = output.as_ref().trim();
         if s.ends_with("<|eot_id|>") {
@@ -1888,6 +2002,15 @@ fn post_process(
         } else {
             s.to_owned()
         }
+    } else if *template_ty == PromptTemplateType::FunctionaryV31 {
+        let mut s = output.as_ref().trim();
+        if s.ends_with("<|eot_id|>") {
+            s = s.trim_end_matches("<|eot_id|>").trim();
+        }
+        if s.ends_with("<|eom_id|>") {
+            s = s.trim_end_matches("<|eom_id|>").trim();
+        }
+        s.to_owned()
     } else {
         output.as_ref().trim().to_owned()
     };
@@ -2003,35 +2126,18 @@ fn build_prompt(
             true => {
                 match chat_request.messages[0].role() {
                     ChatCompletionRole::System => {
-                        if chat_request.messages.len() >= 4 {
-                            // system -> user_1 -> assistant_1 (maybe tool_calls) -> ... -> user_latest
-
+                        if chat_request.messages.len() >= 3 {
+                            // remove user_1 if it exists
+                            // For example, `system -> user_1 -> ... -> user_2 -> ... -> user_latest` will be converted to `system -> ... -> user_2 -> ... -> user_latest`
                             if chat_request.messages[1].role() == ChatCompletionRole::User {
                                 chat_request.messages.remove(1);
                             }
-                            if chat_request.messages[1].role() == ChatCompletionRole::Assistant {
+
+                            // remove all messages until the message is of `user`
+                            // For example, `system -> ... -> user_2 -> ... -> user_latest` will be converted to `system -> user_2 -> ... -> user_latest`
+                            while chat_request.messages[1].role() != ChatCompletionRole::User {
                                 chat_request.messages.remove(1);
                             }
-
-                            // system -> user_1 -> assistant_1 (tool_calls) -> tool_1 -> ... -> user_latest
-                            if chat_request.messages.len() > 2
-                                && chat_request.messages[1].role() == ChatCompletionRole::Tool
-                            {
-                                chat_request.messages.remove(1);
-                            }
-
-                            // system -> user_1 -> assistant_1 (tool_calls) -> tool_1 -> assistant_1 -> ... -> user_latest
-                            if chat_request.messages.len() > 2
-                                && chat_request.messages[1].role() == ChatCompletionRole::Assistant
-                            {
-                                chat_request.messages.remove(1);
-                            }
-                        } else if chat_request.messages.len() == 3
-                            && chat_request.messages[1].role() == ChatCompletionRole::User
-                        {
-                            // system -> user_1 -> user_latest
-
-                            chat_request.messages.remove(1);
                         } else if token_info.prompt_tokens > ctx_size {
                             let err_msg = format!(
                                     "The number of prompt tokens is greater than the context size: {} > {}",
@@ -2048,25 +2154,18 @@ fn build_prompt(
                     }
                     ChatCompletionRole::User => {
                         if chat_request.messages.len() >= 3 {
-                            // case 1: user_1 -> assistant_1 -> user_latest
-                            // case 2: user_1 -> assistant_1 -> tool_1 -> assistant_2 -> user_latest
+                            // user_1 -> ... -> user_2 -> ... -> user_latest
 
-                            // deal with "user_1 -> assistant_1" of both case 1 and 2
+                            // remove user_1 if it exists
+                            // For example, `user_1 -> ... -> user_2 -> ... -> user_latest` will be converted to `... -> user_2 -> ... -> user_latest`
                             if chat_request.messages[0].role() == ChatCompletionRole::User {
                                 chat_request.messages.remove(0);
                             }
-                            if chat_request.messages[0].role() == ChatCompletionRole::Assistant {
-                                chat_request.messages.remove(0);
-                            }
 
-                            // deal with "tool_1 -> assistant_2" of case 2
-                            if chat_request.messages[0].role() == ChatCompletionRole::Tool {
-                                chat_request.messages.remove(0);
-
-                                if chat_request.messages[0].role() == ChatCompletionRole::Assistant
-                                {
-                                    chat_request.messages.remove(0);
-                                }
+                            // remove all messages until the message is of `user`
+                            // For example, `... -> user_2 -> ... -> user_latest` will be converted to `user_2 -> ... -> user_latest`
+                            while chat_request.messages[1].role() != ChatCompletionRole::User {
+                                chat_request.messages.remove(1);
                             }
                         } else if chat_request.messages.len() == 2
                             && chat_request.messages[0].role() == ChatCompletionRole::User

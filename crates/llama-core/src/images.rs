@@ -41,10 +41,7 @@ pub async fn image_generation(
         LlamaCoreError::Operation(err_msg)
     })?;
 
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "sd text_to_image context: {:?}", &context);
-
-    let ctx = &mut *context;
+    let mut ctx = &mut *context;
 
     // create a unique file id
     let id = format!("file_{}", uuid::Uuid::new_v4());
@@ -68,22 +65,21 @@ pub async fn image_generation(
 
     // negative prompt
     let negative_prompt = req.negative_prompt.clone().unwrap_or_default();
-
-    // log
     #[cfg(feature = "logging")]
     info!(target: "stdout", "negative prompt: {}", &negative_prompt);
 
+    // n
+    let n = req.n.unwrap_or(1);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "number of images to generate: {}", n);
+
     // cfg_scale
     let cfg_scale = req.cfg_scale.unwrap_or(7.0);
-
-    // log
     #[cfg(feature = "logging")]
     info!(target: "stdout", "cfg_scale: {}", cfg_scale);
 
     // sampling method
     let sample_method = req.sample_method.unwrap_or(SamplingMethod::EulerA);
-
-    // log
     #[cfg(feature = "logging")]
     info!(target: "stdout", "sample_method: {}", sample_method);
 
@@ -123,24 +119,27 @@ pub async fn image_generation(
 
     // steps
     let steps = req.steps.unwrap_or(20);
-
-    // log
     #[cfg(feature = "logging")]
     info!(target: "stdout", "steps: {}", steps);
 
     // size
     let height = req.height.unwrap_or(512);
     let width = req.width.unwrap_or(512);
-
-    // log
     #[cfg(feature = "logging")]
     info!(target: "stdout", "height: {}, width: {}", height, width);
 
-    // log
+    // control_strength
+    let control_strength = req.control_strength.unwrap_or(0.9);
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "generate image");
+    info!(target: "stdout", "control_strength: {}", control_strength);
 
-    ctx.set_prompt(&req.prompt)
+    // seed
+    let seed = req.seed.unwrap_or(42);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "seed: {}", seed);
+
+    ctx = ctx
+        .set_prompt(&req.prompt)
         .set_negative_prompt(negative_prompt)
         .set_output_path(output_image_file)
         .set_cfg_scale(cfg_scale)
@@ -148,15 +147,30 @@ pub async fn image_generation(
         .set_sample_steps(steps as i32)
         .set_height(height as i32)
         .set_width(width as i32)
-        .generate()
-        .map_err(|e| {
-            let err_msg = format!("Fail to dump the image. {}", e);
+        .set_batch_count(n as i32)
+        .set_cfg_scale(cfg_scale)
+        .set_sample_method(sample_method)
+        .set_height(height as i32)
+        .set_width(width as i32)
+        .set_control_strength(control_strength)
+        .set_seed(seed)
+        .set_output_path(output_image_file);
 
-            #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", &err_msg);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "sd text_to_image context: {:?}", &ctx);
 
-            LlamaCoreError::Operation(err_msg)
-        })?;
+    // log
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "generate image");
+
+    ctx.generate().map_err(|e| {
+        let err_msg = format!("Fail to dump the image. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
 
     // log
     #[cfg(feature = "logging")]
@@ -245,10 +259,7 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
         LlamaCoreError::Operation(err_msg)
     })?;
 
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "sd image_to_image context: {:?}", &context);
-
-    let ctx = &mut *context;
+    let mut ctx = &mut *context;
 
     // create a unique file id
     let id = format!("file_{}", uuid::Uuid::new_v4());
@@ -274,19 +285,110 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
         "Fail to get the path of the original image.".into(),
     ))?;
 
+    // n
+    let n = req.n.unwrap_or(1);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "number of images to generate: {}", n);
+
+    // cfg scale
+    let cfg_scale = req.cfg_scale.unwrap_or(7.0);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "cfg_scale: {}", cfg_scale);
+
+    // sample method
+    let sample_method = req.sample_method.unwrap_or(SamplingMethod::EulerA);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "sample_method: {:?}", sample_method);
+    // convert sample method to value of `SampleMethodT` type
+    let sample_method = match sample_method {
+        SamplingMethod::Euler => {
+            wasmedge_stable_diffusion::stable_diffusion_interface::SampleMethodT::EULER
+        }
+        SamplingMethod::EulerA => {
+            wasmedge_stable_diffusion::stable_diffusion_interface::SampleMethodT::EULERA
+        }
+        SamplingMethod::Heun => {
+            wasmedge_stable_diffusion::stable_diffusion_interface::SampleMethodT::HEUN
+        }
+        SamplingMethod::Dpm2 => {
+            wasmedge_stable_diffusion::stable_diffusion_interface::SampleMethodT::DPM2
+        }
+        SamplingMethod::DpmPlusPlus2sA => {
+            wasmedge_stable_diffusion::stable_diffusion_interface::SampleMethodT::DPMPP2SA
+        }
+        SamplingMethod::DpmPlusPlus2m => {
+            wasmedge_stable_diffusion::stable_diffusion_interface::SampleMethodT::DPMPP2M
+        }
+        SamplingMethod::DpmPlusPlus2mv2 => {
+            wasmedge_stable_diffusion::stable_diffusion_interface::SampleMethodT::DPMPP2Mv2
+        }
+        SamplingMethod::Ipndm => {
+            wasmedge_stable_diffusion::stable_diffusion_interface::SampleMethodT::IPNDM
+        }
+        SamplingMethod::IpndmV => {
+            wasmedge_stable_diffusion::stable_diffusion_interface::SampleMethodT::IPNDMV
+        }
+        SamplingMethod::Lcm => {
+            wasmedge_stable_diffusion::stable_diffusion_interface::SampleMethodT::LCM
+        }
+    };
+
+    // steps
+    let steps = req.steps.unwrap_or(20);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "steps: {}", steps);
+
+    // size
+    let height = req.height.unwrap_or(512);
+    let width = req.width.unwrap_or(512);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "height: {}, width: {}", height, width);
+
+    // control_strength
+    let control_strength = req.control_strength.unwrap_or(0.9);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "control_strength: {}", control_strength);
+
+    // seed
+    let seed = req.seed.unwrap_or(42);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "seed: {}", seed);
+
+    // strength
+    let strength = req.strength.unwrap_or(0.75);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "strength: {}", strength);
+
     // create and dump the generated image
-    ctx.set_prompt(&req.prompt)
+    ctx = ctx
+        .set_prompt(&req.prompt)
         .set_image(ImageType::Path(path_origin_image.into()))
-        .set_output_path(output_image_file)
-        .generate()
-        .map_err(|e| {
-            let err_msg = format!("Fail to dump the image. {}", e);
+        .set_batch_count(n as i32)
+        .set_cfg_scale(cfg_scale)
+        .set_sample_method(sample_method)
+        .set_sample_steps(steps as i32)
+        .set_height(height as i32)
+        .set_width(width as i32)
+        .set_control_strength(control_strength)
+        .set_seed(seed)
+        .set_strength(strength)
+        .set_output_path(output_image_file);
 
-            #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", &err_msg);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "sd image_to_image context: {:?}", &ctx);
 
-            LlamaCoreError::Operation(err_msg)
-        })?;
+    // log
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "generate image");
+
+    ctx.generate().map_err(|e| {
+        let err_msg = format!("Fail to dump the image. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
 
     // log
     #[cfg(feature = "logging")]

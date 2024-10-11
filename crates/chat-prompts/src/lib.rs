@@ -87,6 +87,10 @@ pub enum PromptTemplateType {
     NemotronChat,
     #[value(name = "nemotron-tool")]
     NemotronTool,
+    #[value(name = "functionary-32")]
+    FunctionaryV32,
+    #[value(name = "functionary-31")]
+    FunctionaryV31,
     #[value(name = "embedding")]
     Embedding,
     #[value(name = "none")]
@@ -132,6 +136,8 @@ impl PromptTemplateType {
             | PromptTemplateType::SolarInstruct
             | PromptTemplateType::Vicuna11Chat
             | PromptTemplateType::StableLMZephyr
+            | PromptTemplateType::FunctionaryV32
+            | PromptTemplateType::FunctionaryV31
             | PromptTemplateType::Embedding
             | PromptTemplateType::Null => false,
         }
@@ -180,6 +186,8 @@ impl FromStr for PromptTemplateType {
             "mediatek-breeze" => Ok(PromptTemplateType::BreezeInstruct),
             "nemotron-chat" => Ok(PromptTemplateType::NemotronChat),
             "nemotron-tool" => Ok(PromptTemplateType::NemotronTool),
+            "functionary-32" => Ok(PromptTemplateType::FunctionaryV32),
+            "functionary-31" => Ok(PromptTemplateType::FunctionaryV31),
             "embedding" => Ok(PromptTemplateType::Embedding),
             "none" => Ok(PromptTemplateType::Null),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
@@ -228,6 +236,8 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::BreezeInstruct => write!(f, "mediatek-breeze"),
             PromptTemplateType::NemotronChat => write!(f, "nemotron-chat"),
             PromptTemplateType::NemotronTool => write!(f, "nemotron-tool"),
+            PromptTemplateType::FunctionaryV32 => write!(f, "functionary-32"),
+            PromptTemplateType::FunctionaryV31 => write!(f, "functionary-31"),
             PromptTemplateType::Embedding => write!(f, "embedding"),
             PromptTemplateType::Null => write!(f, "none"),
         }

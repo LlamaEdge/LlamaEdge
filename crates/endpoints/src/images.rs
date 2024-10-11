@@ -18,13 +18,6 @@ impl ImageCreateRequestBuilder {
             req: ImageCreateRequest {
                 model: model.into(),
                 prompt: prompt.into(),
-                n: Some(1),
-                response_format: Some(ResponseFormat::Url),
-                cfg_scale: Some(7.0),
-                sample_method: Some(SamplingMethod::EulerA),
-                steps: Some(20),
-                height: Some(512),
-                width: Some(512),
                 ..Default::default()
             },
         }
@@ -91,6 +84,18 @@ impl ImageCreateRequestBuilder {
         self
     }
 
+    /// Set the strength to apply Control Net. This param is only supported for `stable-diffusion.cpp`.
+    pub fn with_control_strength(mut self, control_strength: f32) -> Self {
+        self.req.control_strength = Some(control_strength);
+        self
+    }
+
+    /// Set the RNG seed. Negative value means to use random seed. This param is only supported for `stable-diffusion.cpp`.
+    pub fn with_seed(mut self, seed: i32) -> Self {
+        self.req.seed = Some(seed);
+        self
+    }
+
     /// Build the request.
     pub fn build(self) -> ImageCreateRequest {
         self.req
@@ -98,7 +103,7 @@ impl ImageCreateRequestBuilder {
 }
 
 /// Request to create an image by a given prompt.
-#[derive(Debug, Serialize, Default)]
+#[derive(Debug, Serialize)]
 pub struct ImageCreateRequest {
     /// A text description of the desired image.
     pub prompt: String,
@@ -127,15 +132,26 @@ pub struct ImageCreateRequest {
     pub user: Option<String>,
 
     /// Unconditional guidance scale. Defaults to 7.0. This param is only supported for `stable-diffusion.cpp`.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub cfg_scale: Option<f32>,
     /// Sampling method. Defaults to "euler_a". This param is only supported for `stable-diffusion.cpp`.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sample_method: Option<SamplingMethod>,
     /// Number of sample steps. Defaults to 20. This param is only supported for `stable-diffusion.cpp`.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub steps: Option<usize>,
     /// Image height, in pixel space. Defaults to 512. If `size` is provided, this field will be ignored.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub height: Option<usize>,
     /// Image width, in pixel space. Defaults to 512. If `size` is provided, this field will be ignored.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub width: Option<usize>,
+    /// strength to apply Control Net. Defaults to 0.9. This param is only supported for `stable-diffusion.cpp`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub control_strength: Option<f32>,
+    /// RNG seed. Negative value means to use random seed. Defaults to 42. This param is only supported for `stable-diffusion.cpp`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub seed: Option<i32>,
 }
 impl<'de> Deserialize<'de> for ImageCreateRequest {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -157,6 +173,8 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
             Steps,
             Height,
             Width,
+            ControlStrength,
+            Seed,
         }
 
         impl<'de> Deserialize<'de> for Field {
@@ -166,7 +184,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
             {
                 struct FieldVisitor;
 
-                impl<'de> Visitor<'de> for FieldVisitor {
+                impl Visitor<'_> for FieldVisitor {
                     type Value = Field;
 
                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -192,6 +210,8 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                             "steps" => Ok(Field::Steps),
                             "height" => Ok(Field::Height),
                             "width" => Ok(Field::Width),
+                            "control_strength" => Ok(Field::ControlStrength),
+                            "seed" => Ok(Field::Seed),
                             _ => Err(de::Error::unknown_field(value, FIELDS)),
                         }
                     }
@@ -232,6 +252,8 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                 let steps = seq.next_element()?;
                 let height = seq.next_element()?;
                 let width = seq.next_element()?;
+                let control_strength = seq.next_element()?;
+                let seed = seq.next_element()?;
 
                 Ok(ImageCreateRequest {
                     prompt,
@@ -248,6 +270,8 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     steps,
                     height,
                     width,
+                    control_strength,
+                    seed,
                 })
             }
 
@@ -269,6 +293,8 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                 let mut steps = None;
                 let mut height = None;
                 let mut width = None;
+                let mut control_strength = None;
+                let mut seed = None;
 
                 while let Some(key) = map.next_key()? {
                     match key {
@@ -356,6 +382,18 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                             }
                             width = Some(map.next_value()?);
                         }
+                        Field::ControlStrength => {
+                            if control_strength.is_some() {
+                                return Err(de::Error::duplicate_field("control_strength"));
+                            }
+                            control_strength = Some(map.next_value()?);
+                        }
+                        Field::Seed => {
+                            if seed.is_some() {
+                                return Err(de::Error::duplicate_field("seed"));
+                            }
+                            seed = Some(map.next_value()?);
+                        }
                     }
                 }
 
@@ -377,6 +415,14 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
 
                 if steps.is_none() {
                     steps = Some(20);
+                }
+
+                if control_strength.is_none() {
+                    control_strength = Some(0.9);
+                }
+
+                if seed.is_none() {
+                    seed = Some(42);
                 }
 
                 match &size {
@@ -413,6 +459,8 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     steps,
                     height,
                     width,
+                    control_strength,
+                    seed,
                 })
             }
         }
@@ -434,6 +482,28 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
             "width",
         ];
         deserializer.deserialize_struct("CreateImageRequest", FIELDS, CreateImageRequestVisitor)
+    }
+}
+impl Default for ImageCreateRequest {
+    fn default() -> Self {
+        Self {
+            prompt: "".to_string(),
+            quality: Some("standard".to_string()),
+            negative_prompt: None,
+            model: "".to_string(),
+            n: Some(1),
+            response_format: Some(ResponseFormat::Url),
+            size: None,
+            style: Some("natural".to_string()),
+            user: None,
+            cfg_scale: Some(7.0),
+            sample_method: Some(SamplingMethod::EulerA),
+            steps: Some(20),
+            height: Some(512),
+            width: Some(512),
+            control_strength: Some(0.9),
+            seed: Some(42),
+        }
     }
 }
 
@@ -477,6 +547,23 @@ impl fmt::Display for SamplingMethod {
         }
     }
 }
+impl From<&str> for SamplingMethod {
+    fn from(s: &str) -> Self {
+        match s {
+            "euler" => SamplingMethod::Euler,
+            "euler_a" => SamplingMethod::EulerA,
+            "heun" => SamplingMethod::Heun,
+            "dpm2" => SamplingMethod::Dpm2,
+            "dpm++2s_a" => SamplingMethod::DpmPlusPlus2sA,
+            "dpm++2m" => SamplingMethod::DpmPlusPlus2m,
+            "dpm++2mv2" => SamplingMethod::DpmPlusPlus2mv2,
+            "ipndm" => SamplingMethod::Ipndm,
+            "ipndm_v" => SamplingMethod::IpndmV,
+            "lcm" => SamplingMethod::Lcm,
+            _ => SamplingMethod::EulerA,
+        }
+    }
+}
 
 #[test]
 fn test_serialize_image_create_request() {
@@ -487,7 +574,7 @@ fn test_serialize_image_create_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"prompt":"This is a prompt","negative_prompt":"This is the negative prompt.","model":"test-model-name","n":1,"response_format":"url","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512}"#
+            r#"{"prompt":"This is a prompt","negative_prompt":"This is the negative prompt.","model":"test-model-name","n":1,"quality":"standard","response_format":"url","style":"natural","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42}"#
         );
     }
 
@@ -504,7 +591,7 @@ fn test_serialize_image_create_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"prompt":"This is a prompt","model":"test-model-name","n":2,"response_format":"b64_json","style":"vivid","user":"user","cfg_scale":1.0,"sample_method":"euler","steps":4,"height":512,"width":512}"#
+            r#"{"prompt":"This is a prompt","model":"test-model-name","n":2,"quality":"standard","response_format":"b64_json","style":"vivid","user":"user","cfg_scale":1.0,"sample_method":"euler","steps":4,"height":512,"width":512,"control_strength":0.9,"seed":42}"#
         );
     }
 }
@@ -574,12 +661,9 @@ impl ImageEditRequestBuilder {
     pub fn new(model: impl Into<String>, image: FileObject, prompt: impl Into<String>) -> Self {
         Self {
             req: ImageEditRequest {
+                model: model.into(),
                 image,
                 prompt: prompt.into(),
-                mask: None,
-                model: model.into(),
-                n: Some(1),
-                response_format: Some(ResponseFormat::Url),
                 ..Default::default()
             },
         }
@@ -615,6 +699,49 @@ impl ImageEditRequestBuilder {
         self
     }
 
+    /// Set the unconditional guidance scale. This param is only supported for `stable-diffusion.cpp`.
+    pub fn with_cfg_scale(mut self, cfg_scale: f32) -> Self {
+        self.req.cfg_scale = Some(cfg_scale);
+        self
+    }
+
+    /// Set the sampling method. This param is only supported for `stable-diffusion.cpp`.
+    pub fn with_sample_method(mut self, sample_method: SamplingMethod) -> Self {
+        self.req.sample_method = Some(sample_method);
+        self
+    }
+
+    /// Set the number of sample steps. This param is only supported for `stable-diffusion.cpp`.
+    pub fn with_steps(mut self, steps: usize) -> Self {
+        self.req.steps = Some(steps);
+        self
+    }
+
+    /// Set the image size.
+    pub fn with_image_size(mut self, height: usize, width: usize) -> Self {
+        self.req.height = Some(height);
+        self.req.width = Some(width);
+        self
+    }
+
+    /// Set the strength to apply Control Net. This param is only supported for `stable-diffusion.cpp`.
+    pub fn with_control_strength(mut self, control_strength: f32) -> Self {
+        self.req.control_strength = Some(control_strength);
+        self
+    }
+
+    /// Set the RNG seed. Negative value means to use random seed. This param is only supported for `stable-diffusion.cpp`.
+    pub fn with_seed(mut self, seed: i32) -> Self {
+        self.req.seed = Some(seed);
+        self
+    }
+
+    /// Set the strength for noising/unnoising. This param is only supported for `stable-diffusion.cpp`.
+    pub fn with_strength(mut self, strength: f32) -> Self {
+        self.req.strength = Some(strength);
+        self
+    }
+
     /// Build the request.
     pub fn build(self) -> ImageEditRequest {
         self.req
@@ -622,7 +749,7 @@ impl ImageEditRequestBuilder {
 }
 
 /// Request to create an edited or extended image given an original image and a prompt.
-#[derive(Debug, Serialize, Default)]
+#[derive(Debug, Serialize)]
 pub struct ImageEditRequest {
     /// The image to edit. If mask is not provided, image must have transparency, which will be used as the mask.
     pub image: FileObject,
@@ -645,6 +772,31 @@ pub struct ImageEditRequest {
     /// A unique identifier representing your end-user, which can help monitor and detect abuse.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user: Option<String>,
+
+    /// Unconditional guidance scale. Defaults to 7.0. This param is only supported for `stable-diffusion.cpp`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cfg_scale: Option<f32>,
+    /// Sampling method. Defaults to "euler_a". This param is only supported for `stable-diffusion.cpp`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sample_method: Option<SamplingMethod>,
+    /// Number of sample steps. Defaults to 20. This param is only supported for `stable-diffusion.cpp`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub steps: Option<usize>,
+    /// Image height, in pixel space. Defaults to 512. If `size` is provided, this field will be ignored.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub height: Option<usize>,
+    /// Image width, in pixel space. Defaults to 512. If `size` is provided, this field will be ignored.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub width: Option<usize>,
+    /// strength to apply Control Net. Defaults to 0.9. This param is only supported for `stable-diffusion.cpp`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub control_strength: Option<f32>,
+    /// RNG seed. Negative value means to use random seed. Defaults to 42. This param is only supported for `stable-diffusion.cpp`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub seed: Option<i32>,
+    /// Strength for noising/unnoising. Defaults to 0.75. This param is only supported for `stable-diffusion.cpp`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub strength: Option<f32>,
 }
 impl<'de> Deserialize<'de> for ImageEditRequest {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -660,6 +812,14 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
             Size,
             ResponseFormat,
             User,
+            CfgScale,
+            SampleMethod,
+            Steps,
+            Height,
+            Width,
+            ControlStrength,
+            Seed,
+            Strength,
         }
 
         impl<'de> Deserialize<'de> for Field {
@@ -669,7 +829,7 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
             {
                 struct FieldVisitor;
 
-                impl<'de> Visitor<'de> for FieldVisitor {
+                impl Visitor<'_> for FieldVisitor {
                     type Value = Field;
 
                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -689,6 +849,14 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                             "size" => Ok(Field::Size),
                             "response_format" => Ok(Field::ResponseFormat),
                             "user" => Ok(Field::User),
+                            "cfg_scale" => Ok(Field::CfgScale),
+                            "sample_method" => Ok(Field::SampleMethod),
+                            "steps" => Ok(Field::Steps),
+                            "height" => Ok(Field::Height),
+                            "width" => Ok(Field::Width),
+                            "control_strength" => Ok(Field::ControlStrength),
+                            "seed" => Ok(Field::Seed),
+                            "strength" => Ok(Field::Strength),
                             _ => Err(de::Error::unknown_field(value, FIELDS)),
                         }
                     }
@@ -716,9 +884,18 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                 let mut mask = None;
                 let mut model = None;
                 let mut n = None;
-                let mut size = None;
+                let mut size: Option<String> = None;
                 let mut response_format = None;
                 let mut user = None;
+                let mut cfg_scale = None;
+                let mut sample_method = None;
+                let mut steps = None;
+                let mut height = None;
+                let mut width = None;
+                let mut control_strength = None;
+                let mut seed = None;
+                let mut strength = None;
+
                 while let Some(key) = map.next_key()? {
                     match key {
                         Field::Image => {
@@ -769,17 +946,125 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                             }
                             user = Some(map.next_value()?);
                         }
+                        Field::CfgScale => {
+                            if cfg_scale.is_some() {
+                                return Err(de::Error::duplicate_field("cfg_scale"));
+                            }
+                            cfg_scale = Some(map.next_value()?);
+                        }
+                        Field::SampleMethod => {
+                            if sample_method.is_some() {
+                                return Err(de::Error::duplicate_field("sample_method"));
+                            }
+                            sample_method = Some(map.next_value()?);
+                        }
+                        Field::Steps => {
+                            if steps.is_some() {
+                                return Err(de::Error::duplicate_field("steps"));
+                            }
+                            steps = Some(map.next_value()?);
+                        }
+                        Field::Height => {
+                            if height.is_some() {
+                                return Err(de::Error::duplicate_field("height"));
+                            }
+                            height = Some(map.next_value()?);
+                        }
+                        Field::Width => {
+                            if width.is_some() {
+                                return Err(de::Error::duplicate_field("width"));
+                            }
+                            width = Some(map.next_value()?);
+                        }
+                        Field::ControlStrength => {
+                            if control_strength.is_some() {
+                                return Err(de::Error::duplicate_field("control_strength"));
+                            }
+                            control_strength = Some(map.next_value()?);
+                        }
+                        Field::Seed => {
+                            if seed.is_some() {
+                                return Err(de::Error::duplicate_field("seed"));
+                            }
+                            seed = Some(map.next_value()?);
+                        }
+                        Field::Strength => {
+                            if strength.is_some() {
+                                return Err(de::Error::duplicate_field("strength"));
+                            }
+                            strength = Some(map.next_value()?);
+                        }
                     }
                 }
+
+                if n.is_none() {
+                    n = Some(1);
+                }
+
+                if response_format.is_none() {
+                    response_format = Some(ResponseFormat::Url);
+                }
+
+                if cfg_scale.is_none() {
+                    cfg_scale = Some(7.0);
+                }
+
+                if sample_method.is_none() {
+                    sample_method = Some(SamplingMethod::EulerA);
+                }
+
+                if steps.is_none() {
+                    steps = Some(20);
+                }
+
+                if control_strength.is_none() {
+                    control_strength = Some(0.9);
+                }
+
+                if seed.is_none() {
+                    seed = Some(42);
+                }
+
+                if strength.is_none() {
+                    strength = Some(0.75);
+                }
+
+                match &size {
+                    Some(size) => {
+                        let parts: Vec<&str> = size.split('x').collect();
+                        if parts.len() != 2 {
+                            return Err(de::Error::custom("invalid size format"));
+                        }
+                        height = Some(parts[0].parse().unwrap());
+                        width = Some(parts[1].parse().unwrap());
+                    }
+                    None => {
+                        if height.is_none() {
+                            height = Some(512);
+                        }
+                        if width.is_none() {
+                            width = Some(512);
+                        }
+                    }
+                }
+
                 Ok(ImageEditRequest {
                     image: image.ok_or_else(|| de::Error::missing_field("image"))?,
                     prompt: prompt.ok_or_else(|| de::Error::missing_field("prompt"))?,
                     mask,
                     model: model.ok_or_else(|| de::Error::missing_field("model"))?,
-                    n: n.unwrap_or(Some(1)),
+                    n,
                     size,
-                    response_format: response_format.unwrap_or(Some(ResponseFormat::Url)),
+                    response_format,
                     user,
+                    cfg_scale,
+                    sample_method,
+                    steps,
+                    height,
+                    width,
+                    control_strength,
+                    seed,
+                    strength,
                 })
             }
         }
@@ -793,8 +1078,38 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
             "size",
             "response_format",
             "user",
+            "cfg_scale",
+            "sample_method",
+            "steps",
+            "height",
+            "width",
+            "control_strength",
+            "seed",
+            "strength",
         ];
         deserializer.deserialize_struct("ImageEditRequest", FIELDS, ImageEditRequestVisitor)
+    }
+}
+impl Default for ImageEditRequest {
+    fn default() -> Self {
+        Self {
+            image: FileObject::default(),
+            prompt: "".to_string(),
+            mask: None,
+            model: "".to_string(),
+            n: Some(1),
+            response_format: Some(ResponseFormat::Url),
+            size: None,
+            user: None,
+            cfg_scale: Some(7.0),
+            sample_method: Some(SamplingMethod::EulerA),
+            steps: Some(20),
+            height: Some(512),
+            width: Some(512),
+            control_strength: Some(0.9),
+            seed: Some(42),
+            strength: Some(0.75),
+        }
     }
 }
 
@@ -817,7 +1132,7 @@ fn test_serialize_image_edit_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","model":"test-model-name","n":1,"response_format":"url"}"#
+            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","model":"test-model-name","n":1,"response_format":"url","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42,"strength":0.75}"#
         );
     }
 
@@ -842,7 +1157,7 @@ fn test_serialize_image_edit_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","model":"test-model-name","n":2,"size":"256x256","response_format":"b64_json","user":"user"}"#
+            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","model":"test-model-name","n":2,"size":"256x256","response_format":"b64_json","user":"user","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42,"strength":0.75}"#
         );
     }
 }
@@ -925,7 +1240,7 @@ impl<'de> Deserialize<'de> for ImageVariationRequest {
             {
                 struct FieldVisitor;
 
-                impl<'de> Visitor<'de> for FieldVisitor {
+                impl Visitor<'_> for FieldVisitor {
                     type Value = Field;
 
                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

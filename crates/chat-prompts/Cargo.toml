@@ -1,6 +1,6 @@
 [package]
 name = "chat-prompts"
-version = "0.16.1"
+version = "0.17.0"
 edition = "2021"
 readme = "README.md"
 repository = "https://github.com/LlamaEdge/LlamaEdge"
@@ -18,3 +18,4 @@ base64.workspace = true
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tera = "1.12"
