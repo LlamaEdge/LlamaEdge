@@ -4,7 +4,7 @@ use crate::{
     error::{BackendError, LlamaCoreError},
     running_mode,
     utils::{get_output_buffer, get_token_info_by_graph},
-    Graph, RunningMode, CHAT_GRAPHS, EMBEDDING_GRAPHS, OUTPUT_TENSOR,
+    Graph, GgmlMetadata, RunningMode, CHAT_GRAPHS, EMBEDDING_GRAPHS, OUTPUT_TENSOR,
 };
 use endpoints::{
     common::Usage,
@@ -126,7 +126,7 @@ pub async fn embeddings(
 }
 
 fn compute_embeddings(
-    graph: &mut Graph,
+    graph: &mut Graph<GgmlMetadata>,
     input: &[String],
 ) -> Result<(Vec<EmbeddingObject>, Usage), LlamaCoreError> {
     #[cfg(feature = "logging")]

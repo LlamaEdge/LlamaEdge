@@ -6,7 +6,7 @@ use crate::{
         gen_chat_id, get_output_buffer, get_output_buffer_single, get_token_info_by_graph,
         get_token_info_by_graph_name, set_tensor_data_u8,
     },
-    Graph, Metadata, RunningMode, CACHED_UTF8_ENCODINGS, CHAT_GRAPHS, OUTPUT_TENSOR,
+    GgmlMetadata, Graph, RunningMode, CACHED_UTF8_ENCODINGS, CHAT_GRAPHS, OUTPUT_TENSOR,
 };
 use chat_prompts::{
     chat::{BuildChatPrompt, ChatPrompt},
@@ -196,7 +196,7 @@ async fn chat_stream(
 }
 
 fn chat_stream_by_graph(
-    graph: &mut Graph,
+    graph: &mut Graph<GgmlMetadata>,
     id: impl Into<String>,
     include_usage: bool,
 ) -> Result<ChatStream, LlamaCoreError> {
@@ -734,7 +734,7 @@ fn compute(
 }
 
 fn compute_by_graph(
-    graph: &mut Graph,
+    graph: &mut Graph<GgmlMetadata>,
     id: impl Into<String>,
     tool_use: bool,
 ) -> Result<ChatCompletionObject, LlamaCoreError> {
@@ -1712,7 +1712,7 @@ fn parse_tool_calls(
 
 async fn check_model_metadata(
     chat_request: &ChatCompletionRequest,
-) -> Result<Metadata, LlamaCoreError> {
+) -> Result<GgmlMetadata, LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Check model metadata.");
 
@@ -1811,7 +1811,7 @@ async fn check_model_metadata(
 
 async fn update_n_predict(
     chat_request: &ChatCompletionRequest,
-    metadata: &mut Metadata,
+    metadata: &mut GgmlMetadata,
     available_completion_tokens: u64,
 ) -> Result<(), LlamaCoreError> {
     let mut should_update = false;
@@ -2361,7 +2361,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
 // }
 
 /// Get a copy of the metadata of the model.
-fn get_model_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCoreError> {
+fn get_model_metadata(model_name: Option<&String>) -> Result<GgmlMetadata, LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Get the model metadata.");
 
@@ -2420,7 +2420,7 @@ fn get_model_metadata(model_name: Option<&String>) -> Result<Metadata, LlamaCore
 
 fn update_model_metadata(
     model_name: Option<&String>,
-    metadata: &Metadata,
+    metadata: &GgmlMetadata,
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Update the model metadata.");

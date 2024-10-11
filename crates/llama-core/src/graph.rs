@@ -1,6 +1,6 @@
 //! Define Graph and GraphBuilder APIs for creating a new computation graph.
 
-use crate::{error::LlamaCoreError, utils::set_tensor_data_u8, Metadata};
+use crate::{error::LlamaCoreError, utils::set_tensor_data_u8, BaseMetadata};
 use chat_prompts::PromptTemplateType;
 use wasmedge_wasi_nn::{
     Error as WasiNnError, Graph as WasiNnGraph, GraphExecutionContext, TensorType,
@@ -8,11 +8,11 @@ use wasmedge_wasi_nn::{
 
 /// Builder for creating a new computation graph.
 #[derive(Debug)]
-pub struct GraphBuilder {
-    metadata: Option<Metadata>,
+pub struct GraphBuilder<M: BaseMetadata + serde::Serialize + Clone + Default> {
+    metadata: Option<M>,
     wasi_nn_graph_builder: wasmedge_wasi_nn::GraphBuilder,
 }
-impl GraphBuilder {
+impl<M: BaseMetadata + serde::Serialize + Clone + Default> GraphBuilder<M> {
     /// Create a new computation graph builder.
     pub fn new(ty: EngineType) -> Result<Self, LlamaCoreError> {
         let encoding = match ty {
@@ -30,7 +30,7 @@ impl GraphBuilder {
         })
     }
 
-    pub fn with_config(mut self, metadata: &Metadata) -> Result<Self, LlamaCoreError> {
+    pub fn with_config(mut self, metadata: M) -> Result<Self, LlamaCoreError> {
         let config = serde_json::to_string(&metadata).map_err(|e| {
             let err_msg = e.to_string();
 
@@ -60,7 +60,10 @@ impl GraphBuilder {
         self
     }
 
-    pub fn build_from_buffer<B>(self, bytes_array: impl AsRef<[B]>) -> Result<Graph, LlamaCoreError>
+    pub fn build_from_buffer<B>(
+        self,
+        bytes_array: impl AsRef<[B]>,
+    ) -> Result<Graph<M>, LlamaCoreError>
     where
         B: AsRef<[u8]>,
     {
@@ -106,7 +109,7 @@ impl GraphBuilder {
         })
     }
 
-    pub fn build_from_files<P>(self, files: impl AsRef<[P]>) -> Result<Graph, LlamaCoreError>
+    pub fn build_from_files<P>(self, files: impl AsRef<[P]>) -> Result<Graph<M>, LlamaCoreError>
     where
         P: AsRef<std::path::Path>,
     {
@@ -152,13 +155,13 @@ impl GraphBuilder {
         })
     }
 
-    pub fn build_from_cache(self) -> Result<Graph, LlamaCoreError> {
+    pub fn build_from_cache(self) -> Result<Graph<M>, LlamaCoreError> {
         match &self.metadata {
             Some(metadata) => {
                 // load the model
                 let graph = self
                     .wasi_nn_graph_builder
-                    .build_from_cache(&metadata.model_alias)
+                    .build_from_cache(&metadata.model_alias())
                     .map_err(|e| {
                         let err_msg = e.to_string();
 
@@ -212,15 +215,15 @@ impl GraphBuilder {
 
 /// Wrapper of the `wasmedge_wasi_nn::Graph` struct
 #[derive(Debug)]
-pub struct Graph {
+pub struct Graph<M: BaseMetadata + serde::Serialize + Clone + Default> {
     pub created: std::time::Duration,
-    pub metadata: Metadata,
+    pub metadata: M,
     _graph: WasiNnGraph,
     context: GraphExecutionContext,
 }
-impl Graph {
+impl<M: BaseMetadata + serde::Serialize + Clone + Default> Graph<M> {
     /// Create a new computation graph from the given metadata.
-    pub fn new(metadata: &Metadata) -> Result<Self, LlamaCoreError> {
+    pub fn new(metadata: M) -> Result<Self, LlamaCoreError> {
         let config = serde_json::to_string(&metadata).map_err(|e| {
             let err_msg = e.to_string();
 
@@ -236,7 +239,7 @@ impl Graph {
             wasmedge_wasi_nn::ExecutionTarget::AUTO,
         )
         .config(config)
-        .build_from_cache(&metadata.model_alias)
+        .build_from_cache(&metadata.model_alias())
         .map_err(|e| {
             let err_msg = e.to_string();
 
@@ -277,17 +280,17 @@ impl Graph {
 
     /// Get the name of the model
     pub fn name(&self) -> &str {
-        &self.metadata.model_name
+        &self.metadata.model_name()
     }
 
     /// Get the alias of the model
     pub fn alias(&self) -> &str {
-        &self.metadata.model_alias
+        &self.metadata.model_alias()
     }
 
     /// Get the prompt template type
     pub fn prompt_template(&self) -> PromptTemplateType {
-        self.metadata.prompt_template
+        self.metadata.prompt_template()
     }
 
     /// Update metadata

@@ -32,9 +32,11 @@ use utils::get_output_buffer;
 use wasmedge_stable_diffusion::*;
 
 // key: model_name, value: Graph
-pub(crate) static CHAT_GRAPHS: OnceCell<Mutex<HashMap<String, Graph>>> = OnceCell::new();
+pub(crate) static CHAT_GRAPHS: OnceCell<Mutex<HashMap<String, Graph<GgmlMetadata>>>> =
+    OnceCell::new();
 // key: model_name, value: Graph
-pub(crate) static EMBEDDING_GRAPHS: OnceCell<Mutex<HashMap<String, Graph>>> = OnceCell::new();
+pub(crate) static EMBEDDING_GRAPHS: OnceCell<Mutex<HashMap<String, Graph<GgmlMetadata>>>> =
+    OnceCell::new();
 // cache bytes for decoding utf8
 pub(crate) static CACHED_UTF8_ENCODINGS: OnceCell<Mutex<Vec<u8>>> = OnceCell::new();
 // running mode
@@ -44,17 +46,23 @@ pub(crate) static SD_TEXT_TO_IMAGE: OnceCell<Mutex<TextToImage>> = OnceCell::new
 // stable diffusion context for the image-to-image task
 pub(crate) static SD_IMAGE_TO_IMAGE: OnceCell<Mutex<ImageToImage>> = OnceCell::new();
 // context for the audio task
-pub(crate) static AUDIO_GRAPH: OnceCell<Mutex<Graph>> = OnceCell::new();
+pub(crate) static AUDIO_GRAPH: OnceCell<Mutex<Graph<WhisperMetadata>>> = OnceCell::new();
 // context for the piper task
-pub(crate) static PIPER_GRAPH: OnceCell<Mutex<Graph>> = OnceCell::new();
+pub(crate) static PIPER_GRAPH: OnceCell<Mutex<Graph<GgmlMetadata>>> = OnceCell::new();
 
 pub(crate) const MAX_BUFFER_SIZE: usize = 2usize.pow(14) * 15 + 128;
 pub(crate) const OUTPUT_TENSOR: usize = 0;
 const PLUGIN_VERSION: usize = 1;
 
+pub trait BaseMetadata {
+    fn model_name(&self) -> &str;
+    fn model_alias(&self) -> &str;
+    fn prompt_template(&self) -> PromptTemplateType;
+}
+
 /// Model metadata
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Metadata {
+pub struct GgmlMetadata {
     // this field not defined for the beckend plugin
     #[serde(skip_serializing)]
     pub model_name: String,
@@ -157,7 +165,7 @@ pub struct Metadata {
     /// Output result in a JSON file. Defaults to false.
     pub output_json: bool,
 }
-impl Default for Metadata {
+impl Default for GgmlMetadata {
     fn default() -> Self {
         Self {
             model_name: String::new(),
@@ -202,15 +210,28 @@ impl Default for Metadata {
         }
     }
 }
+impl BaseMetadata for GgmlMetadata {
+    fn model_name(&self) -> &str {
+        &self.model_name
+    }
+
+    fn model_alias(&self) -> &str {
+        &self.model_alias
+    }
+
+    fn prompt_template(&self) -> PromptTemplateType {
+        self.prompt_template
+    }
+}
 
 /// Builder for the `Metadata` struct
 #[derive(Debug)]
-pub struct MetadataBuilder {
-    metadata: Metadata,
+pub struct GgmlMetadataBuilder {
+    metadata: GgmlMetadata,
 }
-impl MetadataBuilder {
+impl GgmlMetadataBuilder {
     pub fn new<S: Into<String>>(model_name: S, model_alias: S, pt: PromptTemplateType) -> Self {
-        let metadata = Metadata {
+        let metadata = GgmlMetadata {
             model_name: model_name.into(),
             model_alias: model_alias.into(),
             prompt_template: pt,
@@ -335,24 +356,67 @@ impl MetadataBuilder {
         self
     }
 
-    pub fn build(self) -> Metadata {
+    pub fn build(self) -> GgmlMetadata {
         self.metadata
     }
 }
 
-/// Builder for creating an audio metadata
-#[derive(Debug)]
-pub struct WhisperMetadataBuilder {
-    metadata: Metadata,
+/// Metadata for whisper model
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct WhisperMetadata {
+    // this field not defined for the beckend plugin
+    #[serde(skip_serializing)]
+    pub model_name: String,
+    // this field not defined for the beckend plugin
+    #[serde(skip_serializing)]
+    pub model_alias: String,
+
+    /// Enable debug mode. Defaults to false.
+    pub debug_mode: bool,
+    /// Number of threads to use during computation. Defaults to 4.
+    pub threads: u64,
+    /// Translate from source language to english. Defaults to false.
+    pub translate: bool,
+    /// The language of the input audio. `auto` for auto-detection. Defaults to `en`.
+    ///
+    /// Supplying the input language in [ISO-639-1](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) format will improve accuracy and latency.
+    pub language: String,
+    /// Number of processors to use during computation. Defaults to 1.
+    pub processors: u32,
+    /// Time offset in milliseconds. Defaults to 0.
+    pub offset_t: u32,
+    /// Duration of audio to process in milliseconds. Defaults to 0.
+    pub duration: u32,
+    /// Maximum number of text context tokens to store. Defaults to -1.
+    pub max_context: i32,
+    /// Maximum segment length in characters. Defaults to 0.
+    pub max_len: u32,
+    /// Split on word rather than on token. Defaults to false.
+    pub split_on_word: bool,
+    /// Output result in a text file. Defaults to false.
+    pub output_txt: bool,
+    /// Output result in a vtt file. Defaults to false.
+    pub output_vtt: bool,
+    /// Output result in a srt file. Defaults to false.
+    pub output_srt: bool,
+    /// Output result in a lrc file. Defaults to false.
+    pub output_lrc: bool,
+    /// Output result in a CSV file. Defaults to false.
+    pub output_csv: bool,
+    /// Output result in a JSON file. Defaults to false.
+    pub output_json: bool,
+    /// The sampling temperature, between 0 and 1. Defaults to 0.00.
+    pub temperature: f64,
 }
-impl WhisperMetadataBuilder {
-    pub fn new<S: Into<String>>(model_name: S, model_alias: S) -> Self {
-        let metadata = Metadata {
-            model_name: model_name.into(),
-            model_alias: model_alias.into(),
-            prompt_template: PromptTemplateType::Null,
+impl Default for WhisperMetadata {
+    fn default() -> Self {
+        Self {
+            model_name: String::new(),
+            model_alias: String::new(),
+            debug_mode: false,
             threads: 4,
             translate: false,
+            language: "en".to_string(),
             processors: 1,
             offset_t: 0,
             duration: 0,
@@ -365,19 +429,47 @@ impl WhisperMetadataBuilder {
             output_lrc: false,
             output_csv: false,
             output_json: false,
+            temperature: 0.0,
+        }
+    }
+}
+impl BaseMetadata for WhisperMetadata {
+    fn model_name(&self) -> &str {
+        &self.model_name
+    }
+
+    fn model_alias(&self) -> &str {
+        &self.model_alias
+    }
+
+    fn prompt_template(&self) -> PromptTemplateType {
+        PromptTemplateType::Null
+    }
+}
+
+/// Builder for creating an audio metadata
+#[derive(Debug)]
+pub struct WhisperMetadataBuilder {
+    metadata: WhisperMetadata,
+}
+impl WhisperMetadataBuilder {
+    pub fn new<S: Into<String>>(model_name: S, model_alias: S) -> Self {
+        let metadata = WhisperMetadata {
+            model_name: model_name.into(),
+            model_alias: model_alias.into(),
             ..Default::default()
         };
 
         Self { metadata }
     }
 
-    pub fn enable_plugin_log(mut self, enable: bool) -> Self {
-        self.metadata.log_enable = enable;
+    pub fn enable_debug(mut self, enable: bool) -> Self {
+        self.metadata.debug_mode = enable;
         self
     }
 
-    pub fn enable_debug_log(mut self, enable: bool) -> Self {
-        self.metadata.debug_log = enable;
+    pub fn with_threads(mut self, threads: u64) -> Self {
+        self.metadata.threads = threads;
         self
     }
 
@@ -386,7 +478,7 @@ impl WhisperMetadataBuilder {
         self
     }
 
-    pub fn target_language(mut self, language: Option<String>) -> Self {
+    pub fn with_language(mut self, language: String) -> Self {
         self.metadata.language = language;
         self
     }
@@ -451,15 +543,20 @@ impl WhisperMetadataBuilder {
         self
     }
 
-    pub fn build(self) -> Metadata {
+    pub fn with_temperature(mut self, temperature: f64) -> Self {
+        self.metadata.temperature = temperature;
+        self
+    }
+
+    pub fn build(self) -> WhisperMetadata {
         self.metadata
     }
 }
 
 /// Initialize the core context
 pub fn init_core_context(
-    metadata_for_chats: Option<&[Metadata]>,
-    metadata_for_embeddings: Option<&[Metadata]>,
+    metadata_for_chats: Option<&[GgmlMetadata]>,
+    metadata_for_embeddings: Option<&[GgmlMetadata]>,
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Initializing the core context");
@@ -478,7 +575,7 @@ pub fn init_core_context(
     if let Some(metadata_chats) = metadata_for_chats {
         let mut chat_graphs = HashMap::new();
         for metadata in metadata_chats {
-            let graph = Graph::new(metadata)?;
+            let graph = Graph::new(metadata.clone())?;
 
             chat_graphs.insert(graph.name().to_string(), graph);
         }
@@ -497,7 +594,7 @@ pub fn init_core_context(
     if let Some(metadata_embeddings) = metadata_for_embeddings {
         let mut embedding_graphs = HashMap::new();
         for metadata in metadata_embeddings {
-            let graph = Graph::new(metadata)?;
+            let graph = Graph::new(metadata.clone())?;
 
             embedding_graphs.insert(graph.name().to_string(), graph);
         }
@@ -537,8 +634,8 @@ pub fn init_core_context(
 
 /// Initialize the core context for RAG scenarios.
 pub fn init_rag_core_context(
-    metadata_for_chats: &[Metadata],
-    metadata_for_embeddings: &[Metadata],
+    metadata_for_chats: &[GgmlMetadata],
+    metadata_for_embeddings: &[GgmlMetadata],
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Initializing the core context for RAG scenarios");
@@ -554,7 +651,7 @@ pub fn init_rag_core_context(
     }
     let mut chat_graphs = HashMap::new();
     for metadata in metadata_for_chats {
-        let graph = Graph::new(metadata)?;
+        let graph = Graph::new(metadata.clone())?;
 
         chat_graphs.insert(graph.name().to_string(), graph);
     }
@@ -578,7 +675,7 @@ pub fn init_rag_core_context(
     }
     let mut embedding_graphs = HashMap::new();
     for metadata in metadata_for_embeddings {
-        let graph = Graph::new(metadata)?;
+        let graph = Graph::new(metadata.clone())?;
 
         embedding_graphs.insert(graph.name().to_string(), graph);
     }
@@ -697,7 +794,9 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
     }
 }
 
-fn get_plugin_info_by_graph(graph: &Graph) -> Result<PluginInfo, LlamaCoreError> {
+fn get_plugin_info_by_graph<M: BaseMetadata + serde::Serialize + Clone + Default>(
+    graph: &Graph<M>,
+) -> Result<PluginInfo, LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Getting the plugin info by the graph named {}", graph.name());
 
@@ -1171,7 +1270,7 @@ pub enum SDContextType {
 
 /// Initialize the whisper context
 pub fn init_whisper_context(
-    whisper_metadata: &Metadata,
+    whisper_metadata: &WhisperMetadata,
     model_file: impl AsRef<Path>,
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
@@ -1179,7 +1278,7 @@ pub fn init_whisper_context(
 
     // create and initialize the audio context
     let graph = GraphBuilder::new(EngineType::Whisper)?
-        .with_config(whisper_metadata)?
+        .with_config(whisper_metadata.clone())?
         .use_cpu()
         .build_from_files([model_file.as_ref()])?;
 

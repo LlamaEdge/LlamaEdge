@@ -63,12 +63,14 @@ pub async fn audio_transcriptions(
         }
 
         // check `language` field
-        if request.language != metadata.language {
-            // update the metadata
-            metadata.language = request.language.clone();
+        if let Some(language) = &request.language {
+            if *language != metadata.language {
+                // update the metadata
+                metadata.language = language.clone();
 
-            if !should_update {
-                should_update = true;
+                if !should_update {
+                    should_update = true;
+                }
             }
         }
 
@@ -365,12 +367,14 @@ pub async fn audio_translations(
         }
 
         // check `language` field
-        if request.language != metadata.language {
-            // update the metadata
-            metadata.language = request.language.clone();
+        if let Some(language) = &request.language {
+            if *language != metadata.language {
+                // update the metadata
+                metadata.language = language.clone();
 
-            if !should_update {
-                should_update = true;
+                if !should_update {
+                    should_update = true;
+                }
             }
         }
 
