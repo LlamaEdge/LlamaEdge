@@ -60,7 +60,7 @@ pub trait BaseMetadata {
     fn prompt_template(&self) -> PromptTemplateType;
 }
 
-/// Model metadata
+/// Metadata for chat and embeddings models
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GgmlMetadata {
     // this field not defined for the beckend plugin
@@ -135,35 +135,6 @@ pub struct GgmlMetadata {
     /// JSON schema to constrain generations (<https://json-schema.org/>), e.g. `{}` for any JSON object. For schemas w/ external $refs, use --grammar + example/json_schema_to_grammar.py instead.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub json_schema: Option<String>,
-
-    // * parameters for whisper
-    pub translate: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub language: Option<String>,
-    /// Number of processors to use during computation. Defaults to 1.
-    pub processors: u32,
-    /// Time offset in milliseconds. Defaults to 0.
-    pub offset_t: u32,
-    /// Duration of audio to process in milliseconds. Defaults to 0.
-    pub duration: u32,
-    /// Maximum number of text context tokens to store. Defaults to -1.
-    pub max_context: i32,
-    /// Maximum segment length in characters. Defaults to 0.
-    pub max_len: u32,
-    /// Split on word rather than on token. Defaults to false.
-    pub split_on_word: bool,
-    /// Output result in a text file. Defaults to false.
-    pub output_txt: bool,
-    /// Output result in a vtt file. Defaults to false.
-    pub output_vtt: bool,
-    /// Output result in a srt file. Defaults to false.
-    pub output_srt: bool,
-    /// Output result in a lrc file. Defaults to false.
-    pub output_lrc: bool,
-    /// Output result in a CSV file. Defaults to false.
-    pub output_csv: bool,
-    /// Output result in a JSON file. Defaults to false.
-    pub output_json: bool,
 }
 impl Default for GgmlMetadata {
     fn default() -> Self {
@@ -193,20 +164,6 @@ impl Default for GgmlMetadata {
             frequency_penalty: 0.0,
             grammar: String::new(),
             json_schema: None,
-            translate: false,
-            language: None,
-            processors: 1,
-            offset_t: 0,
-            duration: 0,
-            max_context: -1,
-            max_len: 0,
-            split_on_word: false,
-            output_txt: false,
-            output_vtt: false,
-            output_srt: false,
-            output_lrc: false,
-            output_csv: false,
-            output_json: false,
         }
     }
 }
@@ -224,7 +181,7 @@ impl BaseMetadata for GgmlMetadata {
     }
 }
 
-/// Builder for the `Metadata` struct
+/// Builder for creating a ggml metadata
 #[derive(Debug)]
 pub struct GgmlMetadataBuilder {
     metadata: GgmlMetadata,
