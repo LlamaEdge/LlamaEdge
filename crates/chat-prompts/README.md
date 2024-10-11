@@ -131,6 +131,84 @@ The available prompt templates are listed below:
 
   - Example: [second-state/E5-Mistral-7B-Instruct-Embedding-GGUF](https://huggingface.co/second-state/E5-Mistral-7B-Instruct-Embedding-GGUF)
 
+- `functionary-31`
+
+  - Prompt string
+
+    ```text
+    <|start_header_id|>system<|end_header_id|>
+
+    Environment: ipython
+
+    Cutting Knowledge Date: December 2023
+
+
+    You have access to the following functions:
+
+    Use the function 'get_current_weather' to 'Get the current weather'
+    {"name":"get_current_weather","description":"Get the current weather","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"}},"required":["location"]}}
+
+
+    Think very carefully before calling functions.
+    If a you choose to call a function ONLY reply in the following format:
+    <{start_tag}={function_name}>{parameters}{end_tag}
+    where
+
+    start_tag => `<function`
+    parameters => a JSON dict with the function argument name as key and function argument value as value.
+    end_tag => `</function>`
+
+    Here is an example,
+    <function=example_function_name>{"example_name": "example_value"}</function>
+
+    Reminder:
+    - If looking for real time information use relevant functions before falling back to brave_search
+    - Function calls MUST follow the specified format, start with <function= and end with </function>
+    - Required parameters MUST be specified
+    - Only call one function at a time
+    - Put the entire function call reply on one line
+
+    <|eot_id|><|start_header_id|>user<|end_header_id|>
+
+    What is the weather like in Beijing today?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+    ```
+
+  - Example: [second-state/functionary-small-v3.1-GGUF](https://huggingface.co/second-state/functionary-small-v3.1-GGUF)
+
+- `functionary-32`
+
+  - Prompt string
+
+    ```text
+    <|start_header_id|>system<|end_header_id|>
+
+    You are capable of executing available function(s) if required.
+    Only execute function(s) when absolutely necessary.
+    Ask for the required input to:recipient==all
+    Use JSON for function arguments.
+    Respond in this format:
+    >>>${recipient}
+    ${content}
+    Available functions:
+    // Supported function definitions that should be called when necessary.
+    namespace functions {
+
+        // Get the current weather
+        type get_current_weather = (_: {
+
+            // The city and state, e.g. San Francisco, CA
+            location: string,
+
+        }) => any;
+
+
+    } // namespace functions<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+    What is the weather like in Beijing today?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+    ```
+
+  - Example: [second-state/functionary-small-v3.2-GGUF](https://huggingface.co/second-state/functionary-small-v3.2-GGUF)
+
 - `gemma-instruct`
   - Prompt string
 
