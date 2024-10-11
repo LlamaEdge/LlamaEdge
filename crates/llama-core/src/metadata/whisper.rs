@@ -17,8 +17,13 @@ impl WhisperMetadataBuilder {
         Self { metadata }
     }
 
-    pub fn enable_debug(mut self, enable: bool) -> Self {
-        self.metadata.debug_mode = enable;
+    pub fn enable_plugin_log(mut self, enable: bool) -> Self {
+        self.metadata.log_enable = enable;
+        self
+    }
+
+    pub fn enable_debug_log(mut self, enable: bool) -> Self {
+        self.metadata.debug_log = enable;
         self
     }
 
@@ -117,8 +122,12 @@ pub struct WhisperMetadata {
     #[serde(skip_serializing)]
     pub model_alias: String,
 
+    #[serde(rename = "enable-log")]
+    pub log_enable: bool,
     /// Enable debug mode. Defaults to false.
-    pub debug_mode: bool,
+    #[serde(rename = "enable-debug-log")]
+    pub debug_log: bool,
+
     /// Number of threads to use during computation. Defaults to 4.
     pub threads: u64,
     /// Translate from source language to english. Defaults to false.
@@ -159,7 +168,8 @@ impl Default for WhisperMetadata {
         Self {
             model_name: String::new(),
             model_alias: String::new(),
-            debug_mode: false,
+            log_enable: false,
+            debug_log: false,
             threads: 4,
             translate: false,
             language: "en".to_string(),
