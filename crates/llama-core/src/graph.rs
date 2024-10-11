@@ -161,7 +161,7 @@ impl<M: BaseMetadata + serde::Serialize + Clone + Default> GraphBuilder<M> {
                 // load the model
                 let graph = self
                     .wasi_nn_graph_builder
-                    .build_from_cache(&metadata.model_alias())
+                    .build_from_cache(metadata.model_alias())
                     .map_err(|e| {
                         let err_msg = e.to_string();
 
@@ -239,7 +239,7 @@ impl<M: BaseMetadata + serde::Serialize + Clone + Default> Graph<M> {
             wasmedge_wasi_nn::ExecutionTarget::AUTO,
         )
         .config(config)
-        .build_from_cache(&metadata.model_alias())
+        .build_from_cache(metadata.model_alias())
         .map_err(|e| {
             let err_msg = e.to_string();
 
@@ -280,12 +280,12 @@ impl<M: BaseMetadata + serde::Serialize + Clone + Default> Graph<M> {
 
     /// Get the name of the model
     pub fn name(&self) -> &str {
-        &self.metadata.model_name()
+        self.metadata.model_name()
     }
 
     /// Get the alias of the model
     pub fn alias(&self) -> &str {
-        &self.metadata.model_alias()
+        self.metadata.model_alias()
     }
 
     /// Get the prompt template type
