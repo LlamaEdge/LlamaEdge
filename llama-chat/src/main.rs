@@ -7,7 +7,7 @@ use endpoints::chat::{
     ChatCompletionRequestSampling, ChatCompletionUserMessageContent,
 };
 use futures::TryStreamExt;
-use llama_core::{init_core_context, GgmlMetadataBuilder};
+use llama_core::{init_core_context, metadata::ggml::GgmlMetadataBuilder};
 use serde::{Deserialize, Serialize};
 use std::io::{self, Write};
 
