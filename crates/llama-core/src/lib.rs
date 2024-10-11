@@ -20,7 +20,9 @@ pub mod utils;
 
 pub use error::LlamaCoreError;
 pub use graph::{EngineType, Graph, GraphBuilder};
-pub use metadata::{ggml::GgmlMetadata, whisper::WhisperMetadata, BaseMetadata};
+pub use metadata::{
+    ggml::GgmlMetadata, piper::PiperMetadata, whisper::WhisperMetadata, BaseMetadata,
+};
 
 use once_cell::sync::OnceCell;
 use std::{
@@ -48,7 +50,7 @@ pub(crate) static SD_IMAGE_TO_IMAGE: OnceCell<Mutex<ImageToImage>> = OnceCell::n
 // context for the audio task
 pub(crate) static AUDIO_GRAPH: OnceCell<Mutex<Graph<WhisperMetadata>>> = OnceCell::new();
 // context for the piper task
-pub(crate) static PIPER_GRAPH: OnceCell<Mutex<Graph<GgmlMetadata>>> = OnceCell::new();
+pub(crate) static PIPER_GRAPH: OnceCell<Mutex<Graph<PiperMetadata>>> = OnceCell::new();
 
 pub(crate) const MAX_BUFFER_SIZE: usize = 2usize.pow(14) * 15 + 128;
 pub(crate) const OUTPUT_TENSOR: usize = 0;
