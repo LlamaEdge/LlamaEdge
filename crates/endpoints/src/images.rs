@@ -108,7 +108,6 @@ pub struct ImageCreateRequest {
     /// A text description of the desired image.
     pub prompt: String,
     /// Negative prompt for the image generation.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub negative_prompt: Option<String>,
     /// Name of the model to use for image generation.
     pub model: String,
@@ -397,6 +396,10 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     }
                 }
 
+                if negative_prompt.is_none() {
+                    negative_prompt = Some("".to_string());
+                }
+
                 if n.is_none() {
                     n = Some(1);
                 }
@@ -489,7 +492,7 @@ impl Default for ImageCreateRequest {
         Self {
             prompt: "".to_string(),
             quality: Some("standard".to_string()),
-            negative_prompt: None,
+            negative_prompt: Some("".to_string()),
             model: "".to_string(),
             n: Some(1),
             response_format: Some(ResponseFormat::Url),
@@ -591,7 +594,7 @@ fn test_serialize_image_create_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"prompt":"This is a prompt","model":"test-model-name","n":2,"quality":"standard","response_format":"b64_json","style":"vivid","user":"user","cfg_scale":1.0,"sample_method":"euler","steps":4,"height":512,"width":512,"control_strength":0.9,"seed":42}"#
+            r#"{"prompt":"This is a prompt","negative_prompt":"","model":"test-model-name","n":2,"quality":"standard","response_format":"b64_json","style":"vivid","user":"user","cfg_scale":1.0,"sample_method":"euler","steps":4,"height":512,"width":512,"control_strength":0.9,"seed":42}"#
         );
     }
 }
@@ -667,6 +670,12 @@ impl ImageEditRequestBuilder {
                 ..Default::default()
             },
         }
+    }
+
+    /// Set negative prompt
+    pub fn with_negative_prompt(mut self, negative_prompt: impl Into<String>) -> Self {
+        self.req.negative_prompt = Some(negative_prompt.into());
+        self
     }
 
     /// Set an additional image whose fully transparent areas (e.g. where alpha is zero) indicate where `image` should be edited. Must have the same dimensions as `image`.
@@ -755,6 +764,8 @@ pub struct ImageEditRequest {
     pub image: FileObject,
     /// A text description of the desired image(s).
     pub prompt: String,
+    /// Negative prompt for the image generation.
+    pub negative_prompt: Option<String>,
     /// An additional image whose fully transparent areas (e.g. where alpha is zero) indicate where `image` should be edited. Must have the same dimensions as `image`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mask: Option<FileObject>,
@@ -806,6 +817,7 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
         enum Field {
             Image,
             Prompt,
+            NegativePrompt,
             Mask,
             Model,
             N,
@@ -843,6 +855,7 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                         match value {
                             "image" => Ok(Field::Image),
                             "prompt" => Ok(Field::Prompt),
+                            "negative_prompt" => Ok(Field::NegativePrompt),
                             "mask" => Ok(Field::Mask),
                             "model" => Ok(Field::Model),
                             "n" => Ok(Field::N),
@@ -881,6 +894,7 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
             {
                 let mut image = None;
                 let mut prompt = None;
+                let mut negative_prompt = None;
                 let mut mask = None;
                 let mut model = None;
                 let mut n = None;
@@ -909,6 +923,12 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                                 return Err(de::Error::duplicate_field("prompt"));
                             }
                             prompt = Some(map.next_value()?);
+                        }
+                        Field::NegativePrompt => {
+                            if negative_prompt.is_some() {
+                                return Err(de::Error::duplicate_field("negative_prompt"));
+                            }
+                            negative_prompt = Some(map.next_value()?);
                         }
                         Field::Mask => {
                             if mask.is_some() {
@@ -997,6 +1017,10 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                     }
                 }
 
+                if negative_prompt.is_none() {
+                    negative_prompt = Some("".to_string());
+                }
+
                 if n.is_none() {
                     n = Some(1);
                 }
@@ -1051,6 +1075,7 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                 Ok(ImageEditRequest {
                     image: image.ok_or_else(|| de::Error::missing_field("image"))?,
                     prompt: prompt.ok_or_else(|| de::Error::missing_field("prompt"))?,
+                    negative_prompt,
                     mask,
                     model: model.ok_or_else(|| de::Error::missing_field("model"))?,
                     n,
@@ -1072,6 +1097,7 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
         const FIELDS: &[&str] = &[
             "image",
             "prompt",
+            "negative_prompt",
             "mask",
             "model",
             "n",
@@ -1095,6 +1121,7 @@ impl Default for ImageEditRequest {
         Self {
             image: FileObject::default(),
             prompt: "".to_string(),
+            negative_prompt: Some("".to_string()),
             mask: None,
             model: "".to_string(),
             n: Some(1),
@@ -1132,7 +1159,7 @@ fn test_serialize_image_edit_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","model":"test-model-name","n":1,"response_format":"url","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42,"strength":0.75}"#
+            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","negative_prompt":"","model":"test-model-name","n":1,"response_format":"url","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42,"strength":0.75}"#
         );
     }
 
@@ -1157,7 +1184,7 @@ fn test_serialize_image_edit_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","model":"test-model-name","n":2,"size":"256x256","response_format":"b64_json","user":"user","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42,"strength":0.75}"#
+            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","negative_prompt":"","model":"test-model-name","n":2,"size":"256x256","response_format":"b64_json","user":"user","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42,"strength":0.75}"#
         );
     }
 }

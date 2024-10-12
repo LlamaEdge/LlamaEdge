@@ -2,6 +2,7 @@
 
 use crate::{
     error::{BackendError, LlamaCoreError},
+    metadata::ggml::GgmlMetadata,
     running_mode,
     utils::{get_output_buffer, get_token_info_by_graph},
     Graph, RunningMode, CHAT_GRAPHS, OUTPUT_TENSOR,
@@ -100,7 +101,7 @@ fn compute(
 
 /// Runs inference on the model with the given name and returns the output.
 fn compute_by_graph(
-    graph: &mut Graph,
+    graph: &mut Graph<GgmlMetadata>,
     prompt: impl AsRef<str>,
 ) -> std::result::Result<CompletionObject, LlamaCoreError> {
     #[cfg(feature = "logging")]

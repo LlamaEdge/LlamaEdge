@@ -16,7 +16,7 @@ use hyper::{
     service::{make_service_fn, service_fn},
     Body, Request, Response, Server, StatusCode,
 };
-use llama_core::MetadataBuilder;
+use llama_core::metadata::ggml::GgmlMetadataBuilder;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
@@ -295,7 +295,7 @@ async fn main() -> Result<(), ServerError> {
         match cli.prompt_template[0] {
             PromptTemplateType::Embedding => {
                 // create a Metadata instance
-                let metadata_embedding = MetadataBuilder::new(
+                let metadata_embedding = GgmlMetadataBuilder::new(
                     cli.model_name[0].clone(),
                     cli.model_alias[0].clone(),
                     cli.prompt_template[0],
@@ -324,7 +324,7 @@ async fn main() -> Result<(), ServerError> {
             }
             _ => {
                 // create a Metadata instance
-                let metadata_chat = MetadataBuilder::new(
+                let metadata_chat = GgmlMetadataBuilder::new(
                     cli.model_name[0].clone(),
                     cli.model_alias[0].clone(),
                     cli.prompt_template[0],
@@ -375,7 +375,7 @@ async fn main() -> Result<(), ServerError> {
         }
     } else if cli.prompt_template.len() == 2 {
         // create a Metadata instance
-        let metadata_chat = MetadataBuilder::new(
+        let metadata_chat = GgmlMetadataBuilder::new(
             cli.model_name[0].clone(),
             cli.model_alias[0].clone(),
             cli.prompt_template[0],
@@ -420,7 +420,7 @@ async fn main() -> Result<(), ServerError> {
         });
 
         // create a Metadata instance
-        let metadata_embedding = MetadataBuilder::new(
+        let metadata_embedding = GgmlMetadataBuilder::new(
             cli.model_name[1].clone(),
             cli.model_alias[1].clone(),
             cli.prompt_template[1],

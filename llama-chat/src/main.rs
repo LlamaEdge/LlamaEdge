@@ -7,7 +7,7 @@ use endpoints::chat::{
     ChatCompletionRequestSampling, ChatCompletionUserMessageContent,
 };
 use futures::TryStreamExt;
-use llama_core::{init_core_context, MetadataBuilder};
+use llama_core::{init_core_context, metadata::ggml::GgmlMetadataBuilder};
 use serde::{Deserialize, Serialize};
 use std::io::{self, Write};
 
@@ -189,7 +189,7 @@ async fn main() -> anyhow::Result<()> {
     log(format!("[INFO] Enable plugin log: {}", &cli.log_stat));
 
     // create a MetadataBuilder instance
-    let builder = MetadataBuilder::new(&cli.model_name, &cli.model_alias, cli.prompt_template)
+    let builder = GgmlMetadataBuilder::new(&cli.model_name, &cli.model_alias, cli.prompt_template)
         .with_ctx_size(cli.ctx_size)
         .with_n_predict(cli.n_predict)
         .with_n_gpu_layers(cli.n_gpu_layers)

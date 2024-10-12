@@ -44,43 +44,70 @@ pub async fn audio_transcriptions(
         }
     };
 
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "transcription status: {}", !graph.metadata.translate);
+    // check if the model metadata should be updated
+    {
+        let mut should_update = false;
+        let mut metadata = graph.metadata.clone();
 
-    // check if translation is disabled so that transcription tasks can be done
-    if graph.metadata.translate {
         #[cfg(feature = "logging")]
-        info!(target: "stdout", "switch to the transcription mode");
+        info!(target: "stdout", "Check model metadata.");
 
-        // enable translation
-        graph.metadata.translate = false;
+        // check `translate` field
+        if metadata.translate {
+            // update the metadata
+            metadata.translate = false;
 
-        // set the metadata to the model
-        let metadata = graph.metadata.clone();
+            if !should_update {
+                should_update = true;
+            }
+        }
+
+        // check `language` field
+        if let Some(language) = &request.language {
+            if *language != metadata.language {
+                // update the metadata
+                metadata.language = language.clone();
+
+                if !should_update {
+                    should_update = true;
+                }
+            }
+        }
+
+        // check `temperature` field
+        if let Some(temperature) = &request.temperature {
+            if *temperature != metadata.temperature {
+                // update the metadata
+                metadata.temperature = *temperature;
+
+                if !should_update {
+                    should_update = true;
+                }
+            }
+        }
 
         #[cfg(feature = "logging")]
         info!(target: "stdout", "metadata: {:?}", &metadata);
 
-        #[cfg(feature = "logging")]
-        info!(target: "stdout", "set the metadata to the model.");
+        if should_update {
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "Set the metadata to the model.");
 
-        match serde_json::to_string(&metadata) {
-            Ok(config) => {
-                // update metadata
-                set_tensor_data(&mut graph, 1, config.as_bytes(), [1])?;
-            }
-            Err(e) => {
-                let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
+            match serde_json::to_string(&metadata) {
+                Ok(config) => {
+                    // update metadata
+                    set_tensor_data(&mut graph, 1, config.as_bytes(), [1])?;
+                }
+                Err(e) => {
+                    let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
 
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
+                    #[cfg(feature = "logging")]
+                    error!(target: "stdout", "{}", &err_msg);
 
-                return Err(LlamaCoreError::Operation(err_msg));
-            }
-        };
-
-        #[cfg(feature = "logging")]
-        info!(target: "stdout", "enabled transcription mode");
+                    return Err(LlamaCoreError::Operation(err_msg));
+                }
+            };
+        }
     }
 
     let path = Path::new("archives")
@@ -321,43 +348,70 @@ pub async fn audio_translations(
         }
     };
 
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "translation status: {}", graph.metadata.translate);
+    // check if the model metadata should be updated
+    {
+        let mut should_update = false;
+        let mut metadata = graph.metadata.clone();
 
-    // update metadata
-    if !graph.metadata.translate {
         #[cfg(feature = "logging")]
-        info!(target: "stdout", "switch to the translation mode");
+        info!(target: "stdout", "Check model metadata.");
 
-        // update the metadata
-        graph.metadata.translate = true;
+        // check `translate` field
+        if !metadata.translate {
+            // update the metadata
+            metadata.translate = true;
 
-        // set the metadata to the model
-        let metadata = graph.metadata.clone();
+            if !should_update {
+                should_update = true;
+            }
+        }
+
+        // check `language` field
+        if let Some(language) = &request.language {
+            if *language != metadata.language {
+                // update the metadata
+                metadata.language = language.clone();
+
+                if !should_update {
+                    should_update = true;
+                }
+            }
+        }
+
+        // check `temperature` field
+        if let Some(temperature) = &request.temperature {
+            if *temperature != metadata.temperature {
+                // update the metadata
+                metadata.temperature = *temperature;
+
+                if !should_update {
+                    should_update = true;
+                }
+            }
+        }
 
         #[cfg(feature = "logging")]
         info!(target: "stdout", "metadata: {:?}", &metadata);
 
-        #[cfg(feature = "logging")]
-        info!(target: "stdout", "set the metadata to the model.");
+        if should_update {
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "Set the metadata to the model.");
 
-        match serde_json::to_string(&metadata) {
-            Ok(config) => {
-                // update metadata
-                set_tensor_data(&mut graph, 1, config.as_bytes(), [1])?;
-            }
-            Err(e) => {
-                let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
+            match serde_json::to_string(&metadata) {
+                Ok(config) => {
+                    // update metadata
+                    set_tensor_data(&mut graph, 1, config.as_bytes(), [1])?;
+                }
+                Err(e) => {
+                    let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
 
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
+                    #[cfg(feature = "logging")]
+                    error!(target: "stdout", "{}", &err_msg);
 
-                return Err(LlamaCoreError::Operation(err_msg));
-            }
-        };
-
-        #[cfg(feature = "logging")]
-        info!(target: "stdout", "enabled translation mode");
+                    return Err(LlamaCoreError::Operation(err_msg));
+                }
+            };
+        }
     }
 
     let path = Path::new("archives")

@@ -11,6 +11,7 @@ pub mod embeddings;
 pub mod error;
 pub mod graph;
 pub mod images;
+pub mod metadata;
 pub mod models;
 pub mod rag;
 #[cfg(feature = "search")]
@@ -19,10 +20,11 @@ pub mod utils;
 
 pub use error::LlamaCoreError;
 pub use graph::{EngineType, Graph, GraphBuilder};
+pub use metadata::{
+    ggml::GgmlMetadata, piper::PiperMetadata, whisper::WhisperMetadata, BaseMetadata,
+};
 
-use chat_prompts::PromptTemplateType;
 use once_cell::sync::OnceCell;
-use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     path::Path,
@@ -32,9 +34,11 @@ use utils::get_output_buffer;
 use wasmedge_stable_diffusion::*;
 
 // key: model_name, value: Graph
-pub(crate) static CHAT_GRAPHS: OnceCell<Mutex<HashMap<String, Graph>>> = OnceCell::new();
+pub(crate) static CHAT_GRAPHS: OnceCell<Mutex<HashMap<String, Graph<GgmlMetadata>>>> =
+    OnceCell::new();
 // key: model_name, value: Graph
-pub(crate) static EMBEDDING_GRAPHS: OnceCell<Mutex<HashMap<String, Graph>>> = OnceCell::new();
+pub(crate) static EMBEDDING_GRAPHS: OnceCell<Mutex<HashMap<String, Graph<GgmlMetadata>>>> =
+    OnceCell::new();
 // cache bytes for decoding utf8
 pub(crate) static CACHED_UTF8_ENCODINGS: OnceCell<Mutex<Vec<u8>>> = OnceCell::new();
 // running mode
@@ -44,422 +48,18 @@ pub(crate) static SD_TEXT_TO_IMAGE: OnceCell<Mutex<TextToImage>> = OnceCell::new
 // stable diffusion context for the image-to-image task
 pub(crate) static SD_IMAGE_TO_IMAGE: OnceCell<Mutex<ImageToImage>> = OnceCell::new();
 // context for the audio task
-pub(crate) static AUDIO_GRAPH: OnceCell<Mutex<Graph>> = OnceCell::new();
+pub(crate) static AUDIO_GRAPH: OnceCell<Mutex<Graph<WhisperMetadata>>> = OnceCell::new();
 // context for the piper task
-pub(crate) static PIPER_GRAPH: OnceCell<Mutex<Graph>> = OnceCell::new();
+pub(crate) static PIPER_GRAPH: OnceCell<Mutex<Graph<PiperMetadata>>> = OnceCell::new();
 
 pub(crate) const MAX_BUFFER_SIZE: usize = 2usize.pow(14) * 15 + 128;
 pub(crate) const OUTPUT_TENSOR: usize = 0;
 const PLUGIN_VERSION: usize = 1;
 
-/// Model metadata
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Metadata {
-    // this field not defined for the beckend plugin
-    #[serde(skip_serializing)]
-    pub model_name: String,
-    // this field not defined for the beckend plugin
-    #[serde(skip_serializing)]
-    pub model_alias: String,
-    // this field not defined for the beckend plugin
-    #[serde(skip_serializing)]
-    pub log_prompts: bool,
-    // this field not defined for the beckend plugin
-    #[serde(skip_serializing)]
-    pub prompt_template: PromptTemplateType,
-
-    // * Plugin parameters (used by this plugin):
-    #[serde(rename = "enable-log")]
-    pub log_enable: bool,
-    #[serde(rename = "enable-debug-log")]
-    pub debug_log: bool,
-    // #[serde(rename = "stream-stdout")]
-    // pub stream_stdout: bool,
-    #[serde(rename = "embedding")]
-    pub embeddings: bool,
-    #[serde(rename = "n-predict")]
-    pub n_predict: u64,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
-    pub reverse_prompt: Option<String>,
-    /// path to the multimodal projector file for llava
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub mmproj: Option<String>,
-    /// Path to the image file for llava
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub image: Option<String>,
-
-    // * Model parameters (need to reload the model if updated):
-    #[serde(rename = "n-gpu-layers")]
-    pub n_gpu_layers: u64,
-    /// The main GPU to use. Defaults to None.
-    #[serde(rename = "main-gpu")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub main_gpu: Option<u64>,
-    /// How split tensors should be distributed accross GPUs. If None the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1.
-    #[serde(rename = "tensor-split")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tensor_split: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "use-mmap")]
-    pub use_mmap: Option<bool>,
-    // * Context parameters (used by the llama context):
-    #[serde(rename = "ctx-size")]
-    pub ctx_size: u64,
-    #[serde(rename = "batch-size")]
-    pub batch_size: u64,
-    #[serde(rename = "threads")]
-    pub threads: u64,
-
-    // * Sampling parameters (used by the llama sampling context).
-    #[serde(rename = "temp")]
-    pub temperature: f64,
-    #[serde(rename = "top-p")]
-    pub top_p: f64,
-    #[serde(rename = "repeat-penalty")]
-    pub repeat_penalty: f64,
-    #[serde(rename = "presence-penalty")]
-    pub presence_penalty: f64,
-    #[serde(rename = "frequency-penalty")]
-    pub frequency_penalty: f64,
-
-    // * grammar parameters
-    /// BNF-like grammar to constrain generations (see samples in grammars/ dir). Defaults to empty string.
-    pub grammar: String,
-    /// JSON schema to constrain generations (<https://json-schema.org/>), e.g. `{}` for any JSON object. For schemas w/ external $refs, use --grammar + example/json_schema_to_grammar.py instead.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub json_schema: Option<String>,
-
-    // * parameters for whisper
-    pub translate: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub language: Option<String>,
-    /// Number of processors to use during computation. Defaults to 1.
-    pub processors: u32,
-    /// Time offset in milliseconds. Defaults to 0.
-    pub offset_t: u32,
-    /// Duration of audio to process in milliseconds. Defaults to 0.
-    pub duration: u32,
-    /// Maximum number of text context tokens to store. Defaults to -1.
-    pub max_context: i32,
-    /// Maximum segment length in characters. Defaults to 0.
-    pub max_len: u32,
-    /// Split on word rather than on token. Defaults to false.
-    pub split_on_word: bool,
-    /// Output result in a text file. Defaults to false.
-    pub output_txt: bool,
-    /// Output result in a vtt file. Defaults to false.
-    pub output_vtt: bool,
-    /// Output result in a srt file. Defaults to false.
-    pub output_srt: bool,
-    /// Output result in a lrc file. Defaults to false.
-    pub output_lrc: bool,
-    /// Output result in a CSV file. Defaults to false.
-    pub output_csv: bool,
-    /// Output result in a JSON file. Defaults to false.
-    pub output_json: bool,
-}
-impl Default for Metadata {
-    fn default() -> Self {
-        Self {
-            model_name: String::new(),
-            model_alias: String::new(),
-            log_prompts: false,
-            debug_log: false,
-            prompt_template: PromptTemplateType::Llama2Chat,
-            log_enable: false,
-            embeddings: false,
-            n_predict: 1024,
-            reverse_prompt: None,
-            mmproj: None,
-            image: None,
-            n_gpu_layers: 100,
-            main_gpu: None,
-            tensor_split: None,
-            use_mmap: Some(true),
-            ctx_size: 512,
-            batch_size: 512,
-            threads: 2,
-            temperature: 1.0,
-            top_p: 1.0,
-            repeat_penalty: 1.1,
-            presence_penalty: 0.0,
-            frequency_penalty: 0.0,
-            grammar: String::new(),
-            json_schema: None,
-            translate: false,
-            language: None,
-            processors: 1,
-            offset_t: 0,
-            duration: 0,
-            max_context: -1,
-            max_len: 0,
-            split_on_word: false,
-            output_txt: false,
-            output_vtt: false,
-            output_srt: false,
-            output_lrc: false,
-            output_csv: false,
-            output_json: false,
-        }
-    }
-}
-
-/// Builder for the `Metadata` struct
-#[derive(Debug)]
-pub struct MetadataBuilder {
-    metadata: Metadata,
-}
-impl MetadataBuilder {
-    pub fn new<S: Into<String>>(model_name: S, model_alias: S, pt: PromptTemplateType) -> Self {
-        let metadata = Metadata {
-            model_name: model_name.into(),
-            model_alias: model_alias.into(),
-            prompt_template: pt,
-            ..Default::default()
-        };
-
-        Self { metadata }
-    }
-
-    pub fn with_prompt_template(mut self, template: PromptTemplateType) -> Self {
-        self.metadata.prompt_template = template;
-        self
-    }
-
-    pub fn enable_plugin_log(mut self, enable: bool) -> Self {
-        self.metadata.log_enable = enable;
-        self
-    }
-
-    pub fn enable_debug_log(mut self, enable: bool) -> Self {
-        self.metadata.debug_log = enable;
-        self
-    }
-
-    pub fn enable_prompts_log(mut self, enable: bool) -> Self {
-        self.metadata.log_prompts = enable;
-        self
-    }
-
-    pub fn enable_embeddings(mut self, enable: bool) -> Self {
-        self.metadata.embeddings = enable;
-        self
-    }
-
-    pub fn with_n_predict(mut self, n: u64) -> Self {
-        self.metadata.n_predict = n;
-        self
-    }
-
-    pub fn with_main_gpu(mut self, gpu: Option<u64>) -> Self {
-        self.metadata.main_gpu = gpu;
-        self
-    }
-
-    pub fn with_tensor_split(mut self, split: Option<String>) -> Self {
-        self.metadata.tensor_split = split;
-        self
-    }
-
-    pub fn with_threads(mut self, threads: u64) -> Self {
-        self.metadata.threads = threads;
-        self
-    }
-
-    pub fn with_reverse_prompt(mut self, prompt: Option<String>) -> Self {
-        self.metadata.reverse_prompt = prompt;
-        self
-    }
-
-    pub fn with_mmproj(mut self, path: Option<String>) -> Self {
-        self.metadata.mmproj = path;
-        self
-    }
-
-    pub fn with_image(mut self, path: impl Into<String>) -> Self {
-        self.metadata.image = Some(path.into());
-        self
-    }
-
-    pub fn with_n_gpu_layers(mut self, n: u64) -> Self {
-        self.metadata.n_gpu_layers = n;
-        self
-    }
-
-    pub fn disable_mmap(mut self, disable: Option<bool>) -> Self {
-        self.metadata.use_mmap = disable.map(|v| !v);
-        self
-    }
-
-    pub fn with_ctx_size(mut self, size: u64) -> Self {
-        self.metadata.ctx_size = size;
-        self
-    }
-
-    pub fn with_batch_size(mut self, size: u64) -> Self {
-        self.metadata.batch_size = size;
-        self
-    }
-
-    pub fn with_temperature(mut self, temp: f64) -> Self {
-        self.metadata.temperature = temp;
-        self
-    }
-
-    pub fn with_top_p(mut self, top_p: f64) -> Self {
-        self.metadata.top_p = top_p;
-        self
-    }
-
-    pub fn with_repeat_penalty(mut self, penalty: f64) -> Self {
-        self.metadata.repeat_penalty = penalty;
-        self
-    }
-
-    pub fn with_presence_penalty(mut self, penalty: f64) -> Self {
-        self.metadata.presence_penalty = penalty;
-        self
-    }
-
-    pub fn with_frequency_penalty(mut self, penalty: f64) -> Self {
-        self.metadata.frequency_penalty = penalty;
-        self
-    }
-
-    pub fn with_grammar(mut self, grammar: impl Into<String>) -> Self {
-        self.metadata.grammar = grammar.into();
-        self
-    }
-
-    pub fn with_json_schema(mut self, schema: Option<String>) -> Self {
-        self.metadata.json_schema = schema;
-        self
-    }
-
-    pub fn build(self) -> Metadata {
-        self.metadata
-    }
-}
-
-/// Builder for creating an audio metadata
-#[derive(Debug)]
-pub struct WhisperMetadataBuilder {
-    metadata: Metadata,
-}
-impl WhisperMetadataBuilder {
-    pub fn new<S: Into<String>>(model_name: S, model_alias: S) -> Self {
-        let metadata = Metadata {
-            model_name: model_name.into(),
-            model_alias: model_alias.into(),
-            prompt_template: PromptTemplateType::Null,
-            threads: 4,
-            translate: false,
-            processors: 1,
-            offset_t: 0,
-            duration: 0,
-            max_context: -1,
-            max_len: 0,
-            split_on_word: false,
-            output_txt: false,
-            output_vtt: false,
-            output_srt: false,
-            output_lrc: false,
-            output_csv: false,
-            output_json: false,
-            ..Default::default()
-        };
-
-        Self { metadata }
-    }
-
-    pub fn enable_plugin_log(mut self, enable: bool) -> Self {
-        self.metadata.log_enable = enable;
-        self
-    }
-
-    pub fn enable_debug_log(mut self, enable: bool) -> Self {
-        self.metadata.debug_log = enable;
-        self
-    }
-
-    pub fn enable_translate(mut self, enable: bool) -> Self {
-        self.metadata.translate = enable;
-        self
-    }
-
-    pub fn target_language(mut self, language: Option<String>) -> Self {
-        self.metadata.language = language;
-        self
-    }
-
-    pub fn with_processors(mut self, processors: u32) -> Self {
-        self.metadata.processors = processors;
-        self
-    }
-
-    pub fn with_offset_t(mut self, offset_t: u32) -> Self {
-        self.metadata.offset_t = offset_t;
-        self
-    }
-
-    pub fn with_duration(mut self, duration: u32) -> Self {
-        self.metadata.duration = duration;
-        self
-    }
-
-    pub fn with_max_context(mut self, max_context: i32) -> Self {
-        self.metadata.max_context = max_context;
-        self
-    }
-
-    pub fn with_max_len(mut self, max_len: u32) -> Self {
-        self.metadata.max_len = max_len;
-        self
-    }
-
-    pub fn split_on_word(mut self, split_on_word: bool) -> Self {
-        self.metadata.split_on_word = split_on_word;
-        self
-    }
-
-    pub fn output_txt(mut self, output_txt: bool) -> Self {
-        self.metadata.output_txt = output_txt;
-        self
-    }
-
-    pub fn output_vtt(mut self, output_vtt: bool) -> Self {
-        self.metadata.output_vtt = output_vtt;
-        self
-    }
-
-    pub fn output_srt(mut self, output_srt: bool) -> Self {
-        self.metadata.output_srt = output_srt;
-        self
-    }
-
-    pub fn output_lrc(mut self, output_lrc: bool) -> Self {
-        self.metadata.output_lrc = output_lrc;
-        self
-    }
-
-    pub fn output_csv(mut self, output_csv: bool) -> Self {
-        self.metadata.output_csv = output_csv;
-        self
-    }
-
-    pub fn output_json(mut self, output_json: bool) -> Self {
-        self.metadata.output_json = output_json;
-        self
-    }
-
-    pub fn build(self) -> Metadata {
-        self.metadata
-    }
-}
-
 /// Initialize the core context
 pub fn init_core_context(
-    metadata_for_chats: Option<&[Metadata]>,
-    metadata_for_embeddings: Option<&[Metadata]>,
+    metadata_for_chats: Option<&[GgmlMetadata]>,
+    metadata_for_embeddings: Option<&[GgmlMetadata]>,
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Initializing the core context");
@@ -478,7 +78,7 @@ pub fn init_core_context(
     if let Some(metadata_chats) = metadata_for_chats {
         let mut chat_graphs = HashMap::new();
         for metadata in metadata_chats {
-            let graph = Graph::new(metadata)?;
+            let graph = Graph::new(metadata.clone())?;
 
             chat_graphs.insert(graph.name().to_string(), graph);
         }
@@ -497,7 +97,7 @@ pub fn init_core_context(
     if let Some(metadata_embeddings) = metadata_for_embeddings {
         let mut embedding_graphs = HashMap::new();
         for metadata in metadata_embeddings {
-            let graph = Graph::new(metadata)?;
+            let graph = Graph::new(metadata.clone())?;
 
             embedding_graphs.insert(graph.name().to_string(), graph);
         }
@@ -537,8 +137,8 @@ pub fn init_core_context(
 
 /// Initialize the core context for RAG scenarios.
 pub fn init_rag_core_context(
-    metadata_for_chats: &[Metadata],
-    metadata_for_embeddings: &[Metadata],
+    metadata_for_chats: &[GgmlMetadata],
+    metadata_for_embeddings: &[GgmlMetadata],
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Initializing the core context for RAG scenarios");
@@ -554,7 +154,7 @@ pub fn init_rag_core_context(
     }
     let mut chat_graphs = HashMap::new();
     for metadata in metadata_for_chats {
-        let graph = Graph::new(metadata)?;
+        let graph = Graph::new(metadata.clone())?;
 
         chat_graphs.insert(graph.name().to_string(), graph);
     }
@@ -578,7 +178,7 @@ pub fn init_rag_core_context(
     }
     let mut embedding_graphs = HashMap::new();
     for metadata in metadata_for_embeddings {
-        let graph = Graph::new(metadata)?;
+        let graph = Graph::new(metadata.clone())?;
 
         embedding_graphs.insert(graph.name().to_string(), graph);
     }
@@ -697,7 +297,9 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
     }
 }
 
-fn get_plugin_info_by_graph(graph: &Graph) -> Result<PluginInfo, LlamaCoreError> {
+fn get_plugin_info_by_graph<M: BaseMetadata + serde::Serialize + Clone + Default>(
+    graph: &Graph<M>,
+) -> Result<PluginInfo, LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Getting the plugin info by the graph named {}", graph.name());
 
@@ -1171,7 +773,7 @@ pub enum SDContextType {
 
 /// Initialize the whisper context
 pub fn init_whisper_context(
-    whisper_metadata: &Metadata,
+    whisper_metadata: &WhisperMetadata,
     model_file: impl AsRef<Path>,
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
@@ -1179,7 +781,7 @@ pub fn init_whisper_context(
 
     // create and initialize the audio context
     let graph = GraphBuilder::new(EngineType::Whisper)?
-        .with_config(whisper_metadata)?
+        .with_config(whisper_metadata.clone())?
         .use_cpu()
         .build_from_files([model_file.as_ref()])?;
 
@@ -1209,6 +811,7 @@ pub fn init_whisper_context(
 /// * `espeak_ng_data` - Path to the espeak-ng data directory.
 ///
 pub fn init_piper_context(
+    piper_metadata: &PiperMetadata,
     voice_model: impl AsRef<Path>,
     voice_config: impl AsRef<Path>,
     espeak_ng_data: impl AsRef<Path>,
@@ -1224,6 +827,7 @@ pub fn init_piper_context(
 
     // create and initialize the audio context
     let graph = GraphBuilder::new(EngineType::Piper)?
+        .with_config(piper_metadata.clone())?
         .use_cpu()
         .build_from_buffer([config.to_string()])?;
 
