@@ -447,11 +447,17 @@ pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
 pub fn init_sd_context_with_full_model(
     model_file: impl AsRef<str>,
     controlnet_path: Option<&str>,
+    controlnet_on_cpu: bool,
     n_threads: i32,
     ctx: SDContextType,
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Initializing the stable diffusion context with the full model");
+
+    let control_net_on_cpu = match controlnet_path {
+        Some(path) if !path.is_empty() => controlnet_on_cpu,
+        _ => false,
+    };
 
     // create the stable diffusion context for the text-to-image task
     if ctx == SDContextType::Full || ctx == SDContextType::TextToImage {
@@ -467,7 +473,7 @@ pub fn init_sd_context_with_full_model(
 
                 LlamaCoreError::InitContext(err_msg)
             })?
-            .with_controlnet_path(controlnet_path.unwrap_or_default())
+            .use_control_net(controlnet_path.unwrap_or_default(), control_net_on_cpu)
             .map_err(|e| {
                 let err_msg = format!(
                     "Failed to initialize the stable diffusion context. Reason: {}",
@@ -530,7 +536,7 @@ pub fn init_sd_context_with_full_model(
 
                 LlamaCoreError::InitContext(err_msg)
             })?
-            .with_controlnet_path(controlnet_path.unwrap_or_default())
+            .use_control_net(controlnet_path.unwrap_or_default(), control_net_on_cpu)
             .map_err(|e| {
                 let err_msg = format!(
                     "Failed to initialize the stable diffusion context. Reason: {}",
@@ -607,11 +613,17 @@ pub fn init_sd_context_with_standalone_model(
     t5xxl: impl AsRef<str>,
     lora_model_dir: impl AsRef<str>,
     controlnet_path: Option<&str>,
+    controlnet_on_cpu: bool,
     n_threads: i32,
     ctx: SDContextType,
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Initializing the stable diffusion context with the standalone diffusion model");
+
+    let control_net_on_cpu = match controlnet_path {
+        Some(path) if !path.is_empty() => controlnet_on_cpu,
+        _ => false,
+    };
 
     // create the stable diffusion context for the text-to-image task
     if ctx == SDContextType::Full || ctx == SDContextType::TextToImage {
@@ -675,7 +687,7 @@ pub fn init_sd_context_with_standalone_model(
 
                 LlamaCoreError::InitContext(err_msg)
             })?
-            .with_controlnet_path(controlnet_path.unwrap_or_default())
+            .use_control_net(controlnet_path.unwrap_or_default(), control_net_on_cpu)
             .map_err(|e| {
                 let err_msg = format!(
                     "Failed to initialize the stable diffusion context. Reason: {}",
@@ -786,7 +798,7 @@ pub fn init_sd_context_with_standalone_model(
 
                 LlamaCoreError::InitContext(err_msg)
             })?
-            .with_controlnet_path(controlnet_path.unwrap_or_default())
+            .use_control_net(controlnet_path.unwrap_or_default(), control_net_on_cpu)
             .map_err(|e| {
                 let err_msg = format!(
                     "Failed to initialize the stable diffusion context. Reason: {}",
