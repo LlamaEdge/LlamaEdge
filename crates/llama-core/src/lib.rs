@@ -446,6 +446,8 @@ pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
 /// * `ctx` - The context type to create.
 pub fn init_sd_context_with_full_model(
     model_file: impl AsRef<str>,
+    controlnet_path: Option<&str>,
+    n_threads: i32,
     ctx: SDContextType,
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
@@ -453,7 +455,32 @@ pub fn init_sd_context_with_full_model(
 
     // create the stable diffusion context for the text-to-image task
     if ctx == SDContextType::Full || ctx == SDContextType::TextToImage {
-        let sd = StableDiffusion::new(Task::TextToImage, model_file.as_ref());
+        let sd = SDBuidler::new(Task::TextToImage, model_file.as_ref())
+            .map_err(|e| {
+                let err_msg = format!(
+                    "Failed to initialize the stable diffusion context. Reason: {}",
+                    e
+                );
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", err_msg);
+
+                LlamaCoreError::InitContext(err_msg)
+            })?
+            .with_controlnet_path(controlnet_path.unwrap_or_default())
+            .map_err(|e| {
+                let err_msg = format!(
+                    "Failed to initialize the stable diffusion context. Reason: {}",
+                    e
+                );
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", err_msg);
+
+                LlamaCoreError::InitContext(err_msg)
+            })?
+            .with_n_threads(n_threads)
+            .build();
 
         let ctx = sd.create_context().map_err(|e| {
             let err_msg = format!("Fail to create the context. {}", e);
@@ -491,7 +518,32 @@ pub fn init_sd_context_with_full_model(
 
     // create the stable diffusion context for the image-to-image task
     if ctx == SDContextType::Full || ctx == SDContextType::ImageToImage {
-        let sd = StableDiffusion::new(Task::ImageToImage, model_file.as_ref());
+        let sd = SDBuidler::new(Task::ImageToImage, model_file.as_ref())
+            .map_err(|e| {
+                let err_msg = format!(
+                    "Failed to initialize the stable diffusion context. Reason: {}",
+                    e
+                );
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", err_msg);
+
+                LlamaCoreError::InitContext(err_msg)
+            })?
+            .with_controlnet_path(controlnet_path.unwrap_or_default())
+            .map_err(|e| {
+                let err_msg = format!(
+                    "Failed to initialize the stable diffusion context. Reason: {}",
+                    e
+                );
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", err_msg);
+
+                LlamaCoreError::InitContext(err_msg)
+            })?
+            .with_n_threads(n_threads)
+            .build();
 
         let ctx = sd.create_context().map_err(|e| {
             let err_msg = format!("Fail to create the context. {}", e);
@@ -547,12 +599,14 @@ pub fn init_sd_context_with_full_model(
 /// * `n_threads` - Number of threads to use.
 ///
 /// * `ctx` - The context type to create.
+#[allow(clippy::too_many_arguments)]
 pub fn init_sd_context_with_standalone_model(
     model_file: impl AsRef<str>,
     vae: impl AsRef<str>,
     clip_l: impl AsRef<str>,
     t5xxl: impl AsRef<str>,
     lora_model_dir: impl AsRef<str>,
+    controlnet_path: Option<&str>,
     n_threads: i32,
     ctx: SDContextType,
 ) -> Result<(), LlamaCoreError> {
@@ -610,6 +664,18 @@ pub fn init_sd_context_with_standalone_model(
                 LlamaCoreError::InitContext(err_msg)
             })?
             .with_lora_model_dir(lora_model_dir.as_ref())
+            .map_err(|e| {
+                let err_msg = format!(
+                    "Failed to initialize the stable diffusion context. Reason: {}",
+                    e
+                );
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", err_msg);
+
+                LlamaCoreError::InitContext(err_msg)
+            })?
+            .with_controlnet_path(controlnet_path.unwrap_or_default())
             .map_err(|e| {
                 let err_msg = format!(
                     "Failed to initialize the stable diffusion context. Reason: {}",
@@ -709,6 +775,18 @@ pub fn init_sd_context_with_standalone_model(
                 LlamaCoreError::InitContext(err_msg)
             })?
             .with_lora_model_dir(lora_model_dir.as_ref())
+            .map_err(|e| {
+                let err_msg = format!(
+                    "Failed to initialize the stable diffusion context. Reason: {}",
+                    e
+                );
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", err_msg);
+
+                LlamaCoreError::InitContext(err_msg)
+            })?
+            .with_controlnet_path(controlnet_path.unwrap_or_default())
             .map_err(|e| {
                 let err_msg = format!(
                     "Failed to initialize the stable diffusion context. Reason: {}",
