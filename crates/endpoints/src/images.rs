@@ -145,9 +145,12 @@ pub struct ImageCreateRequest {
     /// Image width, in pixel space. Defaults to 512. If `size` is provided, this field will be ignored.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub width: Option<usize>,
-    /// strength to apply Control Net. Defaults to 0.9. This param is only supported for `stable-diffusion.cpp`.
+    /// Strength to apply Control Net. Defaults to 0.9. This param is only supported for `stable-diffusion.cpp`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub control_strength: Option<f32>,
+    /// The image to control the generation. This param is only supported for `stable-diffusion.cpp`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub control_image: Option<FileObject>,
     /// RNG seed. Negative value means to use random seed. Defaults to 42. This param is only supported for `stable-diffusion.cpp`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub seed: Option<i32>,
@@ -173,6 +176,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
             Height,
             Width,
             ControlStrength,
+            ControlImage,
             Seed,
         }
 
@@ -210,6 +214,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                             "height" => Ok(Field::Height),
                             "width" => Ok(Field::Width),
                             "control_strength" => Ok(Field::ControlStrength),
+                            "control_image" => Ok(Field::ControlImage),
                             "seed" => Ok(Field::Seed),
                             _ => Err(de::Error::unknown_field(value, FIELDS)),
                         }
@@ -252,6 +257,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                 let height = seq.next_element()?;
                 let width = seq.next_element()?;
                 let control_strength = seq.next_element()?;
+                let control_image = seq.next_element()?;
                 let seed = seq.next_element()?;
 
                 Ok(ImageCreateRequest {
@@ -270,6 +276,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     height,
                     width,
                     control_strength,
+                    control_image,
                     seed,
                 })
             }
@@ -293,6 +300,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                 let mut height = None;
                 let mut width = None;
                 let mut control_strength = None;
+                let mut control_image = None;
                 let mut seed = None;
 
                 while let Some(key) = map.next_key()? {
@@ -387,6 +395,12 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                             }
                             control_strength = Some(map.next_value()?);
                         }
+                        Field::ControlImage => {
+                            if control_image.is_some() {
+                                return Err(de::Error::duplicate_field("control_image"));
+                            }
+                            control_image = Some(map.next_value()?);
+                        }
                         Field::Seed => {
                             if seed.is_some() {
                                 return Err(de::Error::duplicate_field("seed"));
@@ -463,6 +477,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     height,
                     width,
                     control_strength,
+                    control_image,
                     seed,
                 })
             }
@@ -483,6 +498,9 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
             "steps",
             "height",
             "width",
+            "control_strength",
+            "control_image",
+            "seed",
         ];
         deserializer.deserialize_struct("CreateImageRequest", FIELDS, CreateImageRequestVisitor)
     }
@@ -505,6 +523,7 @@ impl Default for ImageCreateRequest {
             height: Some(512),
             width: Some(512),
             control_strength: Some(0.9),
+            control_image: None,
             seed: Some(42),
         }
     }
