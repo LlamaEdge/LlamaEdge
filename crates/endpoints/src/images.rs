@@ -90,6 +90,12 @@ impl ImageCreateRequestBuilder {
         self
     }
 
+    /// Set the image to control the generation. This param is only supported for `stable-diffusion.cpp`.
+    pub fn with_control_image(mut self, control_image: FileObject) -> Self {
+        self.req.control_image = Some(control_image);
+        self
+    }
+
     /// Set the RNG seed. Negative value means to use random seed. This param is only supported for `stable-diffusion.cpp`.
     pub fn with_seed(mut self, seed: i32) -> Self {
         self.req.seed = Some(seed);
