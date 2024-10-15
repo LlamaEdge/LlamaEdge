@@ -443,9 +443,18 @@ pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
 ///
 /// * `model_file` - Path to the stable diffusion model file.
 ///
+/// * `lora_model_dir` - Path to the Lora model directory.
+///
+/// * `controlnet_path` - Path to the controlnet model file.
+///
+/// * `controlnet_on_cpu` - Whether to run the controlnet on CPU.
+///
+/// * `n_threads` - Number of threads to use.
+///
 /// * `ctx` - The context type to create.
 pub fn init_sd_context_with_full_model(
     model_file: impl AsRef<str>,
+    lora_model_dir: Option<&str>,
     controlnet_path: Option<&str>,
     controlnet_on_cpu: bool,
     n_threads: i32,
@@ -462,6 +471,18 @@ pub fn init_sd_context_with_full_model(
     // create the stable diffusion context for the text-to-image task
     if ctx == SDContextType::Full || ctx == SDContextType::TextToImage {
         let sd = SDBuidler::new(Task::TextToImage, model_file.as_ref())
+            .map_err(|e| {
+                let err_msg = format!(
+                    "Failed to initialize the stable diffusion context. Reason: {}",
+                    e
+                );
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", err_msg);
+
+                LlamaCoreError::InitContext(err_msg)
+            })?
+            .with_lora_model_dir(lora_model_dir.unwrap_or_default())
             .map_err(|e| {
                 let err_msg = format!(
                     "Failed to initialize the stable diffusion context. Reason: {}",
@@ -509,6 +530,9 @@ pub fn init_sd_context_with_full_model(
             }
         };
 
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "sd text_to_image context: {:?}", &ctx);
+
         SD_TEXT_TO_IMAGE.set(Mutex::new(ctx)).map_err(|_| {
         let err_msg = "Failed to initialize the stable diffusion context. Reason: The `SD_TEXT_TO_IMAGE` has already been initialized";
 
@@ -525,6 +549,18 @@ pub fn init_sd_context_with_full_model(
     // create the stable diffusion context for the image-to-image task
     if ctx == SDContextType::Full || ctx == SDContextType::ImageToImage {
         let sd = SDBuidler::new(Task::ImageToImage, model_file.as_ref())
+            .map_err(|e| {
+                let err_msg = format!(
+                    "Failed to initialize the stable diffusion context. Reason: {}",
+                    e
+                );
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", err_msg);
+
+                LlamaCoreError::InitContext(err_msg)
+            })?
+            .with_lora_model_dir(lora_model_dir.unwrap_or_default())
             .map_err(|e| {
                 let err_msg = format!(
                     "Failed to initialize the stable diffusion context. Reason: {}",
@@ -572,6 +608,9 @@ pub fn init_sd_context_with_full_model(
             }
         };
 
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "sd image_to_image context: {:?}", &ctx);
+
         SD_IMAGE_TO_IMAGE.set(Mutex::new(ctx)).map_err(|_| {
             let err_msg = "Failed to initialize the stable diffusion context. Reason: The `SD_IMAGE_TO_IMAGE` has already been initialized";
 
@@ -602,6 +641,10 @@ pub fn init_sd_context_with_full_model(
 ///
 /// * `lora_model_dir` - Path to the Lora model directory.
 ///
+/// * `controlnet_path` - Path to the controlnet model file.
+///
+/// * `controlnet_on_cpu` - Whether to run the controlnet on CPU.
+///
 /// * `n_threads` - Number of threads to use.
 ///
 /// * `ctx` - The context type to create.
@@ -611,7 +654,7 @@ pub fn init_sd_context_with_standalone_model(
     vae: impl AsRef<str>,
     clip_l: impl AsRef<str>,
     t5xxl: impl AsRef<str>,
-    lora_model_dir: impl AsRef<str>,
+    lora_model_dir: Option<&str>,
     controlnet_path: Option<&str>,
     controlnet_on_cpu: bool,
     n_threads: i32,
@@ -675,7 +718,7 @@ pub fn init_sd_context_with_standalone_model(
 
                 LlamaCoreError::InitContext(err_msg)
             })?
-            .with_lora_model_dir(lora_model_dir.as_ref())
+            .with_lora_model_dir(lora_model_dir.unwrap_or_default())
             .map_err(|e| {
                 let err_msg = format!(
                     "Failed to initialize the stable diffusion context. Reason: {}",
@@ -722,6 +765,9 @@ pub fn init_sd_context_with_standalone_model(
                 return Err(LlamaCoreError::InitContext(err_msg.into()));
             }
         };
+
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "sd text_to_image context: {:?}", &ctx);
 
         SD_TEXT_TO_IMAGE.set(Mutex::new(ctx)).map_err(|_| {
             let err_msg = "Failed to initialize the stable diffusion context. Reason: The `SD_TEXT_TO_IMAGE` has already been initialized";
@@ -786,7 +832,7 @@ pub fn init_sd_context_with_standalone_model(
 
                 LlamaCoreError::InitContext(err_msg)
             })?
-            .with_lora_model_dir(lora_model_dir.as_ref())
+            .with_lora_model_dir(lora_model_dir.unwrap_or_default())
             .map_err(|e| {
                 let err_msg = format!(
                     "Failed to initialize the stable diffusion context. Reason: {}",
@@ -833,6 +879,9 @@ pub fn init_sd_context_with_standalone_model(
                 return Err(LlamaCoreError::InitContext(err_msg.into()));
             }
         };
+
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "sd image_to_image context: {:?}", &ctx);
 
         SD_IMAGE_TO_IMAGE.set(Mutex::new(ctx)).map_err(|_| {
         let err_msg = "Failed to initialize the stable diffusion context. Reason: The `SD_IMAGE_TO_IMAGE` has already been initialized";
