@@ -509,6 +509,9 @@ pub fn init_sd_context_with_full_model(
             .with_n_threads(n_threads)
             .build();
 
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "sd: {:?}", &sd);
+
         let ctx = sd.create_context().map_err(|e| {
             let err_msg = format!("Fail to create the context. {}", e);
 
@@ -586,6 +589,9 @@ pub fn init_sd_context_with_full_model(
             })?
             .with_n_threads(n_threads)
             .build();
+
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "sd: {:?}", &sd);
 
         let ctx = sd.create_context().map_err(|e| {
             let err_msg = format!("Fail to create the context. {}", e);
@@ -745,6 +751,9 @@ pub fn init_sd_context_with_standalone_model(
             .with_n_threads(n_threads)
             .build();
 
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "sd: {:?}", &sd);
+
         let ctx = sd.create_context().map_err(|e| {
             let err_msg = format!("Fail to create the context. {}", e);
 
@@ -858,6 +867,9 @@ pub fn init_sd_context_with_standalone_model(
             })?
             .with_n_threads(n_threads)
             .build();
+
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "sd: {:?}", &sd);
 
         let ctx = sd.create_context().map_err(|e| {
             let err_msg = format!("Fail to create the context. {}", e);
