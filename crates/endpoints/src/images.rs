@@ -764,6 +764,12 @@ impl ImageEditRequestBuilder {
         self
     }
 
+    /// Set the image to control the generation. This param is only supported for `stable-diffusion.cpp`.
+    pub fn with_control_image(mut self, control_image: FileObject) -> Self {
+        self.req.control_image = Some(control_image);
+        self
+    }
+
     /// Set the RNG seed. Negative value means to use random seed. This param is only supported for `stable-diffusion.cpp`.
     pub fn with_seed(mut self, seed: i32) -> Self {
         self.req.seed = Some(seed);
@@ -827,6 +833,9 @@ pub struct ImageEditRequest {
     /// strength to apply Control Net. Defaults to 0.9. This param is only supported for `stable-diffusion.cpp`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub control_strength: Option<f32>,
+    /// The image to control the generation. This param is only supported for `stable-diffusion.cpp`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub control_image: Option<FileObject>,
     /// RNG seed. Negative value means to use random seed. Defaults to 42. This param is only supported for `stable-diffusion.cpp`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub seed: Option<i32>,
@@ -855,6 +864,7 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
             Height,
             Width,
             ControlStrength,
+            ControlImage,
             Seed,
             Strength,
         }
@@ -893,6 +903,7 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                             "height" => Ok(Field::Height),
                             "width" => Ok(Field::Width),
                             "control_strength" => Ok(Field::ControlStrength),
+                            "control_image" => Ok(Field::ControlImage),
                             "seed" => Ok(Field::Seed),
                             "strength" => Ok(Field::Strength),
                             _ => Err(de::Error::unknown_field(value, FIELDS)),
@@ -932,6 +943,7 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                 let mut height = None;
                 let mut width = None;
                 let mut control_strength = None;
+                let mut control_image = None;
                 let mut seed = None;
                 let mut strength = None;
 
@@ -1027,6 +1039,12 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                             }
                             control_strength = Some(map.next_value()?);
                         }
+                        Field::ControlImage => {
+                            if control_image.is_some() {
+                                return Err(de::Error::duplicate_field("control_image"));
+                            }
+                            control_image = Some(map.next_value()?);
+                        }
                         Field::Seed => {
                             if seed.is_some() {
                                 return Err(de::Error::duplicate_field("seed"));
@@ -1113,6 +1131,7 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                     height,
                     width,
                     control_strength,
+                    control_image,
                     seed,
                     strength,
                 })
@@ -1135,6 +1154,7 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
             "height",
             "width",
             "control_strength",
+            "control_image",
             "seed",
             "strength",
         ];
@@ -1159,6 +1179,7 @@ impl Default for ImageEditRequest {
             height: Some(512),
             width: Some(512),
             control_strength: Some(0.9),
+            control_image: None,
             seed: Some(42),
             strength: Some(0.75),
         }
