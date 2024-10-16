@@ -44,10 +44,10 @@ pub struct TranscriptionRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_context: Option<i32>,
     /// Maximum number of tokens that the model can generate in a single transcription segment (or chunk). Defaults to 0. This param is reserved for `whisper.cpp`.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "max-len")]
     pub max_len: Option<u32>,
     /// Split audio chunks on word rather than on token. Defaults to false. This param is reserved for `whisper.cpp`.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "split-on-word")]
     pub split_on_word: Option<bool>,
 }
 impl Default for TranscriptionRequest {
