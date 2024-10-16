@@ -31,7 +31,7 @@ pub struct TranscriptionRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timestamp_granularities: Option<Vec<TimestampGranularity>>,
 
-    /// automatically detect the spoken language in the provided audio input. Defaults to false. This param is reserved for `whisper.cpp`.
+    /// Automatically detect the spoken language in the provided audio input. Defaults to false. This param is reserved for `whisper.cpp`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub detect_language: Option<bool>,
     /// Time offset in milliseconds. Defaults to 0. This param is reserved for `whisper.cpp`.
