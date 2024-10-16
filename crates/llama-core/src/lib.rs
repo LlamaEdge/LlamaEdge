@@ -56,8 +56,8 @@ pub(crate) const MAX_BUFFER_SIZE: usize = 2usize.pow(14) * 15 + 128;
 pub(crate) const OUTPUT_TENSOR: usize = 0;
 const PLUGIN_VERSION: usize = 1;
 
-/// Initialize the core context
-pub fn init_core_context(
+/// Initialize the ggml context
+pub fn init_ggml_context(
     metadata_for_chats: Option<&[GgmlMetadata]>,
     metadata_for_embeddings: Option<&[GgmlMetadata]>,
 ) -> Result<(), LlamaCoreError> {
@@ -135,8 +135,8 @@ pub fn init_core_context(
     Ok(())
 }
 
-/// Initialize the core context for RAG scenarios.
-pub fn init_rag_core_context(
+/// Initialize the ggml context for RAG scenarios.
+pub fn init_ggml_rag_context(
     metadata_for_chats: &[GgmlMetadata],
     metadata_for_embeddings: &[GgmlMetadata],
 ) -> Result<(), LlamaCoreError> {
@@ -437,7 +437,7 @@ pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
     Ok(mode.to_owned())
 }
 
-/// Initialize the stable diffusion context with the given full diffusion model
+/// Initialize the stable-diffusion context with the given full diffusion model
 ///
 /// # Arguments
 ///
@@ -451,14 +451,14 @@ pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
 ///
 /// * `n_threads` - Number of threads to use.
 ///
-/// * `ctx` - The context type to create.
+/// * `task` - The task type to perform.
 pub fn init_sd_context_with_full_model(
     model_file: impl AsRef<str>,
     lora_model_dir: Option<&str>,
     controlnet_path: Option<&str>,
     controlnet_on_cpu: bool,
     n_threads: i32,
-    ctx: SDContextType,
+    task: StableDiffusionTask,
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Initializing the stable diffusion context with the full model");
@@ -469,7 +469,7 @@ pub fn init_sd_context_with_full_model(
     };
 
     // create the stable diffusion context for the text-to-image task
-    if ctx == SDContextType::Full || ctx == SDContextType::TextToImage {
+    if task == StableDiffusionTask::Full || task == StableDiffusionTask::TextToImage {
         let sd = SDBuidler::new(Task::TextToImage, model_file.as_ref())
             .map_err(|e| {
                 let err_msg = format!(
@@ -550,7 +550,7 @@ pub fn init_sd_context_with_full_model(
     }
 
     // create the stable diffusion context for the image-to-image task
-    if ctx == SDContextType::Full || ctx == SDContextType::ImageToImage {
+    if task == StableDiffusionTask::Full || task == StableDiffusionTask::ImageToImage {
         let sd = SDBuidler::new(Task::ImageToImage, model_file.as_ref())
             .map_err(|e| {
                 let err_msg = format!(
@@ -633,7 +633,7 @@ pub fn init_sd_context_with_full_model(
     Ok(())
 }
 
-/// Initialize the stable diffusion context with the given standalone diffusion model
+/// Initialize the stable-diffusion context with the given standalone diffusion model
 ///
 /// # Arguments
 ///
@@ -653,7 +653,7 @@ pub fn init_sd_context_with_full_model(
 ///
 /// * `n_threads` - Number of threads to use.
 ///
-/// * `ctx` - The context type to create.
+/// * `task` - The task type to perform.
 #[allow(clippy::too_many_arguments)]
 pub fn init_sd_context_with_standalone_model(
     model_file: impl AsRef<str>,
@@ -664,7 +664,7 @@ pub fn init_sd_context_with_standalone_model(
     controlnet_path: Option<&str>,
     controlnet_on_cpu: bool,
     n_threads: i32,
-    ctx: SDContextType,
+    task: StableDiffusionTask,
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Initializing the stable diffusion context with the standalone diffusion model");
@@ -675,7 +675,7 @@ pub fn init_sd_context_with_standalone_model(
     };
 
     // create the stable diffusion context for the text-to-image task
-    if ctx == SDContextType::Full || ctx == SDContextType::TextToImage {
+    if task == StableDiffusionTask::Full || task == StableDiffusionTask::TextToImage {
         let sd = SDBuidler::new_with_standalone_model(Task::TextToImage, model_file.as_ref())
             .map_err(|e| {
                 let err_msg = format!(
@@ -792,7 +792,7 @@ pub fn init_sd_context_with_standalone_model(
     }
 
     // create the stable diffusion context for the image-to-image task
-    if ctx == SDContextType::Full || ctx == SDContextType::ImageToImage {
+    if task == StableDiffusionTask::Full || task == StableDiffusionTask::ImageToImage {
         let sd = SDBuidler::new_with_standalone_model(Task::ImageToImage, model_file.as_ref())
             .map_err(|e| {
                 let err_msg = format!(
@@ -911,9 +911,9 @@ pub fn init_sd_context_with_standalone_model(
     Ok(())
 }
 
-/// The context to create for the stable diffusion model
+/// The task type of the stable diffusion context
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
-pub enum SDContextType {
+pub enum StableDiffusionTask {
     /// `text_to_image` context
     TextToImage,
     /// `image_to_image` context
