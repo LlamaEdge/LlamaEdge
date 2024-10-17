@@ -42,17 +42,17 @@ impl WhisperMetadataBuilder {
         self
     }
 
-    pub fn with_processors(mut self, processors: u32) -> Self {
+    pub fn with_processors(mut self, processors: u64) -> Self {
         self.metadata.processors = processors;
         self
     }
 
-    pub fn with_offset_t(mut self, offset_t: u32) -> Self {
+    pub fn with_offset_time(mut self, offset_t: u64) -> Self {
         self.metadata.offset_time = offset_t;
         self
     }
 
-    pub fn with_duration(mut self, duration: u32) -> Self {
+    pub fn with_duration(mut self, duration: u64) -> Self {
         self.metadata.duration = duration;
         self
     }
@@ -62,7 +62,7 @@ impl WhisperMetadataBuilder {
         self
     }
 
-    pub fn with_max_len(mut self, max_len: u32) -> Self {
+    pub fn with_max_len(mut self, max_len: u64) -> Self {
         self.metadata.max_len = max_len;
         self
     }
@@ -142,16 +142,16 @@ pub struct WhisperMetadata {
     /// Supplying the input language in [ISO-639-1](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) format will improve accuracy and latency.
     pub language: String,
     /// Number of processors to use during computation. Defaults to 1.
-    pub processors: u32,
+    pub processors: u64,
     /// Time offset in milliseconds. Defaults to 0.
     #[serde(rename = "offset-t")]
-    pub offset_time: u32,
+    pub offset_time: u64,
     /// Duration of audio to process in milliseconds. Defaults to 0.
-    pub duration: u32,
+    pub duration: u64,
     /// Maximum number of text context tokens to store. Defaults to -1.
     pub max_context: i32,
     /// Maximum segment length in characters. Defaults to 0.
-    pub max_len: u32,
+    pub max_len: u64,
     /// Split on word rather than on token. Defaults to false.
     pub split_on_word: bool,
     /// Output result in a text file. Defaults to false.
