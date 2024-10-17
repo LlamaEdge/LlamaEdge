@@ -36,16 +36,16 @@ pub struct TranscriptionRequest {
     pub detect_language: Option<bool>,
     /// Time offset in milliseconds. Defaults to 0. This param is reserved for `whisper.cpp`.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset_time: Option<u32>,
+    pub offset_time: Option<u64>,
     /// Length of audio (in seconds) to be processed starting from the point defined by the `offset_time` field (or from the beginning by default). Defaults to 0. This param is reserved for `whisper.cpp`.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub duration: Option<u32>,
+    pub duration: Option<u64>,
     /// Maximum amount of text context (in tokens) that the model uses when processing long audio inputs incrementally. Defaults to -1. This param is reserved for `whisper.cpp`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_context: Option<i32>,
     /// Maximum number of tokens that the model can generate in a single transcription segment (or chunk). Defaults to 0. This param is reserved for `whisper.cpp`.
     #[serde(skip_serializing_if = "Option::is_none", rename = "max-len")]
-    pub max_len: Option<u32>,
+    pub max_len: Option<u64>,
     /// Split audio chunks on word rather than on token. Defaults to false. This param is reserved for `whisper.cpp`.
     #[serde(skip_serializing_if = "Option::is_none", rename = "split-on-word")]
     pub split_on_word: Option<bool>,
