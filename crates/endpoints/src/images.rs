@@ -160,6 +160,9 @@ pub struct ImageCreateRequest {
     /// RNG seed. Negative value means to use random seed. Defaults to 42. This param is only supported for `stable-diffusion.cpp`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub seed: Option<i32>,
+    /// Denoiser sigma scheduler. Possible values are `discrete`, `karras`, `exponential`, `ays`, `gits`. Defaults to `discrete`. This param is only supported for `stable-diffusion.cpp`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scheduler: Option<Scheduler>,
 }
 impl<'de> Deserialize<'de> for ImageCreateRequest {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -184,6 +187,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
             ControlStrength,
             ControlImage,
             Seed,
+            Scheduler,
         }
 
         impl<'de> Deserialize<'de> for Field {
@@ -222,6 +226,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                             "control_strength" => Ok(Field::ControlStrength),
                             "control_image" => Ok(Field::ControlImage),
                             "seed" => Ok(Field::Seed),
+                            "scheduler" => Ok(Field::Scheduler),
                             _ => Err(de::Error::unknown_field(value, FIELDS)),
                         }
                     }
@@ -252,19 +257,20 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(1, &self))?;
                 let n = seq.next_element()?.unwrap_or(Some(1));
-                let quality = seq.next_element()?;
-                let response_format = seq.next_element()?.unwrap_or(Some(ResponseFormat::Url));
-                let size = seq.next_element()?;
-                let style = seq.next_element()?;
-                let user = seq.next_element()?;
-                let cfg_scale = seq.next_element()?;
-                let sample_method = seq.next_element()?;
-                let steps = seq.next_element()?;
-                let height = seq.next_element()?;
-                let width = seq.next_element()?;
-                let control_strength = seq.next_element()?;
+                let quality = seq.next_element().unwrap_or(Some("standard".to_string()));
+                let response_format = seq.next_element().unwrap_or(Some(ResponseFormat::Url));
+                let size = seq.next_element().unwrap_or(None);
+                let style = seq.next_element().unwrap_or(Some("natural".to_string()));
+                let user = seq.next_element().unwrap_or(None);
+                let cfg_scale = seq.next_element().unwrap_or(Some(7.0));
+                let sample_method = seq.next_element().unwrap_or(Some(SamplingMethod::EulerA));
+                let steps = seq.next_element().unwrap_or(Some(20));
+                let height = seq.next_element().unwrap_or(Some(512));
+                let width = seq.next_element().unwrap_or(Some(512));
+                let control_strength = seq.next_element().unwrap_or(Some(0.9));
                 let control_image = seq.next_element()?;
-                let seed = seq.next_element()?;
+                let seed = seq.next_element().unwrap_or(Some(42));
+                let scheduler = seq.next_element()?.unwrap_or(Some(Scheduler::Discrete));
 
                 Ok(ImageCreateRequest {
                     prompt,
@@ -284,6 +290,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     control_strength,
                     control_image,
                     seed,
+                    scheduler,
                 })
             }
 
@@ -308,6 +315,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                 let mut control_strength = None;
                 let mut control_image = None;
                 let mut seed = None;
+                let mut scheduler = None;
 
                 while let Some(key) = map.next_key()? {
                     match key {
@@ -413,6 +421,12 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                             }
                             seed = Some(map.next_value()?);
                         }
+                        Field::Scheduler => {
+                            if scheduler.is_some() {
+                                return Err(de::Error::duplicate_field("scheduler"));
+                            }
+                            scheduler = Some(map.next_value()?);
+                        }
                     }
                 }
 
@@ -467,6 +481,10 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     }
                 }
 
+                if scheduler.is_none() {
+                    scheduler = Some(Scheduler::Discrete);
+                }
+
                 Ok(ImageCreateRequest {
                     prompt: prompt.ok_or_else(|| de::Error::missing_field("prompt"))?,
                     negative_prompt,
@@ -485,6 +503,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     control_strength,
                     control_image,
                     seed,
+                    scheduler,
                 })
             }
         }
@@ -507,6 +526,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
             "control_strength",
             "control_image",
             "seed",
+            "scheduler",
         ];
         deserializer.deserialize_struct("CreateImageRequest", FIELDS, CreateImageRequestVisitor)
     }
@@ -531,6 +551,7 @@ impl Default for ImageCreateRequest {
             control_strength: Some(0.9),
             control_image: None,
             seed: Some(42),
+            scheduler: Some(Scheduler::Discrete),
         }
     }
 }
@@ -602,7 +623,7 @@ fn test_serialize_image_create_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"prompt":"This is a prompt","negative_prompt":"This is the negative prompt.","model":"test-model-name","n":1,"quality":"standard","response_format":"url","style":"natural","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42}"#
+            r#"{"prompt":"This is a prompt","negative_prompt":"This is the negative prompt.","model":"test-model-name","n":1,"quality":"standard","response_format":"url","style":"natural","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42,"scheduler":"discrete"}"#
         );
     }
 
@@ -619,7 +640,7 @@ fn test_serialize_image_create_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"prompt":"This is a prompt","negative_prompt":"","model":"test-model-name","n":2,"quality":"standard","response_format":"b64_json","style":"vivid","user":"user","cfg_scale":1.0,"sample_method":"euler","steps":4,"height":512,"width":512,"control_strength":0.9,"seed":42}"#
+            r#"{"prompt":"This is a prompt","negative_prompt":"","model":"test-model-name","n":2,"quality":"standard","response_format":"b64_json","style":"vivid","user":"user","cfg_scale":1.0,"sample_method":"euler","steps":4,"height":512,"width":512,"control_strength":0.9,"seed":42,"scheduler":"discrete"}"#
         );
     }
 }
@@ -842,6 +863,9 @@ pub struct ImageEditRequest {
     /// Strength for noising/unnoising. Defaults to 0.75. This param is only supported for `stable-diffusion.cpp`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub strength: Option<f32>,
+    /// Denoiser sigma scheduler. Possible values are `discrete`, `karras`, `exponential`, `ays`, `gits`. Defaults to `discrete`. This param is only supported for `stable-diffusion.cpp`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scheduler: Option<Scheduler>,
 }
 impl<'de> Deserialize<'de> for ImageEditRequest {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -867,6 +891,7 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
             ControlImage,
             Seed,
             Strength,
+            Scheduler,
         }
 
         impl<'de> Deserialize<'de> for Field {
@@ -906,6 +931,7 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                             "control_image" => Ok(Field::ControlImage),
                             "seed" => Ok(Field::Seed),
                             "strength" => Ok(Field::Strength),
+                            "scheduler" => Ok(Field::Scheduler),
                             _ => Err(de::Error::unknown_field(value, FIELDS)),
                         }
                     }
@@ -946,6 +972,7 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                 let mut control_image = None;
                 let mut seed = None;
                 let mut strength = None;
+                let mut scheduler = None;
 
                 while let Some(key) = map.next_key()? {
                     match key {
@@ -1057,6 +1084,12 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                             }
                             strength = Some(map.next_value()?);
                         }
+                        Field::Scheduler => {
+                            if scheduler.is_some() {
+                                return Err(de::Error::duplicate_field("scheduler"));
+                            }
+                            scheduler = Some(map.next_value()?);
+                        }
                     }
                 }
 
@@ -1115,6 +1148,10 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                     }
                 }
 
+                if scheduler.is_none() {
+                    scheduler = Some(Scheduler::Discrete);
+                }
+
                 Ok(ImageEditRequest {
                     image: image.ok_or_else(|| de::Error::missing_field("image"))?,
                     prompt: prompt.ok_or_else(|| de::Error::missing_field("prompt"))?,
@@ -1134,6 +1171,7 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                     control_image,
                     seed,
                     strength,
+                    scheduler,
                 })
             }
         }
@@ -1157,6 +1195,7 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
             "control_image",
             "seed",
             "strength",
+            "scheduler",
         ];
         deserializer.deserialize_struct("ImageEditRequest", FIELDS, ImageEditRequestVisitor)
     }
@@ -1182,6 +1221,7 @@ impl Default for ImageEditRequest {
             control_image: None,
             seed: Some(42),
             strength: Some(0.75),
+            scheduler: Some(Scheduler::Discrete),
         }
     }
 }
@@ -1205,7 +1245,7 @@ fn test_serialize_image_edit_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","negative_prompt":"","model":"test-model-name","n":1,"response_format":"url","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42,"strength":0.75}"#
+            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","negative_prompt":"","model":"test-model-name","n":1,"response_format":"url","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42,"strength":0.75,"scheduler":"discrete"}"#
         );
     }
 
@@ -1230,7 +1270,7 @@ fn test_serialize_image_edit_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","negative_prompt":"","model":"test-model-name","n":2,"size":"256x256","response_format":"b64_json","user":"user","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42,"strength":0.75}"#
+            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","negative_prompt":"","model":"test-model-name","n":2,"size":"256x256","response_format":"b64_json","user":"user","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42,"strength":0.75,"scheduler":"discrete"}"#
         );
     }
 }
@@ -1251,10 +1291,20 @@ fn test_deserialize_image_edit_request() {
         assert_eq!(req.model, "test-model-name");
         assert_eq!(req.n, Some(1));
         assert_eq!(req.response_format, Some(ResponseFormat::Url));
+        assert_eq!(req.cfg_scale, Some(7.0));
+        assert_eq!(req.sample_method, Some(SamplingMethod::EulerA));
+        assert_eq!(req.steps, Some(20));
+        assert_eq!(req.height, Some(512));
+        assert_eq!(req.width, Some(512));
+        assert_eq!(req.control_strength, Some(0.9));
+        assert!(req.control_image.is_none());
+        assert_eq!(req.seed, Some(42));
+        assert_eq!(req.strength, Some(0.75));
+        assert_eq!(req.scheduler, Some(Scheduler::Discrete));
     }
 
     {
-        let json = r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","model":"test-model-name","n":2,"size":"256x256","response_format":"b64_json","user":"user"}"#;
+        let json = r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","model":"test-model-name","n":2,"size":"256x256","response_format":"b64_json","user":"user","cfg_scale":7.9,"sample_method":"euler","steps":25, "scheduler":"karras"}"#;
         let req: ImageEditRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.image.id, "test-image-id");
         assert_eq!(req.image.bytes, 1024);
@@ -1269,6 +1319,16 @@ fn test_deserialize_image_edit_request() {
         assert_eq!(req.size, Some("256x256".to_string()));
         assert_eq!(req.response_format, Some(ResponseFormat::B64Json));
         assert_eq!(req.user, Some("user".to_string()));
+        assert_eq!(req.cfg_scale, Some(7.9));
+        assert_eq!(req.sample_method, Some(SamplingMethod::Euler));
+        assert_eq!(req.steps, Some(25));
+        assert_eq!(req.height, Some(256));
+        assert_eq!(req.width, Some(256));
+        assert_eq!(req.control_strength, Some(0.9));
+        assert!(req.control_image.is_none());
+        assert_eq!(req.seed, Some(42));
+        assert_eq!(req.strength, Some(0.75));
+        assert_eq!(req.scheduler, Some(Scheduler::Karras));
     }
 }
 
@@ -1472,4 +1532,19 @@ pub struct ListImagesResponse {
     pub created: u64,
     /// The list of file objects.
     pub data: Vec<ImageObject>,
+}
+
+/// Scheduler type
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+pub enum Scheduler {
+    #[serde(rename = "discrete")]
+    Discrete,
+    #[serde(rename = "karras")]
+    Karras,
+    #[serde(rename = "exponential")]
+    Exponential,
+    #[serde(rename = "ays")]
+    Ays,
+    #[serde(rename = "gits")]
+    Gits,
 }
