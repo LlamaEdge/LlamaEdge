@@ -102,6 +102,18 @@ impl ImageCreateRequestBuilder {
         self
     }
 
+    /// Set the strength for noising/unnoising. This param is only supported for `stable-diffusion.cpp`.
+    pub fn with_strength(mut self, strength: f32) -> Self {
+        self.req.strength = Some(strength);
+        self
+    }
+
+    /// Set the denoiser sigma scheduler. This param is only supported for `stable-diffusion.cpp`.
+    pub fn with_scheduler(mut self, scheduler: Scheduler) -> Self {
+        self.req.scheduler = Some(scheduler);
+        self
+    }
+
     /// Build the request.
     pub fn build(self) -> ImageCreateRequest {
         self.req
@@ -160,6 +172,9 @@ pub struct ImageCreateRequest {
     /// RNG seed. Negative value means to use random seed. Defaults to 42. This param is only supported for `stable-diffusion.cpp`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub seed: Option<i32>,
+    /// Strength for noising/unnoising. Defaults to 0.75. This param is only supported for `stable-diffusion.cpp`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub strength: Option<f32>,
     /// Denoiser sigma scheduler. Possible values are `discrete`, `karras`, `exponential`, `ays`, `gits`. Defaults to `discrete`. This param is only supported for `stable-diffusion.cpp`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scheduler: Option<Scheduler>,
@@ -187,6 +202,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
             ControlStrength,
             ControlImage,
             Seed,
+            Strength,
             Scheduler,
         }
 
@@ -226,6 +242,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                             "control_strength" => Ok(Field::ControlStrength),
                             "control_image" => Ok(Field::ControlImage),
                             "seed" => Ok(Field::Seed),
+                            "strength" => Ok(Field::Strength),
                             "scheduler" => Ok(Field::Scheduler),
                             _ => Err(de::Error::unknown_field(value, FIELDS)),
                         }
@@ -270,6 +287,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                 let control_strength = seq.next_element().unwrap_or(Some(0.9));
                 let control_image = seq.next_element()?;
                 let seed = seq.next_element().unwrap_or(Some(42));
+                let strength = seq.next_element().unwrap_or(Some(0.75));
                 let scheduler = seq.next_element()?.unwrap_or(Some(Scheduler::Discrete));
 
                 Ok(ImageCreateRequest {
@@ -290,6 +308,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     control_strength,
                     control_image,
                     seed,
+                    strength,
                     scheduler,
                 })
             }
@@ -315,6 +334,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                 let mut control_strength = None;
                 let mut control_image = None;
                 let mut seed = None;
+                let mut strength = None;
                 let mut scheduler = None;
 
                 while let Some(key) = map.next_key()? {
@@ -421,6 +441,12 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                             }
                             seed = Some(map.next_value()?);
                         }
+                        Field::Strength => {
+                            if strength.is_some() {
+                                return Err(de::Error::duplicate_field("strength"));
+                            }
+                            strength = Some(map.next_value()?);
+                        }
                         Field::Scheduler => {
                             if scheduler.is_some() {
                                 return Err(de::Error::duplicate_field("scheduler"));
@@ -481,6 +507,10 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     }
                 }
 
+                if strength.is_none() {
+                    strength = Some(0.75);
+                }
+
                 if scheduler.is_none() {
                     scheduler = Some(Scheduler::Discrete);
                 }
@@ -503,6 +533,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     control_strength,
                     control_image,
                     seed,
+                    strength,
                     scheduler,
                 })
             }
@@ -526,6 +557,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
             "control_strength",
             "control_image",
             "seed",
+            "strength",
             "scheduler",
         ];
         deserializer.deserialize_struct("CreateImageRequest", FIELDS, CreateImageRequestVisitor)
@@ -551,6 +583,7 @@ impl Default for ImageCreateRequest {
             control_strength: Some(0.9),
             control_image: None,
             seed: Some(42),
+            strength: Some(0.75),
             scheduler: Some(Scheduler::Discrete),
         }
     }
@@ -623,7 +656,7 @@ fn test_serialize_image_create_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"prompt":"This is a prompt","negative_prompt":"This is the negative prompt.","model":"test-model-name","n":1,"quality":"standard","response_format":"url","style":"natural","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42,"scheduler":"discrete"}"#
+            r#"{"prompt":"This is a prompt","negative_prompt":"This is the negative prompt.","model":"test-model-name","n":1,"quality":"standard","response_format":"url","style":"natural","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42,"strength":0.75,"scheduler":"discrete"}"#
         );
     }
 
@@ -640,7 +673,7 @@ fn test_serialize_image_create_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"prompt":"This is a prompt","negative_prompt":"","model":"test-model-name","n":2,"quality":"standard","response_format":"b64_json","style":"vivid","user":"user","cfg_scale":1.0,"sample_method":"euler","steps":4,"height":512,"width":512,"control_strength":0.9,"seed":42,"scheduler":"discrete"}"#
+            r#"{"prompt":"This is a prompt","negative_prompt":"","model":"test-model-name","n":2,"quality":"standard","response_format":"b64_json","style":"vivid","user":"user","cfg_scale":1.0,"sample_method":"euler","steps":4,"height":512,"width":512,"control_strength":0.9,"seed":42,"strength":0.75,"scheduler":"discrete"}"#
         );
     }
 }
@@ -800,6 +833,12 @@ impl ImageEditRequestBuilder {
     /// Set the strength for noising/unnoising. This param is only supported for `stable-diffusion.cpp`.
     pub fn with_strength(mut self, strength: f32) -> Self {
         self.req.strength = Some(strength);
+        self
+    }
+
+    /// Set the denoiser sigma scheduler. This param is only supported for `stable-diffusion.cpp`.
+    pub fn with_scheduler(mut self, scheduler: Scheduler) -> Self {
+        self.req.scheduler = Some(scheduler);
         self
     }
 
