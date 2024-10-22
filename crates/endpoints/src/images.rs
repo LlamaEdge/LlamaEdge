@@ -1601,3 +1601,15 @@ impl FromStr for Scheduler {
         }
     }
 }
+impl From<&str> for Scheduler {
+    fn from(s: &str) -> Self {
+        match s.to_lowercase().as_str() {
+            "discrete" => Scheduler::Discrete,
+            "karras" => Scheduler::Karras,
+            "exponential" => Scheduler::Exponential,
+            "ays" => Scheduler::Ays,
+            "gits" => Scheduler::Gits,
+            _ => Scheduler::Discrete,
+        }
+    }
+}
