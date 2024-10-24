@@ -1788,7 +1788,7 @@ pub mod sd_webui {
         /// Seed resize from W. Defaults to -1.
         #[serde(skip_serializing_if = "Option::is_none")]
         pub seed_resize_from_w: Option<i64>,
-        /// Sampler name.
+        /// Sampler name. Possible values are `Euler`, `Euler a`, `Heun`, `DPM2`, `DPM2 a`, `DPM fast`, `DPM adaptive`, `DPM++ 2S a`, `DPM++ 2M`, `DPM++ 2M SDE`, `DPM++ 2M SDE Heun`, `DPM++ 3M SDE`, `DPM++ SDE`, `LCM`, `LMS`, `Restart`, `DDIM`, `DDIM CFG++`, `PLMS`, `UniPC`. Defaults to `Euler`.
         #[serde(skip_serializing_if = "Option::is_none")]
         pub sampler_name: Option<Sampler>,
         /// Denoiser sigma scheduler. Possible values are `discrete`, `karras`, `exponential`, `ays`, `gits`. Defaults to `discrete`.
@@ -1902,7 +1902,7 @@ pub mod sd_webui {
         /// Force Task Id.
         #[serde(skip_serializing_if = "Option::is_none")]
         pub force_task_id: Option<String>,
-        /// Sampler index. Defaults to "Euler".
+        /// Sampler index. Possible values are `Euler`, `Euler a`, `Heun`, `DPM2`, `DPM2 a`, `DPM fast`, `DPM adaptive`, `DPM++ 2S a`, `DPM++ 2M`, `DPM++ 2M SDE`, `DPM++ 2M SDE Heun`, `DPM++ 3M SDE`, `DPM++ SDE`, `LCM`, `LMS`, `Restart`, `DDIM`, `DDIM CFG++`, `PLMS`, `UniPC`. Defaults to `Euler`.
         #[serde(skip_serializing_if = "Option::is_none")]
         pub sampler_index: Option<Sampler>,
         /// Send images. Defaults to true.
