@@ -1722,7 +1722,7 @@ impl<'de> Deserialize<'de> for Scheduler {
     {
         struct SchedulerVisitor;
 
-        impl<'de> Visitor<'de> for SchedulerVisitor {
+        impl Visitor<'_> for SchedulerVisitor {
             type Value = Scheduler;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -2992,7 +2992,7 @@ pub mod sd_webui {
         {
             struct SamplerVisitor;
 
-            impl<'de> Visitor<'de> for SamplerVisitor {
+            impl Visitor<'_> for SamplerVisitor {
                 type Value = Sampler;
 
                 fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
