@@ -449,6 +449,10 @@ pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
 ///
 /// * `controlnet_on_cpu` - Whether to run the controlnet on CPU.
 ///
+/// * `clip_on_cpu` - Whether to run the CLIP on CPU.
+///
+/// * `vae_on_cpu` - Whether to run the VAE on CPU.
+///
 /// * `n_threads` - Number of threads to use.
 ///
 /// * `task` - The task type to perform.
@@ -457,6 +461,8 @@ pub fn init_sd_context_with_full_model(
     lora_model_dir: Option<&str>,
     controlnet_path: Option<&str>,
     controlnet_on_cpu: bool,
+    clip_on_cpu: bool,
+    vae_on_cpu: bool,
     n_threads: i32,
     task: StableDiffusionTask,
 ) -> Result<(), LlamaCoreError> {
@@ -506,6 +512,8 @@ pub fn init_sd_context_with_full_model(
 
                 LlamaCoreError::InitContext(err_msg)
             })?
+            .clip_on_cpu(clip_on_cpu)
+            .vae_on_cpu(vae_on_cpu)
             .with_n_threads(n_threads)
             .build();
 
@@ -587,6 +595,8 @@ pub fn init_sd_context_with_full_model(
 
                 LlamaCoreError::InitContext(err_msg)
             })?
+            .clip_on_cpu(clip_on_cpu)
+            .vae_on_cpu(vae_on_cpu)
             .with_n_threads(n_threads)
             .build();
 
@@ -651,6 +661,10 @@ pub fn init_sd_context_with_full_model(
 ///
 /// * `controlnet_on_cpu` - Whether to run the controlnet on CPU.
 ///
+/// * `clip_on_cpu` - Whether to run the CLIP on CPU.
+///
+/// * `vae_on_cpu` - Whether to run the VAE on CPU.
+///
 /// * `n_threads` - Number of threads to use.
 ///
 /// * `task` - The task type to perform.
@@ -663,6 +677,8 @@ pub fn init_sd_context_with_standalone_model(
     lora_model_dir: Option<&str>,
     controlnet_path: Option<&str>,
     controlnet_on_cpu: bool,
+    clip_on_cpu: bool,
+    vae_on_cpu: bool,
     n_threads: i32,
     task: StableDiffusionTask,
 ) -> Result<(), LlamaCoreError> {
@@ -748,6 +764,8 @@ pub fn init_sd_context_with_standalone_model(
 
                 LlamaCoreError::InitContext(err_msg)
             })?
+            .clip_on_cpu(clip_on_cpu)
+            .vae_on_cpu(vae_on_cpu)
             .with_n_threads(n_threads)
             .build();
 
@@ -865,6 +883,8 @@ pub fn init_sd_context_with_standalone_model(
 
                 LlamaCoreError::InitContext(err_msg)
             })?
+            .clip_on_cpu(clip_on_cpu)
+            .vae_on_cpu(vae_on_cpu)
             .with_n_threads(n_threads)
             .build();
 
