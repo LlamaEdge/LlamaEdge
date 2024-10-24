@@ -456,6 +456,7 @@ pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
 /// * `n_threads` - Number of threads to use.
 ///
 /// * `task` - The task type to perform.
+#[allow(clippy::too_many_arguments)]
 pub fn init_sd_context_with_full_model(
     model_file: impl AsRef<str>,
     lora_model_dir: Option<&str>,
