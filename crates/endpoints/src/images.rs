@@ -1715,3 +1715,183 @@ impl From<&str> for Scheduler {
         }
     }
 }
+
+pub mod sd_webui {
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub struct Txt2ImgRequest {
+        pub prompt: String,
+        pub negative_prompt: String,
+        pub seed: i64,
+        pub batch_size: u32,
+        pub steps: u32,
+        pub scheduler: String,
+        pub cfg_scale: f64,
+        pub width: u32,
+        pub height: u32,
+        pub restore_faces: bool,
+        pub tiling: bool,
+        pub override_settings: OverrideSettings,
+        pub sampler_index: String,
+        pub alwayson_scripts: AlwaysOnScripts,
+    }
+
+    #[test]
+    fn test_deserialize_txt2img_request() {
+        let json = r###"{
+    "prompt": "1girl,intricate,highly detailed,Mature,seductive gaze,teasing expression,sexy posture,solo,Moderate breasts,Charm,alluring,Hot,tsurime,lipstick,stylish_pose,long hair,long_eyelashes,black hair,bar,dress,",
+    "negative_prompt": "",
+    "seed": -1,
+    "batch_size": 2,
+    "steps": 25,
+    "scheduler": "Karras",
+    "cfg_scale": 7.0,
+    "width": 540,
+    "height": 960,
+    "restore_faces": false,
+    "tiling": false,
+    "override_settings": {
+        "sd_model_checkpoint": "waiANINSFWPONYXL_v90.safetensors"
+    },
+    "sampler_index": "DPM++ 2M",
+    "alwayson_scripts": {
+        "controlnet": {
+            "args": [
+                {
+                    "enabled": true,
+                    "pixel_perfect": true,
+                    "image": "iVBORw0KGgoAAAANSUhEUgAABDgAAAeACAI",
+                    "module": "reference_only",
+                    "guidance_start": 0.0,
+                    "guidance_end": 0.2
+                }
+            ]
+        }
+    }
+}"###;
+        let req: Txt2ImgRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.prompt, "1girl,intricate,highly detailed,Mature,seductive gaze,teasing expression,sexy posture,solo,Moderate breasts,Charm,alluring,Hot,tsurime,lipstick,stylish_pose,long hair,long_eyelashes,black hair,bar,dress,");
+        assert_eq!(req.negative_prompt, "");
+        assert_eq!(req.seed, -1);
+        assert_eq!(req.batch_size, 2);
+        assert_eq!(req.steps, 25);
+        assert_eq!(req.scheduler, "Karras");
+        assert_eq!(req.cfg_scale, 7.0);
+        assert_eq!(req.width, 540);
+        assert_eq!(req.height, 960);
+        assert_eq!(req.restore_faces, false);
+        assert_eq!(req.tiling, false);
+        assert_eq!(req.sampler_index, "DPM++ 2M");
+        assert_eq!(req.alwayson_scripts.controlnet.args.len(), 1);
+        assert_eq!(req.alwayson_scripts.controlnet.args[0].enabled, true);
+        assert_eq!(req.alwayson_scripts.controlnet.args[0].pixel_perfect, true);
+        assert_eq!(
+            req.alwayson_scripts.controlnet.args[0].module,
+            "reference_only"
+        );
+        assert_eq!(req.alwayson_scripts.controlnet.args[0].guidance_start, 0.0);
+        assert_eq!(req.alwayson_scripts.controlnet.args[0].guidance_end, 0.2);
+        assert_eq!(
+            req.alwayson_scripts.controlnet.args[0].image,
+            "iVBORw0KGgoAAAANSUhEUgAABDgAAAeACAI"
+        );
+        assert_eq!(
+            req.override_settings.sd_model_checkpoint,
+            "waiANINSFWPONYXL_v90.safetensors"
+        );
+    }
+
+    #[test]
+    fn test_serialize_txt2img_request() {
+        let req = Txt2ImgRequest {
+            prompt: "1girl,intricate,highly detailed,Mature,seductive gaze,teasing expression,sexy posture,solo,Moderate breasts,Charm,alluring,Hot,tsurime,lipstick,stylish_pose,long hair,long_eyelashes,black hair,bar,dress,".to_string(),
+            negative_prompt: "".to_string(),
+            seed: -1,
+            batch_size: 2,
+            steps: 25,
+            scheduler: "Karras".to_string(),
+            cfg_scale: 7.0,
+            width: 540,
+            height: 960,
+            restore_faces: false,
+            tiling: false,
+            override_settings: OverrideSettings {
+                sd_model_checkpoint: "waiANINSFWPONYXL_v90.safetensors".to_string(),
+            },
+            sampler_index: "DPM++ 2M".to_string(),
+            alwayson_scripts: AlwaysOnScripts {
+                controlnet: ControlNet { args: vec![
+                    ControlNetArgs {
+                        enabled: true,
+                        pixel_perfect: true,
+                        image: "iVBORw0KGgoAAAANSUhEUgAABDgAAAeACAI".to_string(),
+                        module: "reference_only".to_string(),
+                        guidance_start: 0.0,
+                        guidance_end: 0.2,
+                    }
+                ] },
+            },
+        };
+        let serialized = serde_json::to_string_pretty(&req).unwrap();
+
+        let json = r###"{
+  "prompt": "1girl,intricate,highly detailed,Mature,seductive gaze,teasing expression,sexy posture,solo,Moderate breasts,Charm,alluring,Hot,tsurime,lipstick,stylish_pose,long hair,long_eyelashes,black hair,bar,dress,",
+  "negative_prompt": "",
+  "seed": -1,
+  "batch_size": 2,
+  "steps": 25,
+  "scheduler": "Karras",
+  "cfg_scale": 7.0,
+  "width": 540,
+  "height": 960,
+  "restore_faces": false,
+  "tiling": false,
+  "override_settings": {
+    "sd_model_checkpoint": "waiANINSFWPONYXL_v90.safetensors"
+  },
+  "sampler_index": "DPM++ 2M",
+  "alwayson_scripts": {
+    "controlnet": {
+      "args": [
+        {
+          "enabled": true,
+          "pixel_perfect": true,
+          "image": "iVBORw0KGgoAAAANSUhEUgAABDgAAAeACAI",
+          "module": "reference_only",
+          "guidance_start": 0.0,
+          "guidance_end": 0.2
+        }
+      ]
+    }
+  }
+}"###;
+
+        assert_eq!(serialized, json);
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub struct OverrideSettings {
+        pub sd_model_checkpoint: String,
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub struct AlwaysOnScripts {
+        pub controlnet: ControlNet,
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub struct ControlNet {
+        pub args: Vec<ControlNetArgs>,
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub struct ControlNetArgs {
+        pub enabled: bool,
+        pub pixel_perfect: bool,
+        pub image: String, // Store image as a Base64 string or path
+        pub module: String,
+        pub guidance_start: f64,
+        pub guidance_end: f64,
+    }
+}
