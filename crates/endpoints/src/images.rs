@@ -114,6 +114,18 @@ impl ImageCreateRequestBuilder {
         self
     }
 
+    /// Set whether to apply the canny preprocessor.
+    pub fn apply_canny_preprocessor(mut self, apply_canny_preprocessor: bool) -> Self {
+        self.req.apply_canny_preprocessor = Some(apply_canny_preprocessor);
+        self
+    }
+
+    /// Set the strength for keeping input identity.
+    pub fn with_style_ratio(mut self, style_ratio: f32) -> Self {
+        self.req.style_ratio = Some(style_ratio);
+        self
+    }
+
     /// Build the request.
     pub fn build(self) -> ImageCreateRequest {
         self.req
@@ -178,6 +190,12 @@ pub struct ImageCreateRequest {
     /// Denoiser sigma scheduler. Possible values are `discrete`, `karras`, `exponential`, `ays`, `gits`. Defaults to `discrete`. This param is only supported for `stable-diffusion.cpp`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scheduler: Option<Scheduler>,
+    /// Apply canny preprocessor. Defaults to false. This param is only supported for `stable-diffusion.cpp`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub apply_canny_preprocessor: Option<bool>,
+    /// Strength for keeping input identity. Defaults to 0.2. This param is only supported for `stable-diffusion.cpp`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub style_ratio: Option<f32>,
 }
 impl<'de> Deserialize<'de> for ImageCreateRequest {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -204,6 +222,8 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
             Seed,
             Strength,
             Scheduler,
+            ApplyCannyPreprocessor,
+            StyleRatio,
         }
 
         impl<'de> Deserialize<'de> for Field {
@@ -244,6 +264,8 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                             "seed" => Ok(Field::Seed),
                             "strength" => Ok(Field::Strength),
                             "scheduler" => Ok(Field::Scheduler),
+                            "apply_canny_preprocessor" => Ok(Field::ApplyCannyPreprocessor),
+                            "style_ratio" => Ok(Field::StyleRatio),
                             _ => Err(de::Error::unknown_field(value, FIELDS)),
                         }
                     }
@@ -289,7 +311,8 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                 let seed = seq.next_element().unwrap_or(Some(42));
                 let strength = seq.next_element().unwrap_or(Some(0.75));
                 let scheduler = seq.next_element()?.unwrap_or(Some(Scheduler::Discrete));
-
+                let apply_canny_preprocessor = seq.next_element().unwrap_or(Some(false));
+                let style_ratio = seq.next_element().unwrap_or(Some(0.2));
                 Ok(ImageCreateRequest {
                     prompt,
                     negative_prompt,
@@ -310,6 +333,8 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     seed,
                     strength,
                     scheduler,
+                    apply_canny_preprocessor,
+                    style_ratio,
                 })
             }
 
@@ -336,7 +361,8 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                 let mut seed = None;
                 let mut strength = None;
                 let mut scheduler = None;
-
+                let mut apply_canny_preprocessor = None;
+                let mut style_ratio = None;
                 while let Some(key) = map.next_key()? {
                     match key {
                         Field::Prompt => {
@@ -453,6 +479,18 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                             }
                             scheduler = Some(map.next_value()?);
                         }
+                        Field::ApplyCannyPreprocessor => {
+                            if apply_canny_preprocessor.is_some() {
+                                return Err(de::Error::duplicate_field("apply_canny_preprocessor"));
+                            }
+                            apply_canny_preprocessor = Some(map.next_value()?);
+                        }
+                        Field::StyleRatio => {
+                            if style_ratio.is_some() {
+                                return Err(de::Error::duplicate_field("style_ratio"));
+                            }
+                            style_ratio = Some(map.next_value()?);
+                        }
                     }
                 }
 
@@ -515,6 +553,14 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     scheduler = Some(Scheduler::Discrete);
                 }
 
+                if apply_canny_preprocessor.is_none() {
+                    apply_canny_preprocessor = Some(false);
+                }
+
+                if style_ratio.is_none() {
+                    style_ratio = Some(0.2);
+                }
+
                 Ok(ImageCreateRequest {
                     prompt: prompt.ok_or_else(|| de::Error::missing_field("prompt"))?,
                     negative_prompt,
@@ -535,6 +581,8 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                     seed,
                     strength,
                     scheduler,
+                    apply_canny_preprocessor,
+                    style_ratio,
                 })
             }
         }
@@ -559,6 +607,8 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
             "seed",
             "strength",
             "scheduler",
+            "apply_canny_preprocessor",
+            "style_ratio",
         ];
         deserializer.deserialize_struct("CreateImageRequest", FIELDS, CreateImageRequestVisitor)
     }
@@ -585,6 +635,8 @@ impl Default for ImageCreateRequest {
             seed: Some(42),
             strength: Some(0.75),
             scheduler: Some(Scheduler::Discrete),
+            apply_canny_preprocessor: Some(false),
+            style_ratio: Some(0.2),
         }
     }
 }
@@ -842,6 +894,18 @@ impl ImageEditRequestBuilder {
         self
     }
 
+    /// Set whether to apply the canny preprocessor. This param is only supported for `stable-diffusion.cpp`.
+    pub fn with_apply_canny_preprocessor(mut self, apply_canny_preprocessor: bool) -> Self {
+        self.req.apply_canny_preprocessor = Some(apply_canny_preprocessor);
+        self
+    }
+
+    /// Set the strength for keeping input identity. This param is only supported for `stable-diffusion.cpp`.
+    pub fn with_style_ratio(mut self, style_ratio: f32) -> Self {
+        self.req.style_ratio = Some(style_ratio);
+        self
+    }
+
     /// Build the request.
     pub fn build(self) -> ImageEditRequest {
         self.req
@@ -905,6 +969,12 @@ pub struct ImageEditRequest {
     /// Denoiser sigma scheduler. Possible values are `discrete`, `karras`, `exponential`, `ays`, `gits`. Defaults to `discrete`. This param is only supported for `stable-diffusion.cpp`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scheduler: Option<Scheduler>,
+    /// Apply canny preprocessor. Defaults to false. This param is only supported for `stable-diffusion.cpp`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub apply_canny_preprocessor: Option<bool>,
+    /// Strength for keeping input identity. Defaults to 0.2. This param is only supported for `stable-diffusion.cpp`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub style_ratio: Option<f32>,
 }
 impl<'de> Deserialize<'de> for ImageEditRequest {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -931,6 +1001,8 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
             Seed,
             Strength,
             Scheduler,
+            ApplyCannyPreprocessor,
+            StyleRatio,
         }
 
         impl<'de> Deserialize<'de> for Field {
@@ -971,6 +1043,8 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                             "seed" => Ok(Field::Seed),
                             "strength" => Ok(Field::Strength),
                             "scheduler" => Ok(Field::Scheduler),
+                            "apply_canny_preprocessor" => Ok(Field::ApplyCannyPreprocessor),
+                            "style_ratio" => Ok(Field::StyleRatio),
                             _ => Err(de::Error::unknown_field(value, FIELDS)),
                         }
                     }
@@ -1012,6 +1086,8 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                 let mut seed = None;
                 let mut strength = None;
                 let mut scheduler = None;
+                let mut apply_canny_preprocessor = None;
+                let mut style_ratio = None;
 
                 while let Some(key) = map.next_key()? {
                     match key {
@@ -1129,6 +1205,18 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                             }
                             scheduler = Some(map.next_value()?);
                         }
+                        Field::ApplyCannyPreprocessor => {
+                            if apply_canny_preprocessor.is_some() {
+                                return Err(de::Error::duplicate_field("apply_canny_preprocessor"));
+                            }
+                            apply_canny_preprocessor = Some(map.next_value()?);
+                        }
+                        Field::StyleRatio => {
+                            if style_ratio.is_some() {
+                                return Err(de::Error::duplicate_field("style_ratio"));
+                            }
+                            style_ratio = Some(map.next_value()?);
+                        }
                     }
                 }
 
@@ -1191,6 +1279,14 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                     scheduler = Some(Scheduler::Discrete);
                 }
 
+                if apply_canny_preprocessor.is_none() {
+                    apply_canny_preprocessor = Some(false);
+                }
+
+                if style_ratio.is_none() {
+                    style_ratio = Some(0.2);
+                }
+
                 Ok(ImageEditRequest {
                     image: image.ok_or_else(|| de::Error::missing_field("image"))?,
                     prompt: prompt.ok_or_else(|| de::Error::missing_field("prompt"))?,
@@ -1211,6 +1307,8 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                     seed,
                     strength,
                     scheduler,
+                    apply_canny_preprocessor,
+                    style_ratio,
                 })
             }
         }
@@ -1235,6 +1333,8 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
             "seed",
             "strength",
             "scheduler",
+            "apply_canny_preprocessor",
+            "style_ratio",
         ];
         deserializer.deserialize_struct("ImageEditRequest", FIELDS, ImageEditRequestVisitor)
     }
@@ -1261,6 +1361,8 @@ impl Default for ImageEditRequest {
             seed: Some(42),
             strength: Some(0.75),
             scheduler: Some(Scheduler::Discrete),
+            apply_canny_preprocessor: Some(false),
+            style_ratio: Some(0.2),
         }
     }
 }
