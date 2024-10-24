@@ -1676,7 +1676,7 @@ pub struct ListImagesResponse {
 }
 
 /// Scheduler type
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq)]
 pub enum Scheduler {
     #[serde(rename = "discrete")]
     Discrete,
@@ -1715,28 +1715,1011 @@ impl From<&str> for Scheduler {
         }
     }
 }
+impl<'de> Deserialize<'de> for Scheduler {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct SchedulerVisitor;
+
+        impl<'de> Visitor<'de> for SchedulerVisitor {
+            type Value = Scheduler;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a string representing a scheduler type")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                match value.to_lowercase().as_str() {
+                    "discrete" => Ok(Scheduler::Discrete),
+                    "karras" => Ok(Scheduler::Karras),
+                    "exponential" => Ok(Scheduler::Exponential),
+                    "ays" => Ok(Scheduler::Ays),
+                    "gits" => Ok(Scheduler::Gits),
+                    _ => Err(E::custom(format!(
+                        "unknown scheduler type: {}, expected one of: discrete, karras, exponential, ays, gits",
+                        value
+                    ))),
+                }
+            }
+
+            fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                self.visit_str(&value)
+            }
+        }
+
+        deserializer.deserialize_str(SchedulerVisitor)
+    }
+}
 
 pub mod sd_webui {
-    use serde::{Deserialize, Serialize};
+    use super::Scheduler;
+    use serde::{
+        de::{self, MapAccess, Visitor},
+        Deserialize, Deserializer, Serialize,
+    };
+    use std::fmt;
 
-    #[derive(Serialize, Deserialize, Debug)]
+    #[derive(Serialize, Debug)]
     pub struct Txt2ImgRequest {
+        /// A text description of the desired image.
         pub prompt: String,
-        pub negative_prompt: String,
-        pub seed: i64,
-        pub batch_size: u32,
-        pub steps: u32,
-        pub scheduler: String,
-        pub cfg_scale: f64,
-        pub width: u32,
-        pub height: u32,
-        pub restore_faces: bool,
-        pub tiling: bool,
+        /// Negative prompt for the image generation. Defaults to "".
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub negative_prompt: Option<String>,
+        /// Name of the model to use for image generation. Defaults to -1.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub seed: Option<i64>,
+        /// Subseed for the image generation. Defaults to -1.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub subseed: Option<i64>,
+        /// Subseed strength for the image generation. Defaults to 0.0.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub subseed_strength: Option<f64>,
+        /// Seed resize from H. Defaults to -1.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub seed_resize_from_h: Option<i64>,
+        /// Seed resize from W. Defaults to -1.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub seed_resize_from_w: Option<i64>,
+        /// Sampler name.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub sampler_name: Option<Sampler>,
+        /// Denoiser sigma scheduler. Possible values are `discrete`, `karras`, `exponential`, `ays`, `gits`. Defaults to `discrete`.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub scheduler: Option<Scheduler>,
+        /// The number of images to generate. Defaults to 1.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub batch_size: Option<u32>,
+        /// Number of iterations. Defaults to 1.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub n_iter: Option<u32>,
+        /// Number of sample steps. Defaults to 20.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub steps: Option<u32>,
+        /// Unconditional guidance scale. Defaults to 7.0.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub cfg_scale: Option<f64>,
+        /// Image width, in pixel space. Defaults to 512.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub width: Option<u32>,
+        /// Image height, in pixel space. Defaults to 512.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub height: Option<u32>,
+        /// Restore faces. Defaults to false.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub restore_faces: Option<bool>,
+        /// Tiling. Defaults to false.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub tiling: Option<bool>,
+        /// Do not save samples. Defaults to false.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub do_not_save_samples: Option<bool>,
+        /// Do not save grid. Defaults to false.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub do_not_save_grid: Option<bool>,
+        /// Eta for the image generation.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub eta: Option<f64>,
+        /// Denoising strength.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub denoising_strength: Option<f64>,
+        /// S Min Uncond.
+        pub s_min_uncond: Option<f64>,
+        /// S Churn.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub s_churn: Option<f64>,
+        /// S Tmax.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub s_tmax: Option<f64>,
+        /// S Tmin.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub s_tmin: Option<f64>,
+        /// S Noise.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub s_noise: Option<f64>,
+        /// Override settings.
         pub override_settings: OverrideSettings,
-        pub sampler_index: String,
+        /// Override Settings Restore Afterwards. Defaults to true.
+        pub override_settings_restore_afterwards: Option<bool>,
+        /// Refiner checkpoint.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub refiner_checkpoint: Option<String>,
+        /// Refiner switch at.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub refiner_switch_at: Option<f64>,
+        /// Disable extra networks. Defaults to false.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub disable_extra_networks: Option<bool>,
+        /// Firstpass image.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub firstpass_image: Option<String>,
+        /// Enable Hr. Defaults to false.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub enable_hr: Option<bool>,
+        /// Firstphase Width. Defaults to 0.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub firstphase_width: Option<u32>,
+        /// Firstphase Height. Defaults to 0.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub firstphase_height: Option<u32>,
+        /// Hr scale. Defaults to 2.0.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub hr_scale: Option<f64>,
+        /// Hr Upscaler.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub hr_upscaler: Option<String>,
+        /// Hr Second Pass Steps. Defaults to 0.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub hr_second_pass_steps: Option<u32>,
+        /// Hr Resize X. Defaults to 0.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub hr_resize_x: Option<u32>,
+        /// Hr Resize Y. Defaults to 0.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub hr_resize_y: Option<u32>,
+        /// Hr Checkpoint Name.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub hr_checkpoint_name: Option<String>,
+        /// Hr Sampler Name.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub hr_sampler_name: Option<String>,
+        /// Hr Scheduler.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub hr_scheduler: Option<String>,
+        /// Hr Prompt. Defaults to "".
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub hr_prompt: Option<String>,
+        /// Hr Negative Prompt. Defaults to "".
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub hr_negative_prompt: Option<String>,
+        /// Force Task Id.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub force_task_id: Option<String>,
+        /// Sampler index. Defaults to "Euler".
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub sampler_index: Option<Sampler>,
+        /// Send images. Defaults to true.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub send_images: Option<bool>,
+        /// Save images. Defaults to false.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub save_images: Option<bool>,
+        /// Alwayson scripts.
         pub alwayson_scripts: AlwaysOnScripts,
     }
+    impl Default for Txt2ImgRequest {
+        fn default() -> Self {
+            Self {
+                prompt: "".to_string(),
+                negative_prompt: Some("".to_string()),
+                seed: Some(-1),
+                subseed: Some(-1),
+                subseed_strength: Some(0.0),
+                seed_resize_from_h: Some(-1),
+                seed_resize_from_w: Some(-1),
+                sampler_name: None,
+                scheduler: Some(Scheduler::Discrete),
+                batch_size: Some(1),
+                n_iter: Some(1),
+                steps: Some(20),
+                cfg_scale: Some(7.0),
+                width: Some(512),
+                height: Some(512),
+                restore_faces: Some(false),
+                tiling: Some(false),
+                do_not_save_samples: Some(false),
+                do_not_save_grid: Some(false),
+                eta: None,
+                denoising_strength: None,
+                s_min_uncond: None,
+                s_churn: None,
+                s_tmax: None,
+                s_tmin: None,
+                s_noise: None,
+                override_settings: OverrideSettings::default(),
+                override_settings_restore_afterwards: Some(true),
+                refiner_checkpoint: None,
+                refiner_switch_at: None,
+                disable_extra_networks: None,
+                firstpass_image: None,
+                enable_hr: Some(false),
+                firstphase_width: Some(0),
+                firstphase_height: Some(0),
+                hr_scale: Some(2.0),
+                hr_upscaler: None,
+                hr_second_pass_steps: Some(0),
+                hr_resize_x: Some(0),
+                hr_resize_y: Some(0),
+                hr_checkpoint_name: None,
+                hr_sampler_name: None,
+                hr_scheduler: None,
+                hr_prompt: Some("".to_string()),
+                hr_negative_prompt: Some("".to_string()),
+                force_task_id: None,
+                sampler_index: Some(Sampler::Euler),
+                send_images: Some(true),
+                save_images: Some(false),
+                alwayson_scripts: AlwaysOnScripts::default(),
+            }
+        }
+    }
+    impl<'de> Deserialize<'de> for Txt2ImgRequest {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            enum Field {
+                Prompt,
+                NegativePrompt,
+                Seed,
+                Subseed,
+                SubseedStrength,
+                SeedResizeFromH,
+                SeedResizeFromW,
+                SamplerName,
+                Scheduler,
+                BatchSize,
+                NIter,
+                Steps,
+                CfgScale,
+                Width,
+                Height,
+                RestoreFaces,
+                Tiling,
+                DoNotSaveSamples,
+                DoNotSaveGrid,
+                Eta,
+                DenoisingStrength,
+                SMinUncond,
+                SChurn,
+                STmax,
+                STmin,
+                SNoise,
+                OverrideSettings,
+                OverrideSettingsRestoreAfterwards,
+                RefinerCheckpoint,
+                RefinerSwitchAt,
+                DisableExtraNetworks,
+                FirstpassImage,
+                EnableHr,
+                FirstphaseWidth,
+                FirstphaseHeight,
+                HrScale,
+                HrUpscaler,
+                HrSecondPassSteps,
+                HrResizeX,
+                HrResizeY,
+                HrCheckpointName,
+                HrSamplerName,
+                HrScheduler,
+                HrPrompt,
+                HrNegativePrompt,
+                ForceTaskId,
+                SamplerIndex,
+                SendImages,
+                SaveImages,
+                AlwaysonScripts,
+            }
 
+            impl<'de> Deserialize<'de> for Field {
+                fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+                where
+                    D: Deserializer<'de>,
+                {
+                    struct FieldVisitor;
+
+                    impl Visitor<'_> for FieldVisitor {
+                        type Value = Field;
+
+                        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                            formatter.write_str("field identifier")
+                        }
+
+                        fn visit_str<E>(self, value: &str) -> Result<Field, E>
+                        where
+                            E: de::Error,
+                        {
+                            match value {
+                                "prompt" => Ok(Field::Prompt),
+                                "negative_prompt" => Ok(Field::NegativePrompt),
+                                "seed" => Ok(Field::Seed),
+                                "subseed" => Ok(Field::Subseed),
+                                "subseed_strength" => Ok(Field::SubseedStrength),
+                                "seed_resize_from_h" => Ok(Field::SeedResizeFromH),
+                                "seed_resize_from_w" => Ok(Field::SeedResizeFromW),
+                                "sampler_name" => Ok(Field::SamplerName),
+                                "scheduler" => Ok(Field::Scheduler),
+                                "batch_size" => Ok(Field::BatchSize),
+                                "n_iter" => Ok(Field::NIter),
+                                "steps" => Ok(Field::Steps),
+                                "cfg_scale" => Ok(Field::CfgScale),
+                                "width" => Ok(Field::Width),
+                                "height" => Ok(Field::Height),
+                                "restore_faces" => Ok(Field::RestoreFaces),
+                                "tiling" => Ok(Field::Tiling),
+                                "do_not_save_samples" => Ok(Field::DoNotSaveSamples),
+                                "do_not_save_grid" => Ok(Field::DoNotSaveGrid),
+                                "eta" => Ok(Field::Eta),
+                                "denoising_strength" => Ok(Field::DenoisingStrength),
+                                "s_min_uncond" => Ok(Field::SMinUncond),
+                                "s_churn" => Ok(Field::SChurn),
+                                "s_tmax" => Ok(Field::STmax),
+                                "s_tmin" => Ok(Field::STmin),
+                                "s_noise" => Ok(Field::SNoise),
+                                "override_settings" => Ok(Field::OverrideSettings),
+                                "override_settings_restore_afterwards" => {
+                                    Ok(Field::OverrideSettingsRestoreAfterwards)
+                                }
+                                "refiner_checkpoint" => Ok(Field::RefinerCheckpoint),
+                                "refiner_switch_at" => Ok(Field::RefinerSwitchAt),
+                                "disable_extra_networks" => Ok(Field::DisableExtraNetworks),
+                                "firstpass_image" => Ok(Field::FirstpassImage),
+                                "enable_hr" => Ok(Field::EnableHr),
+                                "firstphase_width" => Ok(Field::FirstphaseWidth),
+                                "firstphase_height" => Ok(Field::FirstphaseHeight),
+                                "hr_scale" => Ok(Field::HrScale),
+                                "hr_upscaler" => Ok(Field::HrUpscaler),
+                                "hr_second_pass_steps" => Ok(Field::HrSecondPassSteps),
+                                "hr_resize_x" => Ok(Field::HrResizeX),
+                                "hr_resize_y" => Ok(Field::HrResizeY),
+                                "hr_checkpoint_name" => Ok(Field::HrCheckpointName),
+                                "hr_sampler_name" => Ok(Field::HrSamplerName),
+                                "hr_scheduler" => Ok(Field::HrScheduler),
+                                "hr_prompt" => Ok(Field::HrPrompt),
+                                "hr_negative_prompt" => Ok(Field::HrNegativePrompt),
+                                "force_task_id" => Ok(Field::ForceTaskId),
+                                "sampler_index" => Ok(Field::SamplerIndex),
+                                "send_images" => Ok(Field::SendImages),
+                                "save_images" => Ok(Field::SaveImages),
+                                "alwayson_scripts" => Ok(Field::AlwaysonScripts),
+                                _ => Err(de::Error::unknown_field(value, FIELDS)),
+                            }
+                        }
+                    }
+
+                    deserializer.deserialize_identifier(FieldVisitor)
+                }
+            }
+
+            struct Txt2ImgRequestVisitor;
+
+            impl<'de> Visitor<'de> for Txt2ImgRequestVisitor {
+                type Value = Txt2ImgRequest;
+
+                fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                    formatter.write_str("struct Txt2ImgRequest")
+                }
+
+                fn visit_map<V>(self, mut map: V) -> Result<Txt2ImgRequest, V::Error>
+                where
+                    V: MapAccess<'de>,
+                {
+                    let mut prompt = None;
+                    let mut negative_prompt = None;
+                    let mut seed = None;
+                    let mut subseed = None;
+                    let mut subseed_strength = None;
+                    let mut seed_resize_from_h = None;
+                    let mut seed_resize_from_w = None;
+                    let mut sampler_name = None;
+                    let mut scheduler = None;
+                    let mut batch_size = None;
+                    let mut n_iter = None;
+                    let mut steps = None;
+                    let mut cfg_scale = None;
+                    let mut width = None;
+                    let mut height = None;
+                    let mut restore_faces = None;
+                    let mut tiling = None;
+                    let mut do_not_save_samples = None;
+                    let mut do_not_save_grid = None;
+                    let mut eta = None;
+                    let mut denoising_strength = None;
+                    let mut s_min_uncond = None;
+                    let mut s_churn = None;
+                    let mut s_tmax = None;
+                    let mut s_tmin = None;
+                    let mut s_noise = None;
+                    let mut override_settings = None;
+                    let mut override_settings_restore_afterwards = None;
+                    let mut refiner_checkpoint = None;
+                    let mut refiner_switch_at = None;
+                    let mut disable_extra_networks = None;
+                    let mut firstpass_image = None;
+                    let mut enable_hr = None;
+                    let mut firstphase_width = None;
+                    let mut firstphase_height = None;
+                    let mut hr_scale = None;
+                    let mut hr_upscaler = None;
+                    let mut hr_second_pass_steps = None;
+                    let mut hr_resize_x = None;
+                    let mut hr_resize_y = None;
+                    let mut hr_checkpoint_name = None;
+                    let mut hr_sampler_name = None;
+                    let mut hr_scheduler = None;
+                    let mut hr_prompt = None;
+                    let mut hr_negative_prompt = None;
+                    let mut force_task_id = None;
+                    let mut sampler_index = None;
+                    let mut send_images = None;
+                    let mut save_images = None;
+                    let mut alwayson_scripts = None;
+
+                    while let Some(key) = map.next_key()? {
+                        match key {
+                            Field::Prompt => {
+                                if prompt.is_some() {
+                                    return Err(de::Error::duplicate_field("prompt"));
+                                }
+                                prompt = Some(map.next_value()?);
+                            }
+                            Field::NegativePrompt => {
+                                if negative_prompt.is_some() {
+                                    return Err(de::Error::duplicate_field("negative_prompt"));
+                                }
+                                negative_prompt = Some(map.next_value()?);
+                            }
+                            Field::Seed => {
+                                if seed.is_some() {
+                                    return Err(de::Error::duplicate_field("seed"));
+                                }
+                                seed = Some(map.next_value()?);
+                            }
+                            Field::Subseed => {
+                                if subseed.is_some() {
+                                    return Err(de::Error::duplicate_field("subseed"));
+                                }
+                                subseed = Some(map.next_value()?);
+                            }
+                            Field::SubseedStrength => {
+                                if subseed_strength.is_some() {
+                                    return Err(de::Error::duplicate_field("subseed_strength"));
+                                }
+                                subseed_strength = Some(map.next_value()?);
+                            }
+                            Field::SeedResizeFromH => {
+                                if seed_resize_from_h.is_some() {
+                                    return Err(de::Error::duplicate_field("seed_resize_from_h"));
+                                }
+                                seed_resize_from_h = Some(map.next_value()?);
+                            }
+                            Field::SeedResizeFromW => {
+                                if seed_resize_from_w.is_some() {
+                                    return Err(de::Error::duplicate_field("seed_resize_from_w"));
+                                }
+                                seed_resize_from_w = Some(map.next_value()?);
+                            }
+                            Field::SamplerName => {
+                                if sampler_name.is_some() {
+                                    return Err(de::Error::duplicate_field("sampler_name"));
+                                }
+                                sampler_name = Some(map.next_value()?);
+                            }
+                            Field::Scheduler => {
+                                if scheduler.is_some() {
+                                    return Err(de::Error::duplicate_field("scheduler"));
+                                }
+                                scheduler = Some(map.next_value()?);
+                            }
+                            Field::BatchSize => {
+                                if batch_size.is_some() {
+                                    return Err(de::Error::duplicate_field("batch_size"));
+                                }
+                                batch_size = Some(map.next_value()?);
+                            }
+                            Field::NIter => {
+                                if n_iter.is_some() {
+                                    return Err(de::Error::duplicate_field("n_iter"));
+                                }
+                                n_iter = Some(map.next_value()?);
+                            }
+                            Field::Steps => {
+                                if steps.is_some() {
+                                    return Err(de::Error::duplicate_field("steps"));
+                                }
+                                steps = Some(map.next_value()?);
+                            }
+                            Field::CfgScale => {
+                                if cfg_scale.is_some() {
+                                    return Err(de::Error::duplicate_field("cfg_scale"));
+                                }
+                                cfg_scale = Some(map.next_value()?);
+                            }
+                            Field::Width => {
+                                if width.is_some() {
+                                    return Err(de::Error::duplicate_field("width"));
+                                }
+                                width = Some(map.next_value()?);
+                            }
+                            Field::Height => {
+                                if height.is_some() {
+                                    return Err(de::Error::duplicate_field("height"));
+                                }
+                                height = Some(map.next_value()?);
+                            }
+                            Field::RestoreFaces => {
+                                if restore_faces.is_some() {
+                                    return Err(de::Error::duplicate_field("restore_faces"));
+                                }
+                                restore_faces = Some(map.next_value()?);
+                            }
+                            Field::Tiling => {
+                                if tiling.is_some() {
+                                    return Err(de::Error::duplicate_field("tiling"));
+                                }
+                                tiling = Some(map.next_value()?);
+                            }
+                            Field::DoNotSaveSamples => {
+                                if do_not_save_samples.is_some() {
+                                    return Err(de::Error::duplicate_field("do_not_save_samples"));
+                                }
+                                do_not_save_samples = Some(map.next_value()?);
+                            }
+                            Field::DoNotSaveGrid => {
+                                if do_not_save_grid.is_some() {
+                                    return Err(de::Error::duplicate_field("do_not_save_grid"));
+                                }
+                                do_not_save_grid = Some(map.next_value()?);
+                            }
+                            Field::Eta => {
+                                if eta.is_some() {
+                                    return Err(de::Error::duplicate_field("eta"));
+                                }
+                                eta = Some(map.next_value()?);
+                            }
+                            Field::DenoisingStrength => {
+                                if denoising_strength.is_some() {
+                                    return Err(de::Error::duplicate_field("denoising_strength"));
+                                }
+                                denoising_strength = Some(map.next_value()?);
+                            }
+                            Field::SMinUncond => {
+                                if s_min_uncond.is_some() {
+                                    return Err(de::Error::duplicate_field("s_min_uncond"));
+                                }
+                                s_min_uncond = Some(map.next_value()?);
+                            }
+                            Field::SChurn => {
+                                if s_churn.is_some() {
+                                    return Err(de::Error::duplicate_field("s_churn"));
+                                }
+                                s_churn = Some(map.next_value()?);
+                            }
+                            Field::STmax => {
+                                if s_tmax.is_some() {
+                                    return Err(de::Error::duplicate_field("s_tmax"));
+                                }
+                                s_tmax = Some(map.next_value()?);
+                            }
+                            Field::STmin => {
+                                if s_tmin.is_some() {
+                                    return Err(de::Error::duplicate_field("s_tmin"));
+                                }
+                                s_tmin = Some(map.next_value()?);
+                            }
+                            Field::SNoise => {
+                                if s_noise.is_some() {
+                                    return Err(de::Error::duplicate_field("s_noise"));
+                                }
+                                s_noise = Some(map.next_value()?);
+                            }
+                            Field::OverrideSettings => {
+                                if override_settings.is_some() {
+                                    return Err(de::Error::duplicate_field("override_settings"));
+                                }
+                                override_settings = Some(map.next_value()?);
+                            }
+                            Field::OverrideSettingsRestoreAfterwards => {
+                                if override_settings_restore_afterwards.is_some() {
+                                    return Err(de::Error::duplicate_field(
+                                        "override_settings_restore_afterwards",
+                                    ));
+                                }
+                                override_settings_restore_afterwards = Some(map.next_value()?);
+                            }
+                            Field::RefinerCheckpoint => {
+                                if refiner_checkpoint.is_some() {
+                                    return Err(de::Error::duplicate_field("refiner_checkpoint"));
+                                }
+                                refiner_checkpoint = Some(map.next_value()?);
+                            }
+                            Field::RefinerSwitchAt => {
+                                if refiner_switch_at.is_some() {
+                                    return Err(de::Error::duplicate_field("refiner_switch_at"));
+                                }
+                                refiner_switch_at = Some(map.next_value()?);
+                            }
+                            Field::DisableExtraNetworks => {
+                                if disable_extra_networks.is_some() {
+                                    return Err(de::Error::duplicate_field(
+                                        "disable_extra_networks",
+                                    ));
+                                }
+                                disable_extra_networks = Some(map.next_value()?);
+                            }
+                            Field::FirstpassImage => {
+                                if firstpass_image.is_some() {
+                                    return Err(de::Error::duplicate_field("firstpass_image"));
+                                }
+                                firstpass_image = Some(map.next_value()?);
+                            }
+                            Field::EnableHr => {
+                                if enable_hr.is_some() {
+                                    return Err(de::Error::duplicate_field("enable_hr"));
+                                }
+                                enable_hr = Some(map.next_value()?);
+                            }
+                            Field::FirstphaseWidth => {
+                                if firstphase_width.is_some() {
+                                    return Err(de::Error::duplicate_field("firstphase_width"));
+                                }
+                                firstphase_width = Some(map.next_value()?);
+                            }
+                            Field::FirstphaseHeight => {
+                                if firstphase_height.is_some() {
+                                    return Err(de::Error::duplicate_field("firstphase_height"));
+                                }
+                                firstphase_height = Some(map.next_value()?);
+                            }
+                            Field::HrScale => {
+                                if hr_scale.is_some() {
+                                    return Err(de::Error::duplicate_field("hr_scale"));
+                                }
+                                hr_scale = Some(map.next_value()?);
+                            }
+                            Field::HrUpscaler => {
+                                if hr_upscaler.is_some() {
+                                    return Err(de::Error::duplicate_field("hr_upscaler"));
+                                }
+                                hr_upscaler = Some(map.next_value()?);
+                            }
+                            Field::HrSecondPassSteps => {
+                                if hr_second_pass_steps.is_some() {
+                                    return Err(de::Error::duplicate_field("hr_second_pass_steps"));
+                                }
+                                hr_second_pass_steps = Some(map.next_value()?);
+                            }
+                            Field::HrResizeX => {
+                                if hr_resize_x.is_some() {
+                                    return Err(de::Error::duplicate_field("hr_resize_x"));
+                                }
+                                hr_resize_x = Some(map.next_value()?);
+                            }
+                            Field::HrResizeY => {
+                                if hr_resize_y.is_some() {
+                                    return Err(de::Error::duplicate_field("hr_resize_y"));
+                                }
+                                hr_resize_y = Some(map.next_value()?);
+                            }
+                            Field::HrCheckpointName => {
+                                if hr_checkpoint_name.is_some() {
+                                    return Err(de::Error::duplicate_field("hr_checkpoint_name"));
+                                }
+                                hr_checkpoint_name = Some(map.next_value()?);
+                            }
+                            Field::HrSamplerName => {
+                                if hr_sampler_name.is_some() {
+                                    return Err(de::Error::duplicate_field("hr_sampler_name"));
+                                }
+                                hr_sampler_name = Some(map.next_value()?);
+                            }
+                            Field::HrScheduler => {
+                                if hr_scheduler.is_some() {
+                                    return Err(de::Error::duplicate_field("hr_scheduler"));
+                                }
+                                hr_scheduler = Some(map.next_value()?);
+                            }
+                            Field::HrPrompt => {
+                                if hr_prompt.is_some() {
+                                    return Err(de::Error::duplicate_field("hr_prompt"));
+                                }
+                                hr_prompt = Some(map.next_value()?);
+                            }
+                            Field::HrNegativePrompt => {
+                                if hr_negative_prompt.is_some() {
+                                    return Err(de::Error::duplicate_field("hr_negative_prompt"));
+                                }
+                                hr_negative_prompt = Some(map.next_value()?);
+                            }
+                            Field::ForceTaskId => {
+                                if force_task_id.is_some() {
+                                    return Err(de::Error::duplicate_field("force_task_id"));
+                                }
+                                force_task_id = Some(map.next_value()?);
+                            }
+                            Field::SamplerIndex => {
+                                if sampler_index.is_some() {
+                                    return Err(de::Error::duplicate_field("sampler_index"));
+                                }
+                                sampler_index = Some(map.next_value()?);
+                            }
+                            Field::SendImages => {
+                                if send_images.is_some() {
+                                    return Err(de::Error::duplicate_field("send_images"));
+                                }
+                                send_images = Some(map.next_value()?);
+                            }
+                            Field::SaveImages => {
+                                if save_images.is_some() {
+                                    return Err(de::Error::duplicate_field("save_images"));
+                                }
+                                save_images = Some(map.next_value()?);
+                            }
+                            Field::AlwaysonScripts => {
+                                if alwayson_scripts.is_some() {
+                                    return Err(de::Error::duplicate_field("alwayson_scripts"));
+                                }
+                                alwayson_scripts = Some(map.next_value()?);
+                            }
+                        }
+                    }
+
+                    let prompt = prompt.ok_or_else(|| de::Error::missing_field("prompt"))?;
+
+                    if negative_prompt.is_none() {
+                        negative_prompt = Some("".to_string());
+                    }
+
+                    if seed.is_none() {
+                        seed = Some(-1);
+                    }
+
+                    if subseed.is_none() {
+                        subseed = Some(-1);
+                    }
+
+                    if subseed_strength.is_none() {
+                        subseed_strength = Some(0.0);
+                    }
+
+                    if seed_resize_from_h.is_none() {
+                        seed_resize_from_h = Some(-1);
+                    }
+
+                    if seed_resize_from_w.is_none() {
+                        seed_resize_from_w = Some(-1);
+                    }
+
+                    if scheduler.is_none() {
+                        scheduler = Some(Scheduler::Discrete);
+                    }
+
+                    if batch_size.is_none() {
+                        batch_size = Some(1);
+                    }
+
+                    if n_iter.is_none() {
+                        n_iter = Some(1);
+                    }
+
+                    if steps.is_none() {
+                        steps = Some(20);
+                    }
+
+                    if cfg_scale.is_none() {
+                        cfg_scale = Some(7.0);
+                    }
+
+                    if width.is_none() {
+                        width = Some(512);
+                    }
+
+                    if height.is_none() {
+                        height = Some(512);
+                    }
+
+                    if restore_faces.is_none() {
+                        restore_faces = Some(false);
+                    }
+
+                    if tiling.is_none() {
+                        tiling = Some(false);
+                    }
+
+                    if do_not_save_samples.is_none() {
+                        do_not_save_samples = Some(false);
+                    }
+
+                    if do_not_save_grid.is_none() {
+                        do_not_save_grid = Some(false);
+                    }
+
+                    let override_settings = override_settings.unwrap_or_default();
+
+                    if override_settings_restore_afterwards.is_none() {
+                        override_settings_restore_afterwards = Some(true);
+                    }
+
+                    if enable_hr.is_none() {
+                        enable_hr = Some(false);
+                    }
+
+                    if firstphase_width.is_none() {
+                        firstphase_width = Some(0);
+                    }
+
+                    if firstphase_height.is_none() {
+                        firstphase_height = Some(0);
+                    }
+
+                    if hr_scale.is_none() {
+                        hr_scale = Some(2.0);
+                    }
+
+                    if hr_second_pass_steps.is_none() {
+                        hr_second_pass_steps = Some(0);
+                    }
+
+                    if hr_resize_x.is_none() {
+                        hr_resize_x = Some(0);
+                    }
+
+                    if hr_resize_y.is_none() {
+                        hr_resize_y = Some(0);
+                    }
+
+                    if hr_prompt.is_none() {
+                        hr_prompt = Some("".to_string());
+                    }
+
+                    if hr_negative_prompt.is_none() {
+                        hr_negative_prompt = Some("".to_string());
+                    }
+
+                    if sampler_index.is_none() {
+                        sampler_index = Some(Sampler::Euler);
+                    }
+
+                    if send_images.is_none() {
+                        send_images = Some(true);
+                    }
+
+                    if save_images.is_none() {
+                        save_images = Some(false);
+                    }
+
+                    let alwayson_scripts = alwayson_scripts.unwrap_or_default();
+
+                    Ok(Txt2ImgRequest {
+                        prompt,
+                        negative_prompt,
+                        seed,
+                        subseed,
+                        subseed_strength,
+                        seed_resize_from_h,
+                        seed_resize_from_w,
+                        sampler_name,
+                        scheduler,
+                        batch_size,
+                        n_iter,
+                        steps,
+                        cfg_scale,
+                        width,
+                        height,
+                        restore_faces,
+                        tiling,
+                        do_not_save_samples,
+                        do_not_save_grid,
+                        eta,
+                        denoising_strength,
+                        s_min_uncond,
+                        s_churn,
+                        s_tmax,
+                        s_tmin,
+                        s_noise,
+                        override_settings,
+                        override_settings_restore_afterwards,
+                        refiner_checkpoint,
+                        refiner_switch_at,
+                        disable_extra_networks,
+                        firstpass_image,
+                        enable_hr,
+                        firstphase_width,
+                        firstphase_height,
+                        hr_scale,
+                        hr_upscaler,
+                        hr_second_pass_steps,
+                        hr_resize_x,
+                        hr_resize_y,
+                        hr_checkpoint_name,
+                        hr_sampler_name,
+                        hr_scheduler,
+                        hr_prompt,
+                        hr_negative_prompt,
+                        force_task_id,
+                        sampler_index,
+                        send_images,
+                        save_images,
+                        alwayson_scripts,
+                    })
+                }
+            }
+
+            const FIELDS: &[&str] = &[
+                "prompt",
+                "negative_prompt",
+                "seed",
+                "subseed",
+                "subseed_strength",
+                "seed_resize_from_h",
+                "seed_resize_from_w",
+                "sampler_name",
+                "scheduler",
+                "batch_size",
+                "n_iter",
+                "steps",
+                "cfg_scale",
+                "width",
+                "height",
+                "restore_faces",
+                "tiling",
+                "do_not_save_samples",
+                "do_not_save_grid",
+                "eta",
+                "denoising_strength",
+                "s_min_uncond",
+                "s_churn",
+                "s_tmax",
+                "s_tmin",
+                "s_noise",
+                "override_settings",
+                "override_settings_restore_afterwards",
+                "refiner_checkpoint",
+                "refiner_switch_at",
+                "disable_extra_networks",
+                "firstpass_image",
+                "enable_hr",
+                "firstphase_width",
+                "firstphase_height",
+                "hr_scale",
+                "hr_upscaler",
+                "hr_second_pass_steps",
+                "hr_resize_x",
+                "hr_resize_y",
+                "hr_checkpoint_name",
+                "hr_sampler_name",
+                "hr_scheduler",
+                "hr_prompt",
+                "hr_negative_prompt",
+                "force_task_id",
+                "sampler_index",
+                "send_images",
+                "save_images",
+                "alwayson_scripts",
+            ];
+
+            deserializer.deserialize_struct("Txt2ImgRequest", FIELDS, Txt2ImgRequestVisitor)
+        }
+    }
+
+    #[cfg(test)]
     #[test]
     fn test_deserialize_txt2img_request() {
         let json = r###"{
@@ -1772,26 +2755,35 @@ pub mod sd_webui {
 }"###;
         let req: Txt2ImgRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.prompt, "1girl,intricate,highly detailed,Mature,seductive gaze,teasing expression,sexy posture,solo,Moderate breasts,Charm,alluring,Hot,tsurime,lipstick,stylish_pose,long hair,long_eyelashes,black hair,bar,dress,");
-        assert_eq!(req.negative_prompt, "");
-        assert_eq!(req.seed, -1);
-        assert_eq!(req.batch_size, 2);
-        assert_eq!(req.steps, 25);
-        assert_eq!(req.scheduler, "Karras");
-        assert_eq!(req.cfg_scale, 7.0);
-        assert_eq!(req.width, 540);
-        assert_eq!(req.height, 960);
-        assert_eq!(req.restore_faces, false);
-        assert_eq!(req.tiling, false);
-        assert_eq!(req.sampler_index, "DPM++ 2M");
+        assert_eq!(req.negative_prompt, Some("".to_string()));
+        assert_eq!(req.seed, Some(-1));
+        assert_eq!(req.batch_size, Some(2));
+        assert_eq!(req.steps, Some(25));
+        assert_eq!(req.scheduler, Some(Scheduler::Karras));
+        assert_eq!(req.cfg_scale, Some(7.0));
+        assert_eq!(req.width, Some(540));
+        assert_eq!(req.height, Some(960));
+        assert_eq!(req.restore_faces, Some(false));
+        assert_eq!(req.tiling, Some(false));
+        assert_eq!(req.sampler_index, Some(Sampler::DpmPlusPlus2M));
         assert_eq!(req.alwayson_scripts.controlnet.args.len(), 1);
-        assert_eq!(req.alwayson_scripts.controlnet.args[0].enabled, true);
-        assert_eq!(req.alwayson_scripts.controlnet.args[0].pixel_perfect, true);
+        assert_eq!(req.alwayson_scripts.controlnet.args[0].enabled, Some(true));
+        assert_eq!(
+            req.alwayson_scripts.controlnet.args[0].pixel_perfect,
+            Some(true)
+        );
         assert_eq!(
             req.alwayson_scripts.controlnet.args[0].module,
             "reference_only"
         );
-        assert_eq!(req.alwayson_scripts.controlnet.args[0].guidance_start, 0.0);
-        assert_eq!(req.alwayson_scripts.controlnet.args[0].guidance_end, 0.2);
+        assert_eq!(
+            req.alwayson_scripts.controlnet.args[0].guidance_start,
+            Some(0.0)
+        );
+        assert_eq!(
+            req.alwayson_scripts.controlnet.args[0].guidance_end,
+            Some(0.2)
+        );
         assert_eq!(
             req.alwayson_scripts.controlnet.args[0].image,
             "iVBORw0KGgoAAAANSUhEUgAABDgAAAeACAI"
@@ -1806,32 +2798,38 @@ pub mod sd_webui {
     fn test_serialize_txt2img_request() {
         let req = Txt2ImgRequest {
             prompt: "1girl,intricate,highly detailed,Mature,seductive gaze,teasing expression,sexy posture,solo,Moderate breasts,Charm,alluring,Hot,tsurime,lipstick,stylish_pose,long hair,long_eyelashes,black hair,bar,dress,".to_string(),
-            negative_prompt: "".to_string(),
-            seed: -1,
-            batch_size: 2,
-            steps: 25,
-            scheduler: "Karras".to_string(),
-            cfg_scale: 7.0,
-            width: 540,
-            height: 960,
-            restore_faces: false,
-            tiling: false,
+            negative_prompt: Some("".to_string()),
+            seed: Some(-1),
+            subseed: Some(-1),
+            subseed_strength: Some(0.0),
+            seed_resize_from_h: Some(-1),
+            seed_resize_from_w: Some(-1),
+            scheduler: Some(Scheduler::Discrete),
+            batch_size: Some(2),
+            n_iter: Some(1),
+            steps: Some(25),
+            cfg_scale: Some(7.0),
+            width: Some(540),
+            height: Some(960),
+            restore_faces: Some(false),
+            tiling: Some(false),
             override_settings: OverrideSettings {
                 sd_model_checkpoint: "waiANINSFWPONYXL_v90.safetensors".to_string(),
             },
-            sampler_index: "DPM++ 2M".to_string(),
+            sampler_index: Some(Sampler::DpmPlusPlus2M),
             alwayson_scripts: AlwaysOnScripts {
                 controlnet: ControlNet { args: vec![
                     ControlNetArgs {
-                        enabled: true,
-                        pixel_perfect: true,
+                        enabled: Some(true),
+                        pixel_perfect: Some(true),
                         image: "iVBORw0KGgoAAAANSUhEUgAABDgAAAeACAI".to_string(),
                         module: "reference_only".to_string(),
-                        guidance_start: 0.0,
-                        guidance_end: 0.2,
+                        guidance_start: Some(0.0),
+                        guidance_end: Some(0.2),
                     }
                 ] },
             },
+            ..Default::default()
         };
         let serialized = serde_json::to_string_pretty(&req).unwrap();
 
@@ -1839,18 +2837,38 @@ pub mod sd_webui {
   "prompt": "1girl,intricate,highly detailed,Mature,seductive gaze,teasing expression,sexy posture,solo,Moderate breasts,Charm,alluring,Hot,tsurime,lipstick,stylish_pose,long hair,long_eyelashes,black hair,bar,dress,",
   "negative_prompt": "",
   "seed": -1,
+  "subseed": -1,
+  "subseed_strength": 0.0,
+  "seed_resize_from_h": -1,
+  "seed_resize_from_w": -1,
+  "scheduler": "discrete",
   "batch_size": 2,
+  "n_iter": 1,
   "steps": 25,
-  "scheduler": "Karras",
   "cfg_scale": 7.0,
   "width": 540,
   "height": 960,
   "restore_faces": false,
   "tiling": false,
+  "do_not_save_samples": false,
+  "do_not_save_grid": false,
+  "s_min_uncond": null,
   "override_settings": {
     "sd_model_checkpoint": "waiANINSFWPONYXL_v90.safetensors"
   },
+  "override_settings_restore_afterwards": true,
+  "enable_hr": false,
+  "firstphase_width": 0,
+  "firstphase_height": 0,
+  "hr_scale": 2.0,
+  "hr_second_pass_steps": 0,
+  "hr_resize_x": 0,
+  "hr_resize_y": 0,
+  "hr_prompt": "",
+  "hr_negative_prompt": "",
   "sampler_index": "DPM++ 2M",
+  "send_images": true,
+  "save_images": false,
   "alwayson_scripts": {
     "controlnet": {
       "args": [
@@ -1870,28 +2888,356 @@ pub mod sd_webui {
         assert_eq!(serialized, json);
     }
 
-    #[derive(Serialize, Deserialize, Debug)]
+    /// Sampling method
+    #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+    pub enum Sampler {
+        #[serde(rename = "Euler")]
+        Euler,
+        #[serde(rename = "Euler a")]
+        EulerA,
+        #[serde(rename = "Heun")]
+        Heun,
+        #[serde(rename = "DPM2")]
+        Dpm2,
+        #[serde(rename = "DPM2 a")]
+        Dpm2a,
+        #[serde(rename = "DPM fast")]
+        DpmFast,
+        #[serde(rename = "DPM adaptive")]
+        DpmAdaptive,
+        #[serde(rename = "DPM++ 2S a")]
+        DpmPlusPlus2sA,
+        #[serde(rename = "DPM++ 2M")]
+        DpmPlusPlus2M,
+        #[serde(rename = "DPM++ 2M SDE")]
+        DpmPlusPlus2MSde,
+        #[serde(rename = "DPM++ 2M SDE Heun")]
+        DpmPlusPlus2MSdeHeun,
+        #[serde(rename = "DPM++ 3M SDE")]
+        DpmPlusPlus3MSde,
+        #[serde(rename = "DPM++ SDE")]
+        DpmPlusPlusSde,
+        #[serde(rename = "LCM")]
+        Lcm,
+        #[serde(rename = "LMS")]
+        LMS,
+        #[serde(rename = "Restart")]
+        Restart,
+        #[serde(rename = "DDIM")]
+        Ddim,
+        #[serde(rename = "DDIM CFG++")]
+        DdimCfgPlusPlus,
+        #[serde(rename = "PLMS")]
+        Plms,
+        #[serde(rename = "UniPC")]
+        UniPC,
+    }
+    impl fmt::Display for Sampler {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            match self {
+                Sampler::Euler => write!(f, "Euler"),
+                Sampler::EulerA => write!(f, "Euler a"),
+                Sampler::Heun => write!(f, "Heun"),
+                Sampler::Dpm2 => write!(f, "DPM2"),
+                Sampler::Dpm2a => write!(f, "DPM2 a"),
+                Sampler::DpmFast => write!(f, "DPM fast"),
+                Sampler::DpmAdaptive => write!(f, "DPM adaptive"),
+                Sampler::DpmPlusPlus2sA => write!(f, "DPM++ 2S a"),
+                Sampler::DpmPlusPlus2M => write!(f, "DPM++ 2M"),
+                Sampler::DpmPlusPlus2MSde => write!(f, "DPM++ 2M SDE"),
+                Sampler::DpmPlusPlus2MSdeHeun => write!(f, "DPM++ 2M SDE Heun"),
+                Sampler::DpmPlusPlus3MSde => write!(f, "DPM++ 3M SDE"),
+                Sampler::DpmPlusPlusSde => write!(f, "DPM++ SDE"),
+                Sampler::Lcm => write!(f, "LCM"),
+                Sampler::LMS => write!(f, "LMS"),
+                Sampler::Restart => write!(f, "Restart"),
+                Sampler::Ddim => write!(f, "DDIM"),
+                Sampler::DdimCfgPlusPlus => write!(f, "DDIM CFG++"),
+                Sampler::Plms => write!(f, "PLMS"),
+                Sampler::UniPC => write!(f, "UniPC"),
+            }
+        }
+    }
+    impl From<&str> for Sampler {
+        fn from(s: &str) -> Self {
+            match s {
+                "Euler" => Sampler::Euler,
+                "Euler a" => Sampler::EulerA,
+                "Heun" => Sampler::Heun,
+                "DPM2" => Sampler::Dpm2,
+                "DPM2 a" => Sampler::Dpm2a,
+                "DPM fast" => Sampler::DpmFast,
+                "DPM adaptive" => Sampler::DpmAdaptive,
+                "DPM++ 2S a" => Sampler::DpmPlusPlus2sA,
+                "DPM++ 2M" => Sampler::DpmPlusPlus2M,
+                "DPM++ 2M SDE" => Sampler::DpmPlusPlus2MSde,
+                "DPM++ 2M SDE Heun" => Sampler::DpmPlusPlus2MSdeHeun,
+                "DPM++ 3M SDE" => Sampler::DpmPlusPlus3MSde,
+                "DPM++ SDE" => Sampler::DpmPlusPlusSde,
+                "LCM" => Sampler::Lcm,
+                "LMS" => Sampler::LMS,
+                "Restart" => Sampler::Restart,
+                "DDIM" => Sampler::Ddim,
+                "DDIM CFG++" => Sampler::DdimCfgPlusPlus,
+                "PLMS" => Sampler::Plms,
+                "UniPC" => Sampler::UniPC,
+                _ => Sampler::EulerA,
+            }
+        }
+    }
+    impl<'de> Deserialize<'de> for Sampler {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            struct SamplerVisitor;
+
+            impl<'de> Visitor<'de> for SamplerVisitor {
+                type Value = Sampler;
+
+                fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                    formatter.write_str("a string representing a sampler type")
+                }
+
+                fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+                where
+                    E: de::Error,
+                {
+                    match value {
+                        "Euler" => Ok(Sampler::Euler),
+                        "Euler a" => Ok(Sampler::EulerA),
+                        "Heun" => Ok(Sampler::Heun),
+                        "DPM2" => Ok(Sampler::Dpm2),
+                        "DPM2 a" => Ok(Sampler::Dpm2a),
+                        "DPM fast" => Ok(Sampler::DpmFast),
+                        "DPM adaptive" => Ok(Sampler::DpmAdaptive),
+                        "DPM++ 2S a" => Ok(Sampler::DpmPlusPlus2sA),
+                        "DPM++ 2M" => Ok(Sampler::DpmPlusPlus2M),
+                        "DPM++ 2M SDE" => Ok(Sampler::DpmPlusPlus2MSde),
+                        "DPM++ 2M SDE Heun" => Ok(Sampler::DpmPlusPlus2MSdeHeun),
+                        "DPM++ 3M SDE" => Ok(Sampler::DpmPlusPlus3MSde),
+                        "DPM++ SDE" => Ok(Sampler::DpmPlusPlusSde),
+                        "LCM" => Ok(Sampler::Lcm),
+                        "LMS" => Ok(Sampler::LMS),
+                        "Restart" => Ok(Sampler::Restart),
+                        "DDIM" => Ok(Sampler::Ddim),
+                        "DDIM CFG++" => Ok(Sampler::DdimCfgPlusPlus),
+                        "PLMS" => Ok(Sampler::Plms),
+                        "UniPC" => Ok(Sampler::UniPC),
+                        _ => Err(E::custom(format!(
+                            "unknown sampler type: {}, expected one of: Euler, Euler a, Heun, DPM2, DPM2 a, DPM fast, DPM adaptive, DPM++ 2S a, DPM++ 2M, DPM++ 2M SDE, DPM++ 2M SDE Heun, DPM++ 3M SDE, DPM++ SDE, LCM, LMS, Restart, DDIM, DDIM CFG++, PLMS, UniPC",
+                            value
+                        ))),
+                    }
+                }
+
+                fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+                where
+                    E: de::Error,
+                {
+                    self.visit_str(&value)
+                }
+            }
+
+            deserializer.deserialize_str(SamplerVisitor)
+        }
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Default)]
     pub struct OverrideSettings {
         pub sd_model_checkpoint: String,
     }
 
-    #[derive(Serialize, Deserialize, Debug)]
+    #[derive(Serialize, Deserialize, Debug, Default)]
     pub struct AlwaysOnScripts {
         pub controlnet: ControlNet,
     }
 
-    #[derive(Serialize, Deserialize, Debug)]
+    #[derive(Serialize, Deserialize, Debug, Default)]
     pub struct ControlNet {
         pub args: Vec<ControlNetArgs>,
     }
 
-    #[derive(Serialize, Deserialize, Debug)]
+    #[derive(Serialize, Debug)]
     pub struct ControlNetArgs {
-        pub enabled: bool,
-        pub pixel_perfect: bool,
-        pub image: String, // Store image as a Base64 string or path
+        /// Enable the control net. Defaults to false.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub enabled: Option<bool>,
+        /// Pixel perfect. Defaults to false.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub pixel_perfect: Option<bool>,
+        /// Image. Store image as a Base64 string.
+        pub image: String,
+        /// ControlNet module.
         pub module: String,
-        pub guidance_start: f64,
-        pub guidance_end: f64,
+        /// Guidance start. Defaults to 0.0.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub guidance_start: Option<f64>,
+        /// Guidance end. Defaults to 1.0.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub guidance_end: Option<f64>,
+    }
+    impl Default for ControlNetArgs {
+        fn default() -> Self {
+            Self {
+                enabled: Some(false),
+                pixel_perfect: Some(false),
+                image: "".to_string(),
+                module: "reference_only".to_string(),
+                guidance_start: Some(0.0),
+                guidance_end: Some(1.0),
+            }
+        }
+    }
+    impl<'de> Deserialize<'de> for ControlNetArgs {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            enum Field {
+                Enabled,
+                PixelPerfect,
+                Image,
+                Module,
+                GuidanceStart,
+                GuidanceEnd,
+            }
+
+            impl<'de> Deserialize<'de> for Field {
+                fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+                where
+                    D: Deserializer<'de>,
+                {
+                    struct FieldVisitor;
+
+                    impl Visitor<'_> for FieldVisitor {
+                        type Value = Field;
+
+                        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                            formatter.write_str("field identifier")
+                        }
+
+                        fn visit_str<E>(self, value: &str) -> Result<Field, E>
+                        where
+                            E: de::Error,
+                        {
+                            match value {
+                                "enabled" => Ok(Field::Enabled),
+                                "pixel_perfect" => Ok(Field::PixelPerfect),
+                                "image" => Ok(Field::Image),
+                                "module" => Ok(Field::Module),
+                                "guidance_start" => Ok(Field::GuidanceStart),
+                                "guidance_end" => Ok(Field::GuidanceEnd),
+                                _ => Err(de::Error::unknown_field(value, FIELDS)),
+                            }
+                        }
+                    }
+
+                    deserializer.deserialize_identifier(FieldVisitor)
+                }
+            }
+
+            struct ControlNetArgsVisitor;
+
+            impl<'de> Visitor<'de> for ControlNetArgsVisitor {
+                type Value = ControlNetArgs;
+
+                fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                    formatter.write_str("struct ControlNetArgs")
+                }
+
+                fn visit_map<V>(self, mut map: V) -> Result<ControlNetArgs, V::Error>
+                where
+                    V: MapAccess<'de>,
+                {
+                    let mut enabled = None;
+                    let mut pixel_perfect = None;
+                    let mut image = None;
+                    let mut module = None;
+                    let mut guidance_start = None;
+                    let mut guidance_end = None;
+
+                    while let Some(key) = map.next_key()? {
+                        match key {
+                            Field::Enabled => {
+                                if enabled.is_some() {
+                                    return Err(de::Error::duplicate_field("enabled"));
+                                }
+                                enabled = Some(map.next_value()?);
+                            }
+                            Field::PixelPerfect => {
+                                if pixel_perfect.is_some() {
+                                    return Err(de::Error::duplicate_field("pixel_perfect"));
+                                }
+                                pixel_perfect = Some(map.next_value()?);
+                            }
+                            Field::Image => {
+                                if image.is_some() {
+                                    return Err(de::Error::duplicate_field("image"));
+                                }
+                                image = Some(map.next_value()?);
+                            }
+                            Field::Module => {
+                                if module.is_some() {
+                                    return Err(de::Error::duplicate_field("module"));
+                                }
+                                module = Some(map.next_value()?);
+                            }
+                            Field::GuidanceStart => {
+                                if guidance_start.is_some() {
+                                    return Err(de::Error::duplicate_field("guidance_start"));
+                                }
+                                guidance_start = Some(map.next_value()?);
+                            }
+                            Field::GuidanceEnd => {
+                                if guidance_end.is_some() {
+                                    return Err(de::Error::duplicate_field("guidance_end"));
+                                }
+                                guidance_end = Some(map.next_value()?);
+                            }
+                        }
+                    }
+
+                    let image = image.ok_or_else(|| de::Error::missing_field("image"))?;
+                    let module = module.ok_or_else(|| de::Error::missing_field("module"))?;
+
+                    if enabled.is_none() {
+                        enabled = Some(false);
+                    }
+
+                    if pixel_perfect.is_none() {
+                        pixel_perfect = Some(false);
+                    }
+
+                    if guidance_start.is_none() {
+                        guidance_start = Some(0.0);
+                    }
+
+                    if guidance_end.is_none() {
+                        guidance_end = Some(1.0);
+                    }
+
+                    Ok(ControlNetArgs {
+                        enabled,
+                        pixel_perfect,
+                        image,
+                        module,
+                        guidance_start,
+                        guidance_end,
+                    })
+                }
+            }
+
+            const FIELDS: &[&str] = &[
+                "enabled",
+                "pixel_perfect",
+                "image",
+                "module",
+                "guidance_start",
+                "guidance_end",
+            ];
+
+            deserializer.deserialize_struct("ControlNetArgs", FIELDS, ControlNetArgsVisitor)
+        }
     }
 }
