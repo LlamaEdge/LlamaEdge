@@ -138,6 +138,16 @@ pub async fn image_generation(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "seed: {}", seed);
 
+    // apply canny preprocessor
+    let apply_canny_preprocessor = req.apply_canny_preprocessor.unwrap_or(false);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "apply_canny_preprocessor: {}", apply_canny_preprocessor);
+
+    // style ratio
+    let style_ratio = req.style_ratio.unwrap_or(0.2);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "style_ratio: {}", style_ratio);
+
     ctx = ctx
         .set_prompt(&req.prompt)
         .set_negative_prompt(negative_prompt)
@@ -154,6 +164,8 @@ pub async fn image_generation(
         .set_width(width as i32)
         .set_control_strength(control_strength)
         .set_seed(seed)
+        .enable_canny_preprocess(apply_canny_preprocessor)
+        .set_style_ratio(style_ratio)
         .set_output_path(output_image_file);
 
     // control_image
@@ -394,6 +406,16 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
     #[cfg(feature = "logging")]
     info!(target: "stdout", "strength: {}", strength);
 
+    // apply canny preprocessor
+    let apply_canny_preprocessor = req.apply_canny_preprocessor.unwrap_or(false);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "apply_canny_preprocessor: {}", apply_canny_preprocessor);
+
+    // style ratio
+    let style_ratio = req.style_ratio.unwrap_or(0.2);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "style_ratio: {}", style_ratio);
+
     // create and dump the generated image
     ctx = ctx
         .set_prompt(&req.prompt)
@@ -407,6 +429,8 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
         .set_control_strength(control_strength)
         .set_seed(seed)
         .set_strength(strength)
+        .enable_canny_preprocess(apply_canny_preprocessor)
+        .set_style_ratio(style_ratio)
         .set_output_path(output_image_file);
 
     #[cfg(feature = "logging")]
