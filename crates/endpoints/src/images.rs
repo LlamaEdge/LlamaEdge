@@ -708,7 +708,7 @@ fn test_serialize_image_create_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"prompt":"This is a prompt","negative_prompt":"This is the negative prompt.","model":"test-model-name","n":1,"quality":"standard","response_format":"url","style":"natural","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42,"strength":0.75,"scheduler":"discrete"}"#
+            r#"{"prompt":"This is a prompt","negative_prompt":"This is the negative prompt.","model":"test-model-name","n":1,"quality":"standard","response_format":"url","style":"natural","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42,"strength":0.75,"scheduler":"discrete","apply_canny_preprocessor":false,"style_ratio":0.2}"#
         );
     }
 
@@ -725,7 +725,7 @@ fn test_serialize_image_create_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"prompt":"This is a prompt","negative_prompt":"","model":"test-model-name","n":2,"quality":"standard","response_format":"b64_json","style":"vivid","user":"user","cfg_scale":1.0,"sample_method":"euler","steps":4,"height":512,"width":512,"control_strength":0.9,"seed":42,"strength":0.75,"scheduler":"discrete"}"#
+            r#"{"prompt":"This is a prompt","negative_prompt":"","model":"test-model-name","n":2,"quality":"standard","response_format":"b64_json","style":"vivid","user":"user","cfg_scale":1.0,"sample_method":"euler","steps":4,"height":512,"width":512,"control_strength":0.9,"seed":42,"strength":0.75,"scheduler":"discrete","apply_canny_preprocessor":false,"style_ratio":0.2}"#
         );
     }
 }
@@ -1386,7 +1386,7 @@ fn test_serialize_image_edit_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","negative_prompt":"","model":"test-model-name","n":1,"response_format":"url","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42,"strength":0.75,"scheduler":"discrete"}"#
+            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","negative_prompt":"","model":"test-model-name","n":1,"response_format":"url","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42,"strength":0.75,"scheduler":"discrete","apply_canny_preprocessor":false,"style_ratio":0.2}"#
         );
     }
 
@@ -1411,7 +1411,7 @@ fn test_serialize_image_edit_request() {
         let json = serde_json::to_string(&req).unwrap();
         assert_eq!(
             json,
-            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","negative_prompt":"","model":"test-model-name","n":2,"size":"256x256","response_format":"b64_json","user":"user","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42,"strength":0.75,"scheduler":"discrete"}"#
+            r#"{"image":{"id":"test-image-id","bytes":1024,"created_at":1234567890,"filename":"test-image.png","object":"file","purpose":"fine-tune"},"prompt":"This is a prompt","negative_prompt":"","model":"test-model-name","n":2,"size":"256x256","response_format":"b64_json","user":"user","cfg_scale":7.0,"sample_method":"euler_a","steps":20,"height":512,"width":512,"control_strength":0.9,"seed":42,"strength":0.75,"scheduler":"discrete","apply_canny_preprocessor":false,"style_ratio":0.2}"#
         );
     }
 }
