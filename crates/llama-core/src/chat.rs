@@ -2861,9 +2861,7 @@ fn compute_stream(
                                                 #[cfg(feature = "logging")]
                                                 error!(target: "stdout", "{}", &err_msg);
 
-                                                return Err(LlamaCoreError::Operation(
-                                                    err_msg,
-                                                ));
+                                                return Err(LlamaCoreError::Operation(err_msg));
                                             } else {
                                                 let warn_msg = format!("Fail to convert a vector of bytes to string. {}", e);
 
@@ -3793,9 +3791,7 @@ fn compute_stream(
                                                 #[cfg(feature = "logging")]
                                                 error!(target: "stdout", "{}", &err_msg);
 
-                                                return Err(LlamaCoreError::Operation(
-                                                    err_msg,
-                                                ));
+                                                return Err(LlamaCoreError::Operation(err_msg));
                                             } else {
                                                 let warn_msg = format!("Fail to convert a vector of bytes to string. {}", e);
 
