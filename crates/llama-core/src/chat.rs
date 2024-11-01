@@ -2862,7 +2862,7 @@ fn compute_stream(
                                                 error!(target: "stdout", "{}", &err_msg);
 
                                                 return Err(LlamaCoreError::Operation(
-                                                    err_msg.into(),
+                                                    err_msg,
                                                 ));
                                             } else {
                                                 let warn_msg = format!("Fail to convert a vector of bytes to string. {}", e);
@@ -3313,7 +3313,7 @@ fn compute_stream(
                                                         error!(target: "stdout", "{}", &err_msg);
 
                                                         return Err(LlamaCoreError::Operation(
-                                                            err_msg.into(),
+                                                            err_msg,
                                                         ));
                                                     } else {
                                                         let warn_msg = format!("Fail to convert a vector of bytes to string. {}", e);
@@ -3794,7 +3794,7 @@ fn compute_stream(
                                                 error!(target: "stdout", "{}", &err_msg);
 
                                                 return Err(LlamaCoreError::Operation(
-                                                    err_msg.into(),
+                                                    err_msg,
                                                 ));
                                             } else {
                                                 let warn_msg = format!("Fail to convert a vector of bytes to string. {}", e);
