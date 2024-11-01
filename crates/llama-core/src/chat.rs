@@ -2853,20 +2853,23 @@ fn compute_stream(
 
                                             token
                                         }
-                                        Err(_) => {
+                                        Err(e) => {
                                             // TODO This is a temp check. In case, infinite cached encodings happen.
                                             if cached_encodings.len() > 4 {
-                                                let err_msg = "The length of the invalid utf8 bytes exceed 4.";
+                                                let err_msg = format!("Fail to convert a vector of bytes to string. The length of the utf8 bytes exceeds 4. {}", e);
 
                                                 #[cfg(feature = "logging")]
                                                 error!(target: "stdout", "{}", &err_msg);
 
-                                                return Err(LlamaCoreError::Operation(
-                                                    err_msg.into(),
-                                                ));
-                                            }
+                                                return Err(LlamaCoreError::Operation(err_msg));
+                                            } else {
+                                                let warn_msg = format!("Fail to convert a vector of bytes to string. {}", e);
 
-                                            String::new()
+                                                #[cfg(feature = "logging")]
+                                                warn!(target: "stdout", "{}", &warn_msg);
+
+                                                String::from(" ")
+                                            }
                                         }
                                     }
                                 }
@@ -3299,20 +3302,25 @@ fn compute_stream(
 
                                                     token
                                                 }
-                                                Err(_) => {
+                                                Err(e) => {
                                                     // TODO This is a temp check. In case, infinite cached encodings happen.
                                                     if cached_encodings.len() > 4 {
-                                                        let err_msg = "The length of the invalid utf8 bytes exceed 4.";
+                                                        let err_msg = format!("Fail to convert a vector of bytes to string. The length of the utf8 bytes exceeds 4. {}", e);
 
                                                         #[cfg(feature = "logging")]
                                                         error!(target: "stdout", "{}", &err_msg);
 
                                                         return Err(LlamaCoreError::Operation(
-                                                            err_msg.into(),
+                                                            err_msg,
                                                         ));
-                                                    }
+                                                    } else {
+                                                        let warn_msg = format!("Fail to convert a vector of bytes to string. {}", e);
 
-                                                    String::new()
+                                                        #[cfg(feature = "logging")]
+                                                        warn!(target: "stdout", "{}", &warn_msg);
+
+                                                        String::from(" ")
+                                                    }
                                                 }
                                             }
                                         }
@@ -3775,20 +3783,23 @@ fn compute_stream(
 
                                             token
                                         }
-                                        Err(_) => {
+                                        Err(e) => {
                                             // TODO This is a temp check. In case, infinite cached encodings happen.
                                             if cached_encodings.len() > 4 {
-                                                let err_msg = "The length of the invalid utf8 bytes exceed 4.";
+                                                let err_msg = format!("Fail to convert a vector of bytes to string. The length of the utf8 bytes exceeds 4. {}", e);
 
                                                 #[cfg(feature = "logging")]
                                                 error!(target: "stdout", "{}", &err_msg);
 
-                                                return Err(LlamaCoreError::Operation(
-                                                    err_msg.into(),
-                                                ));
-                                            }
+                                                return Err(LlamaCoreError::Operation(err_msg));
+                                            } else {
+                                                let warn_msg = format!("Fail to convert a vector of bytes to string. {}", e);
 
-                                            String::new()
+                                                #[cfg(feature = "logging")]
+                                                warn!(target: "stdout", "{}", &warn_msg);
+
+                                                String::from(" ")
+                                            }
                                         }
                                     }
                                 }
