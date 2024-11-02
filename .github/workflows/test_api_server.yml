@@ -31,7 +31,7 @@ on:
       - 'tests/*.hurl'
 
 jobs:
-  test-api-server:
+  test-api-server-ubuntu:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -65,6 +65,237 @@ jobs:
 
       - name: Build llama-api-server on linux
         env:
+          RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
+        run: |
+          cargo build -p llama-api-server --release
+          cp target/wasm32-wasip1/release/llama-api-server.wasm ./llama-api-server.wasm
+
+      - name: Start llama-api-server for testing chat completions
+        run: |
+          curl -LO https://huggingface.co/second-state/Qwen2-1.5B-Instruct-GGUF/resolve/main/Qwen2-1.5B-Instruct-Q3_K_M.gguf
+          nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:Qwen2-1.5B-Instruct-Q3_K_M.gguf llama-api-server.wasm --model-name Qwen2-1.5B-Instruct --prompt-template chatml --ctx-size 4096 --socket-addr 0.0.0.0:8080 > ./start-llamaedge.log 2>&1 &
+          sleep 5
+          cat start-llamaedge.log
+
+      - name: Run test_chat.hurl
+        run: |
+          hurl --test --jobs 1 ./tests/test_chat.hurl
+
+      - name: Stop llama-api-server for testing chat completions
+        run: |
+          pkill -f wasmedge
+
+      - name: Start llama-api-server for testing embeddings
+        run: |
+          curl -LO https://huggingface.co/second-state/Nomic-embed-text-v1.5-Embedding-GGUF/resolve/main/nomic-embed-text-v1.5-f16.gguf
+          nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:nomic-embed-text-v1.5-f16.gguf llama-api-server.wasm --model-name nomic-embed-text-v1.5 --prompt-template embedding --ctx-size 512 --socket-addr 0.0.0.0:8080 > ./start-llamaedge.log 2>&1 &
+          sleep 5
+          cat start-llamaedge.log
+
+      - name: Run test_embeddings.hurl
+        run: |
+          hurl --test --jobs 1 ./tests/test_embeddings.hurl
+
+      - name: Stop llama-api-server for testing chat completions
+        run: |
+          pkill -f wasmedge
+
+  test-api-server-macos-13:
+    runs-on: macos-13
+    needs: test-api-server-ubuntu
+    strategy:
+      matrix:
+        wasmedge_version: [0.14.1]
+    steps:
+      - name: Clone project
+        id: checkout
+        uses: actions/checkout@v3
+
+      - name: Install Rust-nightly
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: nightly
+          target: wasm32-wasip1
+          components: rustfmt, clippy
+
+      - name: Install Rust-stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: wasm32-wasip1
+
+      - name: Download wasi-sdk for x86_64-macos
+        run: |
+          curl -LO https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-24/wasi-sdk-24.0-x86_64-macos.tar.gz
+          tar -xzvf wasi-sdk-24.0-x86_64-macos.tar.gz
+          mv wasi-sdk-24.0-x86_64-macos wasi-sdk-24.0
+
+      - name: Install WasmEdge
+        run: |
+          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v ${{ matrix.wasmedge_version }}
+          ls -al $HOME/.wasmedge/bin
+
+      - name: Install Hurl
+        run: |
+          brew install hurl
+
+      - name: Build llama-api-server
+        env:
+          WASI_SDK_PATH: /Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0
+          CC: "/Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0/bin/clang --sysroot=/Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0/share/wasi-sysroot"
+          RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
+        run: |
+          cargo build -p llama-api-server --release
+          cp target/wasm32-wasip1/release/llama-api-server.wasm ./llama-api-server.wasm
+
+      - name: Start llama-api-server for testing chat completions
+        run: |
+          curl -LO https://huggingface.co/second-state/Qwen2-1.5B-Instruct-GGUF/resolve/main/Qwen2-1.5B-Instruct-Q3_K_M.gguf
+          nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:Qwen2-1.5B-Instruct-Q3_K_M.gguf llama-api-server.wasm --model-name Qwen2-1.5B-Instruct --prompt-template chatml --ctx-size 4096 --socket-addr 0.0.0.0:8080 > ./start-llamaedge.log 2>&1 &
+          sleep 5
+          cat start-llamaedge.log
+
+      - name: Run test_chat.hurl
+        run: |
+          hurl --test --jobs 1 ./tests/test_chat.hurl
+
+      - name: Stop llama-api-server for testing chat completions
+        run: |
+          pkill -f wasmedge
+
+      - name: Start llama-api-server for testing embeddings
+        run: |
+          curl -LO https://huggingface.co/second-state/Nomic-embed-text-v1.5-Embedding-GGUF/resolve/main/nomic-embed-text-v1.5-f16.gguf
+          nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:nomic-embed-text-v1.5-f16.gguf llama-api-server.wasm --model-name nomic-embed-text-v1.5 --prompt-template embedding --ctx-size 512 --socket-addr 0.0.0.0:8080 > ./start-llamaedge.log 2>&1 &
+          sleep 5
+          cat start-llamaedge.log
+
+      - name: Run test_embeddings.hurl
+        run: |
+          hurl --test --jobs 1 ./tests/test_embeddings.hurl
+
+      - name: Stop llama-api-server for testing chat completions
+        run: |
+          pkill -f wasmedge
+
+  test-api-server-macos-14:
+    runs-on: macos-14
+    needs: test-api-server-macos-13
+    strategy:
+      matrix:
+        wasmedge_version: [0.14.1]
+    steps:
+      - name: Clone project
+        id: checkout
+        uses: actions/checkout@v3
+
+      - name: Install Rust-nightly
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: nightly
+          target: wasm32-wasip1
+          components: rustfmt, clippy
+
+      - name: Install Rust-stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: wasm32-wasip1
+
+      - name: Download wasi-sdk for arm64-macos
+        run: |
+          curl -LO https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-24/wasi-sdk-24.0-arm64-macos.tar.gz
+          tar -xzvf wasi-sdk-24.0-arm64-macos.tar.gz
+          mv wasi-sdk-24.0-arm64-macos wasi-sdk-24.0
+
+      - name: Install WasmEdge
+        run: |
+          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v ${{ matrix.wasmedge_version }}
+          ls -al $HOME/.wasmedge/bin
+
+      - name: Install Hurl
+        run: |
+          brew install hurl
+
+      - name: Build llama-api-server
+        env:
+          WASI_SDK_PATH: /Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0
+          CC: "/Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0/bin/clang --sysroot=/Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0/share/wasi-sysroot"
+          RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
+        run: |
+          cargo build -p llama-api-server --release
+          cp target/wasm32-wasip1/release/llama-api-server.wasm ./llama-api-server.wasm
+
+      - name: Start llama-api-server for testing chat completions
+        run: |
+          curl -LO https://huggingface.co/second-state/Qwen2-1.5B-Instruct-GGUF/resolve/main/Qwen2-1.5B-Instruct-Q3_K_M.gguf
+          nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:Qwen2-1.5B-Instruct-Q3_K_M.gguf llama-api-server.wasm --model-name Qwen2-1.5B-Instruct --prompt-template chatml --ctx-size 4096 --socket-addr 0.0.0.0:8080 > ./start-llamaedge.log 2>&1 &
+          sleep 5
+          cat start-llamaedge.log
+
+      - name: Run test_chat.hurl
+        run: |
+          hurl --test --jobs 1 ./tests/test_chat.hurl
+
+      - name: Stop llama-api-server for testing chat completions
+        run: |
+          pkill -f wasmedge
+
+      - name: Start llama-api-server for testing embeddings
+        run: |
+          curl -LO https://huggingface.co/second-state/Nomic-embed-text-v1.5-Embedding-GGUF/resolve/main/nomic-embed-text-v1.5-f16.gguf
+          nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:nomic-embed-text-v1.5-f16.gguf llama-api-server.wasm --model-name nomic-embed-text-v1.5 --prompt-template embedding --ctx-size 512 --socket-addr 0.0.0.0:8080 > ./start-llamaedge.log 2>&1 &
+          sleep 5
+          cat start-llamaedge.log
+
+      - name: Run test_embeddings.hurl
+        run: |
+          hurl --test --jobs 1 ./tests/test_embeddings.hurl
+
+      - name: Stop llama-api-server for testing chat completions
+        run: |
+          pkill -f wasmedge
+
+  test-api-server-macos-15:
+    runs-on: macos-15
+    needs: test-api-server-macos-14
+    strategy:
+      matrix:
+        wasmedge_version: [0.14.1]
+    steps:
+      - name: Clone project
+        id: checkout
+        uses: actions/checkout@v3
+
+      - name: Install Rust-nightly
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: nightly
+          target: wasm32-wasip1
+          components: rustfmt, clippy
+
+      - name: Install Rust-stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: wasm32-wasip1
+
+      - name: Download wasi-sdk for arm64-macos
+        run: |
+          curl -LO https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-24/wasi-sdk-24.0-arm64-macos.tar.gz
+          tar -xzvf wasi-sdk-24.0-arm64-macos.tar.gz
+          mv wasi-sdk-24.0-arm64-macos wasi-sdk-24.0
+
+      - name: Install WasmEdge
+        run: |
+          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v ${{ matrix.wasmedge_version }}
+          ls -al $HOME/.wasmedge/bin
+
+      - name: Install Hurl
+        run: |
+          brew install hurl
+
+      - name: Build llama-api-server
+        env:
+          WASI_SDK_PATH: /Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0
+          CC: "/Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0/bin/clang --sysroot=/Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0/share/wasi-sysroot"
           RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
         run: |
           cargo build -p llama-api-server --release
