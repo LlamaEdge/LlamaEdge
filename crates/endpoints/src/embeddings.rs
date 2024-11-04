@@ -92,6 +92,11 @@ impl From<&String> for InputText {
         InputText::String(s.to_string())
     }
 }
+impl From<String> for InputText {
+    fn from(s: String) -> Self {
+        InputText::String(s)
+    }
+}
 impl From<&[String]> for InputText {
     fn from(s: &[String]) -> Self {
         InputText::ArrayOfStrings(s.to_vec())
