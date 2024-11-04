@@ -120,7 +120,9 @@ pub async fn rag_query_to_embeddings(
 ///
 /// * `qdrant_collection_name` - Name of the Qdrant collection to be created.
 ///
-/// * `limit` - Max number of retrieved result.
+/// * `limit` - Number of retrieved results.
+///
+/// * `score_threshold` - The minimum score of the retrieved results.
 pub async fn rag_retrieve_context(
     query_embedding: &[f32],
     qdrant_url: impl AsRef<str>,
