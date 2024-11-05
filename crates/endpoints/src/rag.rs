@@ -88,7 +88,7 @@ fn test_rag_deserialize_embedding_request() {
     );
 }
 
-#[derive(Debug, Deserialize, Serialize, Default)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct RagChatCompletionsRequest {
     /// The model to use for generating completions.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -137,7 +137,7 @@ pub struct RagChatCompletionsRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop: Option<Vec<String>>,
     /// The maximum number of tokens to generate. The value should be no less than 1.
-    /// Defaults to 16.
+    /// Defaults to 1024.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_tokens: Option<u64>,
     /// Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
@@ -166,6 +166,10 @@ pub struct RagChatCompletionsRequest {
     pub tools: Option<Vec<Tool>>,
     /// Controls which (if any) function is called by the model.
     pub tool_choice: Option<ToolChoice>,
+
+    /// Number of user messages to use for context retrieval. Defaults to 1.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context_window: Option<u64>,
 }
 impl RagChatCompletionsRequest {
     pub fn as_chat_completions_request(&self) -> ChatCompletionRequest {
@@ -188,6 +192,7 @@ impl RagChatCompletionsRequest {
             response_format: self.response_format.clone(),
             tool_choice: self.tool_choice.clone(),
             tools: self.tools.clone(),
+            context_window: self.context_window,
         }
     }
 
@@ -219,6 +224,7 @@ impl RagChatCompletionsRequest {
             response_format: chat_completions_request.response_format,
             tool_choice: chat_completions_request.tool_choice,
             tools: chat_completions_request.tools,
+            context_window: chat_completions_request.context_window,
         }
     }
 }
@@ -248,24 +254,25 @@ impl RagChatCompletionRequestBuilder {
                 chat_model: Some("dummy-chat-model".to_string()),
                 messages,
                 embedding_model: "dummy-embedding-model".to_string(),
-                encoding_format: None,
+                encoding_format: Some("float".to_string()),
                 qdrant_url: qdrant_url.into(),
                 qdrant_collection_name: qdrant_collection_name.into(),
                 limit,
-                temperature: None,
-                top_p: None,
-                n_choice: None,
-                stream: None,
+                temperature: Some(1.0),
+                top_p: Some(1.0),
+                n_choice: Some(1),
+                stream: Some(false),
                 stream_options: None,
                 stop: None,
-                max_tokens: None,
-                presence_penalty: None,
-                frequency_penalty: None,
+                max_tokens: Some(1024),
+                presence_penalty: Some(0.0),
+                frequency_penalty: Some(0.0),
                 logit_bias: None,
                 user: None,
                 response_format: None,
                 tool_choice: None,
                 tools: None,
+                context_window: Some(1),
             },
         }
     }
@@ -331,6 +338,11 @@ impl RagChatCompletionRequestBuilder {
 
     pub fn with_user(mut self, user: impl Into<String>) -> Self {
         self.req.user = Some(user.into());
+        self
+    }
+
+    pub fn with_context_window(mut self, context_window: u64) -> Self {
+        self.req.context_window = Some(context_window);
         self
     }
 
