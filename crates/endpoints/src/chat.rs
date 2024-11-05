@@ -33,7 +33,7 @@
 //! let json = serde_json::to_string(&request).unwrap();
 //! assert_eq!(
 //!     json,
-//!     r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"max_tokens":1024,"tool_choice":"none"}"#
+//!     r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"temperature":1.0,"top_p":1.0,"n":1,"stream":false,"max_tokens":1024,"presence_penalty":0.0,"frequency_penalty":0.0,"tool_choice":"none","context_window":1}"#
 //! );
 //! ```
 //!
@@ -141,7 +141,7 @@
 //! let json = serde_json::to_string(&request).unwrap();
 //! assert_eq!(
 //!     json,
-//!     r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#
+//!     r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}},"context_window":1}"#
 //! );
 //! ```
 
@@ -173,22 +173,7 @@ impl ChatCompletionRequestBuilder {
             req: ChatCompletionRequest {
                 model: Some(model.into()),
                 messages,
-                temperature: None,
-                top_p: None,
-                n_choice: None,
-                stream: None,
-                stream_options: None,
-                stop: None,
-                max_tokens: Some(1024),
-                presence_penalty: None,
-                frequency_penalty: None,
-                logit_bias: None,
-                user: None,
-                functions: None,
-                function_call: None,
-                response_format: None,
-                tool_choice: None,
-                tools: None,
+                ..Default::default()
             },
         }
     }
@@ -294,13 +279,20 @@ impl ChatCompletionRequestBuilder {
         self
     }
 
+    /// Sets the number of user messages to use for context retrieval.
+    pub fn with_context_window(mut self, context_window: u64) -> Self {
+        self.req.context_window = Some(context_window);
+        self
+    }
+
+    /// Builds the chat completion request.
     pub fn build(self) -> ChatCompletionRequest {
         self.req
     }
 }
 
 /// Represents a chat completion request.
-#[derive(Debug, Serialize, Default)]
+#[derive(Debug, Serialize)]
 pub struct ChatCompletionRequest {
     /// The model to use for generating completions.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -378,6 +370,11 @@ pub struct ChatCompletionRequest {
     /// Controls which (if any) function is called by the model.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_choice: Option<ToolChoice>,
+
+    /// Number of user messages to use for context retrieval. Defaults to 1.
+    /// The parameter is only used in RAG chat completions.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context_window: Option<u64>,
 }
 impl<'de> Deserialize<'de> for ChatCompletionRequest {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -416,6 +413,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 let mut response_format = None;
                 let mut tools = None;
                 let mut tool_choice = None;
+                let mut context_window = None;
 
                 while let Some(key) = map.next_key::<String>()? {
                     match key.as_str() {
@@ -437,6 +435,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                         "response_format" => response_format = map.next_value()?,
                         "tools" => tools = map.next_value()?,
                         "tool_choice" => tool_choice = map.next_value()?,
+                        "context_window" => context_window = map.next_value()?,
                         _ => return Err(de::Error::unknown_field(key.as_str(), FIELDS)),
                     }
                 }
@@ -468,6 +467,10 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     stream = Some(false);
                 }
 
+                if context_window.is_none() {
+                    context_window = Some(1);
+                }
+
                 // Construct ChatCompletionRequest with all fields
                 Ok(ChatCompletionRequest {
                     model,
@@ -488,6 +491,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     response_format,
                     tools,
                     tool_choice,
+                    context_window,
                 })
             }
         }
@@ -511,12 +515,38 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
             "response_format",
             "tools",
             "tool_choice",
+            "context_window",
         ];
         deserializer.deserialize_struct(
             "ChatCompletionRequest",
             FIELDS,
             ChatCompletionRequestVisitor,
         )
+    }
+}
+impl Default for ChatCompletionRequest {
+    fn default() -> Self {
+        Self {
+            model: None,
+            messages: vec![],
+            temperature: Some(1.0),
+            top_p: Some(1.0),
+            n_choice: Some(1),
+            stream: Some(false),
+            stream_options: None,
+            stop: None,
+            max_tokens: Some(1024),
+            presence_penalty: Some(0.0),
+            frequency_penalty: Some(0.0),
+            logit_bias: None,
+            user: None,
+            functions: None,
+            function_call: None,
+            response_format: None,
+            tools: None,
+            tool_choice: None,
+            context_window: Some(1),
+        }
     }
 }
 
@@ -551,7 +581,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":1024,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto"}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":1024,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto","context_window":1}"#
         );
     }
 
@@ -575,11 +605,12 @@ fn test_chat_serialize_chat_request() {
 
         let request = ChatCompletionRequestBuilder::new("model-id", messages)
             .with_tool_choice(ToolChoice::None)
+            .with_context_window(3)
             .build();
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"max_tokens":1024,"tool_choice":"none"}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"temperature":1.0,"top_p":1.0,"n":1,"stream":false,"max_tokens":1024,"presence_penalty":0.0,"frequency_penalty":0.0,"tool_choice":"none","context_window":3}"#
         );
     }
 
@@ -677,7 +708,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}},"context_window":1}"#
         );
     }
 
@@ -770,7 +801,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto"}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto","context_window":1}"#
         );
     }
 }
