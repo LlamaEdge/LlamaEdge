@@ -33,7 +33,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-13, macos-14]
+        os: [ubuntu-22.04, macos-13, macos-14, macos-15]
     steps:
       - name: Clone project
         id: checkout
@@ -59,7 +59,7 @@ jobs:
           mv wasi-sdk-24.0-x86_64-macos wasi-sdk-24.0
 
       - name: Download wasi-sdk for arm64-macos
-        if: matrix.os == 'macos-14'
+        if: matrix.os == 'macos-14' || matrix.os == 'macos-15'
         run: |
           curl -LO https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-24/wasi-sdk-24.0-arm64-macos.tar.gz
           tar -xzvf wasi-sdk-24.0-arm64-macos.tar.gz
@@ -87,7 +87,7 @@ jobs:
           cargo test -p endpoints --target x86_64-unknown-linux-gnu
 
       - name: Run tests on macos-14
-        if: matrix.os == 'macos-14'
+        if: matrix.os == 'macos-14' || matrix.os == 'macos-15'
         env:
           RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
         run: |
