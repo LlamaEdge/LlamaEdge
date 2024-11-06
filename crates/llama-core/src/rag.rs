@@ -301,7 +301,7 @@ async fn qdrant_search_similar_points(
             let err_msg = e.to_string();
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "Fail to search similar points from the qdrant instance. Reason: {}", &err_msg);
+            error!(target: "stdout", "{}", &err_msg);
 
             Err(LlamaCoreError::Operation(err_msg))
         }
