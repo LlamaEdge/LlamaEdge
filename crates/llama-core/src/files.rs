@@ -1,8 +1,10 @@
 use crate::{error::LlamaCoreError, ARCHIVES_DIR};
+use base64::{engine::general_purpose, Engine as _};
 use endpoints::files::{DeleteFileStatus, FileObject, ListFilesResponse};
 use hyper::{body::to_bytes, Body, Method, Request};
 use multipart::server::{Multipart, ReadEntry, ReadEntryResult};
 use multipart_2021 as multipart;
+use serde_json::{json, Value};
 use std::{
     fs::{self, File},
     io::{Cursor, Read, Write},
@@ -68,11 +70,12 @@ pub async fn upload_file(req: Request<Body>) -> Result<FileObject, LlamaCoreErro
                 };
 
                 if !((filename).to_lowercase().ends_with(".txt")
-                    || (filename).to_lowercase().ends_with(".md"))
+                    || (filename).to_lowercase().ends_with(".md")
                     || (filename).to_lowercase().ends_with(".png")
+                    || (filename).to_lowercase().ends_with(".wav"))
                 {
                     let err_msg = format!(
-                        "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported. The file extension is {}.",
+                        "Failed to upload the target file. Only files with 'txt', 'md', 'png', 'wav' extensions are supported. The file to be uploaded is {}.",
                         &filename
                     );
 
@@ -318,10 +321,48 @@ pub fn retrieve_file(id: impl AsRef<str>) -> Result<FileObject, LlamaCoreError> 
     Err(LlamaCoreError::FileNotFound)
 }
 
+pub fn retrieve_file_content(id: impl AsRef<str>) -> Result<Value, LlamaCoreError> {
+    let file_object = retrieve_file(id)?;
+    let file_path = Path::new(ARCHIVES_DIR)
+        .join(&file_object.id)
+        .join(&file_object.filename);
+
+    let base64_content = file_to_base64(&file_path)?;
+
+    Ok(json!({
+        "id": file_object.id,
+        "bytes": file_object.bytes,
+        "created_at": file_object.created_at,
+        "filename": file_object.filename,
+        "content": base64_content,
+    }))
+}
+
 fn is_hidden(entry: &DirEntry) -> bool {
     entry
         .file_name()
         .to_str()
         .map(|s| s.starts_with("."))
         .unwrap_or(false)
+}
+
+fn file_to_base64(file_path: impl AsRef<Path>) -> Result<String, LlamaCoreError> {
+    if !file_path.as_ref().exists() {
+        return Err(LlamaCoreError::FileNotFound);
+    }
+
+    // Open the file
+    let mut file = match File::open(file_path) {
+        Ok(file) => file,
+        Err(e) => {
+            let err_msg = format!("Failed to open the target file. {}", e);
+            return Err(LlamaCoreError::Operation(err_msg));
+        }
+    };
+
+    // read the file content as bytes
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+
+    Ok(general_purpose::STANDARD.encode(&buffer))
 }
