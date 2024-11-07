@@ -9,6 +9,7 @@ pub mod chat;
 pub mod completions;
 pub mod embeddings;
 pub mod error;
+pub mod files;
 pub mod graph;
 pub mod images;
 pub mod metadata;

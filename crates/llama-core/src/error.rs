@@ -18,6 +18,9 @@ pub enum LlamaCoreError {
     #[cfg(feature = "search")]
     #[error("{0}")]
     Search(String),
+    /// Errors in file not found.
+    #[error("File not found.")]
+    FileNotFound,
 }
 
 /// Error types for wasi-nn errors.
