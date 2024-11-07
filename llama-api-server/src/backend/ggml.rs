@@ -663,7 +663,7 @@ fn list_files() -> Response<Body> {
             // log
             error!(target: "stdout", "{}", &err_msg);
 
-            return error::internal_server_error(err_msg);
+            error::internal_server_error(err_msg)
         }
     }
 }
