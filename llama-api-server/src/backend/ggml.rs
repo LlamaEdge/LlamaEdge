@@ -496,113 +496,44 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
         }
     } else if req.method() == Method::GET {
         let uri_path = req.uri().path();
-        if uri_path == "/v1/files" {
-            match llama_core::files::list_files() {
-                Ok(file_objects) => {
-                    // serialize chat completion object
-                    let s = match serde_json::to_string(&file_objects) {
-                        Ok(s) => s,
-                        Err(e) => {
-                            let err_msg = format!("Failed to serialize file object. {}", e);
 
-                            // log
-                            error!(target: "stdout", "{}", &err_msg);
+        // Split the path into segments
+        let segments: Vec<&str> = uri_path.split('/').collect();
 
-                            return error::internal_server_error(err_msg);
-                        }
-                    };
-
-                    // return response
-                    let result = Response::builder()
-                        .header("Access-Control-Allow-Origin", "*")
-                        .header("Access-Control-Allow-Methods", "*")
-                        .header("Access-Control-Allow-Headers", "*")
-                        .header("Content-Type", "application/json")
-                        .body(Body::from(s));
-
-                    match result {
-                        Ok(response) => response,
-                        Err(e) => {
-                            let err_msg = e.to_string();
-
-                            // log
-                            error!(target: "stdout", "{}", &err_msg);
-
-                            error::internal_server_error(err_msg)
-                        }
-                    }
-                }
-                Err(e) => {
-                    let err_msg = format!("Failed to list all files. {}", e);
+        match segments.as_slice() {
+            ["", "v1", "files"] => list_files(),
+            ["", "v1", "files", file_id, "content"] => {
+                if !file_id.starts_with("file_") {
+                    let err_msg = format!("unsupported uri path: {}", uri_path);
 
                     // log
                     error!(target: "stdout", "{}", &err_msg);
 
                     return error::internal_server_error(err_msg);
                 }
+
+                retrieve_file_content(file_id)
             }
-        } else if uri_path.starts_with("/v1/files/") {
-            let id = uri_path.trim_start_matches("/v1/files/");
-            if !id.starts_with("file_") {
+            ["", "v1", "files", file_id] => {
+                if !file_id.starts_with("file_") {
+                    let err_msg = format!("unsupported uri path: {}", uri_path);
+
+                    // log
+                    error!(target: "stdout", "{}", &err_msg);
+
+                    return error::internal_server_error(err_msg);
+                }
+
+                retrieve_file(file_id)
+            }
+            _ => {
                 let err_msg = format!("unsupported uri path: {}", uri_path);
 
                 // log
                 error!(target: "stdout", "{}", &err_msg);
 
-                return error::internal_server_error(err_msg);
+                error::internal_server_error(err_msg)
             }
-
-            match llama_core::files::retrieve_file(id) {
-                Ok(fo) => {
-                    // serialize chat completion object
-                    let s = match serde_json::to_string(&fo) {
-                        Ok(s) => s,
-                        Err(e) => {
-                            let err_msg = format!("Failed to serialize file object. {}", e);
-
-                            // log
-                            error!(target: "stdout", "{}", &err_msg);
-
-                            return error::internal_server_error(err_msg);
-                        }
-                    };
-
-                    // return response
-                    let result = Response::builder()
-                        .header("Access-Control-Allow-Origin", "*")
-                        .header("Access-Control-Allow-Methods", "*")
-                        .header("Access-Control-Allow-Headers", "*")
-                        .header("Content-Type", "application/json")
-                        .body(Body::from(s));
-
-                    match result {
-                        Ok(response) => response,
-                        Err(e) => {
-                            let err_msg = e.to_string();
-
-                            // log
-                            error!(target: "stdout", "{}", &err_msg);
-
-                            error::internal_server_error(err_msg)
-                        }
-                    }
-                }
-                Err(e) => {
-                    let err_msg = format!("{}", e);
-
-                    // log
-                    error!(target: "stdout", "{}", &err_msg);
-
-                    error::internal_server_error(err_msg)
-                }
-            }
-        } else {
-            let err_msg = format!("unsupported uri path: {}", uri_path);
-
-            // log
-            error!(target: "stdout", "{}", &err_msg);
-
-            error::internal_server_error(err_msg)
         }
     } else if req.method() == Method::DELETE {
         let id = req.uri().path().trim_start_matches("/v1/files/");
@@ -688,6 +619,147 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
     info!(target: "stdout", "Send the files response");
 
     res
+}
+
+fn list_files() -> Response<Body> {
+    match llama_core::files::list_files() {
+        Ok(file_objects) => {
+            // serialize chat completion object
+            let s = match serde_json::to_string(&file_objects) {
+                Ok(s) => s,
+                Err(e) => {
+                    let err_msg = format!("Failed to serialize file list. {}", e);
+
+                    // log
+                    error!(target: "stdout", "{}", &err_msg);
+
+                    return error::internal_server_error(err_msg);
+                }
+            };
+
+            // return response
+            let result = Response::builder()
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "*")
+                .header("Access-Control-Allow-Headers", "*")
+                .header("Content-Type", "application/json")
+                .body(Body::from(s));
+
+            match result {
+                Ok(response) => response,
+                Err(e) => {
+                    let err_msg = e.to_string();
+
+                    // log
+                    error!(target: "stdout", "{}", &err_msg);
+
+                    error::internal_server_error(err_msg)
+                }
+            }
+        }
+        Err(e) => {
+            let err_msg = format!("Failed to list all files. {}", e);
+
+            // log
+            error!(target: "stdout", "{}", &err_msg);
+
+            return error::internal_server_error(err_msg);
+        }
+    }
+}
+
+fn retrieve_file(id: impl AsRef<str>) -> Response<Body> {
+    match llama_core::files::retrieve_file(id) {
+        Ok(fo) => {
+            // serialize chat completion object
+            let s = match serde_json::to_string(&fo) {
+                Ok(s) => s,
+                Err(e) => {
+                    let err_msg = format!("Failed to serialize file object. {}", e);
+
+                    // log
+                    error!(target: "stdout", "{}", &err_msg);
+
+                    return error::internal_server_error(err_msg);
+                }
+            };
+
+            // return response
+            let result = Response::builder()
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "*")
+                .header("Access-Control-Allow-Headers", "*")
+                .header("Content-Type", "application/json")
+                .body(Body::from(s));
+
+            match result {
+                Ok(response) => response,
+                Err(e) => {
+                    let err_msg = e.to_string();
+
+                    // log
+                    error!(target: "stdout", "{}", &err_msg);
+
+                    error::internal_server_error(err_msg)
+                }
+            }
+        }
+        Err(e) => {
+            let err_msg = format!("{}", e);
+
+            // log
+            error!(target: "stdout", "{}", &err_msg);
+
+            error::internal_server_error(err_msg)
+        }
+    }
+}
+
+fn retrieve_file_content(id: impl AsRef<str>) -> Response<Body> {
+    match llama_core::files::retrieve_file_content(id) {
+        Ok(content) => {
+            // serialize chat completion object
+            let s = match serde_json::to_string(&content) {
+                Ok(s) => s,
+                Err(e) => {
+                    let err_msg = format!("Failed to serialize file content. {}", e);
+
+                    // log
+                    error!(target: "stdout", "{}", &err_msg);
+
+                    return error::internal_server_error(err_msg);
+                }
+            };
+
+            // return response
+            let result = Response::builder()
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "*")
+                .header("Access-Control-Allow-Headers", "*")
+                .header("Content-Type", "application/json")
+                .body(Body::from(s));
+
+            match result {
+                Ok(response) => response,
+                Err(e) => {
+                    let err_msg = e.to_string();
+
+                    // log
+                    error!(target: "stdout", "{}", &err_msg);
+
+                    error::internal_server_error(err_msg)
+                }
+            }
+        }
+        Err(e) => {
+            let err_msg = format!("{}", e);
+
+            // log
+            error!(target: "stdout", "{}", &err_msg);
+
+            error::internal_server_error(err_msg)
+        }
+    }
 }
 
 /// Segment the text into chunks and return the chunks response.
