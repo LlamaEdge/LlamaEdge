@@ -3,7 +3,7 @@ use endpoints::{
     chat::ChatCompletionRequest,
     completions::CompletionRequest,
     embeddings::EmbeddingRequest,
-    files::{DeleteFileStatus, FileObject, ListFilesResponse},
+    files::{DeleteFileStatus, FileObject},
     rag::{ChunksRequest, ChunksResponse},
 };
 use futures_util::TryStreamExt;
@@ -16,7 +16,6 @@ use std::{
     path::Path,
     time::SystemTime,
 };
-use walkdir::{DirEntry, WalkDir};
 
 /// List all models available.
 pub(crate) async fn models_handler() -> Response<Body> {
@@ -628,133 +627,55 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
         }
     } else if req.method() == Method::GET {
         let uri_path = req.uri().path();
-
         if uri_path == "/v1/files" {
-            let mut file_objects: Vec<FileObject> = Vec::new();
-            for entry in WalkDir::new("archives").into_iter().filter_map(|e| e.ok()) {
-                if !is_hidden(&entry) && entry.path().is_file() {
-                    info!(target: "stdout", "archive file: {}", entry.path().display());
+            match llama_core::files::list_files() {
+                Ok(file_objects) => {
+                    // serialize chat completion object
+                    let s = match serde_json::to_string(&file_objects) {
+                        Ok(s) => s,
+                        Err(e) => {
+                            let err_msg = format!("Failed to serialize file object. {}", e);
 
-                    let id = entry
-                        .path()
-                        .parent()
-                        .and_then(|p| p.file_name())
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                        .to_string();
+                            // log
+                            error!(target: "stdout", "{}", &err_msg);
 
-                    let filename = entry
-                        .path()
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap()
-                        .to_string();
-
-                    let metadata = entry.path().metadata().unwrap();
-
-                    let created_at = metadata
-                        .created()
-                        .unwrap()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap()
-                        .as_secs();
-
-                    let bytes = metadata.len();
-
-                    let fo = FileObject {
-                        id,
-                        bytes,
-                        created_at,
-                        filename,
-                        object: "file".to_string(),
-                        purpose: "assistants".to_string(),
+                            return error::internal_server_error(err_msg);
+                        }
                     };
 
-                    file_objects.push(fo);
+                    // return response
+                    let result = Response::builder()
+                        .header("Access-Control-Allow-Origin", "*")
+                        .header("Access-Control-Allow-Methods", "*")
+                        .header("Access-Control-Allow-Headers", "*")
+                        .header("Content-Type", "application/json")
+                        .body(Body::from(s));
+
+                    match result {
+                        Ok(response) => response,
+                        Err(e) => {
+                            let err_msg = e.to_string();
+
+                            // log
+                            error!(target: "stdout", "{}", &err_msg);
+
+                            error::internal_server_error(err_msg)
+                        }
+                    }
                 }
-            }
-
-            info!(target: "stdout", "Found {} archive files", file_objects.len());
-
-            let file_objects = ListFilesResponse {
-                object: "list".to_string(),
-                data: file_objects,
-            };
-
-            // serialize chat completion object
-            let s = match serde_json::to_string(&file_objects) {
-                Ok(s) => s,
                 Err(e) => {
-                    let err_msg = format!("Failed to serialize file object. {}", e);
+                    let err_msg = format!("Failed to list all files. {}", e);
 
                     // log
                     error!(target: "stdout", "{}", &err_msg);
 
                     return error::internal_server_error(err_msg);
                 }
-            };
-
-            // return response
-            let result = Response::builder()
-                .header("Access-Control-Allow-Origin", "*")
-                .header("Access-Control-Allow-Methods", "*")
-                .header("Access-Control-Allow-Headers", "*")
-                .header("Content-Type", "application/json")
-                .body(Body::from(s));
-
-            match result {
-                Ok(response) => response,
-                Err(e) => {
-                    let err_msg = e.to_string();
-
-                    // log
-                    error!(target: "stdout", "{}", &err_msg);
-
-                    error::internal_server_error(err_msg)
-                }
             }
-        } else {
+        } else if uri_path.starts_with("/v1/files/") {
             let id = uri_path.trim_start_matches("/v1/files/");
-            let root = format!("archives/{}", id);
-            let mut file_object: Option<FileObject> = None;
-            for entry in WalkDir::new(root).into_iter().filter_map(|e| e.ok()) {
-                if !is_hidden(&entry) && entry.path().is_file() {
-                    info!(target: "stdout", "archive file: {}", entry.path().display());
-
-                    let filename = entry
-                        .path()
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap()
-                        .to_string();
-
-                    let metadata = entry.path().metadata().unwrap();
-
-                    let created_at = metadata
-                        .created()
-                        .unwrap()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap()
-                        .as_secs();
-
-                    let bytes = metadata.len();
-
-                    file_object = Some(FileObject {
-                        id: id.into(),
-                        bytes,
-                        created_at,
-                        filename,
-                        object: "file".to_string(),
-                        purpose: "assistants".to_string(),
-                    });
-
-                    break;
-                }
-            }
-
-            match file_object {
-                Some(fo) => {
+            match llama_core::files::retrieve_file(id) {
+                Ok(fo) => {
                     // serialize chat completion object
                     let s = match serde_json::to_string(&fo) {
                         Ok(s) => s,
@@ -788,11 +709,8 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
                         }
                     }
                 }
-                None => {
-                    let err_msg = format!(
-                        "Failed to retrieve the target file. Not found the target file with id {}.",
-                        id
-                    );
+                Err(e) => {
+                    let err_msg = format!("{}", e);
 
                     // log
                     error!(target: "stdout", "{}", &err_msg);
@@ -800,20 +718,18 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
                     error::internal_server_error(err_msg)
                 }
             }
+        } else {
+            let err_msg = format!("unsupported uri path: {}", uri_path);
+
+            // log
+            error!(target: "stdout", "{}", &err_msg);
+
+            error::internal_server_error(err_msg)
         }
     } else if req.method() == Method::DELETE {
         let id = req.uri().path().trim_start_matches("/v1/files/");
-        let root = format!("archives/{}", id);
-        let status = match fs::remove_dir_all(root) {
-            Ok(_) => {
-                info!(target: "stdout", "Successfully deleted the target file with id {}.", id);
-
-                DeleteFileStatus {
-                    id: id.into(),
-                    object: "file".to_string(),
-                    deleted: true,
-                }
-            }
+        let status = match llama_core::files::remove_file(id) {
+            Ok(status) => status,
             Err(e) => {
                 let err_msg = format!("Failed to delete the target file with id {}. {}", id, e);
 
@@ -1139,12 +1055,4 @@ pub(crate) async fn server_info_handler() -> Response<Body> {
     info!(target: "stdout", "Send the server info response.");
 
     res
-}
-
-fn is_hidden(entry: &DirEntry) -> bool {
-    entry
-        .file_name()
-        .to_str()
-        .map(|s| s.starts_with("."))
-        .unwrap_or(false)
 }
