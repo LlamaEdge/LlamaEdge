@@ -483,7 +483,7 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
             // create an image object
             ImageObject {
                 b64_json: None,
-                url: Some(format!("/archives/{}/{}", &id, &filename)),
+                url: Some(format!("/{}/{}/{}", ARCHIVES_DIR, &id, &filename)),
                 prompt: Some(req.prompt.clone()),
             }
         }
