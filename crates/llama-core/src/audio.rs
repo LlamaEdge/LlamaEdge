@@ -3,15 +3,12 @@
 use crate::{
     error::LlamaCoreError, utils::set_tensor_data, AUDIO_GRAPH, MAX_BUFFER_SIZE, PIPER_GRAPH,
 };
-use endpoints::{
-    audio::{
-        speech::SpeechRequest,
-        transcription::{TranscriptionObject, TranscriptionRequest},
-        translation::{TranslationObject, TranslationRequest},
-    },
-    files::FileObject,
+use endpoints::audio::{
+    speech::SpeechRequest,
+    transcription::{TranscriptionObject, TranscriptionRequest},
+    translation::{TranslationObject, TranslationRequest},
 };
-use std::{fs, io::Write, path::Path, time::SystemTime};
+use std::path::Path;
 
 /// Transcribe audio into the input language.
 pub async fn audio_transcriptions(
@@ -270,7 +267,7 @@ fn load_audio_waveform(filename: impl AsRef<std::path::Path>) -> Result<Vec<u8>,
 }
 
 /// Generate audio from the input text.
-pub async fn create_speech(request: SpeechRequest) -> Result<FileObject, LlamaCoreError> {
+pub async fn create_speech(request: SpeechRequest) -> Result<Vec<u8>, LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "processing audio speech request");
 
@@ -334,59 +331,7 @@ pub async fn create_speech(request: SpeechRequest) -> Result<FileObject, LlamaCo
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Output buffer size: {}", output_size);
 
-    // * save the audio data to a file
-
-    // create a unique file id
-    let id = format!("file_{}", uuid::Uuid::new_v4());
-
-    // save the file
-    let path = Path::new("archives");
-    if !path.exists() {
-        fs::create_dir(path).unwrap();
-    }
-    let file_path = path.join(&id);
-    if !file_path.exists() {
-        fs::create_dir(&file_path).unwrap();
-    }
-    let filename = "output.wav";
-    let mut audio_file = match fs::File::create(file_path.join(filename)) {
-        Ok(file) => file,
-        Err(e) => {
-            let err_msg = format!("Failed to create the output file. {}", e);
-
-            #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", &err_msg);
-
-            return Err(LlamaCoreError::Operation(err_msg));
-        }
-    };
-    audio_file.write_all(&output_buffer[..output_size]).unwrap();
-
-    // log
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "file_id: {}, file_name: {}", &id, &filename);
-
-    let created_at = match SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
-        Ok(n) => n.as_secs(),
-        Err(_) => {
-            let err_msg = "Failed to get the current time.";
-
-            // log
-            #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", &err_msg);
-
-            return Err(LlamaCoreError::Operation(err_msg.to_owned()));
-        }
-    };
-
-    Ok(FileObject {
-        id,
-        bytes: output_size as u64,
-        created_at,
-        filename: filename.to_owned(),
-        object: "file".to_owned(),
-        purpose: "assistants_output".to_owned(),
-    })
+    Ok(output_buffer)
 }
 
 /// Translate audio into the target language
