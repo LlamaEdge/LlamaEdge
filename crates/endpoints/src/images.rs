@@ -683,7 +683,7 @@ impl fmt::Display for SamplingMethod {
 }
 impl From<&str> for SamplingMethod {
     fn from(s: &str) -> Self {
-        match s {
+        match s.to_lowercase().as_str() {
             "euler" => SamplingMethod::Euler,
             "euler_a" => SamplingMethod::EulerA,
             "heun" => SamplingMethod::Heun,
