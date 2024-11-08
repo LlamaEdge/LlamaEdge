@@ -385,7 +385,7 @@ pub fn download_file(id: impl AsRef<str>) -> Result<(String, Vec<u8>), LlamaCore
             // log
             error!(target: "stdout", "{}", &err_msg);
 
-            return Err(LlamaCoreError::Operation(err_msg));
+            Err(LlamaCoreError::Operation(err_msg))
         }
     }
 }
