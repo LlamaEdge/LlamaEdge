@@ -1,6 +1,6 @@
 //! Define APIs for image generation and edit.
 
-use crate::{error::LlamaCoreError, SD_IMAGE_TO_IMAGE, SD_TEXT_TO_IMAGE};
+use crate::{error::LlamaCoreError, ARCHIVES_DIR, SD_IMAGE_TO_IMAGE, SD_TEXT_TO_IMAGE};
 use base64::{engine::general_purpose, Engine as _};
 use endpoints::images::{
     ImageCreateRequest, ImageEditRequest, ImageObject, ImageVariationRequest, ListImagesResponse,
@@ -253,7 +253,7 @@ pub async fn image_generation(
             // create an image object
             ImageObject {
                 b64_json: None,
-                url: Some(format!("/archives/{}/{}", &id, &filename)),
+                url: Some(format!("/{}/{}/{}", ARCHIVES_DIR, &id, &filename)),
                 prompt: Some(req.prompt.clone()),
             }
         }
