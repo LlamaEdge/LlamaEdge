@@ -213,6 +213,9 @@ pub fn remove_file(id: impl AsRef<str>) -> Result<DeleteFileStatus, LlamaCoreErr
 ///
 /// A `ListFilesResponse` instance.
 pub fn list_files() -> Result<ListFilesResponse, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Listing all archive files");
+
     let mut file_objects: Vec<FileObject> = Vec::new();
     for entry in WalkDir::new(ARCHIVES_DIR)
         .into_iter()
@@ -283,6 +286,9 @@ pub fn list_files() -> Result<ListFilesResponse, LlamaCoreError> {
 ///
 /// A `FileObject` instance.
 pub fn retrieve_file(id: impl AsRef<str>) -> Result<FileObject, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Retrieving the target file with id {}", id.as_ref());
+
     let root = format!("{}/{}", ARCHIVES_DIR, id.as_ref());
     for entry in WalkDir::new(root).into_iter().filter_map(|e| e.ok()) {
         if !is_hidden(&entry) && entry.path().is_file() {
@@ -331,6 +337,9 @@ pub fn retrieve_file(id: impl AsRef<str>) -> Result<FileObject, LlamaCoreError> 
 ///
 /// A `Value` instance.
 pub fn retrieve_file_content(id: impl AsRef<str>) -> Result<Value, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Retrieving the content of the target file with id {}", id.as_ref());
+
     let file_object = retrieve_file(id)?;
     let file_path = Path::new(ARCHIVES_DIR)
         .join(&file_object.id)
@@ -357,6 +366,9 @@ pub fn retrieve_file_content(id: impl AsRef<str>) -> Result<Value, LlamaCoreErro
 ///
 /// A tuple of `(String, Vec<u8>)`. The first element is the filename, and the second element is the file content.
 pub fn download_file(id: impl AsRef<str>) -> Result<(String, Vec<u8>), LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Downloading the target file with id {}", id.as_ref());
+
     let file_object = retrieve_file(id)?;
     let file_path = Path::new(ARCHIVES_DIR)
         .join(&file_object.id)
