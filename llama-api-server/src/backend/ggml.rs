@@ -444,7 +444,15 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
     res
 }
 
-/// Upload, retrieve and delete a file, or list all files.
+/// Upload, download, retrieve and delete a file, or list all files.
+///
+/// - `POST /v1/files`: Upload a file.
+/// - `GET /v1/files`: List all files.
+/// - `GET /v1/files/{file_id}`: Retrieve a file by id.
+/// - `GET /v1/files/{file_id}/content`: Retrieve the content of a file by id.
+/// - `GET /v1/files/download/{file_id}`: Download a file by id.
+/// - `DELETE /v1/files/{file_id}`: Delete a file by id.
+///
 pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
     // log
     info!(target: "stdout", "Handling the coming files request");
@@ -495,7 +503,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
             }
         }
     } else if req.method() == Method::GET {
-        let uri_path = req.uri().path();
+        let uri_path = req.uri().path().trim_end_matches('/').to_lowercase();
 
         // Split the path into segments
         let segments: Vec<&str> = uri_path.split('/').collect();
@@ -526,6 +534,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
 
                 retrieve_file(file_id)
             }
+            ["", "v1", "files", "download", file_id] => download_file(file_id),
             _ => {
                 let err_msg = format!("unsupported uri path: {}", uri_path);
 
@@ -738,6 +747,67 @@ fn retrieve_file_content(id: impl AsRef<str>) -> Response<Body> {
                 .header("Access-Control-Allow-Headers", "*")
                 .header("Content-Type", "application/json")
                 .body(Body::from(s));
+
+            match result {
+                Ok(response) => response,
+                Err(e) => {
+                    let err_msg = e.to_string();
+
+                    // log
+                    error!(target: "stdout", "{}", &err_msg);
+
+                    error::internal_server_error(err_msg)
+                }
+            }
+        }
+        Err(e) => {
+            let err_msg = format!("{}", e);
+
+            // log
+            error!(target: "stdout", "{}", &err_msg);
+
+            error::internal_server_error(err_msg)
+        }
+    }
+}
+
+fn download_file(id: impl AsRef<str>) -> Response<Body> {
+    match llama_core::files::download_file(id) {
+        Ok((filename, buffer)) => {
+            // get the extension of the file
+            let extension = match filename.split('.').last() {
+                Some(extension) => extension,
+                None => "unknown",
+            };
+            let content_type = match extension {
+                "txt" => "text/plain",
+                "json" => "application/json",
+                "png" => "image/png",
+                "jpg" => "image/jpeg",
+                "jpeg" => "image/jpeg",
+                "wav" => "audio/wav",
+                "mp3" => "audio/mpeg",
+                "mp4" => "video/mp4",
+                "md" => "text/markdown",
+                _ => {
+                    let err_msg = format!("Unsupported file extension: {}", extension);
+
+                    // log
+                    error!(target: "stdout", "{}", &err_msg);
+
+                    return error::internal_server_error(err_msg);
+                }
+            };
+            let content_disposition = format!("attachment; filename={}", filename);
+
+            // return response
+            let result = Response::builder()
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "*")
+                .header("Access-Control-Allow-Headers", "*")
+                .header("Content-Type", content_type)
+                .header("Content-Disposition", content_disposition)
+                .body(Body::from(buffer));
 
             match result {
                 Ok(response) => response,
