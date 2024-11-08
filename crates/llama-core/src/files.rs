@@ -321,6 +321,15 @@ pub fn retrieve_file(id: impl AsRef<str>) -> Result<FileObject, LlamaCoreError> 
     Err(LlamaCoreError::FileNotFound)
 }
 
+/// Retrieve the content of a specific file by id.
+///
+/// # Arguments
+///
+/// * `id`: The id of the target file.
+///
+/// # Returns
+///
+/// A `Value` instance.
 pub fn retrieve_file_content(id: impl AsRef<str>) -> Result<Value, LlamaCoreError> {
     let file_object = retrieve_file(id)?;
     let file_path = Path::new(ARCHIVES_DIR)
@@ -336,6 +345,49 @@ pub fn retrieve_file_content(id: impl AsRef<str>) -> Result<Value, LlamaCoreErro
         "filename": file_object.filename,
         "content": base64_content,
     }))
+}
+
+/// Download a specific file by id.
+///
+/// # Arguments
+///
+/// * `id`: The id of the target file.
+///
+/// # Returns
+///
+/// A tuple of `(String, Vec<u8>)`. The first element is the filename, and the second element is the file content.
+pub fn download_file(id: impl AsRef<str>) -> Result<(String, Vec<u8>), LlamaCoreError> {
+    let file_object = retrieve_file(id)?;
+    let file_path = Path::new(ARCHIVES_DIR)
+        .join(&file_object.id)
+        .join(&file_object.filename);
+
+    if !file_path.exists() {
+        return Err(LlamaCoreError::FileNotFound);
+    }
+
+    // Open the file
+    let mut file = match File::open(file_path) {
+        Ok(file) => file,
+        Err(e) => {
+            let err_msg = format!("Failed to open the target file. {}", e);
+            return Err(LlamaCoreError::Operation(err_msg));
+        }
+    };
+
+    // read the file content as bytes
+    let mut buffer = Vec::new();
+    match file.read_to_end(&mut buffer) {
+        Ok(_) => Ok((file_object.filename.clone(), buffer)),
+        Err(e) => {
+            let err_msg = format!("Failed to read the content of the target file. {}", e);
+
+            // log
+            error!(target: "stdout", "{}", &err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg));
+        }
+    }
 }
 
 fn is_hidden(entry: &DirEntry) -> bool {
