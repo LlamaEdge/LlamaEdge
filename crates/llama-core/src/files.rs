@@ -44,6 +44,7 @@ pub async fn upload_file(req: Request<Body>) -> Result<FileObject, LlamaCoreErro
                 let err_msg = format!("Fail to read buffer from request body. {}", e);
 
                 // log
+                #[cfg(feature = "logging")]
                 error!(target: "stdout", "{}", &err_msg);
 
                 return Err(LlamaCoreError::Operation(err_msg));
@@ -63,6 +64,7 @@ pub async fn upload_file(req: Request<Body>) -> Result<FileObject, LlamaCoreErro
                             "Failed to upload the target file. The filename is not provided.";
 
                         // log
+                        #[cfg(feature = "logging")]
                         error!(target: "stdout", "{}", &err_msg);
 
                         return Err(LlamaCoreError::Operation(err_msg.to_string()));
@@ -80,6 +82,7 @@ pub async fn upload_file(req: Request<Body>) -> Result<FileObject, LlamaCoreErro
                     );
 
                     // log
+                    #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
 
                     return Err(LlamaCoreError::Operation(err_msg));
@@ -92,6 +95,7 @@ pub async fn upload_file(req: Request<Body>) -> Result<FileObject, LlamaCoreErro
                         let err_msg = format!("Failed to read the target file. {}", e);
 
                         // log
+                        #[cfg(feature = "logging")]
                         error!(target: "stdout", "{}", &err_msg);
 
                         return Err(LlamaCoreError::Operation(err_msg));
@@ -117,6 +121,7 @@ pub async fn upload_file(req: Request<Body>) -> Result<FileObject, LlamaCoreErro
                             format!("Failed to create archive document {}. {}", &filename, e);
 
                         // log
+                        #[cfg(feature = "logging")]
                         error!(target: "stdout", "{}", &err_msg);
 
                         return Err(LlamaCoreError::Operation(err_msg));
@@ -125,6 +130,7 @@ pub async fn upload_file(req: Request<Body>) -> Result<FileObject, LlamaCoreErro
                 file.write_all(&buffer[..]).unwrap();
 
                 // log
+                #[cfg(feature = "logging")]
                 info!(target: "stdout", "file_id: {}, file_name: {}", &id, &filename);
 
                 let created_at = match SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
@@ -133,6 +139,7 @@ pub async fn upload_file(req: Request<Body>) -> Result<FileObject, LlamaCoreErro
                         let err_msg = "Failed to get the current time.";
 
                         // log
+                        #[cfg(feature = "logging")]
                         error!(target: "stdout", "{}", &err_msg);
 
                         return Err(LlamaCoreError::Operation(err_msg.to_string()));
@@ -158,6 +165,7 @@ pub async fn upload_file(req: Request<Body>) -> Result<FileObject, LlamaCoreErro
         let err_msg = "Invalid HTTP Method.";
 
         // log
+        #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
 
         Err(LlamaCoreError::Operation(err_msg.to_string()))
@@ -194,6 +202,7 @@ pub fn remove_file(id: impl AsRef<str>) -> Result<DeleteFileStatus, LlamaCoreErr
             );
 
             // log
+            #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
 
             DeleteFileStatus {
@@ -395,6 +404,7 @@ pub fn download_file(id: impl AsRef<str>) -> Result<(String, Vec<u8>), LlamaCore
             let err_msg = format!("Failed to read the content of the target file. {}", e);
 
             // log
+            #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
 
             Err(LlamaCoreError::Operation(err_msg))
