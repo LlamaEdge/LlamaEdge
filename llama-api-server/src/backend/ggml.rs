@@ -507,11 +507,12 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
                 };
 
                 if !((filename).to_lowercase().ends_with(".txt")
-                    || (filename).to_lowercase().ends_with(".md"))
+                    || (filename).to_lowercase().ends_with(".md")
                     || (filename).to_lowercase().ends_with(".png")
+                    || (filename).to_lowercase().ends_with(".wav"))
                 {
                     let err_msg = format!(
-                        "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported. The file extension is {}.",
+                        "Failed to upload the target file. Only files with 'txt', 'md', 'png', 'wav' extensions are supported. The file to be uploaded is {}.",
                         &filename
                     );
 
