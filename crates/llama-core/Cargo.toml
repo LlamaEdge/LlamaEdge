@@ -19,7 +19,7 @@ serde_json.workspace = true
 uuid.workspace = true
 once_cell.workspace = true
 futures.workspace = true
-reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "rustls-tls"] }
+reqwest.workspace = true
 qdrant = { package = "qdrant_rest_client", version = "0.1.1" }
 text-splitter = { version = "^0.7", features = ["tiktoken-rs", "markdown"] }
 tiktoken-rs = "^0.5"
@@ -41,9 +41,3 @@ default = []
 full = ["logging", "search"]
 logging = ["wasi-logger", "log"]
 search = []
-
-[patch.crates-io]
-socket2 = { git = "https://github.com/second-state/socket2.git", branch = "v0.5.x" }
-reqwest = { git = "https://github.com/second-state/wasi_reqwest.git", branch = "0.11.x" }
-hyper = { git = "https://github.com/second-state/wasi_hyper.git", branch = "v0.14.x" }
-tokio = { git = "https://github.com/second-state/wasi_tokio.git", branch = "v1.36.x" }
