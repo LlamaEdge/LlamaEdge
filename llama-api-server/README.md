@@ -12,12 +12,17 @@ LlamaEdge API server offers OpenAI-compatible REST APIs. It can accelerate devel
   - [Get model](#get-model)
   - [Run LlamaEdge API server](#run-llamaedge-api-server)
   - [Endpoints](#endpoints)
-    - [`/v1/models` endpoint](#v1models-endpoint)
-    - [`/v1/chat/completions` endpoint](#v1chatcompletions-endpoint)
-    - [`/v1/files` endpoint](#v1files-endpoint)
-    - [`/v1/chunks` endpoint](#v1chunks-endpoint)
-    - [`/v1/embeddings` endpoint](#v1embeddings-endpoint)
-    - [`/v1/completions` endpoint](#v1completions-endpoint)
+    - [List models](#list-models)
+    - [Chat completions](#chat-completions)
+    - [Upload a file](#upload-a-file)
+    - [List files](#list-files)
+    - [Retrieve information about a specific file](#retrieve-information-about-a-specific-file)
+    - [Retrieve the content of a specific file](#retrieve-the-content-of-a-specific-file)
+    - [Download a specific file](#download-a-specific-file)
+    - [Delete a specific file](#delete-a-specific-file)
+    - [Segment a file to chunks](#segment-a-file-to-chunks)
+    - [Compute embeddings for user query or file chunks](#compute-embeddings-for-user-query-or-file-chunks)
+    - [Completion](#completion)
   - [Add a web UI](#add-a-web-ui)
   - [CLI options for the API server](#cli-options-for-the-api-server)
   - [Set Log Level](#set-log-level)
@@ -108,7 +113,7 @@ The command above starts the API server on the default socket address. Besides, 
 
 ## Endpoints
 
-### `/v1/models` endpoint
+### List models
 
 `/v1/models` endpoint is used to list models running on LlamaEdge API server.
 
@@ -138,7 +143,7 @@ If the command is successful, you should see the similar output as below in your
 
 </details>
 
-### `/v1/chat/completions` endpoint
+### Chat completions
 
 `/v1/chat/completions` endpoint is used for multi-turn conversations between human users and LLM models.
 
@@ -181,9 +186,9 @@ Here is the response from LlamaEdge API server:
 
 </details>
 
-### `/v1/files` endpoint
+### Upload a file
 
-`/v1/files` endpoint is used for uploading text and markdown files to LlamaEdge API server.
+`POST /v1/files` endpoint is used for uploading text and markdown files to LlamaEdge API server.
 
 <details> <summary> Example: Upload files </summary>
 
@@ -211,6 +216,10 @@ The `id` and `filename` fields are important for the next step, for example, to 
 If you'd like to build a RAG chatbot, it's strongly recommended to visit [LlamaEdge-RAG API Server](https://github.com/LlamaEdge/rag-api-server).
 
 </details>
+
+### List files
+
+`GET /v1/files` endpoint is used for listing all files on the server.
 
 <details> <summary> Example: List files </summary>
 
@@ -241,52 +250,16 @@ If the command is successful, you should see the similar output as below in your
             "filename": "test-123.m4a",
             "object": "file",
             "purpose": "assistants"
-        },
-        {
-            "id": "file_6c601277-7deb-44c9-bfb3-57ce9da856c9",
-            "bytes": 17039,
-            "created_at": 1718296350,
-            "filename": "test-123.m4a",
-            "object": "file",
-            "purpose": "assistants"
-        },
-        {
-            "id": "file_137b1ea2-c01d-44da-83ad-6b4aa2ff71de",
-            "bytes": 244596,
-            "created_at": 1718337557,
-            "filename": "audio16k.wav",
-            "object": "file",
-            "purpose": "assistants"
-        },
-        {
-            "id": "file_21fde6a7-18dc-4d42-a5bb-1a27d4b7a32e",
-            "bytes": 17039,
-            "created_at": 1718294739,
-            "filename": "test-123.m4a",
-            "object": "file",
-            "purpose": "assistants"
-        },
-        {
-            "id": "file_b892bc81-35e9-44a6-8c01-ae915c1d3832",
-            "bytes": 2161,
-            "created_at": 1715832065,
-            "filename": "paris.txt",
-            "object": "file",
-            "purpose": "assistants"
-        },
-        {
-            "id": "file_6a6d8046-fd98-410a-b70e-0a0142ec9a39",
-            "bytes": 17039,
-            "created_at": 1718332593,
-            "filename": "test-123.m4a",
-            "object": "file",
-            "purpose": "assistants"
         }
     ]
 }
 ```
 
 </details>
+
+### Retrieve information about a specific file
+
+`GET /v1/files/{file_id}` endpoint is used for retrieving information about a specific file on the server.
 
 <details> <summary> Example: Retrieve information about a specific file </summary>
 
@@ -311,6 +284,38 @@ If the command is successful, you should see the similar output as below in your
 
 </details>
 
+### Retrieve the content of a specific file
+
+`GET /v1/files/{file_id}/content` endpoint is used for retrieving the content of a specific file on the server.
+
+<details> <summary> Example: Retrieve the content of a specific file </summary>
+
+The following command retrieves the content of a specific file on the server via the `/v1/files/{file_id}/content` endpoint:
+
+```bash
+curl -X GET http://localhost:10086/v1/files/file_b892bc81-35e9-44a6-8c01-ae915c1d3832/content
+```
+
+</details>
+
+### Download a specific file
+
+`GET /v1/files/download/{file_id}` endpoint is used for downloading a specific file on the server.
+
+<details> <summary> Example: Download a specific file </summary>
+
+The following command downloads a specific file on the server via the `/v1/files/download/{file_id}` endpoint:
+
+```bash
+curl -X GET http://localhost:10086/v1/files/download/file_b892bc81-35e9-44a6-8c01-ae915c1d3832
+```
+
+</details>
+
+### Delete a specific file
+
+`DELETE /v1/files/{file_id}` endpoint is used for deleting a specific file on the server.
+
 <details> <summary> Example: Delete a specific file </summary>
 
 The following command deletes a specific file on the server via the `/v1/files/{file_id}` endpoint:
@@ -331,7 +336,7 @@ If the command is successful, you should see the similar output as below in your
 
 </details>
 
-### `/v1/chunks` endpoint
+### Segment a file to chunks
 
 To segment the uploaded file to chunks for computing embeddings, use the `/v1/chunks` API.
 
@@ -367,7 +372,7 @@ If you'd like to build a RAG chatbot, it's strongly recommended to visit [LlamaE
 
 </details>
 
-### `/v1/embeddings` endpoint
+### Compute embeddings for user query or file chunks
 
 To compute embeddings for user query or file chunks, use the `/v1/embeddings` API.
 
@@ -468,7 +473,7 @@ If you'd like to build a RAG chatbot, it's strongly recommended to visit [LlamaE
 
 </details>
 
-### `/v1/completions` endpoint
+### Completion
 
 To obtain the completion for a single prompt, use the `/v1/completions` API.
 
