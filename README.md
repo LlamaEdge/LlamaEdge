@@ -8,40 +8,38 @@ Checkout our [official docs](https://llamaedge.com/docs) and a [Manning ebook](h
 
 ## Quick start
 
-Enhance your onboarding experience and quickly get started with LlamaEdge using the following scripts.
-
-#1: Quick start without any argument
+Prerequisite: Install WasmEdge via the following command line.
 
 ```
-bash <(curl -sSfL 'https://raw.githubusercontent.com/LlamaEdge/LlamaEdge/main/run-llm.sh')
+curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash
 ```
 
-It will download and start the [Gemma-2-9b-it](https://huggingface.co/second-state/gemma-2-9b-it-GGUF) model automatically. Open http://127.0.0.1:8080 in your browser and start chatting right away!
-
-
-#2: Specify a model using `--model model_name`
+Step 1: Download an LLM model file. Here we use the Meta Llama 3.2 1B model as an example.
 
 ```
-bash <(curl -sSfL 'https://raw.githubusercontent.com/LlamaEdge/LlamaEdge/main/run-llm.sh') --model llama-3-8b-instruct
+curl -LO https://huggingface.co/second-state/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q5_K_M.gguf
 ```
 
-The script will start an API server for the Llama3 8b model with a chatbot UI based on your choice. Open http://127.0.0.1:8080 in your browser and start chatting right away!
-
-To explore all the available models, please use the following command line
+Step 2: Download the LlamaEdge CLI chat app. It is also a cross-platform portable Wasm app that can run on many CPU and GPU devices.
 
 ```
-bash <(curl -sSfL 'https://raw.githubusercontent.com/LlamaEdge/LlamaEdge/main/run-llm.sh') --model help
+curl -LO https://github.com/second-state/LlamaEdge/releases/latest/download/llama-chat.wasm
 ```
-#3:  Interactively choose and confirm all steps in the script using using `--interactive` flag
+
+Step 3: Run the following command to chat with the LLM.
 
 ```
-bash <(curl -sSfL 'https://raw.githubusercontent.com/LlamaEdge/LlamaEdge/main/run-llm.sh') --interactive
+wasmedge --dir .:. --nn-preload default:GGML:AUTO:Llama-3.2-1B-Instruct-Q5_K_M.gguf llama-chat.wasm -p llama-3-chat
 ```
-Follow the on-screen instructions to install the WasmEdge Runtime and download your favorite open-source LLM. Then, choose whether you want to chat with the model via the CLI or via a web UI.
 
-[See it in action](https://youtu.be/Hqu-PBqkzDk) | [Docs](https://www.secondstate.io/articles/run-llm-sh/)
+Next steps:
 
-## How it works?
+* [Use a web-based chatbot to interact with your local LLM](https://llamaedge.com/docs/user-guide/get-started-with-llamaedge#step-5-chat-with-the-chatbot-ui)
+* [Start an API server for the LLMs](https://llamaedge.com/docs/user-guide/openai-api/intro)
+* [Start an LLM service with your own knowledge base](https://docs.gaianet.ai/node-guide/quick-start)
+* [Enable LLMs to use tools](https://llamaedge.com/docs/user-guide/tool-call)
+
+## Projects in this repo
 
 The Rust source code for the inference applications are all open source and you can modify and use them freely for your own purposes.
 
