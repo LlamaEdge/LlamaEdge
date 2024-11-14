@@ -37,7 +37,13 @@ Next steps:
 * [Use a web-based chatbot to interact with your local LLM](https://llamaedge.com/docs/user-guide/get-started-with-llamaedge#step-5-chat-with-the-chatbot-ui)
 * [Start an API server for the LLMs](https://llamaedge.com/docs/user-guide/openai-api/intro)
 * [Start an LLM service with your own knowledge base](https://docs.gaianet.ai/node-guide/quick-start)
-* [Enable LLMs to use tools](https://llamaedge.com/docs/user-guide/tool-call)
+
+Serve any GenAI model in OpenAI-compatible web service endpoints:
+
+* LLM (`/v1/chat/completion` endpoints) -- https://github.com/LlamaEdge/LlamaEdge (this repo)
+* Voice to text (`/v1/audio/transcriptions` endpoints) -- https://github.com/LlamaEdge/whisper-api-server
+* Text to voice (`/v1/audio/speech` endpoints) -- https://github.com/LlamaEdge/tts-api-server
+* Text to image (`/v1/images/generations` endpoints) -- https://github.com/LlamaEdge/sd-api-server
 
 ## Projects in this repo
 
