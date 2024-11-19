@@ -246,13 +246,9 @@ pub async fn audio_transcriptions(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "raw transcription text:\n{}", &text);
 
-    // remove blank audio segments from the generated text
-    let text = remove_blank_audio(text.trim());
-
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "cleaned transcription text:\n{}", &text);
-
-    let obj = TranscriptionObject { text };
+    let obj = TranscriptionObject {
+        text: text.trim().to_owned(),
+    };
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "End of the audio transcription.");
@@ -273,7 +269,7 @@ fn load_audio_waveform(filename: impl AsRef<std::path::Path>) -> Result<Vec<u8>,
         .map_err(|e| LlamaCoreError::Operation(e.to_string()))
 }
 
-fn remove_blank_audio(input: &str) -> String {
+fn _remove_blank_audio(input: &str) -> String {
     let blank_audio_marker = "[BLANK_AUDIO]";
 
     // Split the input string by newline and filter out segments containing [BLANK_AUDIO]
@@ -590,13 +586,9 @@ pub async fn audio_translations(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "raw translation text:\n{}", &text);
 
-    // remove blank audio segments from the generated text
-    let text = remove_blank_audio(text.trim());
-
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "cleaned translation text:\n{}", &text);
-
-    let obj = TranslationObject { text };
+    let obj = TranslationObject {
+        text: text.trim().to_owned(),
+    };
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "End of the audio translation.");
