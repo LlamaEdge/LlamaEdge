@@ -243,9 +243,10 @@ pub async fn audio_transcriptions(
         LlamaCoreError::Operation(err_msg)
     })?;
 
-    let obj = TranscriptionObject {
-        text: text.trim().to_owned(),
-    };
+    // remove blank audio segments from the generated text
+    let text = remove_blank_audio(text.trim());
+
+    let obj = TranscriptionObject { text };
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "End of the audio transcription.");
@@ -264,6 +265,19 @@ fn load_audio_waveform(filename: impl AsRef<std::path::Path>) -> Result<Vec<u8>,
             LlamaCoreError::Operation(err_msg)
         })
         .map_err(|e| LlamaCoreError::Operation(e.to_string()))
+}
+
+fn remove_blank_audio(input: &str) -> String {
+    let blank_audio_marker = "[BLANK_AUDIO]";
+
+    // Split the input string by newline and filter out segments containing [BLANK_AUDIO]
+    let filtered_segments: Vec<&str> = input
+        .lines()
+        .filter(|segment| !segment.contains(blank_audio_marker))
+        .collect();
+
+    // Rejoin the filtered segments with newline
+    filtered_segments.join("\n")
 }
 
 /// Generate audio from the input text.
@@ -567,9 +581,10 @@ pub async fn audio_translations(
         LlamaCoreError::Operation(err_msg)
     })?;
 
-    let obj = TranslationObject {
-        text: text.trim().to_owned(),
-    };
+    // remove blank audio segments from the generated text
+    let text = remove_blank_audio(text.trim());
+
+    let obj = TranslationObject { text };
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "End of the audio translation.");
