@@ -244,13 +244,13 @@ pub async fn audio_transcriptions(
     })?;
 
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "raw transcription text: {}", &text);
+    info!(target: "stdout", "raw transcription text:\n{}", &text);
 
     // remove blank audio segments from the generated text
     let text = remove_blank_audio(text.trim());
 
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "cleaned transcription text: {}", &text);
+    info!(target: "stdout", "cleaned transcription text:\n{}", &text);
 
     let obj = TranscriptionObject { text };
 
@@ -588,13 +588,13 @@ pub async fn audio_translations(
     })?;
 
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "raw translation text: {}", &text);
+    info!(target: "stdout", "raw translation text:\n{}", &text);
 
     // remove blank audio segments from the generated text
     let text = remove_blank_audio(text.trim());
 
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "cleaned translation text: {}", &text);
+    info!(target: "stdout", "cleaned translation text:\n{}", &text);
 
     let obj = TranslationObject { text };
 
