@@ -243,8 +243,14 @@ pub async fn audio_transcriptions(
         LlamaCoreError::Operation(err_msg)
     })?;
 
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "raw transcription text: {}", &text);
+
     // remove blank audio segments from the generated text
     let text = remove_blank_audio(text.trim());
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "cleaned transcription text: {}", &text);
 
     let obj = TranscriptionObject { text };
 
@@ -581,8 +587,14 @@ pub async fn audio_translations(
         LlamaCoreError::Operation(err_msg)
     })?;
 
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "raw translation text: {}", &text);
+
     // remove blank audio segments from the generated text
     let text = remove_blank_audio(text.trim());
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "cleaned translation text: {}", &text);
 
     let obj = TranslationObject { text };
 
