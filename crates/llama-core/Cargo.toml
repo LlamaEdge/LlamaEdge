@@ -20,7 +20,7 @@ uuid.workspace = true
 once_cell.workspace = true
 futures.workspace = true
 reqwest.workspace = true
-qdrant = { package = "qdrant_rest_client", version = "0.1.1" }
+qdrant = { package = "qdrant_rest_client", version = "0.1.2", git = "https://github.com/second-state/qdrant-rest-client.git", branch = "main", optional = true }
 text-splitter = { version = "^0.7", features = ["tiktoken-rs", "markdown"] }
 tiktoken-rs = "^0.5"
 wasi-logger = { workspace = true, optional = true }
@@ -39,4 +39,8 @@ default = []
 full = ["logging", "search", "rag"]
 logging = ["wasi-logger", "log"]
 search = []
-rag = ["endpoints/rag"]
+rag = ["endpoints/rag", "qdrant"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
