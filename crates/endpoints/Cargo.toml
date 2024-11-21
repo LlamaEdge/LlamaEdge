@@ -21,3 +21,7 @@ serde_json.workspace = true
 [features]
 default = []
 rag = []
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
