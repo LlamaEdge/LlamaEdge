@@ -164,3 +164,17 @@ pub struct EmbeddingObject {
     /// The embedding vector, which is a list of floats.
     pub embedding: Vec<f64>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChunksRequest {
+    pub id: String,
+    pub filename: String,
+    pub chunk_capacity: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChunksResponse {
+    pub id: String,
+    pub filename: String,
+    pub chunks: Vec<String>,
+}

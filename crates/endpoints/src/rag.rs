@@ -2,20 +2,6 @@
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChunksRequest {
-    pub id: String,
-    pub filename: String,
-    pub chunk_capacity: usize,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChunksResponse {
-    pub id: String,
-    pub filename: String,
-    pub chunks: Vec<String>,
-}
-
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RetrieveObject {
     /// The retrieved sources.
