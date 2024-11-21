@@ -62,7 +62,7 @@ struct Cli {
     /// BNF-like grammar to constrain generations (see samples in grammars/ dir).
     #[arg(long, default_value = "")]
     pub grammar: String,
-    /// JSON schema to constrain generations (https://json-schema.org/), e.g. `{}` for any JSON object. For schemas w/ external $refs, use --grammar + example/json_schema_to_grammar.py instead.
+    /// JSON schema to constrain generations (<https://json-schema.org/>), e.g. `{}` for any JSON object. For schemas w/ external $refs, use --grammar + example/json_schema_to_grammar.py instead.
     #[arg(long)]
     pub json_schema: Option<String>,
     /// Sets the prompt template.
