@@ -1,4 +1,6 @@
-use crate::{error::LlamaCoreError, CHAT_GRAPHS};
+//! Define APIs for web search operations.
+
+use crate::{error::LlamaCoreError, metadata::ggml::GgmlMetadata, CHAT_GRAPHS};
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -357,7 +359,7 @@ fn summarize(
     let tensor_data = input.as_bytes().to_vec();
 
     // Use first available chat graph
-    let graph: &mut crate::Graph = match chat_graphs.values_mut().next() {
+    let graph: &mut crate::Graph<GgmlMetadata> = match chat_graphs.values_mut().next() {
         Some(graph) => graph,
         None => {
             let err_msg = "No available chat graph.";
