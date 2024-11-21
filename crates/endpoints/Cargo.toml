@@ -17,3 +17,7 @@ indexmap = { version = "^2.2", features = ["serde"] }
 
 [dev-dependencies]
 serde_json.workspace = true
+
+[features]
+default = []
+rag = []

@@ -285,6 +285,46 @@ impl ChatCompletionRequestBuilder {
         self
     }
 
+    /// Sets the Qdrant settings, which are only used in RAG chat completions.
+    ///
+    /// # Arguments
+    ///
+    /// * `qdrant_url` - The URL of the Qdrant server.
+    ///
+    /// * `qdrant_collection_name` - The name of the collection in Qdrant.
+    #[cfg(feature = "rag")]
+    pub fn with_qdrant_settings(
+        mut self,
+        qdrant_url: impl Into<String>,
+        qdrant_collection_name: impl Into<String>,
+    ) -> Self {
+        self.req.qdrant_url = Some(qdrant_url.into());
+        self.req.qdrant_collection_name = Some(qdrant_collection_name.into());
+        self
+    }
+
+    /// Sets the max number of retrieved results, which is only used in RAG chat completions.
+    ///
+    /// # Arguments
+    ///
+    /// * `limit` - The max number of retrieved results.
+    #[cfg(feature = "rag")]
+    pub fn with_limit(mut self, limit: u64) -> Self {
+        self.req.limit = Some(limit);
+        self
+    }
+
+    /// Sets the score threshold for the retrieved results, which is only used in RAG chat completions.
+    ///
+    /// # Arguments
+    ///
+    /// * `score_threshold` - The score threshold for the retrieved results.
+    #[cfg(feature = "rag")]
+    pub fn with_score_threshold(mut self, score_threshold: f32) -> Self {
+        self.req.score_threshold = Some(score_threshold);
+        self
+    }
+
     /// Builds the chat completion request.
     pub fn build(self) -> ChatCompletionRequest {
         self.req
@@ -375,6 +415,23 @@ pub struct ChatCompletionRequest {
     /// The parameter is only used in RAG chat completions.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub context_window: Option<u64>,
+
+    /// The URL of the VectorDB server.
+    #[cfg(feature = "rag")]
+    #[serde(rename = "url_vdb_server", skip_serializing_if = "Option::is_none")]
+    pub qdrant_url: Option<String>,
+    /// The name of the collection in VectorDB..
+    #[cfg(feature = "rag")]
+    #[serde(rename = "collection_name", skip_serializing_if = "Option::is_none")]
+    pub qdrant_collection_name: Option<String>,
+    /// Max number of retrieved results.
+    #[cfg(feature = "rag")]
+    #[serde(rename = "limit", skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u64>,
+    /// The score threshold for the retrieved results.
+    #[cfg(feature = "rag")]
+    #[serde(rename = "score_threshold", skip_serializing_if = "Option::is_none")]
+    pub score_threshold: Option<f32>,
 }
 impl<'de> Deserialize<'de> for ChatCompletionRequest {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -414,6 +471,14 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 let mut tools = None;
                 let mut tool_choice = None;
                 let mut context_window = None;
+                #[cfg(feature = "rag")]
+                let mut qdrant_url = None;
+                #[cfg(feature = "rag")]
+                let mut qdrant_collection_name = None;
+                #[cfg(feature = "rag")]
+                let mut limit = None;
+                #[cfg(feature = "rag")]
+                let mut score_threshold = None;
 
                 while let Some(key) = map.next_key::<String>()? {
                     match key.as_str() {
@@ -436,6 +501,14 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                         "tools" => tools = map.next_value()?,
                         "tool_choice" => tool_choice = map.next_value()?,
                         "context_window" => context_window = map.next_value()?,
+                        #[cfg(feature = "rag")]
+                        "url_vdb_server" => qdrant_url = map.next_value()?,
+                        #[cfg(feature = "rag")]
+                        "collection_name" => qdrant_collection_name = map.next_value()?,
+                        #[cfg(feature = "rag")]
+                        "limit" => limit = map.next_value()?,
+                        #[cfg(feature = "rag")]
+                        "score_threshold" => score_threshold = map.next_value()?,
                         _ => return Err(de::Error::unknown_field(key.as_str(), FIELDS)),
                     }
                 }
@@ -492,6 +565,14 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     tools,
                     tool_choice,
                     context_window,
+                    #[cfg(feature = "rag")]
+                    qdrant_url,
+                    #[cfg(feature = "rag")]
+                    qdrant_collection_name,
+                    #[cfg(feature = "rag")]
+                    limit,
+                    #[cfg(feature = "rag")]
+                    score_threshold,
                 })
             }
         }
@@ -516,6 +597,14 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
             "tools",
             "tool_choice",
             "context_window",
+            #[cfg(feature = "rag")]
+            "url_vdb_server",
+            #[cfg(feature = "rag")]
+            "collection_name",
+            #[cfg(feature = "rag")]
+            "limit",
+            #[cfg(feature = "rag")]
+            "score_threshold",
         ];
         deserializer.deserialize_struct(
             "ChatCompletionRequest",
@@ -546,6 +635,14 @@ impl Default for ChatCompletionRequest {
             tools: None,
             tool_choice: None,
             context_window: Some(1),
+            #[cfg(feature = "rag")]
+            qdrant_url: None,
+            #[cfg(feature = "rag")]
+            qdrant_collection_name: None,
+            #[cfg(feature = "rag")]
+            limit: None,
+            #[cfg(feature = "rag")]
+            score_threshold: None,
         }
     }
 }
