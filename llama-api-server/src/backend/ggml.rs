@@ -2,9 +2,8 @@ use crate::{error, utils::gen_chat_id, SERVER_INFO};
 use endpoints::{
     chat::ChatCompletionRequest,
     completions::CompletionRequest,
-    embeddings::EmbeddingRequest,
+    embeddings::{ChunksRequest, ChunksResponse, EmbeddingRequest},
     files::{DeleteFileStatus, FileObject},
-    rag::{ChunksRequest, ChunksResponse},
 };
 use futures_util::TryStreamExt;
 use hyper::{body::to_bytes, Body, Method, Request, Response};
@@ -1095,8 +1094,11 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
         return error::internal_server_error(err_msg);
     }
 
-    let res = match llama_core::rag::chunk_text(&contents, extension, chunks_request.chunk_capacity)
-    {
+    let res = match llama_core::embeddings::chunk_text(
+        &contents,
+        extension,
+        chunks_request.chunk_capacity,
+    ) {
         Ok(chunks) => {
             let chunks_response = ChunksResponse {
                 id: chunks_request.id,
