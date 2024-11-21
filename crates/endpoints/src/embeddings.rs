@@ -19,6 +19,15 @@ pub struct EmbeddingRequest {
     /// A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user: Option<String>,
+
+    /// The URL of the VectorDB server.
+    #[cfg(feature = "rag")]
+    #[serde(rename = "url_vdb_server", skip_serializing_if = "Option::is_none")]
+    pub qdrant_url: Option<String>,
+    /// The name of the collection in VectorDB.
+    #[cfg(feature = "rag")]
+    #[serde(rename = "collection_name", skip_serializing_if = "Option::is_none")]
+    pub qdrant_collection_name: Option<String>,
 }
 
 #[test]
@@ -28,6 +37,10 @@ fn test_embedding_serialize_embedding_request() {
         input: "Hello, world!".into(),
         encoding_format: None,
         user: None,
+        #[cfg(feature = "rag")]
+        qdrant_url: None,
+        #[cfg(feature = "rag")]
+        qdrant_collection_name: None,
     };
     let serialized = serde_json::to_string(&embedding_request).unwrap();
     assert_eq!(
@@ -40,6 +53,10 @@ fn test_embedding_serialize_embedding_request() {
         input: vec!["Hello, world!", "This is a test string"].into(),
         encoding_format: None,
         user: None,
+        #[cfg(feature = "rag")]
+        qdrant_url: None,
+        #[cfg(feature = "rag")]
+        qdrant_collection_name: None,
     };
     let serialized = serde_json::to_string(&embedding_request).unwrap();
     assert_eq!(
