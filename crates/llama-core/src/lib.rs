@@ -1,5 +1,7 @@
 //! Llama Core, abbreviated as `llama-core`, defines a set of APIs. Developers can utilize these APIs to build applications based on large models, such as chatbots, RAG, and more.
 
+#![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
+
 #[cfg(feature = "logging")]
 #[macro_use]
 extern crate log;
@@ -14,8 +16,11 @@ pub mod graph;
 pub mod images;
 pub mod metadata;
 pub mod models;
+#[cfg(feature = "rag")]
+#[cfg_attr(docsrs, doc(cfg(feature = "rag")))]
 pub mod rag;
 #[cfg(feature = "search")]
+#[cfg_attr(docsrs, doc(cfg(feature = "search")))]
 pub mod search;
 pub mod utils;
 
@@ -138,6 +143,7 @@ pub fn init_ggml_context(
 }
 
 /// Initialize the ggml context for RAG scenarios.
+#[cfg(feature = "rag")]
 pub fn init_ggml_rag_context(
     metadata_for_chats: &[GgmlMetadata],
     metadata_for_embeddings: &[GgmlMetadata],
