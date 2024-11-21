@@ -36,6 +36,7 @@ ignored = ["wasi-logger"]
 
 [features]
 default = []
-full = ["logging", "search"]
+full = ["logging", "search", "rag"]
 logging = ["wasi-logger", "log"]
 search = []
+rag = ["endpoints/rag"]
