@@ -2,12 +2,10 @@
 
 use crate::{embeddings::embeddings, error::LlamaCoreError, running_mode, RunningMode};
 use endpoints::{
-    embeddings::{EmbeddingObject, EmbeddingsResponse, InputText},
-    rag::{RagEmbeddingRequest, RagScoredPoint, RetrieveObject},
+    embeddings::{EmbeddingObject, EmbeddingRequest, EmbeddingsResponse, InputText},
+    rag::{RagScoredPoint, RetrieveObject},
 };
 use qdrant::*;
-use text_splitter::{MarkdownSplitter, TextSplitter};
-use tiktoken_rs::cl100k_base;
 
 /// Convert document chunks to embeddings.
 ///
@@ -15,15 +13,11 @@ use tiktoken_rs::cl100k_base;
 ///
 /// * `embedding_request` - A reference to an `EmbeddingRequest` object.
 ///
-/// * `qdrant_url` - URL of the Qdrant server.
-///
-/// * `qdrant_collection_name` - Name of the Qdrant collection to be created.
-///
 /// # Returns
 ///
 /// Name of the Qdrant collection if successful.
 pub async fn rag_doc_chunks_to_embeddings(
-    rag_embedding_request: &RagEmbeddingRequest,
+    embedding_request: &EmbeddingRequest,
 ) -> Result<EmbeddingsResponse, LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Convert document chunks to embeddings.");
@@ -41,9 +35,28 @@ pub async fn rag_doc_chunks_to_embeddings(
         return Err(LlamaCoreError::Operation(err_msg));
     }
 
-    let embedding_request = &rag_embedding_request.embedding_request;
-    let qdrant_url = rag_embedding_request.qdrant_url.as_str();
-    let qdrant_collection_name = rag_embedding_request.qdrant_collection_name.as_str();
+    let qdrant_url = match embedding_request.qdrant_url.as_deref() {
+        Some(url) => url.to_string(),
+        None => {
+            let err_msg = "The VectorDB server URL is not provided.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.into()));
+        }
+    };
+    let qdrant_collection_name = match embedding_request.qdrant_collection_name.as_deref() {
+        Some(name) => name.to_string(),
+        None => {
+            let err_msg = "The VectorDB collection name is not provided.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.into()));
+        }
+    };
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Compute embeddings for document chunks.");
@@ -59,10 +72,10 @@ pub async fn rag_doc_chunks_to_embeddings(
     let dim = embeddings[0].embedding.len();
 
     // create a Qdrant client
-    let qdrant_client = qdrant::Qdrant::new_with_url(qdrant_url.to_string());
+    let qdrant_client = qdrant::Qdrant::new_with_url(qdrant_url);
 
     // create a collection
-    qdrant_create_collection(&qdrant_client, qdrant_collection_name, dim).await?;
+    qdrant_create_collection(&qdrant_client, &qdrant_collection_name, dim).await?;
 
     let chunks = match &embedding_request.input {
         InputText::String(text) => vec![text.clone()],
@@ -77,7 +90,7 @@ pub async fn rag_doc_chunks_to_embeddings(
     // create and upsert points
     qdrant_persist_embeddings(
         &qdrant_client,
-        qdrant_collection_name,
+        &qdrant_collection_name,
         embeddings,
         chunks.as_slice(),
     )
@@ -92,7 +105,7 @@ pub async fn rag_doc_chunks_to_embeddings(
 ///
 /// * `embedding_request` - A reference to an `EmbeddingRequest` object.
 pub async fn rag_query_to_embeddings(
-    rag_embedding_request: &RagEmbeddingRequest,
+    embedding_request: &EmbeddingRequest,
 ) -> Result<EmbeddingsResponse, LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Compute embeddings for the user query.");
@@ -107,7 +120,7 @@ pub async fn rag_query_to_embeddings(
         return Err(LlamaCoreError::Operation(err_msg));
     }
 
-    embeddings(&rag_embedding_request.embedding_request).await
+    embeddings(embedding_request).await
 }
 
 /// Retrieve similar points from the Qdrant server using the query embedding
@@ -304,102 +317,6 @@ async fn qdrant_search_similar_points(
             error!(target: "stdout", "{}", &err_msg);
 
             Err(LlamaCoreError::Operation(err_msg))
-        }
-    }
-}
-
-/// Generate a list of chunks from a given text. Each chunk will be up to the `chunk_capacity`.
-///
-/// # Arguments
-///
-/// * `text` - A reference to a text.
-///
-/// * `ty` - Type of the text, `txt` for text content or `md` for markdown content.
-///
-/// * `chunk_capacity` - The max tokens each chunk contains.
-///
-/// # Returns
-///
-/// A vector of strings.
-///
-/// # Errors
-///
-/// Returns an error if the operation fails.
-pub fn chunk_text(
-    text: impl AsRef<str>,
-    ty: impl AsRef<str>,
-    chunk_capacity: usize,
-) -> Result<Vec<String>, LlamaCoreError> {
-    if ty.as_ref().to_lowercase().as_str() != "txt" && ty.as_ref().to_lowercase().as_str() != "md" {
-        let err_msg = "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported.";
-
-        #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", err_msg);
-
-        return Err(LlamaCoreError::Operation(err_msg.into()));
-    }
-
-    match ty.as_ref().to_lowercase().as_str() {
-        "txt" => {
-            #[cfg(feature = "logging")]
-            info!(target: "stdout", "Chunk the plain text contents.");
-
-            let tokenizer = cl100k_base().map_err(|e| {
-                let err_msg = e.to_string();
-
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
-            // create a text splitter
-            let splitter = TextSplitter::new(tokenizer).with_trim_chunks(true);
-
-            let chunks = splitter
-                .chunks(text.as_ref(), chunk_capacity)
-                .map(|s| s.to_string())
-                .collect::<Vec<_>>();
-
-            #[cfg(feature = "logging")]
-            info!(target: "stdout", "Number of chunks: {}", chunks.len());
-
-            Ok(chunks)
-        }
-        "md" => {
-            #[cfg(feature = "logging")]
-            info!(target: "stdout", "Chunk the markdown contents.");
-
-            let tokenizer = cl100k_base().map_err(|e| {
-                let err_msg = e.to_string();
-
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-
-            // create a markdown splitter
-            let splitter = MarkdownSplitter::new(tokenizer).with_trim_chunks(true);
-
-            let chunks = splitter
-                .chunks(text.as_ref(), chunk_capacity)
-                .map(|s| s.to_string())
-                .collect::<Vec<_>>();
-
-            #[cfg(feature = "logging")]
-            info!(target: "stdout", "Number of chunks: {}", chunks.len());
-
-            Ok(chunks)
-        }
-        _ => {
-            let err_msg =
-                "Failed to upload the target file. Only text and markdown files are supported.";
-
-            #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
-
-            Err(LlamaCoreError::Operation(err_msg.into()))
         }
     }
 }

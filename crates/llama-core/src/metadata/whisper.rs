@@ -1,6 +1,9 @@
 use super::BaseMetadata;
 use serde::{Deserialize, Serialize};
 
+/// The sample rate of the audio input
+pub const WHISPER_SAMPLE_RATE: usize = 16000;
+
 /// Builder for creating an audio metadata
 #[derive(Debug)]
 pub struct WhisperMetadataBuilder {

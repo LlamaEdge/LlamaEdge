@@ -1,6 +1,6 @@
 [package]
 name = "llama-core"
-version = "0.22.0"
+version = "0.23.0"
 edition = "2021"
 readme = "README.md"
 repository = "https://github.com/LlamaEdge/LlamaEdge"
@@ -20,7 +20,7 @@ uuid.workspace = true
 once_cell.workspace = true
 futures.workspace = true
 reqwest.workspace = true
-qdrant = { package = "qdrant_rest_client", version = "0.1.1" }
+qdrant = { package = "qdrant_rest_client", version = "0.1.2", optional = true }
 text-splitter = { version = "^0.7", features = ["tiktoken-rs", "markdown"] }
 tiktoken-rs = "^0.5"
 wasi-logger = { workspace = true, optional = true }
@@ -36,6 +36,11 @@ ignored = ["wasi-logger"]
 
 [features]
 default = []
-full = ["logging", "search"]
+full = ["logging", "search", "rag"]
 logging = ["wasi-logger", "log"]
 search = []
+rag = ["endpoints/rag", "qdrant"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

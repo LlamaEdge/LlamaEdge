@@ -1,6 +1,6 @@
 [package]
 name = "endpoints"
-version = "0.17.2"
+version = "0.18.0"
 edition = "2021"
 readme = "README.md"
 repository = "https://github.com/LlamaEdge/LlamaEdge"
@@ -17,3 +17,11 @@ indexmap = { version = "^2.2", features = ["serde"] }
 
 [dev-dependencies]
 serde_json.workspace = true
+
+[features]
+default = []
+rag = []
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

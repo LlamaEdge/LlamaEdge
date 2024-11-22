@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmbeddingRequest {
     /// ID of the model to use.
-    pub model: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
     /// Input text to embed,encoded as a string or array of tokens.
     ///
     /// To embed multiple inputs in a single request, pass an array of strings or array of token arrays. The input must not exceed the max input tokens for the model (8192 tokens for text-embedding-ada-002), cannot be an empty string, and any array must be 2048 dimensions or less.
@@ -19,15 +20,28 @@ pub struct EmbeddingRequest {
     /// A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user: Option<String>,
+
+    /// The URL of the VectorDB server.
+    #[cfg(feature = "rag")]
+    #[serde(rename = "url_vdb_server", skip_serializing_if = "Option::is_none")]
+    pub qdrant_url: Option<String>,
+    /// The name of the collection in VectorDB.
+    #[cfg(feature = "rag")]
+    #[serde(rename = "collection_name", skip_serializing_if = "Option::is_none")]
+    pub qdrant_collection_name: Option<String>,
 }
 
 #[test]
 fn test_embedding_serialize_embedding_request() {
     let embedding_request = EmbeddingRequest {
-        model: "text-embedding-ada-002".to_string(),
+        model: Some("text-embedding-ada-002".to_string()),
         input: "Hello, world!".into(),
         encoding_format: None,
         user: None,
+        #[cfg(feature = "rag")]
+        qdrant_url: None,
+        #[cfg(feature = "rag")]
+        qdrant_collection_name: None,
     };
     let serialized = serde_json::to_string(&embedding_request).unwrap();
     assert_eq!(
@@ -36,10 +50,14 @@ fn test_embedding_serialize_embedding_request() {
     );
 
     let embedding_request = EmbeddingRequest {
-        model: "text-embedding-ada-002".to_string(),
+        model: Some("text-embedding-ada-002".to_string()),
         input: vec!["Hello, world!", "This is a test string"].into(),
         encoding_format: None,
         user: None,
+        #[cfg(feature = "rag")]
+        qdrant_url: None,
+        #[cfg(feature = "rag")]
+        qdrant_collection_name: None,
     };
     let serialized = serde_json::to_string(&embedding_request).unwrap();
     assert_eq!(
@@ -52,7 +70,10 @@ fn test_embedding_serialize_embedding_request() {
 fn test_embedding_deserialize_embedding_request() {
     let serialized = r#"{"model":"text-embedding-ada-002","input":"Hello, world!"}"#;
     let embedding_request: EmbeddingRequest = serde_json::from_str(serialized).unwrap();
-    assert_eq!(embedding_request.model, "text-embedding-ada-002");
+    assert_eq!(
+        embedding_request.model,
+        Some("text-embedding-ada-002".to_string())
+    );
     assert_eq!(embedding_request.input, InputText::from("Hello, world!"));
     assert_eq!(embedding_request.encoding_format, None);
     assert_eq!(embedding_request.user, None);
@@ -60,7 +81,10 @@ fn test_embedding_deserialize_embedding_request() {
     let serialized =
         r#"{"model":"text-embedding-ada-002","input":["Hello, world!","This is a test string"]}"#;
     let embedding_request: EmbeddingRequest = serde_json::from_str(serialized).unwrap();
-    assert_eq!(embedding_request.model, "text-embedding-ada-002");
+    assert_eq!(
+        embedding_request.model,
+        Some("text-embedding-ada-002".to_string())
+    );
     assert_eq!(
         embedding_request.input,
         InputText::from(vec!["Hello, world!", "This is a test string"])
@@ -146,4 +170,18 @@ pub struct EmbeddingObject {
     pub object: String,
     /// The embedding vector, which is a list of floats.
     pub embedding: Vec<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChunksRequest {
+    pub id: String,
+    pub filename: String,
+    pub chunk_capacity: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChunksResponse {
+    pub id: String,
+    pub filename: String,
+    pub chunks: Vec<String>,
 }

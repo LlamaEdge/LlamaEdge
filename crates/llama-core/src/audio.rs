@@ -243,6 +243,9 @@ pub async fn audio_transcriptions(
         LlamaCoreError::Operation(err_msg)
     })?;
 
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "raw transcription text:\n{}", &text);
+
     let obj = TranscriptionObject {
         text: text.trim().to_owned(),
     };
@@ -264,6 +267,19 @@ fn load_audio_waveform(filename: impl AsRef<std::path::Path>) -> Result<Vec<u8>,
             LlamaCoreError::Operation(err_msg)
         })
         .map_err(|e| LlamaCoreError::Operation(e.to_string()))
+}
+
+fn _remove_blank_audio(input: &str) -> String {
+    let blank_audio_marker = "[BLANK_AUDIO]";
+
+    // Split the input string by newline and filter out segments containing [BLANK_AUDIO]
+    let filtered_segments: Vec<&str> = input
+        .lines()
+        .filter(|segment| !segment.contains(blank_audio_marker))
+        .collect();
+
+    // Rejoin the filtered segments with newline
+    filtered_segments.join("\n")
 }
 
 /// Generate audio from the input text.
@@ -566,6 +582,9 @@ pub async fn audio_translations(
 
         LlamaCoreError::Operation(err_msg)
     })?;
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "raw translation text:\n{}", &text);
 
     let obj = TranslationObject {
         text: text.trim().to_owned(),
