@@ -73,6 +73,8 @@ impl SearchConfig {
     ) -> Result<SearchOutput, Box<dyn std::error::Error>> {
         (self.parser)(raw_results)
     }
+
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         search_engine: String,
         max_search_results: u8,
@@ -136,12 +138,7 @@ impl SearchConfig {
 
         // check headers.
         req = req.headers(
-            match (&self
-                .additional_headers
-                .clone()
-                .unwrap_or_else(|| std::collections::HashMap::new()))
-                .try_into()
-            {
+            match (&self.additional_headers.clone().unwrap_or_default()).try_into() {
                 Ok(headers) => headers,
                 Err(_) => {
                     let msg = "Failed to convert headers from HashMaps to HeaderMaps";
