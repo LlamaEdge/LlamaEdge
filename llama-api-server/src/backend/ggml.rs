@@ -903,6 +903,8 @@ fn retrieve_file_content(id: impl AsRef<str>) -> Response<Body> {
 }
 
 fn download_file(id: impl AsRef<str>) -> Response<Body> {
+    info!(target: "stdout", "download file: {}", id.as_ref());
+
     match llama_core::files::download_file(id) {
         Ok((filename, buffer)) => {
             // get the extension of the file
