@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmbeddingRequest {
     /// ID of the model to use.
-    pub model: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
     /// Input text to embed,encoded as a string or array of tokens.
     ///
     /// To embed multiple inputs in a single request, pass an array of strings or array of token arrays. The input must not exceed the max input tokens for the model (8192 tokens for text-embedding-ada-002), cannot be an empty string, and any array must be 2048 dimensions or less.
@@ -33,7 +34,7 @@ pub struct EmbeddingRequest {
 #[test]
 fn test_embedding_serialize_embedding_request() {
     let embedding_request = EmbeddingRequest {
-        model: "text-embedding-ada-002".to_string(),
+        model: Some("text-embedding-ada-002".to_string()),
         input: "Hello, world!".into(),
         encoding_format: None,
         user: None,
@@ -49,7 +50,7 @@ fn test_embedding_serialize_embedding_request() {
     );
 
     let embedding_request = EmbeddingRequest {
-        model: "text-embedding-ada-002".to_string(),
+        model: Some("text-embedding-ada-002".to_string()),
         input: vec!["Hello, world!", "This is a test string"].into(),
         encoding_format: None,
         user: None,
@@ -69,7 +70,10 @@ fn test_embedding_serialize_embedding_request() {
 fn test_embedding_deserialize_embedding_request() {
     let serialized = r#"{"model":"text-embedding-ada-002","input":"Hello, world!"}"#;
     let embedding_request: EmbeddingRequest = serde_json::from_str(serialized).unwrap();
-    assert_eq!(embedding_request.model, "text-embedding-ada-002");
+    assert_eq!(
+        embedding_request.model,
+        Some("text-embedding-ada-002".to_string())
+    );
     assert_eq!(embedding_request.input, InputText::from("Hello, world!"));
     assert_eq!(embedding_request.encoding_format, None);
     assert_eq!(embedding_request.user, None);
@@ -77,7 +81,10 @@ fn test_embedding_deserialize_embedding_request() {
     let serialized =
         r#"{"model":"text-embedding-ada-002","input":["Hello, world!","This is a test string"]}"#;
     let embedding_request: EmbeddingRequest = serde_json::from_str(serialized).unwrap();
-    assert_eq!(embedding_request.model, "text-embedding-ada-002");
+    assert_eq!(
+        embedding_request.model,
+        Some("text-embedding-ada-002".to_string())
+    );
     assert_eq!(
         embedding_request.input,
         InputText::from(vec!["Hello, world!", "This is a test string"])
