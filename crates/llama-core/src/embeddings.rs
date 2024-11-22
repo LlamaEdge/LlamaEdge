@@ -71,12 +71,14 @@ pub async fn embeddings(
         LlamaCoreError::Operation(err_msg)
     })?;
 
-    let graph = match embedding_graphs.contains_key(model_name) {
-        true => embedding_graphs.get_mut(model_name).unwrap(),
-        false => match embedding_graphs.iter_mut().next() {
+    let graph = match model_name {
+        Some(model_name) if embedding_graphs.contains_key(model_name) => {
+            embedding_graphs.get_mut(model_name).unwrap()
+        }
+        _ => match embedding_graphs.iter_mut().next() {
             Some((_, graph)) => graph,
             None => {
-                let err_msg = "There is no model available in the chat graphs.";
+                let err_msg = "Not found available model in the embedding graphs.";
 
                 #[cfg(feature = "logging")]
                 error!(target: "stdout", "{}", &err_msg);
