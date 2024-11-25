@@ -47,6 +47,9 @@ pub async fn audio_transcriptions(
         let mut metadata = graph.metadata.clone();
 
         #[cfg(feature = "logging")]
+        info!(target: "stdout", "current metadata: {:?}", &metadata);
+
+        #[cfg(feature = "logging")]
         info!(target: "stdout", "Check model metadata.");
 
         // check `translate` field
@@ -166,6 +169,9 @@ pub async fn audio_transcriptions(
                 Ok(config) => {
                     // update metadata
                     set_tensor_data(&mut graph, 1, config.as_bytes(), [1])?;
+
+                    #[cfg(feature = "logging")]
+                    info!(target: "stdout", "metadata updated");
                 }
                 Err(e) => {
                     let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
