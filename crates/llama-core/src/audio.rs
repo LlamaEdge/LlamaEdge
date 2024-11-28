@@ -158,6 +158,18 @@ pub async fn audio_transcriptions(
             }
         }
 
+        // check `prompt` field
+        if let Some(prompt) = &request.prompt {
+            if *prompt != metadata.prompt {
+                // update the metadata
+                metadata.prompt = prompt.clone();
+
+                if !should_update {
+                    should_update = true;
+                }
+            }
+        }
+
         #[cfg(feature = "logging")]
         info!(target: "stdout", "metadata: {:?}", &metadata);
 
@@ -494,6 +506,18 @@ pub async fn audio_translations(
             if *split_on_word != metadata.split_on_word {
                 // update the metadata
                 metadata.split_on_word = *split_on_word;
+
+                if !should_update {
+                    should_update = true;
+                }
+            }
+        }
+
+        // check `prompt` field
+        if let Some(prompt) = &request.prompt {
+            if *prompt != metadata.prompt {
+                // update the metadata
+                metadata.prompt = prompt.clone();
 
                 if !should_update {
                     should_update = true;
