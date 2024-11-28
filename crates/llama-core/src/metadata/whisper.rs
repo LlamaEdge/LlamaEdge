@@ -177,6 +177,8 @@ pub struct WhisperMetadata {
     /// Automatically detect the spoken language in the provided audio input.
     #[serde(rename = "detect-language")]
     pub detect_language: bool,
+    /// Text to guide the model. The max length is n_text_ctx/2 tokens.
+    pub prompt: String,
 }
 impl Default for WhisperMetadata {
     fn default() -> Self {
@@ -202,6 +204,7 @@ impl Default for WhisperMetadata {
             output_json: false,
             temperature: 0.0,
             detect_language: false,
+            prompt: String::new(),
         }
     }
 }
