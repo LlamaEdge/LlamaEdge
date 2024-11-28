@@ -74,7 +74,7 @@ jobs:
         run: |
           curl -LO https://huggingface.co/second-state/Qwen2-1.5B-Instruct-GGUF/resolve/main/Qwen2-1.5B-Instruct-Q3_K_M.gguf
           nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:Qwen2-1.5B-Instruct-Q3_K_M.gguf llama-api-server.wasm --model-name Qwen2-1.5B-Instruct --prompt-template chatml --ctx-size 4096 --socket-addr 0.0.0.0:8080 > ./start-llamaedge.log 2>&1 &
-          sleep 5
+          sleep 15
           cat start-llamaedge.log
 
       - name: Run test_chat.hurl
@@ -89,7 +89,7 @@ jobs:
         run: |
           curl -LO https://huggingface.co/second-state/Nomic-embed-text-v1.5-Embedding-GGUF/resolve/main/nomic-embed-text-v1.5-f16.gguf
           nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:nomic-embed-text-v1.5-f16.gguf llama-api-server.wasm --model-name nomic-embed-text-v1.5 --prompt-template embedding --ctx-size 512 --socket-addr 0.0.0.0:8080 > ./start-llamaedge.log 2>&1 &
-          sleep 5
+          sleep 15
           cat start-llamaedge.log
 
       - name: Run test_embeddings.hurl
@@ -151,7 +151,7 @@ jobs:
         run: |
           curl -LO https://huggingface.co/second-state/Qwen2-1.5B-Instruct-GGUF/resolve/main/Qwen2-1.5B-Instruct-Q3_K_M.gguf
           nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:Qwen2-1.5B-Instruct-Q3_K_M.gguf llama-api-server.wasm --model-name Qwen2-1.5B-Instruct --prompt-template chatml --ctx-size 4096 --socket-addr 0.0.0.0:8080 > ./start-llamaedge.log 2>&1 &
-          sleep 5
+          sleep 15
           cat start-llamaedge.log
 
       - name: Run test_chat.hurl
@@ -166,7 +166,7 @@ jobs:
         run: |
           curl -LO https://huggingface.co/second-state/Nomic-embed-text-v1.5-Embedding-GGUF/resolve/main/nomic-embed-text-v1.5-f16.gguf
           nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:nomic-embed-text-v1.5-f16.gguf llama-api-server.wasm --model-name nomic-embed-text-v1.5 --prompt-template embedding --ctx-size 512 --socket-addr 0.0.0.0:8080 > ./start-llamaedge.log 2>&1 &
-          sleep 5
+          sleep 15
           cat start-llamaedge.log
 
       - name: Run test_embeddings.hurl
@@ -228,7 +228,7 @@ jobs:
         run: |
           curl -LO https://huggingface.co/second-state/Qwen2-1.5B-Instruct-GGUF/resolve/main/Qwen2-1.5B-Instruct-Q3_K_M.gguf
           nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:Qwen2-1.5B-Instruct-Q3_K_M.gguf llama-api-server.wasm --model-name Qwen2-1.5B-Instruct --prompt-template chatml --ctx-size 4096 --socket-addr 0.0.0.0:8080 > ./start-llamaedge.log 2>&1 &
-          sleep 5
+          sleep 15
           cat start-llamaedge.log
 
       - name: Run test_chat.hurl
@@ -243,7 +243,7 @@ jobs:
         run: |
           curl -LO https://huggingface.co/second-state/Nomic-embed-text-v1.5-Embedding-GGUF/resolve/main/nomic-embed-text-v1.5-f16.gguf
           nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:nomic-embed-text-v1.5-f16.gguf llama-api-server.wasm --model-name nomic-embed-text-v1.5 --prompt-template embedding --ctx-size 512 --socket-addr 0.0.0.0:8080 > ./start-llamaedge.log 2>&1 &
-          sleep 5
+          sleep 15
           cat start-llamaedge.log
 
       - name: Run test_embeddings.hurl
@@ -305,7 +305,7 @@ jobs:
         run: |
           curl -LO https://huggingface.co/second-state/Qwen2-1.5B-Instruct-GGUF/resolve/main/Qwen2-1.5B-Instruct-Q3_K_M.gguf
           nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:Qwen2-1.5B-Instruct-Q3_K_M.gguf llama-api-server.wasm --model-name Qwen2-1.5B-Instruct --prompt-template chatml --ctx-size 4096 --socket-addr 0.0.0.0:8080 > ./start-llamaedge.log 2>&1 &
-          sleep 5
+          sleep 15
           cat start-llamaedge.log
 
       - name: Run test_chat.hurl
@@ -320,7 +320,7 @@ jobs:
         run: |
           curl -LO https://huggingface.co/second-state/Nomic-embed-text-v1.5-Embedding-GGUF/resolve/main/nomic-embed-text-v1.5-f16.gguf
           nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:nomic-embed-text-v1.5-f16.gguf llama-api-server.wasm --model-name nomic-embed-text-v1.5 --prompt-template embedding --ctx-size 512 --socket-addr 0.0.0.0:8080 > ./start-llamaedge.log 2>&1 &
-          sleep 5
+          sleep 15
           cat start-llamaedge.log
 
       - name: Run test_embeddings.hurl
