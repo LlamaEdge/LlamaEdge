@@ -24,7 +24,7 @@ pub struct TranslationRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f64>,
 
-    /// The language of the input audio. Supplying the input language in [ISO-639-1](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) format will improve accuracy and latency. Defaults to `en`.
+    /// The language of the input audio. Supplying the input language in [ISO-639-1](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) format will improve accuracy and latency. Defaults to `en`. If `detect_language` is true, this parameter will be set to `auto`.
     pub language: Option<String>,
     /// automatically detect the spoken language in the provided audio input. Defaults to false. This param is reserved for `whisper.cpp`.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -218,12 +218,18 @@ impl<'de> Deserialize<'de> for TranslationRequest {
                     temperature = Some(0.0);
                 }
 
-                if language.is_none() {
-                    language = Some("en".to_string());
-                }
+                // if detect_language is true, set language to "auto"
+                match detect_language {
+                    Some(true) => {
+                        language = Some("auto".to_string());
+                    }
+                    _ => {
+                        detect_language = Some(false);
 
-                if detect_language.is_none() {
-                    detect_language = Some(false);
+                        if language.is_none() {
+                            language = Some("en".to_string());
+                        }
+                    }
                 }
 
                 if offset_time.is_none() {
@@ -297,6 +303,14 @@ impl Default for TranslationRequest {
             split_on_word: Some(false),
         }
     }
+}
+
+#[test]
+fn test_deserialize_translation_request() {
+    let json = r#"{"file":{"id":"file-abc123","bytes":1000,"created_at":1717027200,"filename":"audio.mp3","object":"file","purpose":"assistants"},"model":"whisper-1","language":"en","prompt":"","response_format":"json","temperature":0.0,"detect_language":true,"offset_time":0,"duration":0,"max_context":-1,"max_len":0,"split_on_word":false}"#;
+    let obj: TranslationRequest = serde_json::from_str(&json).unwrap();
+    assert_eq!(obj.detect_language, Some(true));
+    assert_eq!(obj.language, Some("auto".to_string()));
 }
 
 /// Represents a translation object.
