@@ -101,7 +101,8 @@ fn main() -> Result<(), String> {
         .set(*ctx_size as usize * 6)
         .expect("Fail to parse prompt context size");
     println!("[INFO] prompt context size: {size}", size = ctx_size);
-
+    options.ctx_size = *ctx_size as u64;
+    
     // number of tokens to predict
     let n_predict = matches.get_one::<u32>("n_predict").unwrap();
     println!("[INFO] Number of tokens to predict: {n}", n = n_predict);
