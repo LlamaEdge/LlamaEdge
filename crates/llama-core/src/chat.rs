@@ -1893,6 +1893,7 @@ fn post_process(
     } else if *template_ty == PromptTemplateType::ChatML
         || *template_ty == PromptTemplateType::ChatMLTool
         || *template_ty == PromptTemplateType::InternLM2Tool
+        || *template_ty == PromptTemplateType::MiniCPMV
     {
         if output.as_ref().contains("<|im_start|>") && output.as_ref().contains("<|im_end|>") {
             let idx_start = output.as_ref().find("<|im_start|>").unwrap();
