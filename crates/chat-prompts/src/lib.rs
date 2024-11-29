@@ -91,6 +91,8 @@ pub enum PromptTemplateType {
     FunctionaryV32,
     #[value(name = "functionary-31")]
     FunctionaryV31,
+    #[value(name = "minicpmv")]
+    MiniCPMV,
     #[value(name = "embedding")]
     Embedding,
     #[value(name = "none")]
@@ -122,7 +124,8 @@ impl PromptTemplateType {
             | PromptTemplateType::BreezeInstruct
             | PromptTemplateType::DeepseekChat25
             | PromptTemplateType::NemotronChat
-            | PromptTemplateType::NemotronTool => true,
+            | PromptTemplateType::NemotronTool
+            | PromptTemplateType::MiniCPMV => true,
             PromptTemplateType::MistralInstruct
             | PromptTemplateType::MistralTool
             | PromptTemplateType::MistralLite
@@ -188,6 +191,7 @@ impl FromStr for PromptTemplateType {
             "nemotron-tool" => Ok(PromptTemplateType::NemotronTool),
             "functionary-32" => Ok(PromptTemplateType::FunctionaryV32),
             "functionary-31" => Ok(PromptTemplateType::FunctionaryV31),
+            "minicpmv" => Ok(PromptTemplateType::MiniCPMV),
             "embedding" => Ok(PromptTemplateType::Embedding),
             "none" => Ok(PromptTemplateType::Null),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
@@ -238,6 +242,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::NemotronTool => write!(f, "nemotron-tool"),
             PromptTemplateType::FunctionaryV32 => write!(f, "functionary-32"),
             PromptTemplateType::FunctionaryV31 => write!(f, "functionary-31"),
+            PromptTemplateType::MiniCPMV => write!(f, "minicpmv"),
             PromptTemplateType::Embedding => write!(f, "embedding"),
             PromptTemplateType::Null => write!(f, "none"),
         }
