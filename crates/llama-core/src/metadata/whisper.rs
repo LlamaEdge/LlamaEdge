@@ -152,10 +152,13 @@ pub struct WhisperMetadata {
     /// Duration of audio to process in milliseconds. Defaults to 0.
     pub duration: u64,
     /// Maximum number of text context tokens to store. Defaults to -1.
+    #[serde(rename = "max-context")]
     pub max_context: i32,
     /// Maximum segment length in characters. Defaults to 0.
+    #[serde(rename = "max-len")]
     pub max_len: u64,
     /// Split on word rather than on token. Defaults to false.
+    #[serde(rename = "split-on-word")]
     pub split_on_word: bool,
     /// Output result in a text file. Defaults to false.
     pub output_txt: bool,
@@ -172,7 +175,10 @@ pub struct WhisperMetadata {
     /// Sampling temperature, between 0 and 1. Defaults to 0.00.
     pub temperature: f64,
     /// Automatically detect the spoken language in the provided audio input.
+    #[serde(rename = "detect-language")]
     pub detect_language: bool,
+    /// Text to guide the model. The max length is n_text_ctx/2 tokens.
+    pub prompt: String,
 }
 impl Default for WhisperMetadata {
     fn default() -> Self {
@@ -198,6 +204,7 @@ impl Default for WhisperMetadata {
             output_json: false,
             temperature: 0.0,
             detect_language: false,
+            prompt: String::new(),
         }
     }
 }
