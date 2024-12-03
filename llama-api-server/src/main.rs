@@ -99,10 +99,10 @@ struct Cli {
     frequency_penalty: f64,
     /// BNF-like grammar to constrain generations (see samples in grammars/ dir).
     #[arg(long, default_value = "")]
-    pub grammar: String,
+    grammar: String,
     /// JSON schema to constrain generations (<https://json-schema.org/>), e.g. `{}` for any JSON object. For schemas w/ external $refs, use --grammar + example/json_schema_to_grammar.py instead.
     #[arg(long)]
-    pub json_schema: Option<String>,
+    json_schema: Option<String>,
     /// Path to the multimodal projector file
     #[arg(long)]
     llava_mmproj: Option<String>,
@@ -112,6 +112,9 @@ struct Cli {
     /// Port number
     #[arg(long, default_value = DEFAULT_PORT, value_parser = clap::value_parser!(u16), group = "socket_address_group")]
     port: u16,
+    /// Path to the configuration file (*.yaml)
+    #[arg(long)]
+    config: Option<PathBuf>,
     /// Root path for the Web UI files
     #[arg(long, default_value = "chatbot-ui")]
     web_ui: PathBuf,
@@ -151,6 +154,16 @@ async fn main() -> Result<(), ServerError> {
 
     // parse the command line arguments
     let cli = Cli::parse();
+
+    // ! debug
+    {
+        if let Some(config_file) = &cli.config {
+            if config_file.exists() {
+                // check if the extension is yaml first; then read config settings
+                unimplemented!()
+            }
+        }
+    }
 
     // log the version of the server
     info!(target: "stdout", "server version: {}", env!("CARGO_PKG_VERSION"));
