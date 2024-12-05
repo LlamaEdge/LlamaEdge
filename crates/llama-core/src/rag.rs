@@ -6,6 +6,7 @@ use endpoints::{
     rag::{RagScoredPoint, RetrieveObject},
 };
 use qdrant::*;
+use std::collections::HashSet;
 
 /// Convert document chunks to embeddings.
 ///
@@ -185,7 +186,30 @@ pub async fn rag_retrieve_context(
         }
     };
 
-    let ro = match scored_points.is_empty() {
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "remove duplicates from {} scored points", scored_points.len());
+
+    // remove duplicates, which have the same source
+    let mut seen = HashSet::new();
+    let unique_scored_points: Vec<ScoredPoint> = scored_points
+        .into_iter()
+        .filter(|point| {
+            seen.insert(
+                point
+                    .payload
+                    .as_ref()
+                    .unwrap()
+                    .get("source")
+                    .unwrap()
+                    .to_string(),
+            )
+        })
+        .collect();
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "number of unique scored points: {}", unique_scored_points.len());
+
+    let ro = match unique_scored_points.is_empty() {
         true => RetrieveObject {
             points: None,
             limit,
@@ -193,7 +217,7 @@ pub async fn rag_retrieve_context(
         },
         false => {
             let mut points: Vec<RagScoredPoint> = vec![];
-            for point in scored_points.iter() {
+            for point in unique_scored_points.iter() {
                 if let Some(payload) = &point.payload {
                     if let Some(source) = payload.get("source") {
                         points.push(RagScoredPoint {
