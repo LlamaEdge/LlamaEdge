@@ -285,43 +285,29 @@ impl ChatCompletionRequestBuilder {
         self
     }
 
-    /// Sets the Qdrant settings, which are only used in RAG chat completions.
+    /// Sets the VectorDB settings, which are only used in RAG chat completions.
     ///
     /// # Arguments
     ///
-    /// * `qdrant_url` - The URL of the Qdrant server.
+    /// * `url_vdb_server` - The URL of the VectorDB server.
     ///
-    /// * `qdrant_collection_name` - The name of the collection in Qdrant.
+    /// * `collection_name` - The names of the collections in VectorDB.
+    ///
+    /// * `limit` - Max number of retrieved results. Note that the number of the values must be the same as the number of `collection_name`.
+    ///
+    /// * `score_threshold` - The score threshold for the retrieved results. Note that the number of the values must be the same as the number of `collection_name`.
     #[cfg(feature = "rag")]
     pub fn with_qdrant_settings(
         mut self,
-        qdrant_url: impl Into<String>,
-        qdrant_collection_name: impl Into<String>,
+        url_vdb_server: impl Into<String>,
+        collection_name: impl Into<Vec<String>>,
+        limit: impl Into<Vec<u64>>,
+        score_threshold: impl Into<Vec<f32>>,
     ) -> Self {
-        self.req.qdrant_url = Some(qdrant_url.into());
-        self.req.qdrant_collection_name = Some(qdrant_collection_name.into());
-        self
-    }
-
-    /// Sets the max number of retrieved results, which is only used in RAG chat completions.
-    ///
-    /// # Arguments
-    ///
-    /// * `limit` - The max number of retrieved results.
-    #[cfg(feature = "rag")]
-    pub fn with_limit(mut self, limit: u64) -> Self {
-        self.req.limit = Some(limit);
-        self
-    }
-
-    /// Sets the score threshold for the retrieved results, which is only used in RAG chat completions.
-    ///
-    /// # Arguments
-    ///
-    /// * `score_threshold` - The score threshold for the retrieved results.
-    #[cfg(feature = "rag")]
-    pub fn with_score_threshold(mut self, score_threshold: f32) -> Self {
-        self.req.score_threshold = Some(score_threshold);
+        self.req.url_vdb_server = Some(url_vdb_server.into());
+        self.req.collection_name = Some(collection_name.into());
+        self.req.limit = Some(limit.into());
+        self.req.score_threshold = Some(score_threshold.into());
         self
     }
 
@@ -419,19 +405,19 @@ pub struct ChatCompletionRequest {
     /// The URL of the VectorDB server.
     #[cfg(feature = "rag")]
     #[serde(rename = "url_vdb_server", skip_serializing_if = "Option::is_none")]
-    pub qdrant_url: Option<String>,
-    /// The name of the collection in VectorDB..
+    pub url_vdb_server: Option<String>,
+    /// The names of the collections in VectorDB.
     #[cfg(feature = "rag")]
     #[serde(rename = "collection_name", skip_serializing_if = "Option::is_none")]
-    pub qdrant_collection_name: Option<String>,
-    /// Max number of retrieved results.
+    pub collection_name: Option<Vec<String>>,
+    /// Max number of retrieved results. The number of the values must be the same as the number of `qdrant_collection_name`.
     #[cfg(feature = "rag")]
     #[serde(rename = "limit", skip_serializing_if = "Option::is_none")]
-    pub limit: Option<u64>,
-    /// The score threshold for the retrieved results.
+    pub limit: Option<Vec<u64>>,
+    /// The score threshold for the retrieved results. The number of the values must be the same as the number of `qdrant_collection_name`.
     #[cfg(feature = "rag")]
     #[serde(rename = "score_threshold", skip_serializing_if = "Option::is_none")]
-    pub score_threshold: Option<f32>,
+    pub score_threshold: Option<Vec<f32>>,
 }
 impl<'de> Deserialize<'de> for ChatCompletionRequest {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -472,9 +458,9 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 let mut tool_choice = None;
                 let mut context_window = None;
                 #[cfg(feature = "rag")]
-                let mut qdrant_url = None;
+                let mut url_vdb_server = None;
                 #[cfg(feature = "rag")]
-                let mut qdrant_collection_name = None;
+                let mut collection_name = None;
                 #[cfg(feature = "rag")]
                 let mut limit = None;
                 #[cfg(feature = "rag")]
@@ -502,9 +488,9 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                         "tool_choice" => tool_choice = map.next_value()?,
                         "context_window" => context_window = map.next_value()?,
                         #[cfg(feature = "rag")]
-                        "url_vdb_server" => qdrant_url = map.next_value()?,
+                        "url_vdb_server" => url_vdb_server = map.next_value()?,
                         #[cfg(feature = "rag")]
-                        "collection_name" => qdrant_collection_name = map.next_value()?,
+                        "collection_name" => collection_name = map.next_value()?,
                         #[cfg(feature = "rag")]
                         "limit" => limit = map.next_value()?,
                         #[cfg(feature = "rag")]
@@ -566,9 +552,9 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     tool_choice,
                     context_window,
                     #[cfg(feature = "rag")]
-                    qdrant_url,
+                    url_vdb_server,
                     #[cfg(feature = "rag")]
-                    qdrant_collection_name,
+                    collection_name,
                     #[cfg(feature = "rag")]
                     limit,
                     #[cfg(feature = "rag")]
@@ -636,9 +622,9 @@ impl Default for ChatCompletionRequest {
             tool_choice: None,
             context_window: Some(1),
             #[cfg(feature = "rag")]
-            qdrant_url: None,
+            url_vdb_server: None,
             #[cfg(feature = "rag")]
-            qdrant_collection_name: None,
+            collection_name: None,
             #[cfg(feature = "rag")]
             limit: None,
             #[cfg(feature = "rag")]
@@ -894,11 +880,17 @@ fn test_chat_serialize_chat_request() {
             .with_reponse_format(ChatResponseFormat::default())
             .with_tools(vec![tool])
             .with_tool_choice(ToolChoice::Auto)
+            .with_qdrant_settings(
+                "http://localhost:6333",
+                &["collection1".to_string(), "collection2".to_string()],
+                &[10, 20],
+                &[0.5, 0.6],
+            )
             .build();
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto","context_window":1}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto","context_window":1,"url_vdb_server":"http://localhost:6333","collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6]}"#
         );
     }
 }
@@ -1034,11 +1026,21 @@ fn test_chat_deserialize_chat_request() {
     }
 
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"}}"#;
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"url_vdb_server":"http://localhost:6333","collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6]}"#;
 
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         let tool_choice = request.tool_choice.unwrap();
         assert_eq!(tool_choice, ToolChoice::None);
+        assert_eq!(
+            request.url_vdb_server,
+            Some("http://localhost:6333".to_string())
+        );
+        assert_eq!(
+            request.collection_name,
+            Some(vec!["collection1".to_string(), "collection2".to_string()])
+        );
+        assert_eq!(request.limit, Some(vec![10, 20]));
+        assert_eq!(request.score_threshold, Some(vec![0.5, 0.6]));
     }
 
     {
