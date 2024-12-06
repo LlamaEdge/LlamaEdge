@@ -880,6 +880,100 @@ fn test_chat_serialize_chat_request() {
             .with_reponse_format(ChatResponseFormat::default())
             .with_tools(vec![tool])
             .with_tool_choice(ToolChoice::Auto)
+            .build();
+        let json = serde_json::to_string(&request).unwrap();
+        assert_eq!(
+            json,
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto","context_window":1}"#
+        );
+    }
+
+    #[cfg(feature = "rag")]
+    {
+        let mut messages = Vec::new();
+        let system_message = ChatCompletionRequestMessage::System(
+            ChatCompletionSystemMessage::new("Hello, world!", None),
+        );
+        messages.push(system_message);
+        let user_message = ChatCompletionRequestMessage::User(ChatCompletionUserMessage::new(
+            ChatCompletionUserMessageContent::Text("Hello, world!".to_string()),
+            None,
+        ));
+        messages.push(user_message);
+        let assistant_message = ChatCompletionRequestMessage::Assistant(
+            ChatCompletionAssistantMessage::new(Some("Hello, world!".to_string()), None, None),
+        );
+        messages.push(assistant_message);
+
+        let params = ToolFunctionParameters {
+            schema_type: JSONSchemaType::Object,
+            properties: Some(
+                vec![
+                    (
+                        "location".to_string(),
+                        Box::new(JSONSchemaDefine {
+                            schema_type: Some(JSONSchemaType::String),
+                            description: Some(
+                                "The city and state, e.g. San Francisco, CA".to_string(),
+                            ),
+                            enum_values: None,
+                            properties: None,
+                            required: None,
+                            items: None,
+                            default: None,
+                            maximum: None,
+                            minimum: None,
+                            title: None,
+                            examples: None,
+                        }),
+                    ),
+                    (
+                        "unit".to_string(),
+                        Box::new(JSONSchemaDefine {
+                            schema_type: Some(JSONSchemaType::String),
+                            description: None,
+                            enum_values: Some(vec![
+                                "celsius".to_string(),
+                                "fahrenheit".to_string(),
+                            ]),
+                            properties: None,
+                            required: None,
+                            items: None,
+                            default: None,
+                            maximum: None,
+                            minimum: None,
+                            title: None,
+                            examples: None,
+                        }),
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+            ),
+            required: Some(vec!["location".to_string()]),
+        };
+
+        let tool = Tool {
+            ty: "function".to_string(),
+            function: ToolFunction {
+                name: "my_function".to_string(),
+                description: None,
+                parameters: Some(params),
+            },
+        };
+
+        let request = ChatCompletionRequestBuilder::new("model-id", messages)
+            .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
+            .with_n_choices(3)
+            .enable_stream(true)
+            .include_usage()
+            .with_stop(vec!["stop1".to_string(), "stop2".to_string()])
+            .with_max_tokens(100)
+            .with_presence_penalty(0.5)
+            .with_frequency_penalty(0.5)
+            .with_reponse_format(ChatResponseFormat::default())
+            .with_tools(vec![tool])
+            .with_tool_choice(ToolChoice::Auto)
             .with_qdrant_settings(
                 "http://localhost:6333",
                 &["collection1".to_string(), "collection2".to_string()],
@@ -1026,21 +1120,11 @@ fn test_chat_deserialize_chat_request() {
     }
 
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"url_vdb_server":"http://localhost:6333","collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6]}"#;
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"}}"#;
 
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         let tool_choice = request.tool_choice.unwrap();
         assert_eq!(tool_choice, ToolChoice::None);
-        assert_eq!(
-            request.url_vdb_server,
-            Some("http://localhost:6333".to_string())
-        );
-        assert_eq!(
-            request.collection_name,
-            Some(vec!["collection1".to_string(), "collection2".to_string()])
-        );
-        assert_eq!(request.limit, Some(vec![10, 20]));
-        assert_eq!(request.score_threshold, Some(vec![0.5, 0.6]));
     }
 
     {
@@ -1068,6 +1152,25 @@ fn test_chat_deserialize_chat_request() {
         assert!(max_results.schema_type.is_some());
         assert_eq!(max_results.schema_type, Some(JSONSchemaType::Integer));
         println!("{:?}", max_results);
+    }
+
+    #[cfg(feature = "rag")]
+    {
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"url_vdb_server":"http://localhost:6333","collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6]}"#;
+
+        let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
+        let tool_choice = request.tool_choice.unwrap();
+        assert_eq!(tool_choice, ToolChoice::None);
+        assert_eq!(
+            request.url_vdb_server,
+            Some("http://localhost:6333".to_string())
+        );
+        assert_eq!(
+            request.collection_name,
+            Some(vec!["collection1".to_string(), "collection2".to_string()])
+        );
+        assert_eq!(request.limit, Some(vec![10, 20]));
+        assert_eq!(request.score_threshold, Some(vec![0.5, 0.6]));
     }
 }
 
