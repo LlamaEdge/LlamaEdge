@@ -952,27 +952,46 @@ pub enum StableDiffusionTask {
 }
 
 /// Initialize the whisper context
-pub fn init_whisper_context(
-    whisper_metadata: &WhisperMetadata,
-    model_file: impl AsRef<Path>,
-) -> Result<(), LlamaCoreError> {
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Initializing the audio context");
-
+pub fn init_whisper_context(whisper_metadata: &WhisperMetadata) -> Result<(), LlamaCoreError> {
     // create and initialize the audio context
     let graph = GraphBuilder::new(EngineType::Whisper)?
         .with_config(whisper_metadata.clone())?
         .use_cpu()
-        .build_from_files([model_file.as_ref()])?;
+        .build_from_files([&whisper_metadata.model_path])?;
 
-    AUDIO_GRAPH.set(Mutex::new(graph)).map_err(|_| {
-            let err_msg = "Failed to initialize the audio context. Reason: The `AUDIO_GRAPH` has already been initialized";
-
+    match AUDIO_GRAPH.get() {
+        Some(mutex_graph) => {
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            info!(target: "stdout", "Re-initialize the audio context");
 
-            LlamaCoreError::InitContext(err_msg.into())
-        })?;
+            let mut locked_graph = match mutex_graph.lock() {
+                Ok(locked_graph) => locked_graph,
+                Err(e) => {
+                    let err_msg = format!("Failed to lock the graph. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "stdout", "{}", err_msg);
+
+                    return Err(LlamaCoreError::InitContext(err_msg));
+                }
+            };
+
+            *locked_graph = graph;
+        }
+        None => {
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "Initialize the audio context");
+
+            AUDIO_GRAPH.set(Mutex::new(graph)).map_err(|_| {
+                let err_msg = "Failed to initialize the audio context. Reason: The `AUDIO_GRAPH` has already been initialized";
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", err_msg);
+
+                LlamaCoreError::InitContext(err_msg.into())
+            })?;
+        }
+    }
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "The audio context has been initialized");
