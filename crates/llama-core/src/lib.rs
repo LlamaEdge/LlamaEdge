@@ -26,9 +26,9 @@ pub mod utils;
 
 pub use error::LlamaCoreError;
 pub use graph::{EngineType, Graph, GraphBuilder};
-pub use metadata::{
-    ggml::GgmlMetadata, piper::PiperMetadata, whisper::WhisperMetadata, BaseMetadata,
-};
+#[cfg(feature = "whisper")]
+use metadata::whisper::WhisperMetadata;
+pub use metadata::{ggml::GgmlMetadata, piper::PiperMetadata, BaseMetadata};
 
 use once_cell::sync::OnceCell;
 use std::{
@@ -54,6 +54,7 @@ pub(crate) static SD_TEXT_TO_IMAGE: OnceCell<Mutex<TextToImage>> = OnceCell::new
 // stable diffusion context for the image-to-image task
 pub(crate) static SD_IMAGE_TO_IMAGE: OnceCell<Mutex<ImageToImage>> = OnceCell::new();
 // context for the audio task
+#[cfg(feature = "whisper")]
 pub(crate) static AUDIO_GRAPH: OnceCell<Mutex<Graph<WhisperMetadata>>> = OnceCell::new();
 // context for the piper task
 pub(crate) static PIPER_GRAPH: OnceCell<Mutex<Graph<PiperMetadata>>> = OnceCell::new();
@@ -952,6 +953,7 @@ pub enum StableDiffusionTask {
 }
 
 /// Initialize the whisper context
+#[cfg(feature = "whisper")]
 pub fn init_whisper_context(whisper_metadata: &WhisperMetadata) -> Result<(), LlamaCoreError> {
     // create and initialize the audio context
     let graph = GraphBuilder::new(EngineType::Whisper)?

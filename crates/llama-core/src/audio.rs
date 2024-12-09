@@ -1,16 +1,20 @@
 //! Define APIs for audio generation, transcription, and translation.
 
-use crate::{
-    error::LlamaCoreError, utils::set_tensor_data, AUDIO_GRAPH, MAX_BUFFER_SIZE, PIPER_GRAPH,
-};
+#[cfg(feature = "whisper")]
+use crate::AUDIO_GRAPH;
+use crate::{error::LlamaCoreError, utils::set_tensor_data, MAX_BUFFER_SIZE, PIPER_GRAPH};
+use endpoints::audio::speech::SpeechRequest;
+#[cfg(feature = "whisper")]
 use endpoints::audio::{
-    speech::SpeechRequest,
     transcription::{TranscriptionObject, TranscriptionRequest},
     translation::{TranslationObject, TranslationRequest},
 };
+#[cfg(feature = "whisper")]
 use std::path::Path;
 
 /// Transcribe audio into the input language.
+#[cfg(feature = "whisper")]
+#[cfg_attr(docsrs, doc(cfg(feature = "whisper")))]
 pub async fn audio_transcriptions(
     request: TranscriptionRequest,
 ) -> Result<TranscriptionObject, LlamaCoreError> {
@@ -274,6 +278,7 @@ pub async fn audio_transcriptions(
     Ok(obj)
 }
 
+#[cfg(feature = "whisper")]
 fn load_audio_waveform(filename: impl AsRef<std::path::Path>) -> Result<Vec<u8>, LlamaCoreError> {
     std::fs::read(filename)
         .map_err(|e| {
@@ -300,75 +305,9 @@ fn _remove_blank_audio(input: &str) -> String {
     filtered_segments.join("\n")
 }
 
-/// Generate audio from the input text.
-pub async fn create_speech(request: SpeechRequest) -> Result<Vec<u8>, LlamaCoreError> {
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "processing audio speech request");
-
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Get the model instance.");
-    let graph = match PIPER_GRAPH.get() {
-        Some(graph) => graph,
-        None => {
-            let err_msg = "The PIPER_GRAPH is not initialized.";
-
-            #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", &err_msg);
-
-            return Err(LlamaCoreError::Operation(err_msg.to_owned()));
-        }
-    };
-
-    let mut graph = match graph.lock() {
-        Ok(graph) => graph,
-        Err(e) => {
-            let err_msg = format!("Failed to lock the graph. {}", e);
-
-            #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", &err_msg);
-
-            return Err(LlamaCoreError::Operation(err_msg));
-        }
-    };
-
-    // set the input tensor
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Feed the text to the model.");
-    set_tensor_data(&mut graph, 0, request.input.as_bytes(), [1])?;
-
-    // compute the graph
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "create audio.");
-    if let Err(e) = graph.compute() {
-        let err_msg = format!("Failed to compute the graph. {}", e);
-
-        #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", &err_msg);
-
-        return Err(LlamaCoreError::Operation(err_msg));
-    }
-
-    // get the output tensor
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "[INFO] Retrieve the audio.");
-
-    let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
-    let output_size = graph.get_output(0, &mut output_buffer).map_err(|e| {
-        let err_msg = format!("Failed to get the output tensor. {}", e);
-
-        #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", &err_msg);
-
-        LlamaCoreError::Operation(err_msg)
-    })?;
-
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Output buffer size: {}", output_size);
-
-    Ok(output_buffer)
-}
-
 /// Translate audio into the target language
+#[cfg(feature = "whisper")]
+#[cfg_attr(docsrs, doc(cfg(feature = "whisper")))]
 pub async fn audio_translations(
     request: TranslationRequest,
 ) -> Result<TranslationObject, LlamaCoreError> {
@@ -624,4 +563,72 @@ pub async fn audio_translations(
     info!(target: "stdout", "End of the audio translation.");
 
     Ok(obj)
+}
+
+/// Generate audio from the input text.
+pub async fn create_speech(request: SpeechRequest) -> Result<Vec<u8>, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "processing audio speech request");
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Get the model instance.");
+    let graph = match PIPER_GRAPH.get() {
+        Some(graph) => graph,
+        None => {
+            let err_msg = "The PIPER_GRAPH is not initialized.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.to_owned()));
+        }
+    };
+
+    let mut graph = match graph.lock() {
+        Ok(graph) => graph,
+        Err(e) => {
+            let err_msg = format!("Failed to lock the graph. {}", e);
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg));
+        }
+    };
+
+    // set the input tensor
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Feed the text to the model.");
+    set_tensor_data(&mut graph, 0, request.input.as_bytes(), [1])?;
+
+    // compute the graph
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "create audio.");
+    if let Err(e) = graph.compute() {
+        let err_msg = format!("Failed to compute the graph. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        return Err(LlamaCoreError::Operation(err_msg));
+    }
+
+    // get the output tensor
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "[INFO] Retrieve the audio.");
+
+    let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
+    let output_size = graph.get_output(0, &mut output_buffer).map_err(|e| {
+        let err_msg = format!("Failed to get the output tensor. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Output buffer size: {}", output_size);
+
+    Ok(output_buffer)
 }
