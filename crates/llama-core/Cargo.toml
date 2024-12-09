@@ -36,10 +36,11 @@ ignored = ["wasi-logger"]
 
 [features]
 default = []
-full = ["logging", "search", "rag"]
+full = ["logging", "search", "rag", "whisper"]
 logging = ["wasi-logger", "log"]
 search = []
 rag = ["endpoints/rag", "qdrant"]
+whisper = ["endpoints/whisper"]
 
 [package.metadata.docs.rs]
 all-features = true
