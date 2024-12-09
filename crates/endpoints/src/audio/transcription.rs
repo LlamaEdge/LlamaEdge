@@ -13,7 +13,7 @@ pub struct TranscriptionRequest {
     /// The audio file object (not file name) to transcribe, in one of these formats: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm.
     pub file: FileObject,
     /// ID of the model to use.
-    pub model: String,
+    pub model: Option<String>,
     /// The language of the input audio. Supplying the input language in [ISO-639-1](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) format will improve accuracy and latency. Defaults to `en`. If `detect_language` is true, this parameter will be set to `auto`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,
@@ -49,12 +49,14 @@ pub struct TranscriptionRequest {
     /// Split audio chunks on word rather than on token. Defaults to false. This param is reserved for `whisper.cpp`.
     #[serde(skip_serializing_if = "Option::is_none", rename = "split-on-word")]
     pub split_on_word: Option<bool>,
+    /// Use the new computation context. Defaults to false. This param is reserved for `whisper.cpp`.
+    pub use_new_context: bool,
 }
 impl Default for TranscriptionRequest {
     fn default() -> Self {
         Self {
             file: FileObject::default(),
-            model: String::new(),
+            model: None,
             language: Some("en".to_string()),
             prompt: None,
             response_format: Some("json".to_string()),
@@ -66,6 +68,7 @@ impl Default for TranscriptionRequest {
             max_context: Some(-1),
             max_len: Some(0),
             split_on_word: Some(false),
+            use_new_context: false,
         }
     }
 }
@@ -88,6 +91,7 @@ impl<'de> Deserialize<'de> for TranscriptionRequest {
             MaxContext,
             MaxLen,
             SplitOnWord,
+            UseNewContext,
         }
 
         impl<'de> Deserialize<'de> for Field {
@@ -101,7 +105,7 @@ impl<'de> Deserialize<'de> for TranscriptionRequest {
                     type Value = Field;
 
                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                        formatter.write_str("`file`, `model`, `language`, `prompt`, `response_format`, `temperature`, `timestamp_granularities`, `detect_language`, `offset_time`, `duration`, `max_context`, `max_len`, or `split_on_word`")
+                        formatter.write_str("`file`, `model`, `language`, `prompt`, `response_format`, `temperature`, `timestamp_granularities`, `detect_language`, `offset_time`, `duration`, `max_context`, `max_len`, `split_on_word`, or `use_new_context`")
                     }
 
                     fn visit_str<E>(self, value: &str) -> Result<Field, E>
@@ -122,6 +126,7 @@ impl<'de> Deserialize<'de> for TranscriptionRequest {
                             "max_context" => Ok(Field::MaxContext),
                             "max_len" => Ok(Field::MaxLen),
                             "split_on_word" => Ok(Field::SplitOnWord),
+                            "use_new_context" => Ok(Field::UseNewContext),
                             _ => Err(de::Error::unknown_field(value, FIELDS)),
                         }
                     }
@@ -157,6 +162,7 @@ impl<'de> Deserialize<'de> for TranscriptionRequest {
                 let mut max_context = None;
                 let mut max_len = None;
                 let mut split_on_word = None;
+                let mut use_new_context = None;
 
                 while let Some(key) = map.next_key()? {
                     match key {
@@ -238,11 +244,16 @@ impl<'de> Deserialize<'de> for TranscriptionRequest {
                             }
                             split_on_word = Some(map.next_value()?);
                         }
+                        Field::UseNewContext => {
+                            if use_new_context.is_some() {
+                                return Err(de::Error::duplicate_field("use_new_context"));
+                            }
+                            use_new_context = Some(map.next_value()?);
+                        }
                     }
                 }
 
                 let file = file.ok_or_else(|| de::Error::missing_field("file"))?;
-                let model = model.ok_or_else(|| de::Error::missing_field("model"))?;
 
                 // if detect_language is true, set language to "auto"
                 match detect_language {
@@ -299,6 +310,8 @@ impl<'de> Deserialize<'de> for TranscriptionRequest {
                     split_on_word = Some(false);
                 }
 
+                let use_new_context = use_new_context.unwrap_or(false);
+
                 Ok(TranscriptionRequest {
                     file,
                     model,
@@ -313,6 +326,7 @@ impl<'de> Deserialize<'de> for TranscriptionRequest {
                     max_context,
                     max_len,
                     split_on_word,
+                    use_new_context,
                 })
             }
         }
@@ -331,6 +345,7 @@ impl<'de> Deserialize<'de> for TranscriptionRequest {
             "max_context",
             "max_len",
             "split_on_word",
+            "use_new_context",
         ];
 
         deserializer.deserialize_struct("TranscriptionRequest", FIELDS, TranscriptionRequestVisitor)
