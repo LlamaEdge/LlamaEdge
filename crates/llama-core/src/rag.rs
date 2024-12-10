@@ -73,7 +73,15 @@ pub async fn rag_doc_chunks_to_embeddings(
     let dim = embeddings[0].embedding.len();
 
     // create a Qdrant client
-    let qdrant_client = qdrant::Qdrant::new_with_url(qdrant_url);
+    let mut qdrant_client = qdrant::Qdrant::new_with_url(qdrant_url);
+    if let Some(key) = embedding_request.vdb_api_key.as_deref() {
+        if !key.is_empty() {
+            #[cfg(feature = "logging")]
+            debug!(target: "stdout", "Set the API key for the VectorDB server.");
+
+            qdrant_client.set_api_key(key);
+        }
+    }
 
     // create a collection
     qdrant_create_collection(&qdrant_client, &qdrant_collection_name, dim).await?;
