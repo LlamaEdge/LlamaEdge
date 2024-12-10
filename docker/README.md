@@ -65,7 +65,7 @@ Each model comes with a maximum context size it can support. Your custom context
 
 ## Build your own image
 
-You can build nad publish a Docker image to use any models you like. First, download the model files (must be in GGUF format) you want from Huggingface. 
+You can build and publish a Docker image to use any models you like. First, download the model files (must be in GGUF format) you want from Huggingface. 
 Of course, you could also your private finetuned model files here. 
 
 ```
