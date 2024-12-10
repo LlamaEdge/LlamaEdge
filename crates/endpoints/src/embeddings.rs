@@ -29,6 +29,10 @@ pub struct EmbeddingRequest {
     #[cfg(feature = "rag")]
     #[serde(rename = "collection_name", skip_serializing_if = "Option::is_none")]
     pub qdrant_collection_name: Option<String>,
+    /// The API key for the VectorDB server.
+    #[cfg(feature = "rag")]
+    #[serde(rename = "api_key", skip_serializing_if = "Option::is_none")]
+    pub vdb_api_key: Option<String>,
 }
 
 #[test]
@@ -42,6 +46,8 @@ fn test_embedding_serialize_embedding_request() {
         qdrant_url: None,
         #[cfg(feature = "rag")]
         qdrant_collection_name: None,
+        #[cfg(feature = "rag")]
+        vdb_api_key: None,
     };
     let serialized = serde_json::to_string(&embedding_request).unwrap();
     assert_eq!(
@@ -58,6 +64,8 @@ fn test_embedding_serialize_embedding_request() {
         qdrant_url: None,
         #[cfg(feature = "rag")]
         qdrant_collection_name: None,
+        #[cfg(feature = "rag")]
+        vdb_api_key: None,
     };
     let serialized = serde_json::to_string(&embedding_request).unwrap();
     assert_eq!(
