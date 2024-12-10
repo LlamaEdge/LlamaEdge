@@ -1,3 +1,5 @@
+//! Define metadata for the whisper model.
+
 use super::BaseMetadata;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};

@@ -1,3 +1,5 @@
+//! Define APIs for file operations.
+
 use crate::{error::LlamaCoreError, ARCHIVES_DIR};
 use base64::{engine::general_purpose, Engine as _};
 use endpoints::files::{DeleteFileStatus, FileObject, ListFilesResponse};
