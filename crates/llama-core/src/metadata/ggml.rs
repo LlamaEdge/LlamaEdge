@@ -1,3 +1,5 @@
+//! Define metadata for the ggml model.
+
 use super::BaseMetadata;
 use chat_prompts::PromptTemplateType;
 use serde::{Deserialize, Serialize};

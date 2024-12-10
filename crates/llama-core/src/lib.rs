@@ -62,6 +62,8 @@ pub(crate) static PIPER_GRAPH: OnceCell<Mutex<Graph<PiperMetadata>>> = OnceCell:
 pub(crate) const MAX_BUFFER_SIZE: usize = 2usize.pow(14) * 15 + 128;
 pub(crate) const OUTPUT_TENSOR: usize = 0;
 const PLUGIN_VERSION: usize = 1;
+
+/// The directory for storing the archives in wasm virtual file system.
 pub const ARCHIVES_DIR: &str = "archives";
 
 /// Initialize the ggml context
