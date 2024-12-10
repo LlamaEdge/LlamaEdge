@@ -966,8 +966,8 @@ pub fn init_whisper_context(whisper_metadata: &WhisperMetadata) -> Result<(), Ll
             #[cfg(feature = "logging")]
             info!(target: "stdout", "Re-initialize the audio context");
 
-            let mut locked_graph = match mutex_graph.lock() {
-                Ok(locked_graph) => locked_graph,
+            match mutex_graph.lock() {
+                Ok(mut locked_graph) => *locked_graph = graph,
                 Err(e) => {
                     let err_msg = format!("Failed to lock the graph. Reason: {}", e);
 
@@ -976,9 +976,7 @@ pub fn init_whisper_context(whisper_metadata: &WhisperMetadata) -> Result<(), Ll
 
                     return Err(LlamaCoreError::InitContext(err_msg));
                 }
-            };
-
-            *locked_graph = graph;
+            }
         }
         None => {
             #[cfg(feature = "logging")]
