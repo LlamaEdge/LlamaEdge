@@ -36,7 +36,7 @@ pub async fn rag_doc_chunks_to_embeddings(
         return Err(LlamaCoreError::Operation(err_msg));
     }
 
-    let qdrant_url = match embedding_request.qdrant_url.as_deref() {
+    let qdrant_url = match embedding_request.vdb_server_url.as_deref() {
         Some(url) => url.to_string(),
         None => {
             let err_msg = "The VectorDB server URL is not provided.";
@@ -47,7 +47,7 @@ pub async fn rag_doc_chunks_to_embeddings(
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
     };
-    let qdrant_collection_name = match embedding_request.qdrant_collection_name.as_deref() {
+    let qdrant_collection_name = match embedding_request.vdb_collection_name.as_deref() {
         Some(name) => name.to_string(),
         None => {
             let err_msg = "The VectorDB collection name is not provided.";
@@ -74,6 +74,8 @@ pub async fn rag_doc_chunks_to_embeddings(
 
     // create a Qdrant client
     let mut qdrant_client = qdrant::Qdrant::new_with_url(qdrant_url);
+
+    // set the API key if provided
     if let Some(key) = embedding_request.vdb_api_key.as_deref() {
         if !key.is_empty() {
             #[cfg(feature = "logging")]
@@ -147,16 +149,17 @@ pub async fn rag_query_to_embeddings(
 /// * `score_threshold` - The minimum score of the retrieved results.
 pub async fn rag_retrieve_context(
     query_embedding: &[f32],
-    qdrant_url: impl AsRef<str>,
-    qdrant_collection_name: impl AsRef<str>,
+    vdb_server_url: impl AsRef<str>,
+    vdb_collection_name: impl AsRef<str>,
     limit: usize,
     score_threshold: Option<f32>,
+    vdb_api_key: Option<String>,
 ) -> Result<RetrieveObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
     {
         info!(target: "stdout", "Retrieve context.");
 
-        info!(target: "stdout", "qdrant_url: {}, qdrant_collection_name: {}, limit: {}, score_threshold: {}", qdrant_url.as_ref(), qdrant_collection_name.as_ref(), limit, score_threshold.unwrap_or_default());
+        info!(target: "stdout", "qdrant_url: {}, qdrant_collection_name: {}, limit: {}, score_threshold: {}", vdb_server_url.as_ref(), vdb_collection_name.as_ref(), limit, score_threshold.unwrap_or_default());
     }
 
     let running_mode = running_mode()?;
@@ -173,12 +176,22 @@ pub async fn rag_retrieve_context(
     }
 
     // create a Qdrant client
-    let qdrant_client = qdrant::Qdrant::new_with_url(qdrant_url.as_ref().to_string());
+    let mut qdrant_client = qdrant::Qdrant::new_with_url(vdb_server_url.as_ref().to_string());
+
+    // set the API key if provided
+    if let Some(key) = vdb_api_key.as_deref() {
+        if !key.is_empty() {
+            #[cfg(feature = "logging")]
+            debug!(target: "stdout", "Set the API key for the VectorDB server.");
+
+            qdrant_client.set_api_key(key);
+        }
+    }
 
     // search for similar points
     let scored_points = match qdrant_search_similar_points(
         &qdrant_client,
-        qdrant_collection_name.as_ref(),
+        vdb_collection_name.as_ref(),
         query_embedding,
         limit,
         score_threshold,
