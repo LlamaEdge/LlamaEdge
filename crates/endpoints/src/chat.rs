@@ -289,25 +289,27 @@ impl ChatCompletionRequestBuilder {
     ///
     /// # Arguments
     ///
-    /// * `url_vdb_server` - The URL of the VectorDB server.
+    /// * `vdb_server_url` - The URL of the VectorDB server.
     ///
-    /// * `collection_name` - The names of the collections in VectorDB.
+    /// * `vdb_collection_name` - The names of the collections in VectorDB.
     ///
     /// * `limit` - Max number of retrieved results. Note that the number of the values must be the same as the number of `collection_name`.
     ///
     /// * `score_threshold` - The score threshold for the retrieved results. Note that the number of the values must be the same as the number of `collection_name`.
     #[cfg(feature = "rag")]
-    pub fn with_qdrant_settings(
+    pub fn with_vdb_settings(
         mut self,
-        url_vdb_server: impl Into<String>,
-        collection_name: impl Into<Vec<String>>,
+        vdb_server_url: impl Into<String>,
+        vdb_collection_name: impl Into<Vec<String>>,
         limit: impl Into<Vec<u64>>,
         score_threshold: impl Into<Vec<f32>>,
+        vdb_api_key: Option<String>,
     ) -> Self {
-        self.req.url_vdb_server = Some(url_vdb_server.into());
-        self.req.collection_name = Some(collection_name.into());
+        self.req.vdb_server_url = Some(vdb_server_url.into());
+        self.req.vdb_collection_name = Some(vdb_collection_name.into());
         self.req.limit = Some(limit.into());
         self.req.score_threshold = Some(score_threshold.into());
+        self.req.vdb_api_key = vdb_api_key;
         self
     }
 
@@ -404,12 +406,15 @@ pub struct ChatCompletionRequest {
 
     /// The URL of the VectorDB server.
     #[cfg(feature = "rag")]
-    #[serde(rename = "url_vdb_server", skip_serializing_if = "Option::is_none")]
-    pub url_vdb_server: Option<String>,
+    #[serde(rename = "vdb_server_url", skip_serializing_if = "Option::is_none")]
+    pub vdb_server_url: Option<String>,
     /// The names of the collections in VectorDB.
     #[cfg(feature = "rag")]
-    #[serde(rename = "collection_name", skip_serializing_if = "Option::is_none")]
-    pub collection_name: Option<Vec<String>>,
+    #[serde(
+        rename = "vdb_collection_name",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub vdb_collection_name: Option<Vec<String>>,
     /// Max number of retrieved results. The number of the values must be the same as the number of `qdrant_collection_name`.
     #[cfg(feature = "rag")]
     #[serde(rename = "limit", skip_serializing_if = "Option::is_none")]
@@ -418,6 +423,10 @@ pub struct ChatCompletionRequest {
     #[cfg(feature = "rag")]
     #[serde(rename = "score_threshold", skip_serializing_if = "Option::is_none")]
     pub score_threshold: Option<Vec<f32>>,
+    /// The API key for the VectorDB server.
+    #[cfg(feature = "rag")]
+    #[serde(rename = "vdb_api_key", skip_serializing_if = "Option::is_none")]
+    pub vdb_api_key: Option<String>,
 }
 impl<'de> Deserialize<'de> for ChatCompletionRequest {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -458,13 +467,15 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 let mut tool_choice = None;
                 let mut context_window = None;
                 #[cfg(feature = "rag")]
-                let mut url_vdb_server = None;
+                let mut vdb_server_url = None;
                 #[cfg(feature = "rag")]
-                let mut collection_name = None;
+                let mut vdb_collection_name = None;
                 #[cfg(feature = "rag")]
                 let mut limit = None;
                 #[cfg(feature = "rag")]
                 let mut score_threshold = None;
+                #[cfg(feature = "rag")]
+                let mut vdb_api_key = None;
 
                 while let Some(key) = map.next_key::<String>()? {
                     match key.as_str() {
@@ -488,13 +499,15 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                         "tool_choice" => tool_choice = map.next_value()?,
                         "context_window" => context_window = map.next_value()?,
                         #[cfg(feature = "rag")]
-                        "url_vdb_server" => url_vdb_server = map.next_value()?,
+                        "vdb_server_url" => vdb_server_url = map.next_value()?,
                         #[cfg(feature = "rag")]
-                        "collection_name" => collection_name = map.next_value()?,
+                        "vdb_collection_name" => vdb_collection_name = map.next_value()?,
                         #[cfg(feature = "rag")]
                         "limit" => limit = map.next_value()?,
                         #[cfg(feature = "rag")]
                         "score_threshold" => score_threshold = map.next_value()?,
+                        #[cfg(feature = "rag")]
+                        "vdb_api_key" => vdb_api_key = map.next_value()?,
                         _ => return Err(de::Error::unknown_field(key.as_str(), FIELDS)),
                     }
                 }
@@ -552,13 +565,15 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     tool_choice,
                     context_window,
                     #[cfg(feature = "rag")]
-                    url_vdb_server,
+                    vdb_server_url,
                     #[cfg(feature = "rag")]
-                    collection_name,
+                    vdb_collection_name,
                     #[cfg(feature = "rag")]
                     limit,
                     #[cfg(feature = "rag")]
                     score_threshold,
+                    #[cfg(feature = "rag")]
+                    vdb_api_key,
                 })
             }
         }
@@ -584,13 +599,15 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
             "tool_choice",
             "context_window",
             #[cfg(feature = "rag")]
-            "url_vdb_server",
+            "vdb_server_url",
             #[cfg(feature = "rag")]
-            "collection_name",
+            "vdb_collection_name",
             #[cfg(feature = "rag")]
             "limit",
             #[cfg(feature = "rag")]
             "score_threshold",
+            #[cfg(feature = "rag")]
+            "vdb_api_key",
         ];
         deserializer.deserialize_struct(
             "ChatCompletionRequest",
@@ -622,13 +639,15 @@ impl Default for ChatCompletionRequest {
             tool_choice: None,
             context_window: Some(1),
             #[cfg(feature = "rag")]
-            url_vdb_server: None,
+            vdb_server_url: None,
             #[cfg(feature = "rag")]
-            collection_name: None,
+            vdb_collection_name: None,
             #[cfg(feature = "rag")]
             limit: None,
             #[cfg(feature = "rag")]
             score_threshold: None,
+            #[cfg(feature = "rag")]
+            vdb_api_key: None,
         }
     }
 }
@@ -974,17 +993,18 @@ fn test_chat_serialize_chat_request() {
             .with_reponse_format(ChatResponseFormat::default())
             .with_tools(vec![tool])
             .with_tool_choice(ToolChoice::Auto)
-            .with_qdrant_settings(
+            .with_vdb_settings(
                 "http://localhost:6333",
                 &["collection1".to_string(), "collection2".to_string()],
                 &[10, 20],
                 &[0.5, 0.6],
+                None,
             )
             .build();
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto","context_window":1,"url_vdb_server":"http://localhost:6333","collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6]}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto","context_window":1,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6]}"#
         );
     }
 }
@@ -1156,17 +1176,17 @@ fn test_chat_deserialize_chat_request() {
 
     #[cfg(feature = "rag")]
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"url_vdb_server":"http://localhost:6333","collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6]}"#;
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6]}"#;
 
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         let tool_choice = request.tool_choice.unwrap();
         assert_eq!(tool_choice, ToolChoice::None);
         assert_eq!(
-            request.url_vdb_server,
+            request.vdb_server_url,
             Some("http://localhost:6333".to_string())
         );
         assert_eq!(
-            request.collection_name,
+            request.vdb_collection_name,
             Some(vec!["collection1".to_string(), "collection2".to_string()])
         );
         assert_eq!(request.limit, Some(vec![10, 20]));
