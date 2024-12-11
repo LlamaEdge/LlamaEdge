@@ -1971,7 +1971,11 @@ fn post_process(
         } else {
             s.to_owned()
         }
-    } else if *template_ty == PromptTemplateType::Llama2Chat {
+    } else if *template_ty == PromptTemplateType::Llama2Chat
+        || *template_ty == PromptTemplateType::MoxinChat
+        || *template_ty == PromptTemplateType::NemotronTool
+        || *template_ty == PromptTemplateType::NemotronChat
+    {
         let s = output.as_ref().trim();
         if s.ends_with("</s>") {
             s.trim_end_matches("</s>").trim().to_owned()
@@ -1993,15 +1997,6 @@ fn post_process(
         let s = output.as_ref().trim();
         if s.ends_with("<|end|>") {
             s.trim_end_matches("<|end|>").trim().to_owned()
-        } else {
-            s.to_owned()
-        }
-    } else if *template_ty == PromptTemplateType::NemotronTool
-        || *template_ty == PromptTemplateType::NemotronChat
-    {
-        let s = output.as_ref().trim();
-        if s.ends_with("</s>") {
-            s.trim_end_matches("</s>").trim().to_owned()
         } else {
             s.to_owned()
         }
