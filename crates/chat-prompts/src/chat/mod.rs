@@ -11,6 +11,7 @@ pub mod llama;
 pub mod mediatek;
 pub mod minicpm;
 pub mod mistral;
+pub mod moxin;
 pub mod nvidia;
 pub mod octopus;
 pub mod openchat;
@@ -35,6 +36,7 @@ use llama::*;
 use mediatek::BreezeInstructPrompt;
 use minicpm::*;
 use mistral::*;
+use moxin::*;
 use nvidia::{NemotronChatPrompt, NemotronToolPrompt};
 use octopus::*;
 use openchat::*;
@@ -102,6 +104,7 @@ pub enum ChatPrompt {
     FunctionaryV32ToolPrompt,
     FunctionaryV31ToolPrompt,
     MiniCPMVPrompt,
+    MoxinChatPrompt,
 }
 impl From<PromptTemplateType> for ChatPrompt {
     fn from(ty: PromptTemplateType) -> Self {
@@ -176,6 +179,7 @@ impl From<PromptTemplateType> for ChatPrompt {
                 ChatPrompt::FunctionaryV31ToolPrompt(FunctionaryV31ToolPrompt)
             }
             PromptTemplateType::MiniCPMV => ChatPrompt::MiniCPMVPrompt(MiniCPMVPrompt),
+            PromptTemplateType::MoxinChat => ChatPrompt::MoxinChatPrompt(MoxinChatPrompt),
             PromptTemplateType::Embedding => {
                 panic!("Embedding prompt template is not used for building chat prompts")
             }
