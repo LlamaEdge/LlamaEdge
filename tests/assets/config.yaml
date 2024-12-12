@@ -1,0 +1,58 @@
+# This file is used to test the configuration of the LlamaEdge API Server.
+
+# Model configuration
+
+# comma-separated list for chat and embedding models. Comma-separated list for chat and embedding models, for example, ["model_1","model_2"].
+model-name: ["Qwen2-1.5B-Instruct"]
+# aliases for models. Comma-separated list for chat and embedding models, for example, ["default","embedding"].
+model-alias: ["default"]
+# required, context sizes for models. Comma-separated list for chat and embedding models, for example, [4096,384].
+ctx-size: [4096]
+# required,batch sizes for models. Comma-separated list for chat and embedding models, for example, [512,512].
+batch-size: [512]
+# required, prompt templates for models. Comma-separated list for chat and embedding models, for example, ["llama-2-chat","embedding"].
+prompt-template: ["chatml"]
+# optional halt generation prompt.
+reverse-prompt: null
+
+# Generation parameters
+
+# number of tokens to predict
+n-predict: 1024
+# number of layers to run on GPU
+n-gpu-layers: 100
+# main GPU to use
+main-gpu: null
+# GPU tensor split ratio (e.g., "3,2")
+tensor-split: null
+# number of computation threads
+threads: 2
+# disable memory mapping for chat models
+no-mmap: false
+
+# Sampling parameters
+
+# temperature for sampling
+temp: 1.0
+# nucleus sampling threshold
+top-p: 1.0
+# penalty for repeated tokens
+repeat-penalty: 1.1
+# repeat alpha presence penalty
+presence-penalty: 0.0
+# repeat alpha frequency penalty
+frequency-penalty: 0.0
+
+# Generation constraints
+
+# BNF-like grammar for generation
+grammar: ""
+# JSON schema for generation constraints
+json-schema: null
+# path to multimodal projector file
+llava-mmproj: null
+
+# Server configuration
+
+# socket address
+socket-addr: "0.0.0.0:8080"
