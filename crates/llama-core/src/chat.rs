@@ -1972,7 +1972,6 @@ fn post_process(
             s.to_owned()
         }
     } else if *template_ty == PromptTemplateType::Llama2Chat
-        || *template_ty == PromptTemplateType::MoxinChat
         || *template_ty == PromptTemplateType::NemotronTool
         || *template_ty == PromptTemplateType::NemotronChat
     {
@@ -2009,6 +2008,15 @@ fn post_process(
             s = s.trim_end_matches("<|eom_id|>").trim();
         }
         s.to_owned()
+    } else if *template_ty == PromptTemplateType::MoxinChat {
+        let s = output.as_ref().trim();
+        if s.ends_with("</s>") {
+            s.trim_end_matches("</s>").trim().to_owned()
+        } else if s.ends_with("[INST]") {
+            s.trim_end_matches("[INST]").trim().to_owned()
+        } else {
+            s.to_owned()
+        }
     } else {
         output.as_ref().trim().to_owned()
     };
