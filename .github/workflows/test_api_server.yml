@@ -104,7 +104,8 @@ jobs:
       - name: Start llama-api-server for testing `--config` CLI option
         run: |
           curl -LO https://huggingface.co/second-state/Qwen2-1.5B-Instruct-GGUF/resolve/main/Qwen2-1.5B-Instruct-Q3_K_M.gguf
-          nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:Qwen2-1.5B-Instruct-Q3_K_M.gguf llama-api-server.wasm --config ./tests/config.yaml > ./start-llamaedge.log 2>&1 &
+          cp ./tests/config.yaml ./config.yaml
+          nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:Qwen2-1.5B-Instruct-Q3_K_M.gguf llama-api-server.wasm --config config.yaml > ./start-llamaedge.log 2>&1 &
           sleep 15
           cat start-llamaedge.log
 
