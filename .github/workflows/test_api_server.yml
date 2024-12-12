@@ -101,6 +101,21 @@ jobs:
         run: |
           pkill -f wasmedge
 
+      - name: Start llama-api-server for testing `--config` CLI option
+        run: |
+          curl -LO https://huggingface.co/second-state/Qwen2-1.5B-Instruct-GGUF/resolve/main/Qwen2-1.5B-Instruct-Q3_K_M.gguf
+          nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:Qwen2-1.5B-Instruct-Q3_K_M.gguf llama-api-server.wasm --config ./tests/config.yaml > ./start-llamaedge.log 2>&1 &
+          sleep 15
+          cat start-llamaedge.log
+
+      - name: Run test_chat.hurl
+        run: |
+          hurl --test --jobs 1 ./tests/test_chat.hurl
+
+      - name: Stop llama-api-server for testing chat completions
+        run: |
+          pkill -f wasmedge
+
   test-api-server-macos-13:
     runs-on: macos-13
     needs: test-api-server-ubuntu
