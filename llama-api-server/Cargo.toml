@@ -9,6 +9,7 @@ endpoints.workspace = true
 chat-prompts.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+serde_yaml = "^0.9"
 hyper = { version = "0.14", features = ["full"] }
 tokio.workspace = true
 thiserror.workspace = true
