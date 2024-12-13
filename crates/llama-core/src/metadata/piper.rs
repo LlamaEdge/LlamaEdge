@@ -1,3 +1,5 @@
+//! Define metadata for the piper model.
+
 use super::BaseMetadata;
 use serde::{Deserialize, Serialize};
 

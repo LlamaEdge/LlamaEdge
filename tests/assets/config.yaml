@@ -1,0 +1,60 @@
+# This file is used to test the configuration of the LlamaEdge API Server.
+
+# Model configuration
+
+# Comma-separated list for chat and embedding models: first for chat model, second for embedding model, for example, ["chat_model_name","embedding_model_name"].
+model-name: ["Qwen2-1.5B-Instruct"]
+# Aliases for models. Comma-separated list for chat and embedding models: first for chat model, second for embedding model, for example, ["default","embedding"].
+model-alias: ["default"]
+# Context sizes. Comma-separated list for chat and embedding models: first for chat model, second for embedding model, for example, [4096,384].
+ctx-size: [4096]
+# Batch sizes. Comma-separated list for chat and embedding models: first for chat model, second for embedding model, for example, [512,512].
+batch-size: [512]
+# Prompt templates. Comma-separated list for chat and embedding models: first for chat model, second for embedding model, for example, ["llama-2-chat","embedding"].
+prompt-template: ["chatml"]
+# Optional. Halt generation prompt for chat model.
+reverse-prompt: null
+
+# The following parameters are for chat model.
+
+## Generation parameters
+
+# Number of tokens to predict
+n-predict: 1024
+# Number of layers to run on GPU
+n-gpu-layers: 100
+# Main GPU to use
+main-gpu: null
+# GPU tensor split ratio (e.g., "3,2")
+tensor-split: null
+# Number of computation threads
+threads: 2
+# Disable memory mapping for chat models
+no-mmap: false
+
+## Sampling parameters
+
+# Temperature for sampling
+temp: 1.0
+# Nucleus sampling threshold
+top-p: 1.0
+# Penalty for repeated tokens
+repeat-penalty: 1.1
+# Repeat alpha presence penalty
+presence-penalty: 0.0
+# Repeat alpha frequency penalty
+frequency-penalty: 0.0
+
+## Generation constraints
+
+# BNF-like grammar for generation
+grammar: ""
+# JSON schema for generation constraints
+json-schema: null
+# Path to multimodal projector file
+llava-mmproj: null
+
+## Server configuration
+
+# Socket address
+socket-addr: "0.0.0.0:8080"

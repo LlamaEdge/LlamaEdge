@@ -26,9 +26,9 @@ pub mod utils;
 
 pub use error::LlamaCoreError;
 pub use graph::{EngineType, Graph, GraphBuilder};
-pub use metadata::{
-    ggml::GgmlMetadata, piper::PiperMetadata, whisper::WhisperMetadata, BaseMetadata,
-};
+#[cfg(feature = "whisper")]
+use metadata::whisper::WhisperMetadata;
+pub use metadata::{ggml::GgmlMetadata, piper::PiperMetadata, BaseMetadata};
 
 use once_cell::sync::OnceCell;
 use std::{
@@ -54,6 +54,7 @@ pub(crate) static SD_TEXT_TO_IMAGE: OnceCell<Mutex<TextToImage>> = OnceCell::new
 // stable diffusion context for the image-to-image task
 pub(crate) static SD_IMAGE_TO_IMAGE: OnceCell<Mutex<ImageToImage>> = OnceCell::new();
 // context for the audio task
+#[cfg(feature = "whisper")]
 pub(crate) static AUDIO_GRAPH: OnceCell<Mutex<Graph<WhisperMetadata>>> = OnceCell::new();
 // context for the piper task
 pub(crate) static PIPER_GRAPH: OnceCell<Mutex<Graph<PiperMetadata>>> = OnceCell::new();
@@ -61,6 +62,8 @@ pub(crate) static PIPER_GRAPH: OnceCell<Mutex<Graph<PiperMetadata>>> = OnceCell:
 pub(crate) const MAX_BUFFER_SIZE: usize = 2usize.pow(14) * 15 + 128;
 pub(crate) const OUTPUT_TENSOR: usize = 0;
 const PLUGIN_VERSION: usize = 1;
+
+/// The directory for storing the archives in wasm virtual file system.
 pub const ARCHIVES_DIR: &str = "archives";
 
 /// Initialize the ggml context
@@ -952,27 +955,45 @@ pub enum StableDiffusionTask {
 }
 
 /// Initialize the whisper context
-pub fn init_whisper_context(
-    whisper_metadata: &WhisperMetadata,
-    model_file: impl AsRef<Path>,
-) -> Result<(), LlamaCoreError> {
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Initializing the audio context");
-
+#[cfg(feature = "whisper")]
+pub fn init_whisper_context(whisper_metadata: &WhisperMetadata) -> Result<(), LlamaCoreError> {
     // create and initialize the audio context
     let graph = GraphBuilder::new(EngineType::Whisper)?
         .with_config(whisper_metadata.clone())?
         .use_cpu()
-        .build_from_files([model_file.as_ref()])?;
+        .build_from_files([&whisper_metadata.model_path])?;
 
-    AUDIO_GRAPH.set(Mutex::new(graph)).map_err(|_| {
-            let err_msg = "Failed to initialize the audio context. Reason: The `AUDIO_GRAPH` has already been initialized";
-
+    match AUDIO_GRAPH.get() {
+        Some(mutex_graph) => {
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            info!(target: "stdout", "Re-initialize the audio context");
 
-            LlamaCoreError::InitContext(err_msg.into())
-        })?;
+            match mutex_graph.lock() {
+                Ok(mut locked_graph) => *locked_graph = graph,
+                Err(e) => {
+                    let err_msg = format!("Failed to lock the graph. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "stdout", "{}", err_msg);
+
+                    return Err(LlamaCoreError::InitContext(err_msg));
+                }
+            }
+        }
+        None => {
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "Initialize the audio context");
+
+            AUDIO_GRAPH.set(Mutex::new(graph)).map_err(|_| {
+                let err_msg = "Failed to initialize the audio context. Reason: The `AUDIO_GRAPH` has already been initialized";
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", err_msg);
+
+                LlamaCoreError::InitContext(err_msg.into())
+            })?;
+        }
+    }
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "The audio context has been initialized");

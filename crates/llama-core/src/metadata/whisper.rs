@@ -1,5 +1,8 @@
+//! Define metadata for the whisper model.
+
 use super::BaseMetadata;
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 
 /// The sample rate of the audio input
 pub const WHISPER_SAMPLE_RATE: usize = 16000;
@@ -18,6 +21,11 @@ impl WhisperMetadataBuilder {
         };
 
         Self { metadata }
+    }
+
+    pub fn with_model_path(mut self, model_path: impl AsRef<Path>) -> Self {
+        self.metadata.model_path = model_path.as_ref().to_path_buf();
+        self
     }
 
     pub fn enable_plugin_log(mut self, enable: bool) -> Self {
@@ -129,6 +137,9 @@ pub struct WhisperMetadata {
     // this field not defined for the beckend plugin
     #[serde(skip_serializing)]
     pub model_alias: String,
+    // path to the model file
+    #[serde(skip_serializing)]
+    pub model_path: PathBuf,
 
     #[serde(rename = "enable-log")]
     pub log_enable: bool,
@@ -185,6 +196,7 @@ impl Default for WhisperMetadata {
         Self {
             model_name: String::new(),
             model_alias: String::new(),
+            model_path: PathBuf::new(),
             log_enable: false,
             debug_log: false,
             threads: 4,

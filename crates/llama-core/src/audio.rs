@@ -1,16 +1,20 @@
 //! Define APIs for audio generation, transcription, and translation.
 
-use crate::{
-    error::LlamaCoreError, utils::set_tensor_data, AUDIO_GRAPH, MAX_BUFFER_SIZE, PIPER_GRAPH,
-};
+#[cfg(feature = "whisper")]
+use crate::AUDIO_GRAPH;
+use crate::{error::LlamaCoreError, utils::set_tensor_data, MAX_BUFFER_SIZE, PIPER_GRAPH};
+use endpoints::audio::speech::SpeechRequest;
+#[cfg(feature = "whisper")]
 use endpoints::audio::{
-    speech::SpeechRequest,
     transcription::{TranscriptionObject, TranscriptionRequest},
     translation::{TranslationObject, TranslationRequest},
 };
+#[cfg(feature = "whisper")]
 use std::path::Path;
 
 /// Transcribe audio into the input language.
+#[cfg(feature = "whisper")]
+#[cfg_attr(docsrs, doc(cfg(feature = "whisper")))]
 pub async fn audio_transcriptions(
     request: TranscriptionRequest,
 ) -> Result<TranscriptionObject, LlamaCoreError> {
@@ -44,18 +48,17 @@ pub async fn audio_transcriptions(
     // check if the model metadata should be updated
     {
         let mut should_update = false;
-        let mut metadata = graph.metadata.clone();
 
         #[cfg(feature = "logging")]
-        info!(target: "stdout", "current metadata: {:?}", &metadata);
+        info!(target: "stdout", "current metadata: {:?}", &graph.metadata);
 
         #[cfg(feature = "logging")]
         info!(target: "stdout", "Check model metadata.");
 
         // check `translate` field
-        if metadata.translate {
+        if graph.metadata.translate {
             // update the metadata
-            metadata.translate = false;
+            graph.metadata.translate = false;
 
             if !should_update {
                 should_update = true;
@@ -64,9 +67,9 @@ pub async fn audio_transcriptions(
 
         // check `language` field
         if let Some(language) = &request.language {
-            if *language != metadata.language {
+            if *language != graph.metadata.language {
                 // update the metadata
-                metadata.language = language.clone();
+                graph.metadata.language = language.clone();
 
                 if !should_update {
                     should_update = true;
@@ -76,9 +79,9 @@ pub async fn audio_transcriptions(
 
         // check `detect_language` field
         if let Some(detect_language) = &request.detect_language {
-            if *detect_language != metadata.detect_language {
+            if *detect_language != graph.metadata.detect_language {
                 // update the metadata
-                metadata.detect_language = *detect_language;
+                graph.metadata.detect_language = *detect_language;
 
                 if !should_update {
                     should_update = true;
@@ -88,9 +91,9 @@ pub async fn audio_transcriptions(
 
         // check `offset_time` field
         if let Some(offset_time) = &request.offset_time {
-            if *offset_time != metadata.offset_time {
+            if *offset_time != graph.metadata.offset_time {
                 // update the metadata
-                metadata.offset_time = *offset_time;
+                graph.metadata.offset_time = *offset_time;
 
                 if !should_update {
                     should_update = true;
@@ -100,9 +103,9 @@ pub async fn audio_transcriptions(
 
         // check `duration` field
         if let Some(duration) = &request.duration {
-            if *duration != metadata.duration {
+            if *duration != graph.metadata.duration {
                 // update the metadata
-                metadata.duration = *duration;
+                graph.metadata.duration = *duration;
 
                 if !should_update {
                     should_update = true;
@@ -112,9 +115,9 @@ pub async fn audio_transcriptions(
 
         // check `max_context` field
         if let Some(max_context) = &request.max_context {
-            if *max_context != metadata.max_context {
+            if *max_context != graph.metadata.max_context {
                 // update the metadata
-                metadata.max_context = *max_context;
+                graph.metadata.max_context = *max_context;
 
                 if !should_update {
                     should_update = true;
@@ -124,9 +127,9 @@ pub async fn audio_transcriptions(
 
         // check `max_len` field
         if let Some(max_len) = &request.max_len {
-            if *max_len != metadata.max_len {
+            if *max_len != graph.metadata.max_len {
                 // update the metadata
-                metadata.max_len = *max_len;
+                graph.metadata.max_len = *max_len;
 
                 if !should_update {
                     should_update = true;
@@ -136,9 +139,9 @@ pub async fn audio_transcriptions(
 
         // check `temperature` field
         if let Some(temperature) = &request.temperature {
-            if *temperature != metadata.temperature {
+            if *temperature != graph.metadata.temperature {
                 // update the metadata
-                metadata.temperature = *temperature;
+                graph.metadata.temperature = *temperature;
 
                 if !should_update {
                     should_update = true;
@@ -148,9 +151,9 @@ pub async fn audio_transcriptions(
 
         // check `split_on_word` field
         if let Some(split_on_word) = &request.split_on_word {
-            if *split_on_word != metadata.split_on_word {
+            if *split_on_word != graph.metadata.split_on_word {
                 // update the metadata
-                metadata.split_on_word = *split_on_word;
+                graph.metadata.split_on_word = *split_on_word;
 
                 if !should_update {
                     should_update = true;
@@ -160,9 +163,9 @@ pub async fn audio_transcriptions(
 
         // check `prompt` field
         if let Some(prompt) = &request.prompt {
-            if *prompt != metadata.prompt {
+            if *prompt != graph.metadata.prompt {
                 // update the metadata
-                metadata.prompt = prompt.clone();
+                graph.metadata.prompt = prompt.clone();
 
                 if !should_update {
                     should_update = true;
@@ -171,13 +174,13 @@ pub async fn audio_transcriptions(
         }
 
         #[cfg(feature = "logging")]
-        info!(target: "stdout", "metadata: {:?}", &metadata);
+        info!(target: "stdout", "metadata: {:?}", &graph.metadata);
 
         if should_update {
             #[cfg(feature = "logging")]
             info!(target: "stdout", "Set the metadata to the model.");
 
-            match serde_json::to_string(&metadata) {
+            match serde_json::to_string(&graph.metadata) {
                 Ok(config) => {
                     // update metadata
                     set_tensor_data(&mut graph, 1, config.as_bytes(), [1])?;
@@ -274,6 +277,7 @@ pub async fn audio_transcriptions(
     Ok(obj)
 }
 
+#[cfg(feature = "whisper")]
 fn load_audio_waveform(filename: impl AsRef<std::path::Path>) -> Result<Vec<u8>, LlamaCoreError> {
     std::fs::read(filename)
         .map_err(|e| {
@@ -300,75 +304,9 @@ fn _remove_blank_audio(input: &str) -> String {
     filtered_segments.join("\n")
 }
 
-/// Generate audio from the input text.
-pub async fn create_speech(request: SpeechRequest) -> Result<Vec<u8>, LlamaCoreError> {
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "processing audio speech request");
-
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Get the model instance.");
-    let graph = match PIPER_GRAPH.get() {
-        Some(graph) => graph,
-        None => {
-            let err_msg = "The PIPER_GRAPH is not initialized.";
-
-            #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", &err_msg);
-
-            return Err(LlamaCoreError::Operation(err_msg.to_owned()));
-        }
-    };
-
-    let mut graph = match graph.lock() {
-        Ok(graph) => graph,
-        Err(e) => {
-            let err_msg = format!("Failed to lock the graph. {}", e);
-
-            #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", &err_msg);
-
-            return Err(LlamaCoreError::Operation(err_msg));
-        }
-    };
-
-    // set the input tensor
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Feed the text to the model.");
-    set_tensor_data(&mut graph, 0, request.input.as_bytes(), [1])?;
-
-    // compute the graph
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "create audio.");
-    if let Err(e) = graph.compute() {
-        let err_msg = format!("Failed to compute the graph. {}", e);
-
-        #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", &err_msg);
-
-        return Err(LlamaCoreError::Operation(err_msg));
-    }
-
-    // get the output tensor
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "[INFO] Retrieve the audio.");
-
-    let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
-    let output_size = graph.get_output(0, &mut output_buffer).map_err(|e| {
-        let err_msg = format!("Failed to get the output tensor. {}", e);
-
-        #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", &err_msg);
-
-        LlamaCoreError::Operation(err_msg)
-    })?;
-
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Output buffer size: {}", output_size);
-
-    Ok(output_buffer)
-}
-
 /// Translate audio into the target language
+#[cfg(feature = "whisper")]
+#[cfg_attr(docsrs, doc(cfg(feature = "whisper")))]
 pub async fn audio_translations(
     request: TranslationRequest,
 ) -> Result<TranslationObject, LlamaCoreError> {
@@ -402,15 +340,16 @@ pub async fn audio_translations(
     // check if the model metadata should be updated
     {
         let mut should_update = false;
-        let mut metadata = graph.metadata.clone();
+
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "current metadata: {:?}", &graph.metadata);
 
         #[cfg(feature = "logging")]
         info!(target: "stdout", "Check model metadata.");
 
         // check `translate` field
-        if !metadata.translate {
-            // update the metadata
-            metadata.translate = true;
+        if !graph.metadata.translate {
+            graph.metadata.translate = true;
 
             if !should_update {
                 should_update = true;
@@ -419,9 +358,8 @@ pub async fn audio_translations(
 
         // check `language` field
         if let Some(language) = &request.language {
-            if *language != metadata.language {
-                // update the metadata
-                metadata.language = language.clone();
+            if *language != graph.metadata.language {
+                graph.metadata.language = language.clone();
 
                 if !should_update {
                     should_update = true;
@@ -431,9 +369,8 @@ pub async fn audio_translations(
 
         // check `detect_language` field
         if let Some(detect_language) = &request.detect_language {
-            if *detect_language != metadata.detect_language {
-                // update the metadata
-                metadata.detect_language = *detect_language;
+            if *detect_language != graph.metadata.detect_language {
+                graph.metadata.detect_language = *detect_language;
 
                 if !should_update {
                     should_update = true;
@@ -443,9 +380,9 @@ pub async fn audio_translations(
 
         // check `offset_time` field
         if let Some(offset_time) = &request.offset_time {
-            if *offset_time != metadata.offset_time {
+            if *offset_time != graph.metadata.offset_time {
                 // update the metadata
-                metadata.offset_time = *offset_time;
+                graph.metadata.offset_time = *offset_time;
 
                 if !should_update {
                     should_update = true;
@@ -455,9 +392,8 @@ pub async fn audio_translations(
 
         // check `duration` field
         if let Some(duration) = &request.duration {
-            if *duration != metadata.duration {
-                // update the metadata
-                metadata.duration = *duration;
+            if *duration != graph.metadata.duration {
+                graph.metadata.duration = *duration;
 
                 if !should_update {
                     should_update = true;
@@ -467,9 +403,8 @@ pub async fn audio_translations(
 
         // check `max_context` field
         if let Some(max_context) = &request.max_context {
-            if *max_context != metadata.max_context {
-                // update the metadata
-                metadata.max_context = *max_context;
+            if *max_context != graph.metadata.max_context {
+                graph.metadata.max_context = *max_context;
 
                 if !should_update {
                     should_update = true;
@@ -479,9 +414,8 @@ pub async fn audio_translations(
 
         // check `max_len` field
         if let Some(max_len) = &request.max_len {
-            if *max_len != metadata.max_len {
-                // update the metadata
-                metadata.max_len = *max_len;
+            if *max_len != graph.metadata.max_len {
+                graph.metadata.max_len = *max_len;
 
                 if !should_update {
                     should_update = true;
@@ -491,9 +425,8 @@ pub async fn audio_translations(
 
         // check `temperature` field
         if let Some(temperature) = &request.temperature {
-            if *temperature != metadata.temperature {
-                // update the metadata
-                metadata.temperature = *temperature;
+            if *temperature != graph.metadata.temperature {
+                graph.metadata.temperature = *temperature;
 
                 if !should_update {
                     should_update = true;
@@ -503,9 +436,8 @@ pub async fn audio_translations(
 
         // check `split_on_word` field
         if let Some(split_on_word) = &request.split_on_word {
-            if *split_on_word != metadata.split_on_word {
-                // update the metadata
-                metadata.split_on_word = *split_on_word;
+            if *split_on_word != graph.metadata.split_on_word {
+                graph.metadata.split_on_word = *split_on_word;
 
                 if !should_update {
                     should_update = true;
@@ -515,9 +447,8 @@ pub async fn audio_translations(
 
         // check `prompt` field
         if let Some(prompt) = &request.prompt {
-            if *prompt != metadata.prompt {
-                // update the metadata
-                metadata.prompt = prompt.clone();
+            if *prompt != graph.metadata.prompt {
+                graph.metadata.prompt = prompt.clone();
 
                 if !should_update {
                     should_update = true;
@@ -526,13 +457,13 @@ pub async fn audio_translations(
         }
 
         #[cfg(feature = "logging")]
-        info!(target: "stdout", "metadata: {:?}", &metadata);
+        info!(target: "stdout", "metadata: {:?}", &graph.metadata);
 
         if should_update {
             #[cfg(feature = "logging")]
             info!(target: "stdout", "Set the metadata to the model.");
 
-            match serde_json::to_string(&metadata) {
+            match serde_json::to_string(&graph.metadata) {
                 Ok(config) => {
                     // update metadata
                     set_tensor_data(&mut graph, 1, config.as_bytes(), [1])?;
@@ -624,4 +555,72 @@ pub async fn audio_translations(
     info!(target: "stdout", "End of the audio translation.");
 
     Ok(obj)
+}
+
+/// Generate audio from the input text.
+pub async fn create_speech(request: SpeechRequest) -> Result<Vec<u8>, LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "processing audio speech request");
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Get the model instance.");
+    let graph = match PIPER_GRAPH.get() {
+        Some(graph) => graph,
+        None => {
+            let err_msg = "The PIPER_GRAPH is not initialized.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.to_owned()));
+        }
+    };
+
+    let mut graph = match graph.lock() {
+        Ok(graph) => graph,
+        Err(e) => {
+            let err_msg = format!("Failed to lock the graph. {}", e);
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg));
+        }
+    };
+
+    // set the input tensor
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Feed the text to the model.");
+    set_tensor_data(&mut graph, 0, request.input.as_bytes(), [1])?;
+
+    // compute the graph
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "create audio.");
+    if let Err(e) = graph.compute() {
+        let err_msg = format!("Failed to compute the graph. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        return Err(LlamaCoreError::Operation(err_msg));
+    }
+
+    // get the output tensor
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "[INFO] Retrieve the audio.");
+
+    let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
+    let output_size = graph.get_output(0, &mut output_buffer).map_err(|e| {
+        let err_msg = format!("Failed to get the output tensor. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Output buffer size: {}", output_size);
+
+    Ok(output_buffer)
 }

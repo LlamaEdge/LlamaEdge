@@ -23,12 +23,19 @@ pub struct EmbeddingRequest {
 
     /// The URL of the VectorDB server.
     #[cfg(feature = "rag")]
-    #[serde(rename = "url_vdb_server", skip_serializing_if = "Option::is_none")]
-    pub qdrant_url: Option<String>,
+    #[serde(rename = "vdb_server_url", skip_serializing_if = "Option::is_none")]
+    pub vdb_server_url: Option<String>,
     /// The name of the collection in VectorDB.
     #[cfg(feature = "rag")]
-    #[serde(rename = "collection_name", skip_serializing_if = "Option::is_none")]
-    pub qdrant_collection_name: Option<String>,
+    #[serde(
+        rename = "vdb_collection_name",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub vdb_collection_name: Option<String>,
+    /// The API key for the VectorDB server.
+    #[cfg(feature = "rag")]
+    #[serde(rename = "vdb_api_key", skip_serializing_if = "Option::is_none")]
+    pub vdb_api_key: Option<String>,
 }
 
 #[test]
@@ -39,9 +46,11 @@ fn test_embedding_serialize_embedding_request() {
         encoding_format: None,
         user: None,
         #[cfg(feature = "rag")]
-        qdrant_url: None,
+        vdb_server_url: None,
         #[cfg(feature = "rag")]
-        qdrant_collection_name: None,
+        vdb_collection_name: None,
+        #[cfg(feature = "rag")]
+        vdb_api_key: None,
     };
     let serialized = serde_json::to_string(&embedding_request).unwrap();
     assert_eq!(
@@ -55,9 +64,11 @@ fn test_embedding_serialize_embedding_request() {
         encoding_format: None,
         user: None,
         #[cfg(feature = "rag")]
-        qdrant_url: None,
+        vdb_server_url: None,
         #[cfg(feature = "rag")]
-        qdrant_collection_name: None,
+        vdb_collection_name: None,
+        #[cfg(feature = "rag")]
+        vdb_api_key: None,
     };
     let serialized = serde_json::to_string(&embedding_request).unwrap();
     assert_eq!(
@@ -91,6 +102,12 @@ fn test_embedding_deserialize_embedding_request() {
     );
     assert_eq!(embedding_request.encoding_format, None);
     assert_eq!(embedding_request.user, None);
+    #[cfg(feature = "rag")]
+    assert_eq!(embedding_request.vdb_server_url, None);
+    #[cfg(feature = "rag")]
+    assert_eq!(embedding_request.vdb_collection_name, None);
+    #[cfg(feature = "rag")]
+    assert_eq!(embedding_request.vdb_api_key, None);
 }
 
 /// Defines the input text for the embedding request.

@@ -798,12 +798,12 @@ fn compute_by_graph(
                         && graph.metadata.prompt_template != PromptTemplateType::FunctionaryV32
                         && graph.metadata.prompt_template != PromptTemplateType::FunctionaryV31
                     {
-                        let err_msg = "The tool use is only supported for 'mistral-tool', 'chatml', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', and 'functionary-32' prompt templates.";
+                        let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', and 'functionary-32' prompt templates.", graph.metadata.prompt_template);
 
                         #[cfg(feature = "logging")]
                         error!(target: "stdout", "{}", &err_msg);
 
-                        return Err(LlamaCoreError::Operation(err_msg.into()));
+                        return Err(LlamaCoreError::Operation(err_msg));
                     }
 
                     let parsed_result = parse_tool_calls(&message, graph.metadata.prompt_template)?;
@@ -1971,7 +1971,10 @@ fn post_process(
         } else {
             s.to_owned()
         }
-    } else if *template_ty == PromptTemplateType::Llama2Chat {
+    } else if *template_ty == PromptTemplateType::Llama2Chat
+        || *template_ty == PromptTemplateType::NemotronTool
+        || *template_ty == PromptTemplateType::NemotronChat
+    {
         let s = output.as_ref().trim();
         if s.ends_with("</s>") {
             s.trim_end_matches("</s>").trim().to_owned()
@@ -1996,15 +1999,6 @@ fn post_process(
         } else {
             s.to_owned()
         }
-    } else if *template_ty == PromptTemplateType::NemotronTool
-        || *template_ty == PromptTemplateType::NemotronChat
-    {
-        let s = output.as_ref().trim();
-        if s.ends_with("</s>") {
-            s.trim_end_matches("</s>").trim().to_owned()
-        } else {
-            s.to_owned()
-        }
     } else if *template_ty == PromptTemplateType::FunctionaryV31 {
         let mut s = output.as_ref().trim();
         if s.ends_with("<|eot_id|>") {
@@ -2014,6 +2008,15 @@ fn post_process(
             s = s.trim_end_matches("<|eom_id|>").trim();
         }
         s.to_owned()
+    } else if *template_ty == PromptTemplateType::MoxinChat {
+        let s = output.as_ref().trim();
+        if s.ends_with("</s>") {
+            s.trim_end_matches("</s>").trim().to_owned()
+        } else if s.ends_with("[INST]") {
+            s.trim_end_matches("[INST]").trim().to_owned()
+        } else {
+            s.to_owned()
+        }
     } else {
         output.as_ref().trim().to_owned()
     };
