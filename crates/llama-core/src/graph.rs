@@ -103,7 +103,7 @@ impl<M: BaseMetadata + serde::Serialize + Clone + Default> GraphBuilder<M> {
         Ok(Graph {
             created,
             metadata: self.metadata.clone().unwrap_or_default(),
-            _graph: graph,
+            graph,
             context,
         })
     }
@@ -149,7 +149,7 @@ impl<M: BaseMetadata + serde::Serialize + Clone + Default> GraphBuilder<M> {
         Ok(Graph {
             created,
             metadata: self.metadata.clone().unwrap_or_default(),
-            _graph: graph,
+            graph,
             context,
         })
     }
@@ -194,7 +194,7 @@ impl<M: BaseMetadata + serde::Serialize + Clone + Default> GraphBuilder<M> {
                 Ok(Graph {
                     created,
                     metadata: metadata.clone(),
-                    _graph: graph,
+                    graph,
                     context,
                 })
             }
@@ -217,7 +217,7 @@ impl<M: BaseMetadata + serde::Serialize + Clone + Default> GraphBuilder<M> {
 pub struct Graph<M: BaseMetadata + serde::Serialize + Clone + Default> {
     pub created: std::time::Duration,
     pub metadata: M,
-    _graph: WasiNnGraph,
+    graph: WasiNnGraph,
     context: GraphExecutionContext,
 }
 impl<M: BaseMetadata + serde::Serialize + Clone + Default> Graph<M> {
@@ -272,7 +272,7 @@ impl<M: BaseMetadata + serde::Serialize + Clone + Default> Graph<M> {
         Ok(Self {
             created,
             metadata: metadata.clone(),
-            _graph: graph,
+            graph,
             context,
         })
     }
@@ -361,6 +361,20 @@ impl<M: BaseMetadata + serde::Serialize + Clone + Default> Graph<M> {
     /// Note that this method is used for the stream mode. It clears the context after the stream mode is finished.
     pub fn finish_single(&mut self) -> Result<(), WasiNnError> {
         self.context.fini_single()
+    }
+}
+impl<M: BaseMetadata + serde::Serialize + Clone + Default> Drop for Graph<M> {
+    fn drop(&mut self) {
+        // unload the wasi-nn graph
+        if let Err(e) = self.graph.unload() {
+            let err_msg = format!("Failed to unload the wasi-nn graph. Reason: {}", e);
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            #[cfg(not(feature = "logging"))]
+            eprintln!("{}", err_msg);
+        }
     }
 }
 
