@@ -2,57 +2,59 @@
 
 # Model configuration
 
-# comma-separated list for chat and embedding models. Comma-separated list for chat and embedding models, for example, ["model_1","model_2"].
+# Comma-separated list for chat and embedding models: first for chat model, second for embedding model, for example, ["chat_model_name","embedding_model_name"].
 model-name: ["Qwen2-1.5B-Instruct"]
-# aliases for models. Comma-separated list for chat and embedding models, for example, ["default","embedding"].
+# Aliases for models. Comma-separated list for chat and embedding models: first for chat model, second for embedding model, for example, ["default","embedding"].
 model-alias: ["default"]
-# required, context sizes for models. Comma-separated list for chat and embedding models, for example, [4096,384].
+# Context sizes. Comma-separated list for chat and embedding models: first for chat model, second for embedding model, for example, [4096,384].
 ctx-size: [4096]
-# required,batch sizes for models. Comma-separated list for chat and embedding models, for example, [512,512].
+# Batch sizes. Comma-separated list for chat and embedding models: first for chat model, second for embedding model, for example, [512,512].
 batch-size: [512]
-# required, prompt templates for models. Comma-separated list for chat and embedding models, for example, ["llama-2-chat","embedding"].
+# Prompt templates. Comma-separated list for chat and embedding models: first for chat model, second for embedding model, for example, ["llama-2-chat","embedding"].
 prompt-template: ["chatml"]
-# optional halt generation prompt.
+# Optional. Halt generation prompt for chat model.
 reverse-prompt: null
 
-# Generation parameters
+# The following parameters are for chat model.
 
-# number of tokens to predict
+## Generation parameters
+
+# Number of tokens to predict
 n-predict: 1024
-# number of layers to run on GPU
+# Number of layers to run on GPU
 n-gpu-layers: 100
-# main GPU to use
+# Main GPU to use
 main-gpu: null
 # GPU tensor split ratio (e.g., "3,2")
 tensor-split: null
-# number of computation threads
+# Number of computation threads
 threads: 2
-# disable memory mapping for chat models
+# Disable memory mapping for chat models
 no-mmap: false
 
-# Sampling parameters
+## Sampling parameters
 
-# temperature for sampling
+# Temperature for sampling
 temp: 1.0
-# nucleus sampling threshold
+# Nucleus sampling threshold
 top-p: 1.0
-# penalty for repeated tokens
+# Penalty for repeated tokens
 repeat-penalty: 1.1
-# repeat alpha presence penalty
+# Repeat alpha presence penalty
 presence-penalty: 0.0
-# repeat alpha frequency penalty
+# Repeat alpha frequency penalty
 frequency-penalty: 0.0
 
-# Generation constraints
+## Generation constraints
 
 # BNF-like grammar for generation
 grammar: ""
 # JSON schema for generation constraints
 json-schema: null
-# path to multimodal projector file
+# Path to multimodal projector file
 llava-mmproj: null
 
-# Server configuration
+## Server configuration
 
-# socket address
+# Socket address
 socket-addr: "0.0.0.0:8080"
