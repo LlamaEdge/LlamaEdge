@@ -980,7 +980,7 @@ async fn handle_request(
 
             if let Some(stored_api_key) = LLAMA_API_KEY.get() {
                 if api_key != stored_api_key {
-                    let err_msg = format!("Invalid API key.");
+                    let err_msg = "Invalid API key.";
                     return Ok(error::unauthorized(err_msg));
                 }
             }
