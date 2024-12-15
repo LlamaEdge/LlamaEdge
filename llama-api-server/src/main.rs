@@ -28,6 +28,9 @@ type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 // server info
 pub(crate) static SERVER_INFO: OnceCell<ServerInfo> = OnceCell::new();
 
+// API key
+pub(crate) static LLAMA_API_KEY: OnceCell<String> = OnceCell::new();
+
 // default port
 const DEFAULT_PORT: &str = "8080";
 
@@ -515,6 +518,17 @@ async fn main() -> Result<(), ServerError> {
 
     info!(target: "stdout", "log_level: {}", log_level);
 
+    if let Ok(api_key) = std::env::var("API_KEY") {
+        // define a const variable for the API key
+        if let Err(e) = LLAMA_API_KEY.set(api_key) {
+            let err_msg = format!("Failed to set API key. {}", e);
+
+            error!(target: "stdout", "{}", err_msg);
+
+            return Err(ServerError::Operation(err_msg));
+        }
+    }
+
     // parse the command line arguments
     let mut cli = Cli::parse();
 
@@ -950,11 +964,35 @@ async fn handle_request(
     let root_path = path_iter.next().unwrap_or_default();
     let root_path = "/".to_owned() + root_path.to_str().unwrap_or_default();
 
+    // check if the API key is valid
+    if let Some(auth_header) = req.headers().get("authorization") {
+        if !auth_header.is_empty() {
+            let auth_header = match auth_header.to_str() {
+                Ok(auth_header) => auth_header,
+                Err(e) => {
+                    let err_msg = format!("Failed to get authorization header: {}", e);
+                    return Ok(error::unauthorized(err_msg));
+                }
+            };
+
+            let api_key = auth_header.split(" ").nth(1).unwrap_or_default();
+            info!(target: "stdout", "API Key: {}", api_key);
+
+            if let Some(stored_api_key) = LLAMA_API_KEY.get() {
+                if api_key != stored_api_key {
+                    let err_msg = format!("Invalid API key.");
+                    return Ok(error::unauthorized(err_msg));
+                }
+            }
+        }
+    }
+
     // log request
     {
         let method = hyper::http::Method::as_str(req.method()).to_string();
         let path = req.uri().path().to_string();
         let version = format!("{:?}", req.version());
+
         if req.method() == hyper::http::Method::POST {
             let size: u64 = match req.headers().get("content-length") {
                 Some(content_length) => content_length.to_str().unwrap().parse().unwrap(),
