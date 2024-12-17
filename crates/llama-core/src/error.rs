@@ -16,11 +16,17 @@ pub enum LlamaCoreError {
     Backend(#[from] BackendError),
     /// Errors thrown by the Search Backend
     #[cfg(feature = "search")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "search")))]
     #[error("{0}")]
     Search(String),
     /// Errors in file not found.
     #[error("File not found.")]
     FileNotFound,
+    /// Errors in Qdrant.
+    #[cfg(feature = "rag")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "rag")))]
+    #[error("Qdrant error:{0}")]
+    Qdrant(String),
 }
 
 /// Error types for wasi-nn errors.
