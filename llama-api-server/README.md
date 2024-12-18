@@ -11,6 +11,7 @@ LlamaEdge API server offers OpenAI-compatible REST APIs. It can accelerate devel
   - [Get LlamaEdge API server](#get-llamaedge-api-server)
   - [Get model](#get-model)
   - [Run LlamaEdge API server](#run-llamaedge-api-server)
+    - [API Key](#api-key)
   - [Endpoints](#endpoints)
     - [List models](#list-models)
     - [Chat completions](#chat-completions)
@@ -100,7 +101,6 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:Meta-Llama-3-8B-Instruct-Q5_K_
   --prompt-template llama-3-chat \
   --ctx-size 4096 \
   --model-name llama-3-8b
-
 ```
 
 The command above starts the API server on the default socket address. Besides, there are also some other options specified in the command:
@@ -110,6 +110,29 @@ The command above starts the API server on the default socket address. Besides, 
 - The `--nn-preload default:GGML:AUTO:Meta-Llama-3-8B-Instruct-Q5_K_M.gguf` option specifies the Llama model to be used by the API server. The pattern of the argument is `<name>:<encoding>:<target>:<model path>`. Here, the model used is `Meta-Llama-3-8B-Instruct-Q5_K_M.gguf`; and we give it an alias `default` as its name in the runtime environment. You can change the model name here if you're not using llama-3-8b.
 - The `--prompt-template llama-3-chat` is the prompt template for the model.
 - The `--model-name llama-3-8b` specifies the model name. It is used in the chat request.
+
+### API Key
+
+To run the API server with a API key, use `API_KEY` environment variable to specify the API key:
+
+```bash
+export LLAMA_API_KEY=<your-api-key>
+wasmedge --dir .:. --env API_KEY=$LLAMA_API_KEY \
+  --nn-preload default:GGML:AUTO:Meta-Llama-3-8B-Instruct-Q5_K_M.gguf \
+  llama-api-server.wasm \
+  --prompt-template llama-3-chat \
+  --ctx-size 4096 \
+  --model-name llama-3-8b
+```
+
+After launching the API server, each request to the server should set the correct API key, for example,
+
+```bash
+curl --location 'http://localhost:8080/v1/chat/completions' \
+--header 'Authorization: Bearer <your-api-key>' \
+--header 'Content-Type: application/json' \
+--data '...'
+```
 
 ## Endpoints
 
