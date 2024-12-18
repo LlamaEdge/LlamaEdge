@@ -51,6 +51,24 @@ pub(crate) fn bad_request(msg: impl AsRef<str>) -> Response<Body> {
         .unwrap()
 }
 
+pub(crate) fn unauthorized(msg: impl AsRef<str>) -> Response<Body> {
+    let err_msg = match msg.as_ref().is_empty() {
+        true => "401 Unauthorized".to_string(),
+        false => format!("401 Unauthorized: {}", msg.as_ref()),
+    };
+
+    // log error
+    error!(target: "stdout", "{}", &err_msg);
+
+    Response::builder()
+        .header("Access-Control-Allow-Origin", "*")
+        .header("Access-Control-Allow-Methods", "*")
+        .header("Access-Control-Allow-Headers", "*")
+        .status(hyper::StatusCode::UNAUTHORIZED)
+        .body(Body::from(err_msg))
+        .unwrap()
+}
+
 pub(crate) fn invalid_endpoint(msg: impl AsRef<str>) -> Response<Body> {
     let err_msg = match msg.as_ref().is_empty() {
         true => "404 The requested service endpoint is not found".to_string(),

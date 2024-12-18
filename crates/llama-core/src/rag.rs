@@ -277,7 +277,7 @@ async fn qdrant_create_collection(
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
 
-        return Err(LlamaCoreError::Operation(err_msg));
+        return Err(LlamaCoreError::Qdrant(err_msg));
     }
 
     Ok(())
@@ -319,12 +319,12 @@ async fn qdrant_persist_embeddings(
         .upsert_points(collection_name.as_ref(), points)
         .await
     {
-        let err_msg = format!("Failed to upsert points. Reason: {}", e);
+        let err_msg = format!("{}", e);
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
 
-        return Err(LlamaCoreError::Operation(err_msg));
+        return Err(LlamaCoreError::Qdrant(err_msg));
     }
 
     Ok(())
@@ -361,7 +361,7 @@ async fn qdrant_search_similar_points(
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
 
-            Err(LlamaCoreError::Operation(err_msg))
+            Err(LlamaCoreError::Qdrant(err_msg))
         }
     }
 }

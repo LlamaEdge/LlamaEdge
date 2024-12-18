@@ -29,7 +29,7 @@ pub struct SpeechRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub noise_scale: Option<f64>,
     /// Speed of speaking (1 = normal, < 1 is faster, > 1 is slower). Defaults to `1.0`. This param is only supported for `Piper`.
-    length_scale: Option<f64>,
+    pub length_scale: Option<f64>,
     /// Variation in phoneme lengths. Defaults to `0.8`. This param is only supported for `Piper`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub noise_w: Option<f64>,
@@ -38,7 +38,7 @@ pub struct SpeechRequest {
     pub sentence_silence: Option<f64>,
     /// Seconds of extra silence to insert after a single phoneme. This param is only supported for `Piper`.
     #[serde(skip_serializing_if = "Option::is_none")]
-    phoneme_silence: Option<f64>,
+    pub phoneme_silence: Option<f64>,
     /// stdin input is lines of JSON instead of plain text. This param is only supported for `Piper`.
     /// The input format should be:
     /// ```json
@@ -312,5 +312,4 @@ pub enum SpeechFormat {
     // Aac,
     // Flac,
     // Pcm,
-    Raw, // 16-bit mono PCM for Piper
 }
