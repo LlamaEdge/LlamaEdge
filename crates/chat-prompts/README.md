@@ -323,6 +323,16 @@ The available prompt templates are listed below:
 
   - Example: [second-state/Mistral-7B-Instruct-v0.3-GGUF](https://huggingface.co/second-state/Mistral-7B-Instruct-v0.3-GGUF)
 
+- `moxin-chat`
+
+  ```text
+  <s> [INST] {system_message}
+
+  {user_message_1} [/INST] {assistant_message_1}</s> [INST] {user_message_2} [/INST]
+  ```
+
+  - Example: [second-state/moxin-chat-7b-GGUF](https://huggingface.co/second-state/moxin-chat-7b-GGUF)
+
 - `nemotron-chat`
 
   ```text
