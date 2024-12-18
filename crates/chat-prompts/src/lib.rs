@@ -101,6 +101,8 @@ pub enum PromptTemplateType {
     Falcon3,
     #[value(name = "megrez")]
     Megrez,
+    #[value(name = "qwen2-vision")]
+    Qwen2vl,
     #[value(name = "embedding")]
     Embedding,
     #[value(name = "none")]
@@ -137,7 +139,8 @@ impl PromptTemplateType {
             | PromptTemplateType::MiniCPMV
             | PromptTemplateType::MoxinChat
             | PromptTemplateType::Falcon3
-            | PromptTemplateType::Megrez => true,
+            | PromptTemplateType::Megrez
+            | PromptTemplateType::Qwen2vl => true,
             PromptTemplateType::MistralInstruct
             | PromptTemplateType::MistralTool
             | PromptTemplateType::MistralLite
@@ -208,6 +211,7 @@ impl FromStr for PromptTemplateType {
             "moxin-chat" => Ok(PromptTemplateType::MoxinChat),
             "falcon3" => Ok(PromptTemplateType::Falcon3),
             "megrez" => Ok(PromptTemplateType::Megrez),
+            "qwen2-vision" => Ok(PromptTemplateType::Qwen2vl),
             "embedding" => Ok(PromptTemplateType::Embedding),
             "none" => Ok(PromptTemplateType::Null),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
@@ -263,6 +267,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::MoxinChat => write!(f, "moxin-chat"),
             PromptTemplateType::Falcon3 => write!(f, "falcon3"),
             PromptTemplateType::Megrez => write!(f, "megrez"),
+            PromptTemplateType::Qwen2vl => write!(f, "qwen2-vision"),
             PromptTemplateType::Embedding => write!(f, "embedding"),
             PromptTemplateType::Null => write!(f, "none"),
         }
