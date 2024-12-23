@@ -95,6 +95,8 @@ pub enum PromptTemplateType {
     MiniCPMV,
     #[value(name = "moxin-chat")]
     MoxinChat,
+    #[value(name = "falcon3")]
+    Falcon3,
     #[value(name = "embedding")]
     Embedding,
     #[value(name = "none")]
@@ -128,7 +130,8 @@ impl PromptTemplateType {
             | PromptTemplateType::NemotronChat
             | PromptTemplateType::NemotronTool
             | PromptTemplateType::MiniCPMV
-            | PromptTemplateType::MoxinChat => true,
+            | PromptTemplateType::MoxinChat
+            | PromptTemplateType::Falcon3 => true,
             PromptTemplateType::MistralInstruct
             | PromptTemplateType::MistralTool
             | PromptTemplateType::MistralLite
@@ -196,6 +199,7 @@ impl FromStr for PromptTemplateType {
             "functionary-31" => Ok(PromptTemplateType::FunctionaryV31),
             "minicpmv" => Ok(PromptTemplateType::MiniCPMV),
             "moxin-chat" => Ok(PromptTemplateType::MoxinChat),
+            "falcon3" => Ok(PromptTemplateType::Falcon3),
             "embedding" => Ok(PromptTemplateType::Embedding),
             "none" => Ok(PromptTemplateType::Null),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
@@ -248,6 +252,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::FunctionaryV31 => write!(f, "functionary-31"),
             PromptTemplateType::MiniCPMV => write!(f, "minicpmv"),
             PromptTemplateType::MoxinChat => write!(f, "moxin-chat"),
+            PromptTemplateType::Falcon3 => write!(f, "falcon3"),
             PromptTemplateType::Embedding => write!(f, "embedding"),
             PromptTemplateType::Null => write!(f, "none"),
         }

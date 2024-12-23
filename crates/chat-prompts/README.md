@@ -131,6 +131,19 @@ The available prompt templates are listed below:
 
   - Example: [second-state/E5-Mistral-7B-Instruct-Embedding-GGUF](https://huggingface.co/second-state/E5-Mistral-7B-Instruct-Embedding-GGUF)
 
+- `falcon3`
+  - Prompt string
+
+    ```text
+    <|system|>
+    {system_message}
+    <|user|>
+    {user_message}
+    <|assistant|>
+    ```
+
+  - Example: [second-state/Falcon3-7B-Instruct-GGUF](https://huggingface.co/second-state/Falcon3-7B-Instruct-GGUF)
+
 - `functionary-31`
 
   - Prompt string
