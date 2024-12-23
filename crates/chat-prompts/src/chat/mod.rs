@@ -10,6 +10,7 @@ pub mod groq;
 pub mod intel;
 pub mod llama;
 pub mod mediatek;
+pub mod megrez;
 pub mod minicpm;
 pub mod mistral;
 pub mod moxin;
@@ -36,6 +37,7 @@ use groq::*;
 use intel::*;
 use llama::*;
 use mediatek::BreezeInstructPrompt;
+use megrez::*;
 use minicpm::*;
 use mistral::*;
 use moxin::*;
@@ -108,6 +110,7 @@ pub enum ChatPrompt {
     MiniCPMVPrompt,
     MoxinChatPrompt,
     FalconChatPrompt,
+    MegrezPrompt,
 }
 impl From<PromptTemplateType> for ChatPrompt {
     fn from(ty: PromptTemplateType) -> Self {
@@ -184,6 +187,7 @@ impl From<PromptTemplateType> for ChatPrompt {
             PromptTemplateType::MiniCPMV => ChatPrompt::MiniCPMVPrompt(MiniCPMVPrompt),
             PromptTemplateType::MoxinChat => ChatPrompt::MoxinChatPrompt(MoxinChatPrompt),
             PromptTemplateType::Falcon3 => ChatPrompt::FalconChatPrompt(FalconChatPrompt),
+            PromptTemplateType::Megrez => ChatPrompt::MegrezPrompt(MegrezPrompt),
             PromptTemplateType::Embedding => {
                 panic!("Embedding prompt template is not used for building chat prompts")
             }

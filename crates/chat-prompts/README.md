@@ -303,6 +303,15 @@ The available prompt templates are listed below:
 
   - Example: [second-state/Breeze-7B-Instruct-v1_0-GGUF](https://huggingface.co/second-state/Breeze-7B-Instruct-v1_0-GGUF)
 
+- `megrez`
+  - Prompt string
+
+    ```text
+    <|role_start|>system<|role_end|>{system_message}<|turn_end|><|role_start|>user<|role_end|>{user_message}<|turn_end|><|role_start|>assistant<|role_end|>
+    ```
+
+  - Example: [second-state/Megrez-3B-Instruct-GGUF](https://huggingface.co/second-state/Megrez-3B-Instruct-GGUF)
+
 - `mistral-instruct`
   - Prompt string
 
