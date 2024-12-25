@@ -2017,6 +2017,13 @@ fn post_process(
         } else {
             s.to_owned()
         }
+    } else if *template_ty == PromptTemplateType::Falcon3 {
+        let s = output.as_ref().trim();
+        if s.ends_with("<|endoftext|>") {
+            s.trim_end_matches("<|endoftext|>").trim().to_owned()
+        } else {
+            s.to_owned()
+        }
     } else if *template_ty == PromptTemplateType::Megrez {
         let s = output.as_ref().trim();
         if s.ends_with("<|turn_end|>") {
