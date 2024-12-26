@@ -29,6 +29,8 @@ use error::{BackendError, LlamaCoreError};
 use futures::StreamExt;
 use std::{
     collections::VecDeque,
+    fs::{self, File},
+    path::Path,
     pin::Pin,
     sync::Mutex,
     task::{Context, Poll},
@@ -1725,20 +1727,35 @@ async fn check_model_metadata(
     if let Some(ChatCompletionRequestMessage::User(user_message)) = chat_request.messages.last() {
         if let ChatCompletionUserMessageContent::Parts(parts) = user_message.content() {
             for part in parts {
-                if let ContentPart::Image(image) = part {
-                    let image = image.image();
+                if let ContentPart::Image(image_part) = part {
+                    let image = image_part.image();
 
                     if image.is_url() {
-                        // update metadata image
-                        let img = download_image(&image.url).await?;
+                        #[cfg(feature = "logging")]
+                        info!(target: "stdout", "The image is provided in URL format.");
 
-                        metadata.image = Some(img);
+                        // download the image
+                        let img_path_str = download_image(&image.url).await?;
+
+                        #[cfg(feature = "logging")]
+                        info!(target: "stdout", "The image is saved to {}", img_path_str);
+
+                        // update metadata image
+                        metadata.image = Some(img_path_str);
 
                         if !should_update {
                             should_update = true;
                         }
 
-                        // todo: now only support a single image
+                        // TODO: now only support a single image
+
+                        break;
+                    } else {
+                        #[cfg(feature = "logging")]
+                        info!(target: "stdout", "The image is provided in base64 format.");
+
+                        // TODO: now only support a single image
+
                         break;
                     }
                 }
@@ -2028,6 +2045,15 @@ fn post_process(
         let s = output.as_ref().trim();
         if s.ends_with("<|turn_end|>") {
             s.trim_end_matches("<|turn_end|>").trim().to_owned()
+    } else if *template_ty == PromptTemplateType::Qwen2vl {
+        let mut s = output.as_ref().trim();
+
+        if s.starts_with(":") {
+            s = s.trim_start_matches(":").trim();
+        }
+
+        if s.ends_with("<|im_end|>") {
+            s.trim_end_matches("<|im_end|>").trim().to_owned()
         } else {
             s.to_owned()
         }
@@ -2223,9 +2249,6 @@ fn build_prompt(
 
 /// Downloads an image from the given URL and returns the file name.
 async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> {
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Download image from the URL.");
-
     let image_url = image_url.as_ref();
     let url = reqwest::Url::parse(image_url).map_err(|e| {
         let err_msg = format!("Fail to parse the image URL: {}. Reason: {}", image_url, e);
@@ -2259,13 +2282,22 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
         )))?
         .to_string();
 
-    let mut dest = std::fs::File::create(&fname).map_err(|e| {
-        let err_msg = format!(
-            "Fail to create the file to save the image: {}. Reason: {}",
-            &fname, e
-        );
+    // create a unique file id
+    let id = format!("file_{}", uuid::Uuid::new_v4());
+    // save the file
+    let path = Path::new("archives");
+    if !path.exists() {
+        fs::create_dir(path).unwrap();
+    }
+    let file_path = path.join(&id);
+    if !file_path.exists() {
+        fs::create_dir(&file_path).unwrap();
+    }
+    let img_path = file_path.join(&fname);
+    let mut dest: File = File::create(&img_path).map_err(|e| {
+        let err_msg = format!("Failed to create archive document {}. {}", &fname, e);
 
-        #[cfg(feature = "logging")]
+        // log
         error!(target: "stdout", "{}", &err_msg);
 
         LlamaCoreError::Operation(err_msg)
@@ -2286,10 +2318,7 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
         })?;
     }
 
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "The image is downloaded successfully.");
-
-    Ok(fname)
+    Ok(img_path.as_path().to_string_lossy().to_string())
 }
 
 fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<(), LlamaCoreError> {
