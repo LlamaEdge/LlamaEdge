@@ -4,6 +4,7 @@
 
 pub mod chat;
 pub mod error;
+pub mod utils;
 
 use clap::ValueEnum;
 use endpoints::chat::ChatCompletionRequestMessage;
