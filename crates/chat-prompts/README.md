@@ -294,6 +294,23 @@ The available prompt templates are listed below:
     {{ user_message_2 }}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
     ```
 
+- `llama-3-tool`
+  - Prompt string
+
+    ```text
+    <|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+    {system_message}<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+    Given the following functions, please respond with a JSON for a function call with its proper arguments that best answers the given prompt.
+
+    Respond in the format {"name": function name, "parameters": dictionary of argument name and its value}. Do not use variables.
+
+    [{"type":"function","function":{"name":"get_current_weather","description":"Get the current weather in a given location","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","description":"The temperature unit to use. Infer this from the users location.","enum":["celsius","fahrenheit"]}},"required":["location","unit"]}}}]
+
+    Question: {user_message}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+    ```
+
 - `mediatek-breeze`
   - Prompt string
 
