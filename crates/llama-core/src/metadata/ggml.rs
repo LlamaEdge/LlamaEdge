@@ -46,7 +46,7 @@ impl GgmlMetadataBuilder {
         self
     }
 
-    pub fn with_n_predict(mut self, n: u64) -> Self {
+    pub fn with_n_predict(mut self, n: i32) -> Self {
         self.metadata.n_predict = n;
         self
     }
@@ -171,8 +171,10 @@ pub struct GgmlMetadata {
     // pub stream_stdout: bool,
     #[serde(rename = "embedding")]
     pub embeddings: bool,
+    /// Number of tokens to predict, -1 = infinity, -2 = until context filled. Defaults to -1.
     #[serde(rename = "n-predict")]
-    pub n_predict: u64,
+    pub n_predict: i32,
+    /// Halt generation at PROMPT, return control in interactive mode.
     #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
     pub reverse_prompt: Option<String>,
     /// path to the multimodal projector file for llava
@@ -240,7 +242,7 @@ impl Default for GgmlMetadata {
             prompt_template: PromptTemplateType::Llama2Chat,
             log_enable: false,
             embeddings: false,
-            n_predict: 1024,
+            n_predict: -1,
             reverse_prompt: None,
             mmproj: None,
             image: None,
