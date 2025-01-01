@@ -246,6 +246,12 @@ pub async fn rag_retrieve_context(
                             score: point.score,
                         })
                     }
+
+                    // For debugging purpose, log the optional search field if it exists
+                    #[cfg(feature = "logging")]
+                    if let Some(search) = payload.get("search") {
+                        info!(target: "stdout", "search: {}", search);
+                    }
                 }
             }
 
