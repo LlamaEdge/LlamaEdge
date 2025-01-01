@@ -1835,39 +1835,54 @@ async fn update_n_predict(
 ) -> Result<(), LlamaCoreError> {
     let mut should_update = false;
 
-    // check if necessary to update n_predict with max_tokens
-    if let Some(max_tokens) = chat_request.max_tokens {
-        #[cfg(feature = "logging")]
-        info!(target: "stdout", "available_completion_tokens: {}, max_tokens from request: {}, n_predict: {}", available_completion_tokens, max_tokens, metadata.n_predict);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "available_completion_tokens: {}, n_predict: {}", available_completion_tokens, metadata.n_predict);
 
-        let max_completion_tokens = match available_completion_tokens < max_tokens {
-            true => available_completion_tokens,
-            false => max_tokens,
-        };
+    if metadata.n_predict > 0 && metadata.n_predict < available_completion_tokens as i32 {
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Update n_predict from {} to {}", metadata.n_predict, available_completion_tokens);
 
         // update n_predict
-        if metadata.n_predict != max_completion_tokens {
-            #[cfg(feature = "logging")]
-            info!(target: "stdout", "update n_predict from {} to {}", metadata.n_predict, max_completion_tokens);
+        metadata.n_predict = available_completion_tokens as i32;
 
-            metadata.n_predict = max_completion_tokens;
-
-            if !should_update {
-                should_update = true;
-            }
-        }
-        if metadata.n_predict < available_completion_tokens {
-            #[cfg(feature = "logging")]
-            info!(target: "stdout", "Update n_predict from {} to {}", metadata.n_predict, available_completion_tokens);
-
-            // update n_predict
-            metadata.n_predict = available_completion_tokens;
-
-            if !should_update {
-                should_update = true;
-            }
+        if !should_update {
+            should_update = true;
         }
     }
+
+    // // check if necessary to update n_predict with max_tokens
+    // if let Some(max_tokens) = chat_request.max_tokens {
+    //     #[cfg(feature = "logging")]
+    //     info!(target: "stdout", "available_completion_tokens: {}, max_tokens from request: {}, n_predict: {}", available_completion_tokens, max_tokens, metadata.n_predict);
+
+    //     let max_completion_tokens = match available_completion_tokens < max_tokens {
+    //         true => available_completion_tokens,
+    //         false => max_tokens,
+    //     };
+
+    //     // update n_predict
+    //     if metadata.n_predict != max_completion_tokens {
+    //         #[cfg(feature = "logging")]
+    //         info!(target: "stdout", "update n_predict from {} to {}", metadata.n_predict, max_completion_tokens);
+
+    //         metadata.n_predict = max_completion_tokens;
+
+    //         if !should_update {
+    //             should_update = true;
+    //         }
+    //     }
+    //     if metadata.n_predict < available_completion_tokens {
+    //         #[cfg(feature = "logging")]
+    //         info!(target: "stdout", "Update n_predict from {} to {}", metadata.n_predict, available_completion_tokens);
+
+    //         // update n_predict
+    //         metadata.n_predict = available_completion_tokens;
+
+    //         if !should_update {
+    //             should_update = true;
+    //         }
+    //     }
+    // }
 
     if should_update {
         // update the target graph with the new metadata
@@ -2045,6 +2060,9 @@ fn post_process(
         let s = output.as_ref().trim();
         if s.ends_with("<|turn_end|>") {
             s.trim_end_matches("<|turn_end|>").trim().to_owned()
+        } else {
+            s.to_owned()
+        }
     } else if *template_ty == PromptTemplateType::Qwen2vl {
         let mut s = output.as_ref().trim();
 

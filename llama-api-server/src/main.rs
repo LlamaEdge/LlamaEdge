@@ -68,9 +68,9 @@ struct Cli {
     /// Halt generation at PROMPT, return control.
     #[arg(short, long)]
     reverse_prompt: Option<String>,
-    /// Number of tokens to predict
-    #[arg(short, long, default_value = "1024")]
-    n_predict: u64,
+    /// Number of tokens to predict, -1 = infinity, -2 = until context filled.
+    #[arg(short, long, default_value = "-1")]
+    n_predict: i32,
     /// Number of layers to run on the GPU
     #[arg(short = 'g', long, default_value = "100")]
     n_gpu_layers: u64,
@@ -150,8 +150,8 @@ struct CliConfig {
     prompt_template: Vec<PromptTemplateType>,
     /// Halt generation at PROMPT, return control.
     reverse_prompt: Option<String>,
-    /// Number of tokens to predict
-    n_predict: u64,
+    /// Number of tokens to predict, -1 = infinity, -2 = until context filled.
+    n_predict: i32,
     /// Number of layers to run on the GPU
     n_gpu_layers: u64,
     /// Split the model across multiple GPUs. Possible values:
@@ -534,8 +534,6 @@ async fn main() -> Result<(), ServerError> {
     wasi_logger::Logger::install().expect("failed to install wasi_logger::Logger");
     log::set_max_level(log_level.into());
 
-    info!(target: "stdout", "log_level: {}", log_level);
-
     if let Ok(api_key) = std::env::var("API_KEY") {
         // define a const variable for the API key
         if let Err(e) = LLAMA_API_KEY.set(api_key) {
@@ -549,6 +547,8 @@ async fn main() -> Result<(), ServerError> {
 
     // parse the command line arguments
     let mut cli = Cli::parse();
+
+    info!(target: "stdout", "log_level: {}", log_level);
 
     // log the version of the server
     info!(target: "stdout", "server version: {}", env!("CARGO_PKG_VERSION"));
@@ -1167,7 +1167,7 @@ pub(crate) struct ModelConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prompt_template: Option<PromptTemplateType>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub n_predict: Option<u64>,
+    pub n_predict: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reverse_prompt: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
