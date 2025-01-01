@@ -479,11 +479,11 @@ pub struct ChatCompletionRequest {
         skip_serializing_if = "Option::is_none"
     )]
     pub vdb_collection_name: Option<Vec<String>>,
-    /// Max number of retrieved results. The number of the values must be the same as the number of `qdrant_collection_name`.
+    /// Max number of retrieved results. The number of the values must be the same as the number of `vdb_collection_name`.
     #[cfg(feature = "rag")]
     #[serde(rename = "limit", skip_serializing_if = "Option::is_none")]
     pub limit: Option<Vec<u64>>,
-    /// The score threshold for the retrieved results. The number of the values must be the same as the number of `qdrant_collection_name`.
+    /// The score threshold for the retrieved results. The number of the values must be the same as the number of `vdb_collection_name`.
     #[cfg(feature = "rag")]
     #[serde(rename = "score_threshold", skip_serializing_if = "Option::is_none")]
     pub score_threshold: Option<Vec<f32>>,
@@ -1312,7 +1312,7 @@ fn test_chat_serialize_response_format() {
     assert_eq!(json, r#"{"type":"json_object"}"#);
 }
 
-/// Options for streaming response. Only set this when you set stream: `true``.
+/// Options for streaming response. Only set this when you set stream: `true`.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct StreamOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
