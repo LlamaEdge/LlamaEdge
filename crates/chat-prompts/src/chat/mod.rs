@@ -158,6 +158,9 @@ impl From<PromptTemplateType> for ChatPrompt {
             PromptTemplateType::DeepseekChat25 => {
                 ChatPrompt::DeepseekChat25Prompt(DeepseekChat25Prompt)
             }
+            PromptTemplateType::DeepseekChat3 => {
+                ChatPrompt::DeepseekChat25Prompt(DeepseekChat25Prompt)
+            }
             PromptTemplateType::SolarInstruct => {
                 ChatPrompt::SolarInstructPrompt(SolarInstructPrompt)
             }

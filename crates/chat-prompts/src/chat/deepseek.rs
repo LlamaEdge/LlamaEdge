@@ -305,7 +305,7 @@ impl BuildChatPrompt for DeepseekChat2Prompt {
     }
 }
 
-/// Generate prompts for the `DeepSeek-V2.5` models.
+/// Generate prompts for the `DeepSeek-v2.5` and `DeepSeek-v3` models.
 #[derive(Debug, Default, Clone)]
 pub struct DeepseekChat25Prompt;
 impl DeepseekChat25Prompt {
