@@ -1697,20 +1697,6 @@ pub enum Scheduler {
     #[serde(rename = "gits")]
     Gits,
 }
-impl FromStr for Scheduler {
-    type Err = ParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "discrete" => Ok(Scheduler::Discrete),
-            "karras" => Ok(Scheduler::Karras),
-            "exponential" => Ok(Scheduler::Exponential),
-            "ays" => Ok(Scheduler::Ays),
-            "gits" => Ok(Scheduler::Gits),
-            _ => Err(ParseError),
-        }
-    }
-}
 impl From<&str> for Scheduler {
     fn from(s: &str) -> Self {
         match s.to_lowercase().as_str() {
