@@ -2,7 +2,7 @@
 
 use crate::files::FileObject;
 use serde::{
-    de::{self, MapAccess, Visitor},
+    de::{self, IgnoredAny, MapAccess, Visitor},
     Deserialize, Deserializer, Serialize,
 };
 use std::{fmt, str::FromStr};
@@ -365,6 +365,9 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                             style_ratio = Some(map.next_value()?);
                         }
                         _ => {
+                            // Ignore unknown fields
+                            let _ = map.next_value::<IgnoredAny>()?;
+
                             #[cfg(feature = "logging")]
                             warn!(target: "stdout", "Not supported field: {}", key);
                         }
@@ -1022,6 +1025,9 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                             style_ratio = Some(map.next_value()?);
                         }
                         _ => {
+                            // Ignore unknown fields
+                            let _ = map.next_value::<IgnoredAny>()?;
+
                             #[cfg(feature = "logging")]
                             warn!(target: "stdout", "Not supported field: {}", key);
                         }
@@ -1365,6 +1371,9 @@ impl<'de> Deserialize<'de> for ImageVariationRequest {
                             user = Some(map.next_value()?);
                         }
                         _ => {
+                            // Ignore unknown fields
+                            let _ = map.next_value::<IgnoredAny>()?;
+
                             #[cfg(feature = "logging")]
                             warn!(target: "stdout", "Not supported field: {}", key);
                         }
