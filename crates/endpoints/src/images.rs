@@ -1639,6 +1639,14 @@ impl FromStr for ResponseFormat {
         }
     }
 }
+impl fmt::Display for ResponseFormat {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ResponseFormat::Url => write!(f, "url"),
+            ResponseFormat::B64Json => write!(f, "b64_json"),
+        }
+    }
+}
 
 // Custom error type for conversion errors
 #[derive(Debug, Clone, PartialEq)]
