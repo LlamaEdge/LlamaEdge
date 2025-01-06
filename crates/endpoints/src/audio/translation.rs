@@ -2,7 +2,7 @@
 
 use crate::files::FileObject;
 use serde::{
-    de::{self, MapAccess, Visitor},
+    de::{self, IgnoredAny, MapAccess, Visitor},
     Deserialize, Deserializer, Serialize,
 };
 use std::fmt;
@@ -71,63 +71,6 @@ impl<'de> Deserialize<'de> for TranslationRequest {
     where
         D: Deserializer<'de>,
     {
-        enum Field {
-            File,
-            Model,
-            Prompt,
-            ResponseFormat,
-            Temperature,
-            Language,
-            DetectLanguage,
-            OffsetTime,
-            Duration,
-            MaxContext,
-            MaxLen,
-            SplitOnWord,
-            UseNewContext,
-        }
-
-        impl<'de> Deserialize<'de> for Field {
-            fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
-            where
-                D: Deserializer<'de>,
-            {
-                struct FieldVisitor;
-
-                impl Visitor<'_> for FieldVisitor {
-                    type Value = Field;
-
-                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                        formatter.write_str("`file`, `model`, `prompt`, `response_format`, `temperature`, `language`, `detect_language`, `offset_time`, `duration`, `max_context`, `max_len`, `split_on_word`, or `user_new_context`")
-                    }
-
-                    fn visit_str<E>(self, value: &str) -> Result<Field, E>
-                    where
-                        E: de::Error,
-                    {
-                        match value {
-                            "file" => Ok(Field::File),
-                            "model" => Ok(Field::Model),
-                            "prompt" => Ok(Field::Prompt),
-                            "response_format" => Ok(Field::ResponseFormat),
-                            "temperature" => Ok(Field::Temperature),
-                            "language" => Ok(Field::Language),
-                            "detect_language" => Ok(Field::DetectLanguage),
-                            "offset_time" => Ok(Field::OffsetTime),
-                            "duration" => Ok(Field::Duration),
-                            "max_context" => Ok(Field::MaxContext),
-                            "max_len" => Ok(Field::MaxLen),
-                            "split_on_word" => Ok(Field::SplitOnWord),
-                            "use_new_context" => Ok(Field::UseNewContext),
-                            _ => Err(de::Error::unknown_field(value, FIELDS)),
-                        }
-                    }
-                }
-
-                deserializer.deserialize_identifier(FieldVisitor)
-            }
-        }
-
         struct TranslationRequestVisitor;
 
         impl<'de> Visitor<'de> for TranslationRequestVisitor {
@@ -155,85 +98,92 @@ impl<'de> Deserialize<'de> for TranslationRequest {
                 let mut split_on_word = None;
                 let mut use_new_context = None;
 
-                while let Some(key) = map.next_key()? {
-                    match key {
-                        Field::File => {
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "file" => {
                             if file.is_some() {
                                 return Err(de::Error::duplicate_field("file"));
                             }
                             file = Some(map.next_value()?);
                         }
-                        Field::Model => {
+                        "model" => {
                             if model.is_some() {
                                 return Err(de::Error::duplicate_field("model"));
                             }
                             model = Some(map.next_value()?);
                         }
-                        Field::Prompt => {
+                        "prompt" => {
                             if prompt.is_some() {
                                 return Err(de::Error::duplicate_field("prompt"));
                             }
                             prompt = Some(map.next_value()?);
                         }
-                        Field::ResponseFormat => {
+                        "response_format" => {
                             if response_format.is_some() {
                                 return Err(de::Error::duplicate_field("response_format"));
                             }
                             response_format = Some(map.next_value()?);
                         }
-                        Field::Temperature => {
+                        "temperature" => {
                             if temperature.is_some() {
                                 return Err(de::Error::duplicate_field("temperature"));
                             }
                             temperature = Some(map.next_value()?);
                         }
-                        Field::Language => {
+                        "language" => {
                             if language.is_some() {
                                 return Err(de::Error::duplicate_field("language"));
                             }
                             language = Some(map.next_value()?);
                         }
-                        Field::DetectLanguage => {
+                        "detect_language" => {
                             if detect_language.is_some() {
                                 return Err(de::Error::duplicate_field("detect_language"));
                             }
                             detect_language = Some(map.next_value()?);
                         }
-                        Field::OffsetTime => {
+                        "offset_time" => {
                             if offset_time.is_some() {
                                 return Err(de::Error::duplicate_field("offset_time"));
                             }
                             offset_time = Some(map.next_value()?);
                         }
-                        Field::Duration => {
+                        "duration" => {
                             if duration.is_some() {
                                 return Err(de::Error::duplicate_field("duration"));
                             }
                             duration = Some(map.next_value()?);
                         }
-                        Field::MaxContext => {
+                        "max_context" => {
                             if max_context.is_some() {
                                 return Err(de::Error::duplicate_field("max_context"));
                             }
                             max_context = Some(map.next_value()?);
                         }
-                        Field::MaxLen => {
+                        "max_len" => {
                             if max_len.is_some() {
                                 return Err(de::Error::duplicate_field("max_len"));
                             }
                             max_len = Some(map.next_value()?);
                         }
-                        Field::SplitOnWord => {
+                        "split_on_word" => {
                             if split_on_word.is_some() {
                                 return Err(de::Error::duplicate_field("split_on_word"));
                             }
                             split_on_word = Some(map.next_value()?);
                         }
-                        Field::UseNewContext => {
+                        "use_new_context" => {
                             if use_new_context.is_some() {
                                 return Err(de::Error::duplicate_field("use_new_context"));
                             }
                             use_new_context = Some(map.next_value()?);
+                        }
+                        _ => {
+                            // Ignore unknown fields
+                            let _ = map.next_value::<IgnoredAny>()?;
+
+                            #[cfg(feature = "logging")]
+                            warn!(target: "stdout", "Not supported field: {}", key);
                         }
                     }
                 }

@@ -1,7 +1,7 @@
 //! Define types for audio generation from the input text.
 
 use serde::{
-    de::{self, Deserializer, MapAccess, Visitor},
+    de::{self, Deserializer, IgnoredAny, MapAccess, Visitor},
     Deserialize, Serialize,
 };
 use std::fmt;
@@ -55,60 +55,6 @@ impl<'de> Deserialize<'de> for SpeechRequest {
     where
         D: Deserializer<'de>,
     {
-        enum Field {
-            Model,
-            Input,
-            Voice,
-            ResponseFormat,
-            Speed,
-            SpeakerId,
-            NoiseScale,
-            NoiseW,
-            SentenceSilence,
-            PhonemeSilence,
-            JsonInput,
-        }
-
-        impl<'de> Deserialize<'de> for Field {
-            fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
-            where
-                D: Deserializer<'de>,
-            {
-                struct FieldVisitor;
-
-                impl Visitor<'_> for FieldVisitor {
-                    type Value = Field;
-
-                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                        formatter
-                            .write_str("`model`, `input`, `voice`, `response_format`, `speed`, `speaker_id`, `noise_scale`, `noise_w`, `sentence_silence`, `phoneme_silence`, or `json_input`")
-                    }
-
-                    fn visit_str<E>(self, value: &str) -> Result<Field, E>
-                    where
-                        E: de::Error,
-                    {
-                        match value {
-                            "model" => Ok(Field::Model),
-                            "input" => Ok(Field::Input),
-                            "voice" => Ok(Field::Voice),
-                            "response_format" => Ok(Field::ResponseFormat),
-                            "speed" => Ok(Field::Speed),
-                            "speaker_id" => Ok(Field::SpeakerId),
-                            "noise_scale" => Ok(Field::NoiseScale),
-                            "noise_w" => Ok(Field::NoiseW),
-                            "sentence_silence" => Ok(Field::SentenceSilence),
-                            "phoneme_silence" => Ok(Field::PhonemeSilence),
-                            "json_input" => Ok(Field::JsonInput),
-                            _ => Err(de::Error::unknown_field(value, FIELDS)),
-                        }
-                    }
-                }
-
-                deserializer.deserialize_identifier(FieldVisitor)
-            }
-        }
-
         struct SpeechRequestVisitor;
 
         impl<'de> Visitor<'de> for SpeechRequestVisitor {
@@ -134,49 +80,56 @@ impl<'de> Deserialize<'de> for SpeechRequest {
                 let mut phoneme_silence = None;
                 let mut json_input = None;
 
-                while let Some(key) = map.next_key()? {
-                    match key {
-                        Field::Model => {
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "model" => {
                             if model.is_some() {
                                 return Err(de::Error::duplicate_field("model"));
                             }
                             model = Some(map.next_value()?);
                         }
-                        Field::Input => {
+                        "input" => {
                             if input.is_some() {
                                 return Err(de::Error::duplicate_field("input"));
                             }
                             input = Some(map.next_value()?);
                         }
-                        Field::Voice => {
+                        "voice" => {
                             if voice.is_some() {
                                 return Err(de::Error::duplicate_field("voice"));
                             }
                             voice = Some(map.next_value()?);
                         }
-                        Field::ResponseFormat => {
+                        "response_format" => {
                             response_format = map.next_value()?;
                         }
-                        Field::Speed => {
+                        "speed" => {
                             speed = map.next_value()?;
                         }
-                        Field::SpeakerId => {
+                        "speaker_id" => {
                             speaker_id = map.next_value()?;
                         }
-                        Field::NoiseScale => {
+                        "noise_scale" => {
                             noise_scale = map.next_value()?;
                         }
-                        Field::NoiseW => {
+                        "noise_w" => {
                             noise_w = map.next_value()?;
                         }
-                        Field::SentenceSilence => {
+                        "sentence_silence" => {
                             sentence_silence = map.next_value()?;
                         }
-                        Field::PhonemeSilence => {
+                        "phoneme_silence" => {
                             phoneme_silence = map.next_value()?;
                         }
-                        Field::JsonInput => {
+                        "json_input" => {
                             json_input = map.next_value()?;
+                        }
+                        _ => {
+                            // Ignore unknown fields
+                            let _ = map.next_value::<IgnoredAny>()?;
+
+                            #[cfg(feature = "logging")]
+                            warn!(target: "stdout", "Not supported field: {}", key);
                         }
                     }
                 }

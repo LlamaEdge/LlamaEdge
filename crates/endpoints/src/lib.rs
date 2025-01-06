@@ -2,6 +2,10 @@
 
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
+#[cfg(feature = "logging")]
+#[macro_use]
+extern crate log;
+
 pub mod audio;
 pub mod chat;
 pub mod common;

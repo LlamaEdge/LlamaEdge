@@ -12,7 +12,7 @@ pub struct FilesRequest {
 }
 
 /// The File object represents a document that has been uploaded to the server.
-#[derive(Debug, Deserialize, Serialize, Default)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct FileObject {
     /// The file identifier, which can be referenced in the API endpoints.
     pub id: String,
