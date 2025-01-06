@@ -133,7 +133,7 @@ impl ImageCreateRequestBuilder {
 }
 
 /// Request to create an image by a given prompt.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ImageCreateRequest {
     /// A text description of the desired image.
     pub prompt: String,
@@ -913,7 +913,7 @@ impl ImageEditRequestBuilder {
 }
 
 /// Request to create an edited or extended image given an original image and a prompt.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ImageEditRequest {
     /// The image to edit. If mask is not provided, image must have transparency, which will be used as the mask.
     pub image: FileObject,
