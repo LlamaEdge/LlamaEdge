@@ -2,7 +2,7 @@
 
 use crate::files::FileObject;
 use serde::{
-    de::{self, MapAccess, SeqAccess, Visitor},
+    de::{self, MapAccess, Visitor},
     Deserialize, Deserializer, Serialize,
 };
 use std::{fmt, str::FromStr};
@@ -202,79 +202,6 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
     where
         D: Deserializer<'de>,
     {
-        enum Field {
-            Prompt,
-            NegativePrompt,
-            Model,
-            N,
-            Quality,
-            ResponseFormat,
-            Size,
-            Style,
-            User,
-            CfgScale,
-            SampleMethod,
-            Steps,
-            Height,
-            Width,
-            ControlStrength,
-            ControlImage,
-            Seed,
-            Strength,
-            Scheduler,
-            ApplyCannyPreprocessor,
-            StyleRatio,
-        }
-
-        impl<'de> Deserialize<'de> for Field {
-            fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
-            where
-                D: Deserializer<'de>,
-            {
-                struct FieldVisitor;
-
-                impl Visitor<'_> for FieldVisitor {
-                    type Value = Field;
-
-                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                        formatter.write_str("field identifier")
-                    }
-
-                    fn visit_str<E>(self, value: &str) -> Result<Field, E>
-                    where
-                        E: de::Error,
-                    {
-                        match value {
-                            "prompt" => Ok(Field::Prompt),
-                            "negative_prompt" => Ok(Field::NegativePrompt),
-                            "model" => Ok(Field::Model),
-                            "n" => Ok(Field::N),
-                            "quality" => Ok(Field::Quality),
-                            "response_format" => Ok(Field::ResponseFormat),
-                            "size" => Ok(Field::Size),
-                            "style" => Ok(Field::Style),
-                            "user" => Ok(Field::User),
-                            "cfg_scale" => Ok(Field::CfgScale),
-                            "sample_method" => Ok(Field::SampleMethod),
-                            "steps" => Ok(Field::Steps),
-                            "height" => Ok(Field::Height),
-                            "width" => Ok(Field::Width),
-                            "control_strength" => Ok(Field::ControlStrength),
-                            "control_image" => Ok(Field::ControlImage),
-                            "seed" => Ok(Field::Seed),
-                            "strength" => Ok(Field::Strength),
-                            "scheduler" => Ok(Field::Scheduler),
-                            "apply_canny_preprocessor" => Ok(Field::ApplyCannyPreprocessor),
-                            "style_ratio" => Ok(Field::StyleRatio),
-                            _ => Err(de::Error::unknown_field(value, FIELDS)),
-                        }
-                    }
-                }
-
-                deserializer.deserialize_identifier(FieldVisitor)
-            }
-        }
-
         struct CreateImageRequestVisitor;
 
         impl<'de> Visitor<'de> for CreateImageRequestVisitor {
@@ -282,60 +209,6 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str("struct CreateImageRequest")
-            }
-
-            fn visit_seq<V>(self, mut seq: V) -> Result<ImageCreateRequest, V::Error>
-            where
-                V: SeqAccess<'de>,
-            {
-                let prompt = seq
-                    .next_element()?
-                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let negative_prompt = seq.next_element()?;
-                let model = seq
-                    .next_element()?
-                    .ok_or_else(|| de::Error::invalid_length(1, &self))?;
-                let n = seq.next_element()?.unwrap_or(Some(1));
-                let quality = seq.next_element().unwrap_or(Some("standard".to_string()));
-                let response_format = seq.next_element().unwrap_or(Some(ResponseFormat::Url));
-                let size = seq.next_element().unwrap_or(None);
-                let style = seq.next_element().unwrap_or(Some("natural".to_string()));
-                let user = seq.next_element().unwrap_or(None);
-                let cfg_scale = seq.next_element().unwrap_or(Some(7.0));
-                let sample_method = seq.next_element().unwrap_or(Some(SamplingMethod::EulerA));
-                let steps = seq.next_element().unwrap_or(Some(20));
-                let height = seq.next_element().unwrap_or(Some(512));
-                let width = seq.next_element().unwrap_or(Some(512));
-                let control_strength = seq.next_element().unwrap_or(Some(0.9));
-                let control_image = seq.next_element()?;
-                let seed = seq.next_element().unwrap_or(Some(42));
-                let strength = seq.next_element().unwrap_or(Some(0.75));
-                let scheduler = seq.next_element()?.unwrap_or(Some(Scheduler::Discrete));
-                let apply_canny_preprocessor = seq.next_element().unwrap_or(Some(false));
-                let style_ratio = seq.next_element().unwrap_or(Some(0.2));
-                Ok(ImageCreateRequest {
-                    prompt,
-                    negative_prompt,
-                    model,
-                    n,
-                    quality,
-                    response_format,
-                    size,
-                    style,
-                    user,
-                    cfg_scale,
-                    sample_method,
-                    steps,
-                    height,
-                    width,
-                    control_strength,
-                    control_image,
-                    seed,
-                    strength,
-                    scheduler,
-                    apply_canny_preprocessor,
-                    style_ratio,
-                })
             }
 
             fn visit_map<V>(self, mut map: V) -> Result<ImageCreateRequest, V::Error>
@@ -363,133 +236,137 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                 let mut scheduler = None;
                 let mut apply_canny_preprocessor = None;
                 let mut style_ratio = None;
-                while let Some(key) = map.next_key()? {
-                    match key {
-                        Field::Prompt => {
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "prompt" => {
                             if prompt.is_some() {
                                 return Err(de::Error::duplicate_field("prompt"));
                             }
                             prompt = Some(map.next_value()?);
                         }
-                        Field::NegativePrompt => {
+                        "negative_prompt" => {
                             if negative_prompt.is_some() {
                                 return Err(de::Error::duplicate_field("negative_prompt"));
                             }
                             negative_prompt = Some(map.next_value()?);
                         }
-                        Field::Model => {
+                        "model" => {
                             if model.is_some() {
                                 return Err(de::Error::duplicate_field("model"));
                             }
                             model = Some(map.next_value()?);
                         }
-                        Field::N => {
+                        "n" => {
                             if n.is_some() {
                                 return Err(de::Error::duplicate_field("n"));
                             }
                             n = Some(map.next_value()?);
                         }
-                        Field::Quality => {
+                        "quality" => {
                             if quality.is_some() {
                                 return Err(de::Error::duplicate_field("quality"));
                             }
                             quality = Some(map.next_value()?);
                         }
-                        Field::ResponseFormat => {
+                        "response_format" => {
                             if response_format.is_some() {
                                 return Err(de::Error::duplicate_field("response_format"));
                             }
                             response_format = Some(map.next_value()?);
                         }
-                        Field::Size => {
+                        "size" => {
                             if size.is_some() {
                                 return Err(de::Error::duplicate_field("size"));
                             }
                             size = Some(map.next_value()?);
                         }
-                        Field::Style => {
+                        "style" => {
                             if style.is_some() {
                                 return Err(de::Error::duplicate_field("style"));
                             }
                             style = Some(map.next_value()?);
                         }
-                        Field::User => {
+                        "user" => {
                             if user.is_some() {
                                 return Err(de::Error::duplicate_field("user"));
                             }
                             user = Some(map.next_value()?);
                         }
-                        Field::CfgScale => {
+                        "cfg_scale" => {
                             if cfg_scale.is_some() {
                                 return Err(de::Error::duplicate_field("cfg_scale"));
                             }
                             cfg_scale = Some(map.next_value()?);
                         }
-                        Field::SampleMethod => {
+                        "sample_method" => {
                             if sample_method.is_some() {
                                 return Err(de::Error::duplicate_field("sample_method"));
                             }
                             sample_method = Some(map.next_value()?);
                         }
-                        Field::Steps => {
+                        "steps" => {
                             if steps.is_some() {
                                 return Err(de::Error::duplicate_field("steps"));
                             }
                             steps = Some(map.next_value()?);
                         }
-                        Field::Height => {
+                        "height" => {
                             if height.is_some() {
                                 return Err(de::Error::duplicate_field("height"));
                             }
                             height = Some(map.next_value()?);
                         }
-                        Field::Width => {
+                        "width" => {
                             if width.is_some() {
                                 return Err(de::Error::duplicate_field("width"));
                             }
                             width = Some(map.next_value()?);
                         }
-                        Field::ControlStrength => {
+                        "control_strength" => {
                             if control_strength.is_some() {
                                 return Err(de::Error::duplicate_field("control_strength"));
                             }
                             control_strength = Some(map.next_value()?);
                         }
-                        Field::ControlImage => {
+                        "control_image" => {
                             if control_image.is_some() {
                                 return Err(de::Error::duplicate_field("control_image"));
                             }
                             control_image = Some(map.next_value()?);
                         }
-                        Field::Seed => {
+                        "seed" => {
                             if seed.is_some() {
                                 return Err(de::Error::duplicate_field("seed"));
                             }
                             seed = Some(map.next_value()?);
                         }
-                        Field::Strength => {
+                        "strength" => {
                             if strength.is_some() {
                                 return Err(de::Error::duplicate_field("strength"));
                             }
                             strength = Some(map.next_value()?);
                         }
-                        Field::Scheduler => {
+                        "scheduler" => {
                             if scheduler.is_some() {
                                 return Err(de::Error::duplicate_field("scheduler"));
                             }
                             scheduler = Some(map.next_value()?);
                         }
-                        Field::ApplyCannyPreprocessor => {
+                        "apply_canny_preprocessor" => {
                             if apply_canny_preprocessor.is_some() {
                                 return Err(de::Error::duplicate_field("apply_canny_preprocessor"));
                             }
                             apply_canny_preprocessor = Some(map.next_value()?);
                         }
-                        Field::StyleRatio => {
+                        "style_ratio" => {
                             if style_ratio.is_some() {
                                 return Err(de::Error::duplicate_field("style_ratio"));
                             }
                             style_ratio = Some(map.next_value()?);
+                        }
+                        _ => {
+                            #[cfg(feature = "logging")]
+                            warn!(target: "stdout", "Not supported field: {}", key);
                         }
                     }
                 }
@@ -981,79 +858,6 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
     where
         D: Deserializer<'de>,
     {
-        enum Field {
-            Image,
-            Prompt,
-            NegativePrompt,
-            Mask,
-            Model,
-            N,
-            Size,
-            ResponseFormat,
-            User,
-            CfgScale,
-            SampleMethod,
-            Steps,
-            Height,
-            Width,
-            ControlStrength,
-            ControlImage,
-            Seed,
-            Strength,
-            Scheduler,
-            ApplyCannyPreprocessor,
-            StyleRatio,
-        }
-
-        impl<'de> Deserialize<'de> for Field {
-            fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
-            where
-                D: Deserializer<'de>,
-            {
-                struct FieldVisitor;
-
-                impl Visitor<'_> for FieldVisitor {
-                    type Value = Field;
-
-                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                        formatter.write_str("field identifier")
-                    }
-
-                    fn visit_str<E>(self, value: &str) -> Result<Field, E>
-                    where
-                        E: de::Error,
-                    {
-                        match value {
-                            "image" => Ok(Field::Image),
-                            "prompt" => Ok(Field::Prompt),
-                            "negative_prompt" => Ok(Field::NegativePrompt),
-                            "mask" => Ok(Field::Mask),
-                            "model" => Ok(Field::Model),
-                            "n" => Ok(Field::N),
-                            "size" => Ok(Field::Size),
-                            "response_format" => Ok(Field::ResponseFormat),
-                            "user" => Ok(Field::User),
-                            "cfg_scale" => Ok(Field::CfgScale),
-                            "sample_method" => Ok(Field::SampleMethod),
-                            "steps" => Ok(Field::Steps),
-                            "height" => Ok(Field::Height),
-                            "width" => Ok(Field::Width),
-                            "control_strength" => Ok(Field::ControlStrength),
-                            "control_image" => Ok(Field::ControlImage),
-                            "seed" => Ok(Field::Seed),
-                            "strength" => Ok(Field::Strength),
-                            "scheduler" => Ok(Field::Scheduler),
-                            "apply_canny_preprocessor" => Ok(Field::ApplyCannyPreprocessor),
-                            "style_ratio" => Ok(Field::StyleRatio),
-                            _ => Err(de::Error::unknown_field(value, FIELDS)),
-                        }
-                    }
-                }
-
-                deserializer.deserialize_identifier(FieldVisitor)
-            }
-        }
-
         struct ImageEditRequestVisitor;
 
         impl<'de> Visitor<'de> for ImageEditRequestVisitor {
@@ -1089,133 +893,137 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                 let mut apply_canny_preprocessor = None;
                 let mut style_ratio = None;
 
-                while let Some(key) = map.next_key()? {
-                    match key {
-                        Field::Image => {
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "image" => {
                             if image.is_some() {
                                 return Err(de::Error::duplicate_field("image"));
                             }
                             image = Some(map.next_value()?);
                         }
-                        Field::Prompt => {
+                        "prompt" => {
                             if prompt.is_some() {
                                 return Err(de::Error::duplicate_field("prompt"));
                             }
                             prompt = Some(map.next_value()?);
                         }
-                        Field::NegativePrompt => {
+                        "negative_prompt" => {
                             if negative_prompt.is_some() {
                                 return Err(de::Error::duplicate_field("negative_prompt"));
                             }
                             negative_prompt = Some(map.next_value()?);
                         }
-                        Field::Mask => {
+                        "mask" => {
                             if mask.is_some() {
                                 return Err(de::Error::duplicate_field("mask"));
                             }
                             mask = Some(map.next_value()?);
                         }
-                        Field::Model => {
+                        "model" => {
                             if model.is_some() {
                                 return Err(de::Error::duplicate_field("model"));
                             }
                             model = Some(map.next_value()?);
                         }
-                        Field::N => {
+                        "n" => {
                             if n.is_some() {
                                 return Err(de::Error::duplicate_field("n"));
                             }
                             n = Some(map.next_value()?);
                         }
-                        Field::Size => {
+                        "size" => {
                             if size.is_some() {
                                 return Err(de::Error::duplicate_field("size"));
                             }
                             size = Some(map.next_value()?);
                         }
-                        Field::ResponseFormat => {
+                        "response_format" => {
                             if response_format.is_some() {
                                 return Err(de::Error::duplicate_field("response_format"));
                             }
                             response_format = Some(map.next_value()?);
                         }
-                        Field::User => {
+                        "user" => {
                             if user.is_some() {
                                 return Err(de::Error::duplicate_field("user"));
                             }
                             user = Some(map.next_value()?);
                         }
-                        Field::CfgScale => {
+                        "cfg_scale" => {
                             if cfg_scale.is_some() {
                                 return Err(de::Error::duplicate_field("cfg_scale"));
                             }
                             cfg_scale = Some(map.next_value()?);
                         }
-                        Field::SampleMethod => {
+                        "sample_method" => {
                             if sample_method.is_some() {
                                 return Err(de::Error::duplicate_field("sample_method"));
                             }
                             sample_method = Some(map.next_value()?);
                         }
-                        Field::Steps => {
+                        "steps" => {
                             if steps.is_some() {
                                 return Err(de::Error::duplicate_field("steps"));
                             }
                             steps = Some(map.next_value()?);
                         }
-                        Field::Height => {
+                        "height" => {
                             if height.is_some() {
                                 return Err(de::Error::duplicate_field("height"));
                             }
                             height = Some(map.next_value()?);
                         }
-                        Field::Width => {
+                        "width" => {
                             if width.is_some() {
                                 return Err(de::Error::duplicate_field("width"));
                             }
                             width = Some(map.next_value()?);
                         }
-                        Field::ControlStrength => {
+                        "control_strength" => {
                             if control_strength.is_some() {
                                 return Err(de::Error::duplicate_field("control_strength"));
                             }
                             control_strength = Some(map.next_value()?);
                         }
-                        Field::ControlImage => {
+                        "control_image" => {
                             if control_image.is_some() {
                                 return Err(de::Error::duplicate_field("control_image"));
                             }
                             control_image = Some(map.next_value()?);
                         }
-                        Field::Seed => {
+                        "seed" => {
                             if seed.is_some() {
                                 return Err(de::Error::duplicate_field("seed"));
                             }
                             seed = Some(map.next_value()?);
                         }
-                        Field::Strength => {
+                        "strength" => {
                             if strength.is_some() {
                                 return Err(de::Error::duplicate_field("strength"));
                             }
                             strength = Some(map.next_value()?);
                         }
-                        Field::Scheduler => {
+                        "scheduler" => {
                             if scheduler.is_some() {
                                 return Err(de::Error::duplicate_field("scheduler"));
                             }
                             scheduler = Some(map.next_value()?);
                         }
-                        Field::ApplyCannyPreprocessor => {
+                        "apply_canny_preprocessor" => {
                             if apply_canny_preprocessor.is_some() {
                                 return Err(de::Error::duplicate_field("apply_canny_preprocessor"));
                             }
                             apply_canny_preprocessor = Some(map.next_value()?);
                         }
-                        Field::StyleRatio => {
+                        "style_ratio" => {
                             if style_ratio.is_some() {
                                 return Err(de::Error::duplicate_field("style_ratio"));
                             }
                             style_ratio = Some(map.next_value()?);
+                        }
+                        _ => {
+                            #[cfg(feature = "logging")]
+                            warn!(target: "stdout", "Not supported field: {}", key);
                         }
                     }
                 }
@@ -1498,49 +1306,6 @@ impl<'de> Deserialize<'de> for ImageVariationRequest {
     where
         D: Deserializer<'de>,
     {
-        enum Field {
-            Image,
-            Model,
-            N,
-            ResponseFormat,
-            Size,
-            User,
-        }
-
-        impl<'de> Deserialize<'de> for Field {
-            fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
-            where
-                D: Deserializer<'de>,
-            {
-                struct FieldVisitor;
-
-                impl Visitor<'_> for FieldVisitor {
-                    type Value = Field;
-
-                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                        formatter.write_str("field identifier")
-                    }
-
-                    fn visit_str<E>(self, value: &str) -> Result<Field, E>
-                    where
-                        E: de::Error,
-                    {
-                        match value {
-                            "image" => Ok(Field::Image),
-                            "model" => Ok(Field::Model),
-                            "n" => Ok(Field::N),
-                            "response_format" => Ok(Field::ResponseFormat),
-                            "size" => Ok(Field::Size),
-                            "user" => Ok(Field::User),
-                            _ => Err(de::Error::unknown_field(value, FIELDS)),
-                        }
-                    }
-                }
-
-                deserializer.deserialize_identifier(FieldVisitor)
-            }
-        }
-
         struct ImageVariationRequestVisitor;
 
         impl<'de> Visitor<'de> for ImageVariationRequestVisitor {
@@ -1560,43 +1325,48 @@ impl<'de> Deserialize<'de> for ImageVariationRequest {
                 let mut response_format = None;
                 let mut size = None;
                 let mut user = None;
-                while let Some(key) = map.next_key()? {
-                    match key {
-                        Field::Image => {
+
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "image" => {
                             if image.is_some() {
                                 return Err(de::Error::duplicate_field("image"));
                             }
                             image = Some(map.next_value()?);
                         }
-                        Field::Model => {
+                        "model" => {
                             if model.is_some() {
                                 return Err(de::Error::duplicate_field("model"));
                             }
                             model = Some(map.next_value()?);
                         }
-                        Field::N => {
+                        "n" => {
                             if n.is_some() {
                                 return Err(de::Error::duplicate_field("n"));
                             }
                             n = Some(map.next_value()?);
                         }
-                        Field::ResponseFormat => {
+                        "response_format" => {
                             if response_format.is_some() {
                                 return Err(de::Error::duplicate_field("response_format"));
                             }
                             response_format = Some(map.next_value()?);
                         }
-                        Field::Size => {
+                        "size" => {
                             if size.is_some() {
                                 return Err(de::Error::duplicate_field("size"));
                             }
                             size = Some(map.next_value()?);
                         }
-                        Field::User => {
+                        "user" => {
                             if user.is_some() {
                                 return Err(de::Error::duplicate_field("user"));
                             }
                             user = Some(map.next_value()?);
+                        }
+                        _ => {
+                            #[cfg(feature = "logging")]
+                            warn!(target: "stdout", "Not supported field: {}", key);
                         }
                     }
                 }
