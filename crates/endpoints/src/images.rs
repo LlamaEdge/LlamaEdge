@@ -1751,6 +1751,17 @@ impl<'de> Deserialize<'de> for Scheduler {
         deserializer.deserialize_str(SchedulerVisitor)
     }
 }
+impl fmt::Display for Scheduler {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Scheduler::Discrete => write!(f, "discrete"),
+            Scheduler::Karras => write!(f, "karras"),
+            Scheduler::Exponential => write!(f, "exponential"),
+            Scheduler::Ays => write!(f, "ays"),
+            Scheduler::Gits => write!(f, "gits"),
+        }
+    }
+}
 
 pub mod sd_webui {
     use super::Scheduler;
