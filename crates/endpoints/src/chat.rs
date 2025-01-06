@@ -148,7 +148,7 @@
 use crate::common::{FinishReason, Usage};
 use indexmap::IndexMap;
 use serde::{
-    de::{self, MapAccess, Visitor},
+    de::{self, IgnoredAny, MapAccess, Visitor},
     Deserialize, Deserializer, Serialize,
 };
 use serde_json::Value;
@@ -481,6 +481,9 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 let mut vdb_api_key = None;
 
                 while let Some(key) = map.next_key::<String>()? {
+                    #[cfg(feature = "logging")]
+                    info!(target: "stdout", "key: {}", key);
+
                     match key.as_str() {
                         "model" => model = map.next_value()?,
                         "messages" => messages = map.next_value()?,
@@ -513,6 +516,9 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                         #[cfg(feature = "rag")]
                         "vdb_api_key" => vdb_api_key = map.next_value()?,
                         _ => {
+                            // Ignore unknown fields
+                            let _ = map.next_value::<IgnoredAny>()?;
+
                             #[cfg(feature = "logging")]
                             warn!(target: "stdout", "Not supported field: {}", key);
                         }
@@ -2821,6 +2827,9 @@ impl<'de> Deserialize<'de> for ChatCompletionObjectMessage {
                         "role" => role = map.next_value()?,
                         "function_call" => function_call = map.next_value()?,
                         _ => {
+                            // Ignore unknown fields
+                            let _ = map.next_value::<IgnoredAny>()?;
+
                             #[cfg(feature = "logging")]
                             warn!(target: "stdout", "Not supported field: {}", key);
                         }
@@ -3023,6 +3032,9 @@ impl<'de> Deserialize<'de> for ChatCompletionChunkChoiceDelta {
                         "tool_calls" => tool_calls = map.next_value()?,
                         "role" => role = map.next_value()?,
                         _ => {
+                            // Ignore unknown fields
+                            let _ = map.next_value::<IgnoredAny>()?;
+
                             #[cfg(feature = "logging")]
                             warn!(target: "stdout", "Not supported field: {}", key);
                         }

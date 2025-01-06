@@ -2,7 +2,7 @@
 
 use crate::files::FileObject;
 use serde::{
-    de::{self, MapAccess, Visitor},
+    de::{self, IgnoredAny, MapAccess, Visitor},
     Deserialize, Deserializer, Serialize,
 };
 use std::fmt;
@@ -179,6 +179,9 @@ impl<'de> Deserialize<'de> for TranslationRequest {
                             use_new_context = Some(map.next_value()?);
                         }
                         _ => {
+                            // Ignore unknown fields
+                            let _ = map.next_value::<IgnoredAny>()?;
+
                             #[cfg(feature = "logging")]
                             warn!(target: "stdout", "Not supported field: {}", key);
                         }

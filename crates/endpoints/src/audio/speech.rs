@@ -1,7 +1,7 @@
 //! Define types for audio generation from the input text.
 
 use serde::{
-    de::{self, Deserializer, MapAccess, Visitor},
+    de::{self, Deserializer, IgnoredAny, MapAccess, Visitor},
     Deserialize, Serialize,
 };
 use std::fmt;
@@ -125,6 +125,9 @@ impl<'de> Deserialize<'de> for SpeechRequest {
                             json_input = map.next_value()?;
                         }
                         _ => {
+                            // Ignore unknown fields
+                            let _ = map.next_value::<IgnoredAny>()?;
+
                             #[cfg(feature = "logging")]
                             warn!(target: "stdout", "Not supported field: {}", key);
                         }
