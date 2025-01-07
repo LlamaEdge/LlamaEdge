@@ -34,7 +34,7 @@
 //! let json = serde_json::to_string(&request).unwrap();
 //! assert_eq!(
 //!     json,
-//!     r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"temperature":1.0,"top_p":1.0,"n":1,"stream":false,"max_tokens":1024,"presence_penalty":0.0,"frequency_penalty":0.0,"tool_choice":"none"}"#
+//!     r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"temperature":0.8,"top_p":0.9,"n":1,"stream":false,"max_tokens":1024,"presence_penalty":0.0,"frequency_penalty":0.0,"tool_choice":"none"}"#
 //! );
 //! ```
 //!
@@ -376,19 +376,19 @@ pub struct ChatCompletionRequest {
     /// Adjust the randomness of the generated text. Between 0.0 and 2.0. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.
     ///
     /// We generally recommend altering this or top_p but not both.
-    /// Defaults to 1.0.
+    /// Defaults to `0.8`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f64>,
-    /// Limit the next token selection to a subset of tokens with a cumulative probability above a threshold P. The value should be between 0.0 and 1.0.
+    /// An alternative to sampling with temperature. Limit the next token selection to a subset of tokens with a cumulative probability above a threshold `p`. The value should be between 0.0 and 1.0.
     ///
-    /// Top-p sampling, also known as nucleus sampling, is another text generation method that selects the next token from a subset of tokens that together have a cumulative probability of at least p. This method provides a balance between diversity and quality by considering both the probabilities of tokens and the number of tokens to sample from. A higher value for top_p (e.g., 0.95) will lead to more diverse text, while a lower value (e.g., 0.5) will generate more focused and conservative text.
+    /// Top-p sampling, also known as nucleus sampling, is another text generation method that selects the next token from a subset of tokens that together have a cumulative probability of at least `p`. This method provides a balance between diversity and quality by considering both the probabilities of tokens and the number of tokens to sample from. A higher value for top_p (e.g., 0.95) will lead to more diverse text, while a lower value (e.g., 0.5) will generate more focused and conservative text.
     ///
     /// We generally recommend altering this or temperature but not both.
-    /// Defaults to 1.0.
+    /// Defaults to `0.9`. To disable top-p sampling, set it to `1.0`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub top_p: Option<f64>,
     /// How many chat completion choices to generate for each input message.
-    /// Defaults to 1.
+    /// Defaults to `1`.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "n")]
     pub n_choice: Option<u64>,
@@ -677,8 +677,8 @@ impl Default for ChatCompletionRequest {
         Self {
             model: None,
             messages: vec![],
-            temperature: Some(1.0),
-            top_p: Some(1.0),
+            temperature: Some(0.8),
+            top_p: Some(0.9),
             n_choice: Some(1),
             stream: Some(false),
             stream_options: None,
@@ -770,7 +770,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"temperature":1.0,"top_p":1.0,"n":1,"stream":false,"max_tokens":1024,"presence_penalty":0.0,"frequency_penalty":0.0,"tool_choice":"none"}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"temperature":0.8,"top_p":0.9,"n":1,"stream":false,"max_tokens":1024,"presence_penalty":0.0,"frequency_penalty":0.0,"tool_choice":"none"}"#
         );
     }
 
