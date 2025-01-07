@@ -250,7 +250,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // create a chat request
-    let mut chat_request = ChatCompletionRequestBuilder::new(vec![])
+    let mut chat_request = ChatCompletionRequestBuilder::new(&[])
         .with_model(cli.model_name)
         .with_presence_penalty(cli.presence_penalty)
         .with_frequency_penalty(cli.frequency_penalty)
