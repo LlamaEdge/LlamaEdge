@@ -25,7 +25,7 @@
 //! messages.push(user_message);
 //!
 //! // create a chat completion request
-//! let request = ChatCompletionRequestBuilder::new(messages)
+//! let request = ChatCompletionRequestBuilder::new(&messages)
 //!     .with_model("model-id")
 //!     .with_tool_choice(ToolChoice::None)
 //!     .build();
@@ -119,7 +119,7 @@
 //! };
 //!
 //! // create a chat completion request
-//! let request = ChatCompletionRequestBuilder::new(messages)
+//! let request = ChatCompletionRequestBuilder::new(&messages)
 //!     .with_model("model-id")
 //!     .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
 //!     .with_n_choices(3)
@@ -166,10 +166,10 @@ impl ChatCompletionRequestBuilder {
     /// # Arguments
     ///
     /// * `messages` - A list of messages comprising the conversation so far.
-    pub fn new(messages: Vec<ChatCompletionRequestMessage>) -> Self {
+    pub fn new(messages: &[ChatCompletionRequestMessage]) -> Self {
         Self {
             req: ChatCompletionRequest {
-                messages,
+                messages: messages.to_vec(),
                 ..Default::default()
             },
         }
@@ -726,7 +726,7 @@ fn test_chat_serialize_chat_request() {
             ChatCompletionAssistantMessage::new(Some("Hello, world!".to_string()), None, None),
         );
         messages.push(assistant_message);
-        let request = ChatCompletionRequestBuilder::new(messages)
+        let request = ChatCompletionRequestBuilder::new(&messages)
             .with_model("model-id")
             .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
             .with_n_choices(3)
@@ -763,7 +763,7 @@ fn test_chat_serialize_chat_request() {
             ChatCompletionRequestMessage::new_user_message(user_message_content, None);
         messages.push(user_message);
 
-        let request = ChatCompletionRequestBuilder::new(messages)
+        let request = ChatCompletionRequestBuilder::new(&messages)
             .with_model("model-id")
             .with_tool_choice(ToolChoice::None)
             .build();
@@ -847,7 +847,7 @@ fn test_chat_serialize_chat_request() {
             },
         };
 
-        let request = ChatCompletionRequestBuilder::new(messages)
+        let request = ChatCompletionRequestBuilder::new(&messages)
             .with_model("model-id")
             .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
             .with_n_choices(3)
@@ -946,7 +946,7 @@ fn test_chat_serialize_chat_request() {
             },
         };
 
-        let request = ChatCompletionRequestBuilder::new(messages)
+        let request = ChatCompletionRequestBuilder::new(&messages)
             .with_model("model-id")
             .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
             .with_n_choices(3)
@@ -1041,7 +1041,8 @@ fn test_chat_serialize_chat_request() {
             },
         };
 
-        let request = ChatCompletionRequestBuilder::new("model-id", messages)
+        let request = ChatCompletionRequestBuilder::new(&messages)
+            .with_model("model-id")
             .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
             .with_n_choices(3)
             .enable_stream(true)
