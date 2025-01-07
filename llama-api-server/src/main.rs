@@ -432,7 +432,7 @@ impl<'de> Deserialize<'de> for CliConfig {
 
                 let reverse_prompt = reverse_prompt.unwrap_or_default();
 
-                let n_predict = n_predict.unwrap_or(1024);
+                let n_predict = n_predict.unwrap_or(-1);
 
                 let n_gpu_layers = n_gpu_layers.unwrap_or(100);
 
