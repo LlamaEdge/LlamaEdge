@@ -159,25 +159,35 @@ pub struct ChatCompletionRequestBuilder {
     req: ChatCompletionRequest,
 }
 impl ChatCompletionRequestBuilder {
-    /// Creates a new builder with the given model.
+    /// Creates a new builder with the given messages.
     ///
     /// # Arguments
     ///
-    /// * `model` - ID of the model to use.
-    ///
     /// * `messages` - A list of messages comprising the conversation so far.
-    ///
-    /// * `sampling` - The sampling method to use.
-    pub fn new(model: impl Into<String>, messages: Vec<ChatCompletionRequestMessage>) -> Self {
+    pub fn new(messages: Vec<ChatCompletionRequestMessage>) -> Self {
         Self {
             req: ChatCompletionRequest {
-                model: Some(model.into()),
                 messages,
                 ..Default::default()
             },
         }
     }
 
+    /// Sets the model name to use for generating completions.
+    ///
+    /// # Arguments
+    ///
+    /// * `model` - The name of the model to use.
+    pub fn with_model(mut self, model: impl Into<String>) -> Self {
+        self.req.model = Some(model.into());
+        self
+    }
+
+    /// Sets the sampling method to use.
+    ///
+    /// # Arguments
+    ///
+    /// * `sampling` - The sampling method to use.
     pub fn with_sampling(mut self, sampling: ChatCompletionRequestSampling) -> Self {
         let (temperature, top_p) = match sampling {
             ChatCompletionRequestSampling::Temperature(t) => (t, 1.0),
@@ -200,12 +210,16 @@ impl ChatCompletionRequestBuilder {
     }
 
     /// Enables streaming reponse.
+    ///
+    /// # Arguments
+    ///
+    /// * `flag` - Whether to enable streaming response.
     pub fn enable_stream(mut self, flag: bool) -> Self {
         self.req.stream = Some(flag);
         self
     }
 
-    /// Includes uage in streaming response.
+    /// Includes usage in streaming response.
     pub fn include_usage(mut self) -> Self {
         self.req.stream_options = Some(StreamOptions {
             include_usage: Some(true),
@@ -213,6 +227,11 @@ impl ChatCompletionRequestBuilder {
         self
     }
 
+    /// Sets the stop tokens.
+    ///
+    /// # Arguments
+    ///
+    /// * `stop` - A list of tokens at which to stop generation.
     pub fn with_stop(mut self, stop: Vec<String>) -> Self {
         self.req.stop = Some(stop);
         self
@@ -230,56 +249,80 @@ impl ChatCompletionRequestBuilder {
     }
 
     /// Sets the presence penalty. Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - The presence penalty.
     pub fn with_presence_penalty(mut self, penalty: f64) -> Self {
         self.req.presence_penalty = Some(penalty);
         self
     }
 
     /// Sets the frequency penalty. Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - The frequency penalty.
     pub fn with_frequency_penalty(mut self, penalty: f64) -> Self {
         self.req.frequency_penalty = Some(penalty);
         self
     }
 
+    /// Sets the logit bias.
+    ///
+    /// # Arguments
+    ///
+    /// * `map` - A map of tokens to their associated bias values.
     pub fn with_logits_bias(mut self, map: HashMap<String, f64>) -> Self {
         self.req.logit_bias = Some(map);
         self
     }
 
+    /// Sets the user.
+    ///
+    /// # Arguments
+    ///
+    /// * `user` - A unique identifier representing your end-user.
     pub fn with_user(mut self, user: impl Into<String>) -> Self {
         self.req.user = Some(user.into());
         self
     }
 
-    pub fn with_functions(mut self, functions: Vec<ChatCompletionRequestFunction>) -> Self {
-        self.req.functions = Some(functions);
-        self
-    }
-
-    pub fn with_function_call(mut self, function_call: impl Into<String>) -> Self {
-        self.req.function_call = Some(function_call.into());
-        self
-    }
-
-    /// Sets response format.
+    /// Sets the response format.
+    ///
+    /// # Arguments
+    ///
+    /// * `response_format` - The response format to use.
     pub fn with_reponse_format(mut self, response_format: ChatResponseFormat) -> Self {
         self.req.response_format = Some(response_format);
         self
     }
 
-    /// Sets tools
+    /// Sets tools.
+    ///
+    /// # Arguments
+    ///
+    /// * `tools` - A list of tools the model may call.
     pub fn with_tools(mut self, tools: Vec<Tool>) -> Self {
         self.req.tools = Some(tools);
         self
     }
 
     /// Sets tool choice.
+    ///
+    /// # Arguments
+    ///
+    /// * `tool_choice` - The tool choice to use.
     pub fn with_tool_choice(mut self, tool_choice: ToolChoice) -> Self {
         self.req.tool_choice = Some(tool_choice);
         self
     }
 
     /// Sets the number of user messages to use for context retrieval.
+    ///
+    /// # Arguments
+    ///
+    /// * `context_window` - The number of user messages to use for context retrieval.
     #[cfg(feature = "rag")]
     pub fn with_rag_context_window(mut self, context_window: u64) -> Self {
         self.req.context_window = Some(context_window);
@@ -681,7 +724,8 @@ fn test_chat_serialize_chat_request() {
             ChatCompletionAssistantMessage::new(Some("Hello, world!".to_string()), None, None),
         );
         messages.push(assistant_message);
-        let request = ChatCompletionRequestBuilder::new("model-id", messages)
+        let request = ChatCompletionRequestBuilder::new(messages)
+            .with_model("model-id")
             .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
             .with_n_choices(3)
             .enable_stream(true)
@@ -717,7 +761,8 @@ fn test_chat_serialize_chat_request() {
             ChatCompletionRequestMessage::new_user_message(user_message_content, None);
         messages.push(user_message);
 
-        let request = ChatCompletionRequestBuilder::new("model-id", messages)
+        let request = ChatCompletionRequestBuilder::new(messages)
+            .with_model("model-id")
             .with_tool_choice(ToolChoice::None)
             .build();
         let json = serde_json::to_string(&request).unwrap();
@@ -800,7 +845,8 @@ fn test_chat_serialize_chat_request() {
             },
         };
 
-        let request = ChatCompletionRequestBuilder::new("model-id", messages)
+        let request = ChatCompletionRequestBuilder::new(messages)
+            .with_model("model-id")
             .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
             .with_n_choices(3)
             .enable_stream(true)
@@ -898,7 +944,8 @@ fn test_chat_serialize_chat_request() {
             },
         };
 
-        let request = ChatCompletionRequestBuilder::new("model-id", messages)
+        let request = ChatCompletionRequestBuilder::new(messages)
+            .with_model("model-id")
             .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
             .with_n_choices(3)
             .enable_stream(true)
