@@ -91,6 +91,11 @@ impl GgmlMetadataBuilder {
         self
     }
 
+    pub fn with_split_mode(mut self, mode: String) -> Self {
+        self.metadata.split_mode = mode;
+        self
+    }
+
     pub fn with_ctx_size(mut self, size: u64) -> Self {
         self.metadata.ctx_size = size;
         self
@@ -184,12 +189,20 @@ pub struct GgmlMetadata {
     #[serde(rename = "main-gpu")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub main_gpu: Option<u64>,
-    /// How split tensors should be distributed accross GPUs. If None the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1.
+    /// How split tensors should be distributed accross GPUs. If None the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1. Defaults to None.
     #[serde(rename = "tensor-split")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tensor_split: Option<String>,
+    /// Whether to use memory-mapped files for the model. Defaults to `true`.
     #[serde(skip_serializing_if = "Option::is_none", rename = "use-mmap")]
     pub use_mmap: Option<bool>,
+    /// How to split the model across multiple GPUs. Possible values:
+    /// - `none`: use one GPU only
+    /// - `layer`: split layers and KV across GPUs (default)
+    /// - `row`: split rows across GPUs
+    #[serde(rename = "split-mode")]
+    pub split_mode: String,
+
     // * Context parameters (used by the llama context):
     #[serde(rename = "ctx-size")]
     pub ctx_size: u64,
@@ -235,6 +248,7 @@ impl Default for GgmlMetadata {
             main_gpu: None,
             tensor_split: None,
             use_mmap: Some(true),
+            split_mode: "layer".to_string(),
             ctx_size: 512,
             batch_size: 512,
             threads: 2,
