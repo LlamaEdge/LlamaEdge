@@ -23,6 +23,8 @@ reverse-prompt: null
 n-predict: 1024
 # Number of layers to run on GPU
 n-gpu-layers: 100
+# Split mode. Possible values: `none`, `layer` (default), `row`.
+split-mode: "layer"
 # Main GPU to use
 main-gpu: null
 # GPU tensor split ratio (e.g., "3,2")
