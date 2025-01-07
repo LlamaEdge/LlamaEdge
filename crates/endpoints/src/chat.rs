@@ -25,7 +25,8 @@
 //! messages.push(user_message);
 //!
 //! // create a chat completion request
-//! let request = ChatCompletionRequestBuilder::new("model-id", messages)
+//! let request = ChatCompletionRequestBuilder::new(messages)
+//!     .with_model("model-id")
 //!     .with_tool_choice(ToolChoice::None)
 //!     .build();
 //!
@@ -118,7 +119,8 @@
 //! };
 //!
 //! // create a chat completion request
-//! let request = ChatCompletionRequestBuilder::new("model-id", messages)
+//! let request = ChatCompletionRequestBuilder::new(messages)
+//!     .with_model("model-id")
 //!     .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
 //!     .with_n_choices(3)
 //!     .enable_stream(true)
