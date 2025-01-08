@@ -51,7 +51,9 @@ pub async fn chat(
         info!(target: "stdout", "stream mode: {:?}", chat_request.stream);
     }
 
-    match chat_request.stream {
+    let model_name = chat_request.model.clone();
+
+    let result = match chat_request.stream {
         Some(true) => match chat_stream(chat_request).await {
             Ok(stream) => Ok(Left(stream)),
             Err(e) => Err(e),
@@ -60,7 +62,15 @@ pub async fn chat(
             Ok(chat_completion_object) => Ok(Right(chat_completion_object)),
             Err(e) => Err(e),
         },
-    }
+    };
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Reset the model metadata.");
+
+    // reset the model metadata
+    reset_model_metadata(model_name.as_ref())?;
+
+    result
 }
 
 /// Processes a chat-completion request and returns ChatCompletionChunk instances in stream.
@@ -1720,6 +1730,9 @@ async fn check_model_metadata(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Check model metadata.");
 
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Get the model metadata.");
+
     let mut should_update = false;
     let mut metadata = get_model_metadata(chat_request.model.as_ref())?;
 
@@ -1821,6 +1834,9 @@ async fn check_model_metadata(
     }
 
     if should_update {
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Update the model metadata.");
+
         // update the target graph with the new metadata
         update_model_metadata(chat_request.model.as_ref(), &metadata)?;
     }
@@ -1838,9 +1854,28 @@ async fn update_n_predict(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "available_completion_tokens: {}, n_predict: {}", available_completion_tokens, metadata.n_predict);
 
-    if metadata.n_predict > 0 && metadata.n_predict < available_completion_tokens as i32 {
+    // From high to low priority
+    // 1. chat_request.max_tokens & chat_request.max_completion_tokens
+    // 2. available_completion_tokens
+    // 3. n_predict
+
+    if let Some(max_completion_tokens) = chat_request.max_completion_tokens {
+        if metadata.n_predict != max_completion_tokens {
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "Update n_predict with max_completion_tokens from {} to {}", metadata.n_predict, max_completion_tokens);
+
+            metadata.n_predict = max_completion_tokens;
+
+            if !should_update {
+                should_update = true;
+            }
+        }
+    }
+
+    // TODO: remove this condition after [Issue #3958 on WasmEdge](https://github.com/WasmEdge/WasmEdge/issues/3958) is fixed
+    if metadata.n_predict == -2 {
         #[cfg(feature = "logging")]
-        info!(target: "stdout", "Update n_predict from {} to {}", metadata.n_predict, available_completion_tokens);
+        info!(target: "stdout", "Update n_predict with available_completion_tokens from {} to {}", metadata.n_predict, available_completion_tokens);
 
         // update n_predict
         metadata.n_predict = available_completion_tokens as i32;
@@ -1850,41 +1885,26 @@ async fn update_n_predict(
         }
     }
 
-    // // check if necessary to update n_predict with max_tokens
-    // if let Some(max_tokens) = chat_request.max_tokens {
-    //     #[cfg(feature = "logging")]
-    //     info!(target: "stdout", "available_completion_tokens: {}, max_tokens from request: {}, n_predict: {}", available_completion_tokens, max_tokens, metadata.n_predict);
+    if metadata.n_predict == -1
+        || (metadata.n_predict > 0 && metadata.n_predict < available_completion_tokens as i32)
+        || (metadata.n_predict < 0 && metadata.n_predict != -2)
+    // TODO: remove this condition after [Issue #3958 on WasmEdge](https://github.com/WasmEdge/WasmEdge/issues/3958) is fixed
+    {
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Update n_predict with available_completion_tokens from {} to {}", metadata.n_predict, available_completion_tokens);
 
-    //     let max_completion_tokens = match available_completion_tokens < max_tokens {
-    //         true => available_completion_tokens,
-    //         false => max_tokens,
-    //     };
+        // update n_predict
+        metadata.n_predict = available_completion_tokens as i32;
 
-    //     // update n_predict
-    //     if metadata.n_predict != max_completion_tokens {
-    //         #[cfg(feature = "logging")]
-    //         info!(target: "stdout", "update n_predict from {} to {}", metadata.n_predict, max_completion_tokens);
-
-    //         metadata.n_predict = max_completion_tokens;
-
-    //         if !should_update {
-    //             should_update = true;
-    //         }
-    //     }
-    //     if metadata.n_predict < available_completion_tokens {
-    //         #[cfg(feature = "logging")]
-    //         info!(target: "stdout", "Update n_predict from {} to {}", metadata.n_predict, available_completion_tokens);
-
-    //         // update n_predict
-    //         metadata.n_predict = available_completion_tokens;
-
-    //         if !should_update {
-    //             should_update = true;
-    //         }
-    //     }
-    // }
+        if !should_update {
+            should_update = true;
+        }
+    }
 
     if should_update {
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Update the model metadata.");
+
         // update the target graph with the new metadata
         update_model_metadata(chat_request.model.as_ref(), metadata)?;
     }
@@ -2082,6 +2102,17 @@ fn post_process(
     Ok(output)
 }
 
+/// Build the chat prompt from the chat messages.
+///
+/// # Arguments
+///
+/// * `model_name`: The name of the model.
+///
+/// * `chat_request`: The chat request.
+///
+/// # Returns
+///
+/// A tuple containing the prompt, the number of available tokens for completions, and a boolean indicating whether tools are used.
 fn build_prompt(
     model_name: Option<&String>,
     chat_request: &mut ChatCompletionRequest,
@@ -2089,6 +2120,8 @@ fn build_prompt(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Build the chat prompt from the chat messages.");
 
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Get the model metadata.");
     let metadata = get_model_metadata(model_name)?;
     let ctx_size = metadata.ctx_size as u64;
     let chat_prompt = ChatPrompt::from(metadata.prompt_template);
@@ -2429,9 +2462,6 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
 
 /// Get a copy of the metadata of the model.
 fn get_model_metadata(model_name: Option<&String>) -> Result<GgmlMetadata, LlamaCoreError> {
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Get the model metadata.");
-
     let chat_graphs = match CHAT_GRAPHS.get() {
         Some(chat_graphs) => chat_graphs,
         None => {
@@ -2489,9 +2519,6 @@ fn update_model_metadata(
     model_name: Option<&String>,
     metadata: &GgmlMetadata,
 ) -> Result<(), LlamaCoreError> {
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Update the model metadata.");
-
     let config = match serde_json::to_string(metadata) {
         Ok(config) => config,
         Err(e) => {
@@ -2566,6 +2593,14 @@ fn update_model_metadata(
             }
         }
     }
+}
+
+fn reset_model_metadata(model_name: Option<&String>) -> Result<(), LlamaCoreError> {
+    // get metadata
+    let metadata = get_model_metadata(model_name)?;
+
+    // update model with the original metadata
+    update_model_metadata(model_name, &metadata)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
