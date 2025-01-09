@@ -76,6 +76,8 @@ pub enum PromptTemplateType {
     Phi3Chat,
     #[value(name = "phi-3-instruct")]
     Phi3Instruct,
+    #[value(name = "phi-4-chat")]
+    Phi4Chat,
     #[value(name = "gemma-instruct")]
     GemmaInstruct,
     #[value(name = "octopus")]
@@ -131,6 +133,7 @@ impl PromptTemplateType {
             | PromptTemplateType::DeepseekChat3
             | PromptTemplateType::Octopus
             | PromptTemplateType::Phi3Chat
+            | PromptTemplateType::Phi4Chat
             | PromptTemplateType::Glm4Chat
             | PromptTemplateType::GroqLlama3Tool
             | PromptTemplateType::BreezeInstruct
@@ -199,6 +202,7 @@ impl FromStr for PromptTemplateType {
             "phi-2-instruct" => Ok(PromptTemplateType::Phi2Instruct),
             "phi-3-chat" => Ok(PromptTemplateType::Phi3Chat),
             "phi-3-instruct" => Ok(PromptTemplateType::Phi3Instruct),
+            "phi-4-chat" => Ok(PromptTemplateType::Phi4Chat),
             "gemma-instruct" => Ok(PromptTemplateType::GemmaInstruct),
             "octopus" => Ok(PromptTemplateType::Octopus),
             "glm-4-chat" => Ok(PromptTemplateType::Glm4Chat),
@@ -254,6 +258,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::Phi2Instruct => write!(f, "phi-2-instruct"),
             PromptTemplateType::Phi3Chat => write!(f, "phi-3-chat"),
             PromptTemplateType::Phi3Instruct => write!(f, "phi-3-instruct"),
+            PromptTemplateType::Phi4Chat => write!(f, "phi-4-chat"),
             PromptTemplateType::CodeLlamaSuper => write!(f, "codellama-super-instruct"),
             PromptTemplateType::GemmaInstruct => write!(f, "gemma-instruct"),
             PromptTemplateType::Octopus => write!(f, "octopus"),
