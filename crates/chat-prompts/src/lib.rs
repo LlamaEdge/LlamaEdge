@@ -4,6 +4,7 @@
 
 pub mod chat;
 pub mod error;
+pub mod utils;
 
 use clap::ValueEnum;
 use endpoints::chat::ChatCompletionRequestMessage;
@@ -63,6 +64,8 @@ pub enum PromptTemplateType {
     DeepseekChat2,
     #[value(name = "deepseek-chat-25")]
     DeepseekChat25,
+    #[value(name = "deepseek-chat-3")]
+    DeepseekChat3,
     #[value(name = "solar-instruct")]
     SolarInstruct,
     #[value(name = "phi-2-chat")]
@@ -73,6 +76,8 @@ pub enum PromptTemplateType {
     Phi3Chat,
     #[value(name = "phi-3-instruct")]
     Phi3Instruct,
+    #[value(name = "phi-4-chat")]
+    Phi4Chat,
     #[value(name = "gemma-instruct")]
     GemmaInstruct,
     #[value(name = "octopus")]
@@ -95,6 +100,12 @@ pub enum PromptTemplateType {
     MiniCPMV,
     #[value(name = "moxin-chat")]
     MoxinChat,
+    #[value(name = "falcon3")]
+    Falcon3,
+    #[value(name = "megrez")]
+    Megrez,
+    #[value(name = "qwen2-vision")]
+    Qwen2vl,
     #[value(name = "embedding")]
     Embedding,
     #[value(name = "none")]
@@ -119,8 +130,10 @@ impl PromptTemplateType {
             | PromptTemplateType::IntelNeural
             | PromptTemplateType::DeepseekCoder
             | PromptTemplateType::DeepseekChat2
+            | PromptTemplateType::DeepseekChat3
             | PromptTemplateType::Octopus
             | PromptTemplateType::Phi3Chat
+            | PromptTemplateType::Phi4Chat
             | PromptTemplateType::Glm4Chat
             | PromptTemplateType::GroqLlama3Tool
             | PromptTemplateType::BreezeInstruct
@@ -128,7 +141,10 @@ impl PromptTemplateType {
             | PromptTemplateType::NemotronChat
             | PromptTemplateType::NemotronTool
             | PromptTemplateType::MiniCPMV
-            | PromptTemplateType::MoxinChat => true,
+            | PromptTemplateType::MoxinChat
+            | PromptTemplateType::Falcon3
+            | PromptTemplateType::Megrez
+            | PromptTemplateType::Qwen2vl => true,
             PromptTemplateType::MistralInstruct
             | PromptTemplateType::MistralTool
             | PromptTemplateType::MistralLite
@@ -180,11 +196,13 @@ impl FromStr for PromptTemplateType {
             "deepseek-coder" => Ok(PromptTemplateType::DeepseekCoder),
             "deepseek-chat-2" => Ok(PromptTemplateType::DeepseekChat2),
             "deepseek-chat-25" => Ok(PromptTemplateType::DeepseekChat25),
+            "deepseek-chat-3" => Ok(PromptTemplateType::DeepseekChat3),
             "solar-instruct" => Ok(PromptTemplateType::SolarInstruct),
             "phi-2-chat" => Ok(PromptTemplateType::Phi2Chat),
             "phi-2-instruct" => Ok(PromptTemplateType::Phi2Instruct),
             "phi-3-chat" => Ok(PromptTemplateType::Phi3Chat),
             "phi-3-instruct" => Ok(PromptTemplateType::Phi3Instruct),
+            "phi-4-chat" => Ok(PromptTemplateType::Phi4Chat),
             "gemma-instruct" => Ok(PromptTemplateType::GemmaInstruct),
             "octopus" => Ok(PromptTemplateType::Octopus),
             "glm-4-chat" => Ok(PromptTemplateType::Glm4Chat),
@@ -196,6 +214,9 @@ impl FromStr for PromptTemplateType {
             "functionary-31" => Ok(PromptTemplateType::FunctionaryV31),
             "minicpmv" => Ok(PromptTemplateType::MiniCPMV),
             "moxin-chat" => Ok(PromptTemplateType::MoxinChat),
+            "falcon3" => Ok(PromptTemplateType::Falcon3),
+            "megrez" => Ok(PromptTemplateType::Megrez),
+            "qwen2-vision" => Ok(PromptTemplateType::Qwen2vl),
             "embedding" => Ok(PromptTemplateType::Embedding),
             "none" => Ok(PromptTemplateType::Null),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
@@ -231,11 +252,13 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::DeepseekCoder => write!(f, "deepseek-coder"),
             PromptTemplateType::DeepseekChat2 => write!(f, "deepseek-chat-2"),
             PromptTemplateType::DeepseekChat25 => write!(f, "deepseek-chat-25"),
+            PromptTemplateType::DeepseekChat3 => write!(f, "deepseek-chat-3"),
             PromptTemplateType::SolarInstruct => write!(f, "solar-instruct"),
             PromptTemplateType::Phi2Chat => write!(f, "phi-2-chat"),
             PromptTemplateType::Phi2Instruct => write!(f, "phi-2-instruct"),
             PromptTemplateType::Phi3Chat => write!(f, "phi-3-chat"),
             PromptTemplateType::Phi3Instruct => write!(f, "phi-3-instruct"),
+            PromptTemplateType::Phi4Chat => write!(f, "phi-4-chat"),
             PromptTemplateType::CodeLlamaSuper => write!(f, "codellama-super-instruct"),
             PromptTemplateType::GemmaInstruct => write!(f, "gemma-instruct"),
             PromptTemplateType::Octopus => write!(f, "octopus"),
@@ -248,6 +271,9 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::FunctionaryV31 => write!(f, "functionary-31"),
             PromptTemplateType::MiniCPMV => write!(f, "minicpmv"),
             PromptTemplateType::MoxinChat => write!(f, "moxin-chat"),
+            PromptTemplateType::Falcon3 => write!(f, "falcon3"),
+            PromptTemplateType::Megrez => write!(f, "megrez"),
+            PromptTemplateType::Qwen2vl => write!(f, "qwen2-vision"),
             PromptTemplateType::Embedding => write!(f, "embedding"),
             PromptTemplateType::Null => write!(f, "none"),
         }

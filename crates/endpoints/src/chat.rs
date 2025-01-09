@@ -25,7 +25,8 @@
 //! messages.push(user_message);
 //!
 //! // create a chat completion request
-//! let request = ChatCompletionRequestBuilder::new("model-id", messages)
+//! let request = ChatCompletionRequestBuilder::new(&messages)
+//!     .with_model("model-id")
 //!     .with_tool_choice(ToolChoice::None)
 //!     .build();
 //!
@@ -33,7 +34,7 @@
 //! let json = serde_json::to_string(&request).unwrap();
 //! assert_eq!(
 //!     json,
-//!     r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"temperature":1.0,"top_p":1.0,"n":1,"stream":false,"max_tokens":1024,"presence_penalty":0.0,"frequency_penalty":0.0,"tool_choice":"none"}"#
+//!     r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"temperature":0.8,"top_p":0.9,"n":1,"stream":false,"max_tokens":-1,"max_completion_tokens":-1,"presence_penalty":0.0,"frequency_penalty":0.0,"tool_choice":"none"}"#
 //! );
 //! ```
 //!
@@ -118,13 +119,14 @@
 //! };
 //!
 //! // create a chat completion request
-//! let request = ChatCompletionRequestBuilder::new("model-id", messages)
+//! let request = ChatCompletionRequestBuilder::new(&messages)
+//!     .with_model("model-id")
 //!     .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
 //!     .with_n_choices(3)
 //!     .enable_stream(true)
 //!     .include_usage()
 //!     .with_stop(vec!["stop1".to_string(), "stop2".to_string()])
-//!     .with_max_tokens(100)
+//!     .with_max_completion_tokens(100)
 //!     .with_presence_penalty(0.5)
 //!     .with_frequency_penalty(0.5)
 //!     .with_reponse_format(ChatResponseFormat::default())
@@ -141,7 +143,7 @@
 //! let json = serde_json::to_string(&request).unwrap();
 //! assert_eq!(
 //!     json,
-//!     r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#
+//!     r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#
 //! );
 //! ```
 
@@ -159,25 +161,35 @@ pub struct ChatCompletionRequestBuilder {
     req: ChatCompletionRequest,
 }
 impl ChatCompletionRequestBuilder {
-    /// Creates a new builder with the given model.
+    /// Creates a new builder with the given messages.
     ///
     /// # Arguments
     ///
-    /// * `model` - ID of the model to use.
-    ///
     /// * `messages` - A list of messages comprising the conversation so far.
-    ///
-    /// * `sampling` - The sampling method to use.
-    pub fn new(model: impl Into<String>, messages: Vec<ChatCompletionRequestMessage>) -> Self {
+    pub fn new(messages: &[ChatCompletionRequestMessage]) -> Self {
         Self {
             req: ChatCompletionRequest {
-                model: Some(model.into()),
-                messages,
+                messages: messages.to_vec(),
                 ..Default::default()
             },
         }
     }
 
+    /// Sets the model name to use for generating completions.
+    ///
+    /// # Arguments
+    ///
+    /// * `model` - The name of the model to use.
+    pub fn with_model(mut self, model: impl Into<String>) -> Self {
+        self.req.model = Some(model.into());
+        self
+    }
+
+    /// Sets the sampling method to use.
+    ///
+    /// # Arguments
+    ///
+    /// * `sampling` - The sampling method to use.
     pub fn with_sampling(mut self, sampling: ChatCompletionRequestSampling) -> Self {
         let (temperature, top_p) = match sampling {
             ChatCompletionRequestSampling::Temperature(t) => (t, 1.0),
@@ -200,12 +212,16 @@ impl ChatCompletionRequestBuilder {
     }
 
     /// Enables streaming reponse.
+    ///
+    /// # Arguments
+    ///
+    /// * `flag` - Whether to enable streaming response.
     pub fn enable_stream(mut self, flag: bool) -> Self {
         self.req.stream = Some(flag);
         self
     }
 
-    /// Includes uage in streaming response.
+    /// Includes usage in streaming response.
     pub fn include_usage(mut self) -> Self {
         self.req.stream_options = Some(StreamOptions {
             include_usage: Some(true),
@@ -213,73 +229,118 @@ impl ChatCompletionRequestBuilder {
         self
     }
 
+    /// Sets the stop tokens.
+    ///
+    /// # Arguments
+    ///
+    /// * `stop` - A list of tokens at which to stop generation.
     pub fn with_stop(mut self, stop: Vec<String>) -> Self {
         self.req.stop = Some(stop);
         self
     }
 
+    /// **Deprecated** Use `max_completion_tokens` instead.
+    ///
     /// Sets the maximum number of tokens to generate in the chat completion. The total length of input tokens and generated tokens is limited by the model's context length.
     ///
     /// # Argument
     ///
-    /// * `max_tokens` - The maximum number of tokens to generate in the chat completion. If `max_tokens` is less than 1, then sets to `16`.
-    pub fn with_max_tokens(mut self, max_tokens: u64) -> Self {
-        let max_tokens = if max_tokens < 1 { 16 } else { max_tokens };
+    /// * `max_tokens` - The maximum number of tokens to generate in the chat completion. `-1` means infinity. `-2` means until context filled. Defaults to `-1`.
+    #[deprecated(
+        since = "0.24.0",
+        note = "Please use `with_max_completion_tokens` instead."
+    )]
+    #[allow(deprecated)]
+    pub fn with_max_tokens(mut self, max_tokens: i32) -> Self {
         self.req.max_tokens = Some(max_tokens);
         self
     }
 
+    /// Sets the maximum number of tokens that can be generated for a completion.
+    ///
+    /// # Argument
+    ///
+    /// * `max_completion_tokens` - The maximum number of tokens that can be generated for a completion.
+    pub fn with_max_completion_tokens(mut self, max_completion_tokens: i32) -> Self {
+        self.req.max_completion_tokens = Some(max_completion_tokens);
+        self
+    }
+
     /// Sets the presence penalty. Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - The presence penalty.
     pub fn with_presence_penalty(mut self, penalty: f64) -> Self {
         self.req.presence_penalty = Some(penalty);
         self
     }
 
     /// Sets the frequency penalty. Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - The frequency penalty.
     pub fn with_frequency_penalty(mut self, penalty: f64) -> Self {
         self.req.frequency_penalty = Some(penalty);
         self
     }
 
+    /// Sets the logit bias.
+    ///
+    /// # Arguments
+    ///
+    /// * `map` - A map of tokens to their associated bias values.
     pub fn with_logits_bias(mut self, map: HashMap<String, f64>) -> Self {
         self.req.logit_bias = Some(map);
         self
     }
 
+    /// Sets the user.
+    ///
+    /// # Arguments
+    ///
+    /// * `user` - A unique identifier representing your end-user.
     pub fn with_user(mut self, user: impl Into<String>) -> Self {
         self.req.user = Some(user.into());
         self
     }
 
-    pub fn with_functions(mut self, functions: Vec<ChatCompletionRequestFunction>) -> Self {
-        self.req.functions = Some(functions);
-        self
-    }
-
-    pub fn with_function_call(mut self, function_call: impl Into<String>) -> Self {
-        self.req.function_call = Some(function_call.into());
-        self
-    }
-
-    /// Sets response format.
+    /// Sets the response format.
+    ///
+    /// # Arguments
+    ///
+    /// * `response_format` - The response format to use.
     pub fn with_reponse_format(mut self, response_format: ChatResponseFormat) -> Self {
         self.req.response_format = Some(response_format);
         self
     }
 
-    /// Sets tools
+    /// Sets tools.
+    ///
+    /// # Arguments
+    ///
+    /// * `tools` - A list of tools the model may call.
     pub fn with_tools(mut self, tools: Vec<Tool>) -> Self {
         self.req.tools = Some(tools);
         self
     }
 
     /// Sets tool choice.
+    ///
+    /// # Arguments
+    ///
+    /// * `tool_choice` - The tool choice to use.
     pub fn with_tool_choice(mut self, tool_choice: ToolChoice) -> Self {
         self.req.tool_choice = Some(tool_choice);
         self
     }
 
     /// Sets the number of user messages to use for context retrieval.
+    ///
+    /// # Arguments
+    ///
+    /// * `context_window` - The number of user messages to use for context retrieval.
     #[cfg(feature = "rag")]
     pub fn with_rag_context_window(mut self, context_window: u64) -> Self {
         self.req.context_window = Some(context_window);
@@ -331,19 +392,19 @@ pub struct ChatCompletionRequest {
     /// Adjust the randomness of the generated text. Between 0.0 and 2.0. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.
     ///
     /// We generally recommend altering this or top_p but not both.
-    /// Defaults to 1.0.
+    /// Defaults to `0.8`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f64>,
-    /// Limit the next token selection to a subset of tokens with a cumulative probability above a threshold P. The value should be between 0.0 and 1.0.
+    /// An alternative to sampling with temperature. Limit the next token selection to a subset of tokens with a cumulative probability above a threshold `p`. The value should be between 0.0 and 1.0.
     ///
-    /// Top-p sampling, also known as nucleus sampling, is another text generation method that selects the next token from a subset of tokens that together have a cumulative probability of at least p. This method provides a balance between diversity and quality by considering both the probabilities of tokens and the number of tokens to sample from. A higher value for top_p (e.g., 0.95) will lead to more diverse text, while a lower value (e.g., 0.5) will generate more focused and conservative text.
+    /// Top-p sampling, also known as nucleus sampling, is another text generation method that selects the next token from a subset of tokens that together have a cumulative probability of at least `p`. This method provides a balance between diversity and quality by considering both the probabilities of tokens and the number of tokens to sample from. A higher value for top_p (e.g., 0.95) will lead to more diverse text, while a lower value (e.g., 0.5) will generate more focused and conservative text.
     ///
     /// We generally recommend altering this or temperature but not both.
-    /// Defaults to 1.0.
+    /// Defaults to `0.9`. To disable top-p sampling, set it to `1.0`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub top_p: Option<f64>,
     /// How many chat completion choices to generate for each input message.
-    /// Defaults to 1.
+    /// Defaults to `1`.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "n")]
     pub n_choice: Option<u64>,
@@ -358,10 +419,16 @@ pub struct ChatCompletionRequest {
     /// Defaults to None
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop: Option<Vec<String>>,
-    /// The maximum number of tokens to generate. The value should be no less than 1.
-    /// Defaults to 1024.
+    /// **Deprecated since 0.24.0.** Use `max_completion_tokens` instead.
+    ///
+    /// The maximum number of tokens to generate.
+    /// `-1` means infinity. `-2` means until context filled. Defaults to `-1`.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_tokens: Option<u64>,
+    #[deprecated(since = "0.24.0", note = "Please use `max_completion_tokens` instead.")]
+    pub max_tokens: Option<i32>,
+    /// An upper bound for the number of tokens that can be generated for a completion. `-1` means infinity. `-2` means until context filled. Defaults to `-1`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_completion_tokens: Option<i32>,
     /// Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
     /// Defaults to 0.0.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -381,11 +448,18 @@ pub struct ChatCompletionRequest {
     pub user: Option<String>,
 
     //* OpenAI specific parameters
-    /// **Deprecated since 0.10.0.** Use `tools` instead.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[deprecated(
+        since = "0.10.0",
+        note = "Please use `tools` and `tool_choice` instead."
+    )]
+    #[allow(deprecated)]
     pub functions: Option<Vec<ChatCompletionRequestFunction>>,
-    /// **Deprecated since 0.10.0.** Use `tool_choice` instead.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[deprecated(
+        since = "0.10.0",
+        note = "Please use `tools` and `tool_choice` instead."
+    )]
     pub function_call: Option<String>,
 
     /// Format that the model must output
@@ -417,11 +491,11 @@ pub struct ChatCompletionRequest {
         skip_serializing_if = "Option::is_none"
     )]
     pub vdb_collection_name: Option<Vec<String>>,
-    /// Max number of retrieved results. The number of the values must be the same as the number of `qdrant_collection_name`.
+    /// Max number of retrieved results. The number of the values must be the same as the number of `vdb_collection_name`.
     #[cfg(feature = "rag")]
     #[serde(rename = "limit", skip_serializing_if = "Option::is_none")]
     pub limit: Option<Vec<u64>>,
-    /// The score threshold for the retrieved results. The number of the values must be the same as the number of `qdrant_collection_name`.
+    /// The score threshold for the retrieved results. The number of the values must be the same as the number of `vdb_collection_name`.
     #[cfg(feature = "rag")]
     #[serde(rename = "score_threshold", skip_serializing_if = "Option::is_none")]
     pub score_threshold: Option<Vec<f32>>,
@@ -430,6 +504,7 @@ pub struct ChatCompletionRequest {
     #[serde(rename = "vdb_api_key", skip_serializing_if = "Option::is_none")]
     pub vdb_api_key: Option<String>,
 }
+#[allow(deprecated)]
 impl<'de> Deserialize<'de> for ChatCompletionRequest {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -458,6 +533,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 let mut stream_options = None;
                 let mut stop = None;
                 let mut max_tokens = None;
+                let mut max_completion_tokens = None;
                 let mut presence_penalty = None;
                 let mut frequency_penalty = None;
                 let mut logit_bias = None;
@@ -494,6 +570,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                         "stream_options" => stream_options = map.next_value()?,
                         "stop" => stop = map.next_value()?,
                         "max_tokens" => max_tokens = map.next_value()?,
+                        "max_completion_tokens" => max_completion_tokens = map.next_value()?,
                         "presence_penalty" => presence_penalty = map.next_value()?,
                         "frequency_penalty" => frequency_penalty = map.next_value()?,
                         "logit_bias" => logit_bias = map.next_value()?,
@@ -530,7 +607,12 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
 
                 // Set default value for `max_tokens` if not provided
                 if max_tokens.is_none() {
-                    max_tokens = Some(1024);
+                    max_tokens = Some(-1);
+                }
+
+                // Set default value for `max_completion_tokens` if not provided
+                if max_completion_tokens.is_none() {
+                    max_completion_tokens = Some(-1);
                 }
 
                 // Check tools and tool_choice
@@ -563,6 +645,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     stream_options,
                     stop,
                     max_tokens,
+                    max_completion_tokens,
                     presence_penalty,
                     frequency_penalty,
                     logit_bias,
@@ -589,8 +672,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
         }
 
         const FIELDS: &[&str] = &[
-            "prompt",
-            "max_tokens",
+            "model",
+            "messages",
             "temperature",
             "top_p",
             "n",
@@ -598,6 +681,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
             "stream_options",
             "stop",
             "max_tokens",
+            "max_completion_tokens",
             "presence_penalty",
             "frequency_penalty",
             "logit_bias",
@@ -627,18 +711,20 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
         )
     }
 }
+#[allow(deprecated)]
 impl Default for ChatCompletionRequest {
     fn default() -> Self {
         Self {
             model: None,
             messages: vec![],
-            temperature: Some(1.0),
-            top_p: Some(1.0),
+            temperature: Some(0.8),
+            top_p: Some(0.9),
             n_choice: Some(1),
             stream: Some(false),
             stream_options: None,
             stop: None,
-            max_tokens: Some(1024),
+            max_tokens: Some(-1),
+            max_completion_tokens: Some(-1),
             presence_penalty: Some(0.0),
             frequency_penalty: Some(0.0),
             logit_bias: None,
@@ -681,7 +767,8 @@ fn test_chat_serialize_chat_request() {
             ChatCompletionAssistantMessage::new(Some("Hello, world!".to_string()), None, None),
         );
         messages.push(assistant_message);
-        let request = ChatCompletionRequestBuilder::new("model-id", messages)
+        let request = ChatCompletionRequestBuilder::new(&messages)
+            .with_model("model-id")
             .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
             .with_n_choices(3)
             .enable_stream(true)
@@ -695,7 +782,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":1024,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto"}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":-1,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto"}"#
         );
     }
 
@@ -717,13 +804,14 @@ fn test_chat_serialize_chat_request() {
             ChatCompletionRequestMessage::new_user_message(user_message_content, None);
         messages.push(user_message);
 
-        let request = ChatCompletionRequestBuilder::new("model-id", messages)
+        let request = ChatCompletionRequestBuilder::new(&messages)
+            .with_model("model-id")
             .with_tool_choice(ToolChoice::None)
             .build();
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"temperature":1.0,"top_p":1.0,"n":1,"stream":false,"max_tokens":1024,"presence_penalty":0.0,"frequency_penalty":0.0,"tool_choice":"none"}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"temperature":0.8,"top_p":0.9,"n":1,"stream":false,"max_tokens":-1,"max_completion_tokens":-1,"presence_penalty":0.0,"frequency_penalty":0.0,"tool_choice":"none"}"#
         );
     }
 
@@ -800,13 +888,14 @@ fn test_chat_serialize_chat_request() {
             },
         };
 
-        let request = ChatCompletionRequestBuilder::new("model-id", messages)
+        let request = ChatCompletionRequestBuilder::new(&messages)
+            .with_model("model-id")
             .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
             .with_n_choices(3)
             .enable_stream(true)
             .include_usage()
             .with_stop(vec!["stop1".to_string(), "stop2".to_string()])
-            .with_max_tokens(100)
+            .with_max_completion_tokens(100)
             .with_presence_penalty(0.5)
             .with_frequency_penalty(0.5)
             .with_reponse_format(ChatResponseFormat::default())
@@ -821,7 +910,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#
         );
     }
 
@@ -898,13 +987,14 @@ fn test_chat_serialize_chat_request() {
             },
         };
 
-        let request = ChatCompletionRequestBuilder::new("model-id", messages)
+        let request = ChatCompletionRequestBuilder::new(&messages)
+            .with_model("model-id")
             .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
             .with_n_choices(3)
             .enable_stream(true)
             .include_usage()
             .with_stop(vec!["stop1".to_string(), "stop2".to_string()])
-            .with_max_tokens(100)
+            .with_max_completion_tokens(100)
             .with_presence_penalty(0.5)
             .with_frequency_penalty(0.5)
             .with_reponse_format(ChatResponseFormat::default())
@@ -914,7 +1004,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto"}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto"}"#
         );
     }
 
@@ -992,13 +1082,14 @@ fn test_chat_serialize_chat_request() {
             },
         };
 
-        let request = ChatCompletionRequestBuilder::new("model-id", messages)
+        let request = ChatCompletionRequestBuilder::new(&messages)
+            .with_model("model-id")
             .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
             .with_n_choices(3)
             .enable_stream(true)
             .include_usage()
             .with_stop(vec!["stop1".to_string(), "stop2".to_string()])
-            .with_max_tokens(100)
+            .with_max_completion_tokens(100)
             .with_presence_penalty(0.5)
             .with_frequency_penalty(0.5)
             .with_reponse_format(ChatResponseFormat::default())
@@ -1016,7 +1107,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6]}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":1024,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6]}"#
         );
     }
 }
@@ -1058,14 +1149,14 @@ fn test_chat_deserialize_chat_request() {
             request.stop,
             Some(vec!["stop1".to_string(), "stop2".to_string()])
         );
-        assert_eq!(request.max_tokens, Some(1024));
+        assert_eq!(request.max_completion_tokens, Some(-1));
         assert_eq!(request.presence_penalty, Some(0.5));
         assert_eq!(request.frequency_penalty, Some(0.5));
         assert_eq!(request.tool_choice, Some(ToolChoice::None));
     }
 
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto"}"#;
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stop":["stop1","stop2"],"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto"}"#;
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         assert_eq!(request.model, Some("model-id".to_string()));
         assert_eq!(request.messages.len(), 3);
@@ -1077,14 +1168,14 @@ fn test_chat_deserialize_chat_request() {
             request.stop,
             Some(vec!["stop1".to_string(), "stop2".to_string()])
         );
-        assert_eq!(request.max_tokens, Some(100));
+        assert_eq!(request.max_completion_tokens, Some(100));
         assert_eq!(request.presence_penalty, Some(0.5));
         assert_eq!(request.frequency_penalty, Some(0.5));
         assert_eq!(request.tool_choice, Some(ToolChoice::Auto));
     }
 
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#;
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stop":["stop1","stop2"],"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#;
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         assert_eq!(request.model, Some("model-id".to_string()));
         assert_eq!(request.messages.len(), 3);
@@ -1096,7 +1187,7 @@ fn test_chat_deserialize_chat_request() {
             request.stop,
             Some(vec!["stop1".to_string(), "stop2".to_string()])
         );
-        assert_eq!(request.max_tokens, Some(100));
+        assert_eq!(request.max_completion_tokens, Some(100));
         assert_eq!(request.presence_penalty, Some(0.5));
         assert_eq!(request.frequency_penalty, Some(0.5));
         assert_eq!(
@@ -1111,7 +1202,7 @@ fn test_chat_deserialize_chat_request() {
     }
 
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#;
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stop":["stop1","stop2"],"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#;
 
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         let tools = request.tools.unwrap();
@@ -1144,7 +1235,7 @@ fn test_chat_deserialize_chat_request() {
     }
 
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}]}"#;
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}]}"#;
 
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         let tool_choice = request.tool_choice.unwrap();
@@ -1152,7 +1243,7 @@ fn test_chat_deserialize_chat_request() {
     }
 
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"}}"#;
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"}}"#;
 
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         let tool_choice = request.tool_choice.unwrap();
@@ -1188,7 +1279,7 @@ fn test_chat_deserialize_chat_request() {
 
     #[cfg(feature = "rag")]
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6]}"#;
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6]}"#;
 
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         let tool_choice = request.tool_choice.unwrap();
@@ -1236,7 +1327,7 @@ fn test_chat_serialize_response_format() {
     assert_eq!(json, r#"{"type":"json_object"}"#);
 }
 
-/// Options for streaming response. Only set this when you set stream: `true``.
+/// Options for streaming response. Only set this when you set stream: `true`.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct StreamOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -2585,7 +2676,6 @@ impl std::fmt::Display for ChatCompletionRole {
     }
 }
 
-/// **Deprecated since 0.10.0.** Use [Tool] instead.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ChatCompletionRequestFunction {
     name: String,

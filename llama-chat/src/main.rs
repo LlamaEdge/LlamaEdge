@@ -23,9 +23,9 @@ struct Cli {
     /// Size of the prompt context
     #[arg(short, long, default_value = "512")]
     ctx_size: u64,
-    /// Number of tokens to predict
-    #[arg(short, long, default_value = "1024")]
-    n_predict: u64,
+    /// Number of tokens to predict, -1 = infinity, -2 = until context filled.
+    #[arg(short, long, default_value = "-1")]
+    n_predict: i32,
     /// Number of layers to run on the GPU
     #[arg(short = 'g', long, default_value = "100")]
     n_gpu_layers: u64,
@@ -250,7 +250,8 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // create a chat request
-    let mut chat_request = ChatCompletionRequestBuilder::new(&cli.model_name, vec![])
+    let mut chat_request = ChatCompletionRequestBuilder::new(&[])
+        .with_model(cli.model_name)
         .with_presence_penalty(cli.presence_penalty)
         .with_frequency_penalty(cli.frequency_penalty)
         .with_sampling(sampling)

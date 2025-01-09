@@ -46,7 +46,7 @@ impl GgmlMetadataBuilder {
         self
     }
 
-    pub fn with_n_predict(mut self, n: u64) -> Self {
+    pub fn with_n_predict(mut self, n: i32) -> Self {
         self.metadata.n_predict = n;
         self
     }
@@ -88,6 +88,11 @@ impl GgmlMetadataBuilder {
 
     pub fn disable_mmap(mut self, disable: Option<bool>) -> Self {
         self.metadata.use_mmap = disable.map(|v| !v);
+        self
+    }
+
+    pub fn with_split_mode(mut self, mode: String) -> Self {
+        self.metadata.split_mode = mode;
         self
     }
 
@@ -166,8 +171,10 @@ pub struct GgmlMetadata {
     // pub stream_stdout: bool,
     #[serde(rename = "embedding")]
     pub embeddings: bool,
+    /// Number of tokens to predict, -1 = infinity, -2 = until context filled. Defaults to -1.
     #[serde(rename = "n-predict")]
-    pub n_predict: u64,
+    pub n_predict: i32,
+    /// Halt generation at PROMPT, return control in interactive mode.
     #[serde(skip_serializing_if = "Option::is_none", rename = "reverse-prompt")]
     pub reverse_prompt: Option<String>,
     /// path to the multimodal projector file for llava
@@ -184,12 +191,20 @@ pub struct GgmlMetadata {
     #[serde(rename = "main-gpu")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub main_gpu: Option<u64>,
-    /// How split tensors should be distributed accross GPUs. If None the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1.
+    /// How split tensors should be distributed accross GPUs. If None the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1. Defaults to None.
     #[serde(rename = "tensor-split")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tensor_split: Option<String>,
+    /// Whether to use memory-mapped files for the model. Defaults to `true`.
     #[serde(skip_serializing_if = "Option::is_none", rename = "use-mmap")]
     pub use_mmap: Option<bool>,
+    /// How to split the model across multiple GPUs. Possible values:
+    /// - `none`: use one GPU only
+    /// - `layer`: split layers and KV across GPUs (default)
+    /// - `row`: split rows across GPUs
+    #[serde(rename = "split-mode")]
+    pub split_mode: String,
+
     // * Context parameters (used by the llama context):
     #[serde(rename = "ctx-size")]
     pub ctx_size: u64,
@@ -227,7 +242,7 @@ impl Default for GgmlMetadata {
             prompt_template: PromptTemplateType::Llama2Chat,
             log_enable: false,
             embeddings: false,
-            n_predict: 1024,
+            n_predict: -1,
             reverse_prompt: None,
             mmproj: None,
             image: None,
@@ -235,6 +250,7 @@ impl Default for GgmlMetadata {
             main_gpu: None,
             tensor_split: None,
             use_mmap: Some(true),
+            split_mode: "layer".to_string(),
             ctx_size: 512,
             batch_size: 512,
             threads: 2,

@@ -29,6 +29,8 @@ use error::{BackendError, LlamaCoreError};
 use futures::StreamExt;
 use std::{
     collections::VecDeque,
+    fs::{self, File},
+    path::Path,
     pin::Pin,
     sync::Mutex,
     task::{Context, Poll},
@@ -49,7 +51,9 @@ pub async fn chat(
         info!(target: "stdout", "stream mode: {:?}", chat_request.stream);
     }
 
-    match chat_request.stream {
+    let model_name = chat_request.model.clone();
+
+    let result = match chat_request.stream {
         Some(true) => match chat_stream(chat_request).await {
             Ok(stream) => Ok(Left(stream)),
             Err(e) => Err(e),
@@ -58,7 +62,15 @@ pub async fn chat(
             Ok(chat_completion_object) => Ok(Right(chat_completion_object)),
             Err(e) => Err(e),
         },
-    }
+    };
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Reset the model metadata.");
+
+    // reset the model metadata
+    reset_model_metadata(model_name.as_ref())?;
+
+    result
 }
 
 /// Processes a chat-completion request and returns ChatCompletionChunk instances in stream.
@@ -1718,6 +1730,9 @@ async fn check_model_metadata(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Check model metadata.");
 
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Get the model metadata.");
+
     let mut should_update = false;
     let mut metadata = get_model_metadata(chat_request.model.as_ref())?;
 
@@ -1725,20 +1740,35 @@ async fn check_model_metadata(
     if let Some(ChatCompletionRequestMessage::User(user_message)) = chat_request.messages.last() {
         if let ChatCompletionUserMessageContent::Parts(parts) = user_message.content() {
             for part in parts {
-                if let ContentPart::Image(image) = part {
-                    let image = image.image();
+                if let ContentPart::Image(image_part) = part {
+                    let image = image_part.image();
 
                     if image.is_url() {
-                        // update metadata image
-                        let img = download_image(&image.url).await?;
+                        #[cfg(feature = "logging")]
+                        info!(target: "stdout", "The image is provided in URL format.");
 
-                        metadata.image = Some(img);
+                        // download the image
+                        let img_path_str = download_image(&image.url).await?;
+
+                        #[cfg(feature = "logging")]
+                        info!(target: "stdout", "The image is saved to {}", img_path_str);
+
+                        // update metadata image
+                        metadata.image = Some(img_path_str);
 
                         if !should_update {
                             should_update = true;
                         }
 
-                        // todo: now only support a single image
+                        // TODO: now only support a single image
+
+                        break;
+                    } else {
+                        #[cfg(feature = "logging")]
+                        info!(target: "stdout", "The image is provided in base64 format.");
+
+                        // TODO: now only support a single image
+
                         break;
                     }
                 }
@@ -1804,6 +1834,9 @@ async fn check_model_metadata(
     }
 
     if should_update {
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Update the model metadata.");
+
         // update the target graph with the new metadata
         update_model_metadata(chat_request.model.as_ref(), &metadata)?;
     }
@@ -1818,20 +1851,18 @@ async fn update_n_predict(
 ) -> Result<(), LlamaCoreError> {
     let mut should_update = false;
 
-    // check if necessary to update n_predict with max_tokens
-    if let Some(max_tokens) = chat_request.max_tokens {
-        #[cfg(feature = "logging")]
-        info!(target: "stdout", "available_completion_tokens: {}, max_tokens from request: {}, n_predict: {}", available_completion_tokens, max_tokens, metadata.n_predict);
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "available_completion_tokens: {}, n_predict: {}", available_completion_tokens, metadata.n_predict);
 
-        let max_completion_tokens = match available_completion_tokens < max_tokens {
-            true => available_completion_tokens,
-            false => max_tokens,
-        };
+    // From high to low priority
+    // 1. chat_request.max_tokens & chat_request.max_completion_tokens
+    // 2. available_completion_tokens
+    // 3. n_predict
 
-        // update n_predict
+    if let Some(max_completion_tokens) = chat_request.max_completion_tokens {
         if metadata.n_predict != max_completion_tokens {
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "update n_predict from {} to {}", metadata.n_predict, max_completion_tokens);
+            info!(target: "stdout", "Update n_predict with max_completion_tokens from {} to {}", metadata.n_predict, max_completion_tokens);
 
             metadata.n_predict = max_completion_tokens;
 
@@ -1839,20 +1870,41 @@ async fn update_n_predict(
                 should_update = true;
             }
         }
-        if metadata.n_predict < available_completion_tokens {
-            #[cfg(feature = "logging")]
-            info!(target: "stdout", "Update n_predict from {} to {}", metadata.n_predict, available_completion_tokens);
+    }
 
-            // update n_predict
-            metadata.n_predict = available_completion_tokens;
+    // TODO: remove this condition after [Issue #3958 on WasmEdge](https://github.com/WasmEdge/WasmEdge/issues/3958) is fixed
+    if metadata.n_predict == -2 {
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Update n_predict with available_completion_tokens from {} to {}", metadata.n_predict, available_completion_tokens);
 
-            if !should_update {
-                should_update = true;
-            }
+        // update n_predict
+        metadata.n_predict = available_completion_tokens as i32;
+
+        if !should_update {
+            should_update = true;
+        }
+    }
+
+    if metadata.n_predict == -1
+        || (metadata.n_predict > 0 && metadata.n_predict < available_completion_tokens as i32)
+        || (metadata.n_predict < 0 && metadata.n_predict != -2)
+    // TODO: remove this condition after [Issue #3958 on WasmEdge](https://github.com/WasmEdge/WasmEdge/issues/3958) is fixed
+    {
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Update n_predict with available_completion_tokens from {} to {}", metadata.n_predict, available_completion_tokens);
+
+        // update n_predict
+        metadata.n_predict = available_completion_tokens as i32;
+
+        if !should_update {
+            should_update = true;
         }
     }
 
     if should_update {
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Update the model metadata.");
+
         // update the target graph with the new metadata
         update_model_metadata(chat_request.model.as_ref(), metadata)?;
     }
@@ -1999,6 +2051,13 @@ fn post_process(
         } else {
             s.to_owned()
         }
+    } else if *template_ty == PromptTemplateType::Phi4Chat {
+        let s = output.as_ref().trim();
+        if s.ends_with("<|im_end|>") {
+            s.trim_end_matches("<|im_end|>").trim().to_owned()
+        } else {
+            s.to_owned()
+        }
     } else if *template_ty == PromptTemplateType::FunctionaryV31 {
         let mut s = output.as_ref().trim();
         if s.ends_with("<|eot_id|>") {
@@ -2017,6 +2076,32 @@ fn post_process(
         } else {
             s.to_owned()
         }
+    } else if *template_ty == PromptTemplateType::Falcon3 {
+        let s = output.as_ref().trim();
+        if s.ends_with("<|endoftext|>") {
+            s.trim_end_matches("<|endoftext|>").trim().to_owned()
+        } else {
+            s.to_owned()
+        }
+    } else if *template_ty == PromptTemplateType::Megrez {
+        let s = output.as_ref().trim();
+        if s.ends_with("<|turn_end|>") {
+            s.trim_end_matches("<|turn_end|>").trim().to_owned()
+        } else {
+            s.to_owned()
+        }
+    } else if *template_ty == PromptTemplateType::Qwen2vl {
+        let mut s = output.as_ref().trim();
+
+        if s.starts_with(":") {
+            s = s.trim_start_matches(":").trim();
+        }
+
+        if s.ends_with("<|im_end|>") {
+            s.trim_end_matches("<|im_end|>").trim().to_owned()
+        } else {
+            s.to_owned()
+        }
     } else {
         output.as_ref().trim().to_owned()
     };
@@ -2024,6 +2109,17 @@ fn post_process(
     Ok(output)
 }
 
+/// Build the chat prompt from the chat messages.
+///
+/// # Arguments
+///
+/// * `model_name`: The name of the model.
+///
+/// * `chat_request`: The chat request.
+///
+/// # Returns
+///
+/// A tuple containing the prompt, the number of available tokens for completions, and a boolean indicating whether tools are used.
 fn build_prompt(
     model_name: Option<&String>,
     chat_request: &mut ChatCompletionRequest,
@@ -2031,6 +2127,8 @@ fn build_prompt(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Build the chat prompt from the chat messages.");
 
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Get the model metadata.");
     let metadata = get_model_metadata(model_name)?;
     let ctx_size = metadata.ctx_size as u64;
     let chat_prompt = ChatPrompt::from(metadata.prompt_template);
@@ -2146,7 +2244,7 @@ fn build_prompt(
                             }
                         } else if token_info.prompt_tokens > ctx_size {
                             let err_msg = format!(
-                                    "The number of prompt tokens is greater than the context size: {} > {}",
+                                    "The number of prompt tokens ({}) is greater than the context size ({}). Please increase the context size, or simplify the input message.",
                                     token_info.prompt_tokens, ctx_size
                                 );
 
@@ -2180,7 +2278,7 @@ fn build_prompt(
                             chat_request.messages.remove(0);
                         } else if token_info.prompt_tokens > ctx_size {
                             let err_msg = format!(
-                                    "The number of prompt tokens is greater than the context size: {} > {}",
+                                    "The number of prompt tokens ({}) is greater than the context size ({}). Please increase the context size, or simplify the input message.",
                                     token_info.prompt_tokens, ctx_size
                                 );
 
@@ -2209,9 +2307,6 @@ fn build_prompt(
 
 /// Downloads an image from the given URL and returns the file name.
 async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> {
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Download image from the URL.");
-
     let image_url = image_url.as_ref();
     let url = reqwest::Url::parse(image_url).map_err(|e| {
         let err_msg = format!("Fail to parse the image URL: {}. Reason: {}", image_url, e);
@@ -2245,12 +2340,22 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
         )))?
         .to_string();
 
-    let mut dest = std::fs::File::create(&fname).map_err(|e| {
-        let err_msg = format!(
-            "Fail to create the file to save the image: {}. Reason: {}",
-            &fname, e
-        );
+    // create a unique file id
+    let id = format!("file_{}", uuid::Uuid::new_v4());
+    // save the file
+    let path = Path::new("archives");
+    if !path.exists() {
+        fs::create_dir(path).unwrap();
+    }
+    let file_path = path.join(&id);
+    if !file_path.exists() {
+        fs::create_dir(&file_path).unwrap();
+    }
+    let img_path = file_path.join(&fname);
+    let mut dest: File = File::create(&img_path).map_err(|e| {
+        let err_msg = format!("Failed to create archive document {}. {}", &fname, e);
 
+        // log
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
 
@@ -2272,10 +2377,7 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
         })?;
     }
 
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "The image is downloaded successfully.");
-
-    Ok(fname)
+    Ok(img_path.as_path().to_string_lossy().to_string())
 }
 
 fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<(), LlamaCoreError> {
@@ -2368,9 +2470,6 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
 
 /// Get a copy of the metadata of the model.
 fn get_model_metadata(model_name: Option<&String>) -> Result<GgmlMetadata, LlamaCoreError> {
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Get the model metadata.");
-
     let chat_graphs = match CHAT_GRAPHS.get() {
         Some(chat_graphs) => chat_graphs,
         None => {
@@ -2428,9 +2527,6 @@ fn update_model_metadata(
     model_name: Option<&String>,
     metadata: &GgmlMetadata,
 ) -> Result<(), LlamaCoreError> {
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Update the model metadata.");
-
     let config = match serde_json::to_string(metadata) {
         Ok(config) => config,
         Err(e) => {
@@ -2505,6 +2601,14 @@ fn update_model_metadata(
             }
         }
     }
+}
+
+fn reset_model_metadata(model_name: Option<&String>) -> Result<(), LlamaCoreError> {
+    // get metadata
+    let metadata = get_model_metadata(model_name)?;
+
+    // update model with the original metadata
+    update_model_metadata(model_name, &metadata)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

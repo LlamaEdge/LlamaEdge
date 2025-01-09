@@ -68,12 +68,15 @@ struct Cli {
     /// Halt generation at PROMPT, return control.
     #[arg(short, long)]
     reverse_prompt: Option<String>,
-    /// Number of tokens to predict
-    #[arg(short, long, default_value = "1024")]
-    n_predict: u64,
+    /// Number of tokens to predict, -1 = infinity, -2 = until context filled.
+    #[arg(short, long, default_value = "-1")]
+    n_predict: i32,
     /// Number of layers to run on the GPU
     #[arg(short = 'g', long, default_value = "100")]
     n_gpu_layers: u64,
+    /// Split the model across multiple GPUs. Possible values: `none` (use one GPU only), `layer` (split layers and KV across GPUs, default), `row` (split rows across GPUs)
+    #[arg(long, default_value = "layer")]
+    split_mode: String,
     /// The main GPU to use.
     #[arg(long)]
     main_gpu: Option<u64>,
@@ -147,10 +150,15 @@ struct CliConfig {
     prompt_template: Vec<PromptTemplateType>,
     /// Halt generation at PROMPT, return control.
     reverse_prompt: Option<String>,
-    /// Number of tokens to predict
-    n_predict: u64,
+    /// Number of tokens to predict, -1 = infinity, -2 = until context filled.
+    n_predict: i32,
     /// Number of layers to run on the GPU
     n_gpu_layers: u64,
+    /// Split the model across multiple GPUs. Possible values:
+    /// - `none`: use one GPU only
+    /// - `layer`: split layers and KV across GPUs (default)
+    /// - `row`: split rows across GPUs
+    split_mode: String,
     /// The main GPU to use.
     main_gpu: Option<u64>,
     /// How split tensors should be distributed accross GPUs. If None the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1.
@@ -194,6 +202,7 @@ impl<'de> Deserialize<'de> for CliConfig {
             ReversePrompt,
             NPredict,
             NGpuLayers,
+            SplitMode,
             MainGpu,
             TensorSplit,
             Threads,
@@ -230,6 +239,7 @@ impl<'de> Deserialize<'de> for CliConfig {
                 let mut reverse_prompt = None;
                 let mut n_predict = None;
                 let mut n_gpu_layers = None;
+                let mut split_mode = None;
                 let mut main_gpu = None;
                 let mut tensor_split = None;
                 let mut threads = None;
@@ -280,9 +290,6 @@ impl<'de> Deserialize<'de> for CliConfig {
                             }
 
                             prompt_template = Some(map.next_value()?);
-
-                            // ! debug
-                            debug!(target: "stdout", "prompt_template: {:?}", prompt_template);
                         }
                         Field::ReversePrompt => {
                             if reverse_prompt.is_some() {
@@ -304,6 +311,13 @@ impl<'de> Deserialize<'de> for CliConfig {
                             }
 
                             n_gpu_layers = Some(map.next_value()?)
+                        }
+                        Field::SplitMode => {
+                            if split_mode.is_some() {
+                                return Err(de::Error::duplicate_field("split-mode"));
+                            }
+
+                            split_mode = Some(map.next_value()?)
                         }
                         Field::MainGpu => {
                             if main_gpu.is_some() {
@@ -418,9 +432,11 @@ impl<'de> Deserialize<'de> for CliConfig {
 
                 let reverse_prompt = reverse_prompt.unwrap_or_default();
 
-                let n_predict = n_predict.unwrap_or(1024);
+                let n_predict = n_predict.unwrap_or(-1);
 
                 let n_gpu_layers = n_gpu_layers.unwrap_or(100);
+
+                let split_mode = split_mode.unwrap_or("layer".to_string());
 
                 let main_gpu = main_gpu.unwrap();
 
@@ -453,6 +469,7 @@ impl<'de> Deserialize<'de> for CliConfig {
                     reverse_prompt,
                     n_predict,
                     n_gpu_layers,
+                    split_mode,
                     main_gpu,
                     tensor_split,
                     threads,
@@ -479,6 +496,7 @@ impl<'de> Deserialize<'de> for CliConfig {
             "reverse-prompt",
             "n-predict",
             "n-gpu-layers",
+            "split-mode",
             "main-gpu",
             "tensor-split",
             "threads",
@@ -516,8 +534,6 @@ async fn main() -> Result<(), ServerError> {
     wasi_logger::Logger::install().expect("failed to install wasi_logger::Logger");
     log::set_max_level(log_level.into());
 
-    info!(target: "stdout", "log_level: {}", log_level);
-
     if let Ok(api_key) = std::env::var("API_KEY") {
         // define a const variable for the API key
         if let Err(e) = LLAMA_API_KEY.set(api_key) {
@@ -531,6 +547,8 @@ async fn main() -> Result<(), ServerError> {
 
     // parse the command line arguments
     let mut cli = Cli::parse();
+
+    info!(target: "stdout", "log_level: {}", log_level);
 
     // log the version of the server
     info!(target: "stdout", "server version: {}", env!("CARGO_PKG_VERSION"));
@@ -571,6 +589,7 @@ async fn main() -> Result<(), ServerError> {
                 cli.reverse_prompt = config.reverse_prompt;
                 cli.n_predict = config.n_predict;
                 cli.n_gpu_layers = config.n_gpu_layers;
+                cli.split_mode = config.split_mode;
                 cli.main_gpu = config.main_gpu;
                 cli.tensor_split = config.tensor_split;
                 cli.threads = config.threads;
@@ -680,6 +699,9 @@ async fn main() -> Result<(), ServerError> {
     // log n_gpu_layers
     info!(target: "stdout", "n_gpu_layers: {}", cli.n_gpu_layers);
 
+    // log split_mode
+    info!(target: "stdout", "split_mode: {}", cli.split_mode);
+
     // log main_gpu
     if let Some(main_gpu) = &cli.main_gpu {
         info!(target: "stdout", "main_gpu: {}", main_gpu);
@@ -742,6 +764,7 @@ async fn main() -> Result<(), ServerError> {
                 )
                 .with_ctx_size(cli.ctx_size[0])
                 .with_batch_size(cli.batch_size[0])
+                .with_split_mode(cli.split_mode)
                 .with_main_gpu(cli.main_gpu)
                 .with_tensor_split(cli.tensor_split)
                 .with_threads(cli.threads)
@@ -755,7 +778,19 @@ async fn main() -> Result<(), ServerError> {
                     ty: "embedding".to_string(),
                     ctx_size: metadata_embedding.ctx_size,
                     batch_size: metadata_embedding.batch_size,
-                    ..Default::default()
+                    prompt_template: Some(PromptTemplateType::Embedding),
+                    n_predict: Some(cli.n_predict),
+                    reverse_prompt: metadata_embedding.reverse_prompt.clone(),
+                    n_gpu_layers: Some(metadata_embedding.n_gpu_layers),
+                    use_mmap: metadata_embedding.use_mmap,
+                    temperature: Some(metadata_embedding.temperature),
+                    top_p: Some(metadata_embedding.top_p),
+                    repeat_penalty: Some(metadata_embedding.repeat_penalty),
+                    presence_penalty: Some(metadata_embedding.presence_penalty),
+                    frequency_penalty: Some(metadata_embedding.frequency_penalty),
+                    split_mode: Some(metadata_embedding.split_mode.clone()),
+                    main_gpu: metadata_embedding.main_gpu,
+                    tensor_split: metadata_embedding.tensor_split.clone(),
                 });
 
                 // initialize the core context
@@ -773,6 +808,7 @@ async fn main() -> Result<(), ServerError> {
                 .with_batch_size(cli.batch_size[0])
                 .with_n_predict(cli.n_predict)
                 .with_n_gpu_layers(cli.n_gpu_layers)
+                .with_split_mode(cli.split_mode)
                 .with_main_gpu(cli.main_gpu)
                 .with_tensor_split(cli.tensor_split)
                 .with_threads(cli.threads)
@@ -806,6 +842,9 @@ async fn main() -> Result<(), ServerError> {
                     repeat_penalty: Some(metadata_chat.repeat_penalty),
                     presence_penalty: Some(metadata_chat.presence_penalty),
                     frequency_penalty: Some(metadata_chat.frequency_penalty),
+                    split_mode: Some(metadata_chat.split_mode.clone()),
+                    main_gpu: metadata_chat.main_gpu,
+                    tensor_split: metadata_chat.tensor_split.clone(),
                 });
 
                 // initialize the core context
@@ -824,6 +863,7 @@ async fn main() -> Result<(), ServerError> {
         .with_batch_size(cli.batch_size[0])
         .with_n_predict(cli.n_predict)
         .with_n_gpu_layers(cli.n_gpu_layers)
+        .with_split_mode(cli.split_mode.clone())
         .with_main_gpu(cli.main_gpu)
         .with_tensor_split(cli.tensor_split.clone())
         .with_threads(cli.threads)
@@ -857,6 +897,9 @@ async fn main() -> Result<(), ServerError> {
             repeat_penalty: Some(metadata_chat.repeat_penalty),
             presence_penalty: Some(metadata_chat.presence_penalty),
             frequency_penalty: Some(metadata_chat.frequency_penalty),
+            split_mode: Some(metadata_chat.split_mode.clone()),
+            main_gpu: metadata_chat.main_gpu,
+            tensor_split: metadata_chat.tensor_split.clone(),
         });
 
         // create a Metadata instance
@@ -867,6 +910,7 @@ async fn main() -> Result<(), ServerError> {
         )
         .with_ctx_size(cli.ctx_size[1])
         .with_batch_size(cli.batch_size[1])
+        .with_split_mode(cli.split_mode)
         .with_main_gpu(cli.main_gpu)
         .with_tensor_split(cli.tensor_split)
         .with_threads(cli.threads)
@@ -880,7 +924,19 @@ async fn main() -> Result<(), ServerError> {
             ty: "embedding".to_string(),
             ctx_size: metadata_embedding.ctx_size,
             batch_size: metadata_embedding.batch_size,
-            ..Default::default()
+            prompt_template: Some(PromptTemplateType::Embedding),
+            n_predict: Some(cli.n_predict),
+            reverse_prompt: metadata_embedding.reverse_prompt.clone(),
+            n_gpu_layers: Some(metadata_embedding.n_gpu_layers),
+            use_mmap: metadata_embedding.use_mmap,
+            temperature: Some(metadata_embedding.temperature),
+            top_p: Some(metadata_embedding.top_p),
+            repeat_penalty: Some(metadata_embedding.repeat_penalty),
+            presence_penalty: Some(metadata_embedding.presence_penalty),
+            frequency_penalty: Some(metadata_embedding.frequency_penalty),
+            split_mode: Some(metadata_embedding.split_mode.clone()),
+            main_gpu: metadata_embedding.main_gpu,
+            tensor_split: metadata_embedding.tensor_split.clone(),
         });
 
         // initialize the core context
@@ -1111,7 +1167,7 @@ pub(crate) struct ModelConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prompt_template: Option<PromptTemplateType>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub n_predict: Option<u64>,
+    pub n_predict: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reverse_prompt: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1128,4 +1184,10 @@ pub(crate) struct ModelConfig {
     pub presence_penalty: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub frequency_penalty: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub split_mode: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub main_gpu: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tensor_split: Option<String>,
 }

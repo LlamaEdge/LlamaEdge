@@ -2,6 +2,7 @@ pub mod baichuan;
 pub mod belle;
 pub mod chatml;
 pub mod deepseek;
+pub mod falcon;
 pub mod functionary;
 pub mod gemma;
 pub mod glm;
@@ -9,6 +10,7 @@ pub mod groq;
 pub mod intel;
 pub mod llama;
 pub mod mediatek;
+pub mod megrez;
 pub mod minicpm;
 pub mod mistral;
 pub mod moxin;
@@ -16,6 +18,7 @@ pub mod nvidia;
 pub mod octopus;
 pub mod openchat;
 pub mod phi;
+pub mod qwen;
 pub mod solar;
 pub mod vicuna;
 pub mod wizard;
@@ -27,6 +30,7 @@ use belle::*;
 use chatml::*;
 use deepseek::*;
 use endpoints::chat::{ChatCompletionRequestMessage, Tool};
+use falcon::*;
 use functionary::{FunctionaryV31ToolPrompt, FunctionaryV32ToolPrompt};
 use gemma::*;
 use glm::*;
@@ -34,6 +38,7 @@ use groq::*;
 use intel::*;
 use llama::*;
 use mediatek::BreezeInstructPrompt;
+use megrez::*;
 use minicpm::*;
 use mistral::*;
 use moxin::*;
@@ -41,6 +46,7 @@ use nvidia::{NemotronChatPrompt, NemotronToolPrompt};
 use octopus::*;
 use openchat::*;
 use phi::*;
+use qwen::Qwen2vlPrompt;
 use solar::*;
 use vicuna::*;
 use wizard::*;
@@ -94,6 +100,7 @@ pub enum ChatPrompt {
     Phi2InstructPrompt,
     Phi3ChatPrompt,
     Phi3InstructPrompt,
+    Phi4ChatPrompt,
     GemmaInstructPrompt,
     OctopusPrompt,
     Glm4ChatPrompt,
@@ -105,6 +112,9 @@ pub enum ChatPrompt {
     FunctionaryV31ToolPrompt,
     MiniCPMVPrompt,
     MoxinChatPrompt,
+    FalconChatPrompt,
+    MegrezPrompt,
+    Qwen2vlPrompt,
 }
 impl From<PromptTemplateType> for ChatPrompt {
     fn from(ty: PromptTemplateType) -> Self {
@@ -152,6 +162,9 @@ impl From<PromptTemplateType> for ChatPrompt {
             PromptTemplateType::DeepseekChat25 => {
                 ChatPrompt::DeepseekChat25Prompt(DeepseekChat25Prompt)
             }
+            PromptTemplateType::DeepseekChat3 => {
+                ChatPrompt::DeepseekChat25Prompt(DeepseekChat25Prompt)
+            }
             PromptTemplateType::SolarInstruct => {
                 ChatPrompt::SolarInstructPrompt(SolarInstructPrompt)
             }
@@ -159,6 +172,7 @@ impl From<PromptTemplateType> for ChatPrompt {
             PromptTemplateType::Phi2Instruct => ChatPrompt::Phi2InstructPrompt(Phi2InstructPrompt),
             PromptTemplateType::Phi3Chat => ChatPrompt::Phi3ChatPrompt(Phi3ChatPrompt),
             PromptTemplateType::Phi3Instruct => ChatPrompt::Phi3InstructPrompt(Phi3InstructPrompt),
+            PromptTemplateType::Phi4Chat => ChatPrompt::Phi4ChatPrompt(Phi4ChatPrompt),
             PromptTemplateType::GemmaInstruct => {
                 ChatPrompt::GemmaInstructPrompt(GemmaInstructPrompt)
             }
@@ -180,6 +194,9 @@ impl From<PromptTemplateType> for ChatPrompt {
             }
             PromptTemplateType::MiniCPMV => ChatPrompt::MiniCPMVPrompt(MiniCPMVPrompt),
             PromptTemplateType::MoxinChat => ChatPrompt::MoxinChatPrompt(MoxinChatPrompt),
+            PromptTemplateType::Falcon3 => ChatPrompt::FalconChatPrompt(FalconChatPrompt),
+            PromptTemplateType::Megrez => ChatPrompt::MegrezPrompt(MegrezPrompt),
+            PromptTemplateType::Qwen2vl => ChatPrompt::Qwen2vlPrompt(Qwen2vlPrompt),
             PromptTemplateType::Embedding => {
                 panic!("Embedding prompt template is not used for building chat prompts")
             }

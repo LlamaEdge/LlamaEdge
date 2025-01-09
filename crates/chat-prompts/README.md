@@ -131,6 +131,19 @@ The available prompt templates are listed below:
 
   - Example: [second-state/E5-Mistral-7B-Instruct-Embedding-GGUF](https://huggingface.co/second-state/E5-Mistral-7B-Instruct-Embedding-GGUF)
 
+- `falcon3`
+  - Prompt string
+
+    ```text
+    <|system|>
+    {system_message}
+    <|user|>
+    {user_message}
+    <|assistant|>
+    ```
+
+  - Example: [second-state/Falcon3-7B-Instruct-GGUF](https://huggingface.co/second-state/Falcon3-7B-Instruct-GGUF)
+
 - `functionary-31`
 
   - Prompt string
@@ -281,6 +294,23 @@ The available prompt templates are listed below:
     {{ user_message_2 }}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
     ```
 
+- `llama-3-tool`
+  - Prompt string
+
+    ```text
+    <|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+    {system_message}<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+    Given the following functions, please respond with a JSON for a function call with its proper arguments that best answers the given prompt.
+
+    Respond in the format {"name": function name, "parameters": dictionary of argument name and its value}. Do not use variables.
+
+    [{"type":"function","function":{"name":"get_current_weather","description":"Get the current weather in a given location","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","description":"The temperature unit to use. Infer this from the users location.","enum":["celsius","fahrenheit"]}},"required":["location","unit"]}}}]
+
+    Question: {user_message}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+    ```
+
 - `mediatek-breeze`
   - Prompt string
 
@@ -289,6 +319,15 @@ The available prompt templates are listed below:
     ```
 
   - Example: [second-state/Breeze-7B-Instruct-v1_0-GGUF](https://huggingface.co/second-state/Breeze-7B-Instruct-v1_0-GGUF)
+
+- `megrez`
+  - Prompt string
+
+    ```text
+    <|role_start|>system<|role_end|>{system_message}<|turn_end|><|role_start|>user<|role_end|>{user_message}<|turn_end|><|role_start|>assistant<|role_end|>
+    ```
+
+  - Example: [second-state/Megrez-3B-Instruct-GGUF](https://huggingface.co/second-state/Megrez-3B-Instruct-GGUF)
 
 - `mistral-instruct`
   - Prompt string
@@ -413,6 +452,19 @@ The available prompt templates are listed below:
     ```
 
   - Example: [second-state/Phi-3-medium-4k-instruct-GGUF](https://huggingface.co/second-state/Phi-3-medium-4k-instruct-GGUF)
+
+- `phi-4-chat`
+  - Prompt string
+
+    ```text
+    <|im_start|>system<|im_sep|>
+    {system_message}<|im_end|>
+    <|im_start|>user<|im_sep|>
+    {user_message}<|im_end|>
+    <|im_start|>assistant<|im_sep|>
+    ```
+
+  - Example: [second-state/phi-4-GGUF](https://huggingface.co/second-state/phi-4-GGUF)
 
 - `solar-instruct`
   - Prompt string
