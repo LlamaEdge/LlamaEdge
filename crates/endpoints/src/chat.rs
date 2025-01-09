@@ -246,6 +246,11 @@ impl ChatCompletionRequestBuilder {
     /// # Argument
     ///
     /// * `max_tokens` - The maximum number of tokens to generate in the chat completion. `-1` means infinity. `-2` means until context filled. Defaults to `-1`.
+    #[deprecated(
+        since = "0.24.0",
+        note = "Please use `with_max_completion_tokens` instead."
+    )]
+    #[allow(deprecated)]
     pub fn with_max_tokens(mut self, max_tokens: i32) -> Self {
         self.req.max_tokens = Some(max_tokens);
         self
@@ -414,11 +419,12 @@ pub struct ChatCompletionRequest {
     /// Defaults to None
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop: Option<Vec<String>>,
-    /// **Deprecated** Use `max_completion_tokens` instead.
+    /// **Deprecated since 0.24.0.** Use `max_completion_tokens` instead.
     ///
     /// The maximum number of tokens to generate.
     /// `-1` means infinity. `-2` means until context filled. Defaults to `-1`.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[deprecated(since = "0.24.0", note = "Please use `max_completion_tokens` instead.")]
     pub max_tokens: Option<i32>,
     /// An upper bound for the number of tokens that can be generated for a completion. `-1` means infinity. `-2` means until context filled. Defaults to `-1`.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -442,11 +448,18 @@ pub struct ChatCompletionRequest {
     pub user: Option<String>,
 
     //* OpenAI specific parameters
-    /// **Deprecated since 0.10.0.** Use `tools` instead.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[deprecated(
+        since = "0.10.0",
+        note = "Please use `tools` and `tool_choice` instead."
+    )]
+    #[allow(deprecated)]
     pub functions: Option<Vec<ChatCompletionRequestFunction>>,
-    /// **Deprecated since 0.10.0.** Use `tool_choice` instead.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[deprecated(
+        since = "0.10.0",
+        note = "Please use `tools` and `tool_choice` instead."
+    )]
     pub function_call: Option<String>,
 
     /// Format that the model must output
@@ -491,6 +504,7 @@ pub struct ChatCompletionRequest {
     #[serde(rename = "vdb_api_key", skip_serializing_if = "Option::is_none")]
     pub vdb_api_key: Option<String>,
 }
+#[allow(deprecated)]
 impl<'de> Deserialize<'de> for ChatCompletionRequest {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -697,6 +711,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
         )
     }
 }
+#[allow(deprecated)]
 impl Default for ChatCompletionRequest {
     fn default() -> Self {
         Self {
@@ -2661,7 +2676,6 @@ impl std::fmt::Display for ChatCompletionRole {
     }
 }
 
-/// **Deprecated since 0.10.0.** Use [Tool] instead.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ChatCompletionRequestFunction {
     name: String,
