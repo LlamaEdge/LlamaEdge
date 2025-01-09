@@ -2051,6 +2051,13 @@ fn post_process(
         } else {
             s.to_owned()
         }
+    } else if *template_ty == PromptTemplateType::Phi4Chat {
+        let s = output.as_ref().trim();
+        if s.ends_with("<|im_end|>") {
+            s.trim_end_matches("<|im_end|>").trim().to_owned()
+        } else {
+            s.to_owned()
+        }
     } else if *template_ty == PromptTemplateType::FunctionaryV31 {
         let mut s = output.as_ref().trim();
         if s.ends_with("<|eot_id|>") {
