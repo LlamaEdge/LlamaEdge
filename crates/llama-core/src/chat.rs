@@ -2356,6 +2356,7 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
         let err_msg = format!("Failed to create archive document {}. {}", &fname, e);
 
         // log
+        #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
 
         LlamaCoreError::Operation(err_msg)
