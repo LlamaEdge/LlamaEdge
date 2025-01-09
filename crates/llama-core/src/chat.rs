@@ -2244,7 +2244,7 @@ fn build_prompt(
                             }
                         } else if token_info.prompt_tokens > ctx_size {
                             let err_msg = format!(
-                                    "The number of prompt tokens is greater than the context size: {} > {}",
+                                    "The number of prompt tokens ({}) is greater than the context size ({}). Please increase the context size, or simplify the input message.",
                                     token_info.prompt_tokens, ctx_size
                                 );
 
@@ -2278,7 +2278,7 @@ fn build_prompt(
                             chat_request.messages.remove(0);
                         } else if token_info.prompt_tokens > ctx_size {
                             let err_msg = format!(
-                                    "The number of prompt tokens is greater than the context size: {} > {}",
+                                    "The number of prompt tokens ({}) is greater than the context size ({}). Please increase the context size, or simplify the input message.",
                                     token_info.prompt_tokens, ctx_size
                                 );
 
