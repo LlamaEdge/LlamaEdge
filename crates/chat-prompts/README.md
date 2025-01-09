@@ -453,6 +453,19 @@ The available prompt templates are listed below:
 
   - Example: [second-state/Phi-3-medium-4k-instruct-GGUF](https://huggingface.co/second-state/Phi-3-medium-4k-instruct-GGUF)
 
+- `phi-4-chat`
+  - Prompt string
+
+    ```text
+    <|im_start|>system<|im_sep|>
+    {system_message}<|im_end|>
+    <|im_start|>user<|im_sep|>
+    {user_message}<|im_end|>
+    <|im_start|>assistant<|im_sep|>
+    ```
+
+  - Example: [second-state/phi-4-GGUF](https://huggingface.co/second-state/phi-4-GGUF)
+
 - `solar-instruct`
   - Prompt string
 
