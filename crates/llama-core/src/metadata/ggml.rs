@@ -106,6 +106,11 @@ impl GgmlMetadataBuilder {
         self
     }
 
+    pub fn with_ubatch_size(mut self, size: u64) -> Self {
+        self.metadata.ubatch_size = size;
+        self
+    }
+
     pub fn with_temperature(mut self, temp: f64) -> Self {
         self.metadata.temperature = temp;
         self
@@ -206,22 +211,33 @@ pub struct GgmlMetadata {
     pub split_mode: String,
 
     // * Context parameters (used by the llama context):
+    /// Size of the prompt context. 0 means loaded from model. Defaults to 4096.
     #[serde(rename = "ctx-size")]
     pub ctx_size: u64,
+    /// Logical maximum batch size. Defaults to 2048.
     #[serde(rename = "batch-size")]
     pub batch_size: u64,
+    /// Physical maximum batch size. Defaults to 512.
+    #[serde(rename = "ubatch-size")]
+    pub ubatch_size: u64,
+    /// Number of threads to use during generation. Defaults to 2.
     #[serde(rename = "threads")]
     pub threads: u64,
 
     // * Sampling parameters (used by the llama sampling context).
+    /// Adjust the randomness of the generated text. Between 0.0 and 2.0. Defaults to 0.8.
     #[serde(rename = "temp")]
     pub temperature: f64,
+    /// Top-p sampling. Between 0.0 and 1.0. Defaults to 0.9.
     #[serde(rename = "top-p")]
     pub top_p: f64,
+    /// Penalize repeat sequence of tokens. Defaults to 1.0.
     #[serde(rename = "repeat-penalty")]
     pub repeat_penalty: f64,
+    /// Repeat alpha presence penalty. Defaults to 0.0.
     #[serde(rename = "presence-penalty")]
     pub presence_penalty: f64,
+    /// Repeat alpha frequency penalty. Defaults to 0.0.
     #[serde(rename = "frequency-penalty")]
     pub frequency_penalty: f64,
 
@@ -251,12 +267,13 @@ impl Default for GgmlMetadata {
             tensor_split: None,
             use_mmap: Some(true),
             split_mode: "layer".to_string(),
-            ctx_size: 512,
-            batch_size: 512,
+            ctx_size: 4096,
+            batch_size: 2048,
+            ubatch_size: 512,
             threads: 2,
-            temperature: 1.0,
-            top_p: 1.0,
-            repeat_penalty: 1.1,
+            temperature: 0.8,
+            top_p: 0.9,
+            repeat_penalty: 1.0,
             presence_penalty: 0.0,
             frequency_penalty: 0.0,
             grammar: String::new(),
