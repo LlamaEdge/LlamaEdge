@@ -908,7 +908,7 @@ fn download_file(id: impl AsRef<str>) -> Response<Body> {
     match llama_core::files::download_file(id) {
         Ok((filename, buffer)) => {
             // get the extension of the file
-            let extension = filename.split('.').last().unwrap_or("unknown");
+            let extension = filename.split('.').next_back().unwrap_or("unknown");
             let content_type = match extension {
                 "txt" => "text/plain",
                 "json" => "application/json",
