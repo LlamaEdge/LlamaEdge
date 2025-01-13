@@ -2337,7 +2337,7 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
     let fname = response
         .url()
         .path_segments()
-        .and_then(|segments| segments.last())
+        .and_then(|mut segments| segments.next_back())
         .and_then(|name| if name.is_empty() { None } else { Some(name) })
         .ok_or(LlamaCoreError::Operation(format!(
             "Fail to get the file name: {}",
