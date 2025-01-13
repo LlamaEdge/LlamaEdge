@@ -1947,31 +1947,36 @@ fn post_process(
         || *template_ty == PromptTemplateType::InternLM2Tool
         || *template_ty == PromptTemplateType::MiniCPMV
     {
-        if output.as_ref().contains("<|im_start|>") && output.as_ref().contains("<|im_end|>") {
-            let idx_start = output.as_ref().find("<|im_start|>").unwrap();
-            let idx_end = output.as_ref().find("<|im_end|>").unwrap();
+        let mut s = output.as_ref().trim();
+        if s.ends_with("<|endoftext|>") {
+            s = s.trim_end_matches("<|endoftext|>").trim();
+        }
+
+        if s.contains("<|im_start|>") && s.contains("<|im_end|>") {
+            let idx_start = s.find("<|im_start|>").unwrap();
+            let idx_end = s.find("<|im_end|>").unwrap();
 
             match idx_start <= idx_end {
-                true => output.as_ref().split("<|im_start|>").collect::<Vec<_>>()[0]
+                true => s.split("<|im_start|>").collect::<Vec<_>>()[0]
                     .trim()
                     .to_owned(),
-                false => output.as_ref().split("<|im_end|>").collect::<Vec<_>>()[0]
+                false => s.split("<|im_end|>").collect::<Vec<_>>()[0]
                     .trim()
                     .to_owned(),
             }
-        } else if output.as_ref().contains("<|im_start|>") {
-            output.as_ref().split("<|im_start|>").collect::<Vec<_>>()[0]
+        } else if s.contains("<|im_start|>") {
+            s.split("<|im_start|>").collect::<Vec<_>>()[0]
                 .trim()
                 .to_owned()
-        } else if output.as_ref().contains("<|im_end|>") {
-            let output = output.as_ref().trim_end_matches("<|im_end|>").trim();
+        } else if s.contains("<|im_end|>") {
+            let output = s.trim_end_matches("<|im_end|>").trim();
             if output.starts_with(": ") {
                 output.trim_start_matches(": ").to_owned()
             } else {
                 output.to_owned()
             }
         } else {
-            output.as_ref().trim().to_owned()
+            s.to_owned()
         }
     } else if *template_ty == PromptTemplateType::Zephyr
         || *template_ty == PromptTemplateType::MistralLite
@@ -2332,7 +2337,7 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
     let fname = response
         .url()
         .path_segments()
-        .and_then(|segments| segments.last())
+        .and_then(|mut segments| segments.next_back())
         .and_then(|name| if name.is_empty() { None } else { Some(name) })
         .ok_or(LlamaCoreError::Operation(format!(
             "Fail to get the file name: {}",

@@ -59,9 +59,12 @@ struct Cli {
         value_parser = clap::value_parser!(u64)
     )]
     ctx_size: Vec<u64>,
-    /// Sets batch sizes for chat and/or embedding models. To run both chat and embedding models, the sizes should be separated by comma without space, for example, '--batch-size 128,64'. The first value is for the chat model, and the second is for the embedding model.
+    /// Sets logical maximum batch sizes for chat and/or embedding models. To run both chat and embedding models, the sizes should be separated by comma without space, for example, '--batch-size 128,64'. The first value is for the chat model, and the second for the embedding model.
     #[arg(short, long, value_delimiter = ',', default_value = "512,512", value_parser = clap::value_parser!(u64))]
     batch_size: Vec<u64>,
+    /// Sets physical maximum batch sizes for chat and/or embedding models. To run both chat and embedding models, the sizes should be separated by comma without space, for example, '--ubatch-size 512,512'. The first value is for the chat model, and the second for the embedding model.
+    #[arg(short, long, value_delimiter = ',', default_value = "512,512", value_parser = clap::value_parser!(u64))]
+    ubatch_size: Vec<u64>,
     /// Sets prompt templates for chat and/or embedding models, respectively. To run both chat and embedding models, the prompt templates should be separated by comma without space, for example, '--prompt-template llama-2-chat,embedding'. The first value is for the chat model, and the second is for the embedding model.
     #[arg(short, long, value_delimiter = ',', value_parser = clap::value_parser!(PromptTemplateType), group = "config_group", required = true)]
     prompt_template: Vec<PromptTemplateType>,
@@ -669,6 +672,20 @@ async fn main() -> Result<(), ServerError> {
     }
     info!(target: "stdout", "batch_size: {}", batch_sizes_str);
 
+    // log ubatch size
+    let mut ubatch_sizes_str = String::new();
+    if cli.model_name.len() == 1 {
+        ubatch_sizes_str = cli.ubatch_size[0].to_string();
+    } else if cli.model_name.len() == 2 {
+        ubatch_sizes_str = cli
+            .ubatch_size
+            .iter()
+            .map(|n| n.to_string())
+            .collect::<Vec<String>>()
+            .join(",");
+    }
+    info!(target: "stdout", "ubatch_size: {}", ubatch_sizes_str);
+
     // log prompt template
     if cli.prompt_template.is_empty() && cli.prompt_template.len() > 2 {
         return Err(ServerError::ArgumentError(
@@ -764,6 +781,7 @@ async fn main() -> Result<(), ServerError> {
                 )
                 .with_ctx_size(cli.ctx_size[0])
                 .with_batch_size(cli.batch_size[0])
+                .with_ubatch_size(cli.ubatch_size[0])
                 .with_split_mode(cli.split_mode)
                 .with_main_gpu(cli.main_gpu)
                 .with_tensor_split(cli.tensor_split)
@@ -778,6 +796,7 @@ async fn main() -> Result<(), ServerError> {
                     ty: "embedding".to_string(),
                     ctx_size: metadata_embedding.ctx_size,
                     batch_size: metadata_embedding.batch_size,
+                    ubatch_size: metadata_embedding.ubatch_size,
                     prompt_template: Some(PromptTemplateType::Embedding),
                     n_predict: Some(cli.n_predict),
                     reverse_prompt: metadata_embedding.reverse_prompt.clone(),
@@ -806,6 +825,7 @@ async fn main() -> Result<(), ServerError> {
                 )
                 .with_ctx_size(cli.ctx_size[0])
                 .with_batch_size(cli.batch_size[0])
+                .with_ubatch_size(cli.ubatch_size[0])
                 .with_n_predict(cli.n_predict)
                 .with_n_gpu_layers(cli.n_gpu_layers)
                 .with_split_mode(cli.split_mode)
@@ -832,6 +852,7 @@ async fn main() -> Result<(), ServerError> {
                     ty: "chat".to_string(),
                     ctx_size: metadata_chat.ctx_size,
                     batch_size: metadata_chat.batch_size,
+                    ubatch_size: metadata_chat.ubatch_size,
                     prompt_template: Some(metadata_chat.prompt_template),
                     n_predict: Some(metadata_chat.n_predict),
                     reverse_prompt: metadata_chat.reverse_prompt.clone(),
@@ -861,6 +882,7 @@ async fn main() -> Result<(), ServerError> {
         )
         .with_ctx_size(cli.ctx_size[0])
         .with_batch_size(cli.batch_size[0])
+        .with_ubatch_size(cli.ubatch_size[0])
         .with_n_predict(cli.n_predict)
         .with_n_gpu_layers(cli.n_gpu_layers)
         .with_split_mode(cli.split_mode.clone())
@@ -887,6 +909,7 @@ async fn main() -> Result<(), ServerError> {
             ty: "chat".to_string(),
             ctx_size: metadata_chat.ctx_size,
             batch_size: metadata_chat.batch_size,
+            ubatch_size: metadata_chat.ubatch_size,
             prompt_template: Some(metadata_chat.prompt_template),
             n_predict: Some(metadata_chat.n_predict),
             reverse_prompt: metadata_chat.reverse_prompt.clone(),
@@ -910,6 +933,7 @@ async fn main() -> Result<(), ServerError> {
         )
         .with_ctx_size(cli.ctx_size[1])
         .with_batch_size(cli.batch_size[1])
+        .with_ubatch_size(cli.ubatch_size[1])
         .with_split_mode(cli.split_mode)
         .with_main_gpu(cli.main_gpu)
         .with_tensor_split(cli.tensor_split)
@@ -924,6 +948,7 @@ async fn main() -> Result<(), ServerError> {
             ty: "embedding".to_string(),
             ctx_size: metadata_embedding.ctx_size,
             batch_size: metadata_embedding.batch_size,
+            ubatch_size: metadata_embedding.ubatch_size,
             prompt_template: Some(PromptTemplateType::Embedding),
             n_predict: Some(cli.n_predict),
             reverse_prompt: metadata_embedding.reverse_prompt.clone(),
@@ -1164,6 +1189,7 @@ pub(crate) struct ModelConfig {
     ty: String,
     pub ctx_size: u64,
     pub batch_size: u64,
+    pub ubatch_size: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prompt_template: Option<PromptTemplateType>,
     #[serde(skip_serializing_if = "Option::is_none")]
