@@ -1,11 +1,11 @@
 [workspace]
 members = [
-    "llama-api-server",
-    "llama-simple",
-    "llama-chat",
-    "crates/endpoints",
     "crates/chat-prompts",
+    "crates/endpoints",
     "crates/llama-core",
+    "llama-api-server",
+    "llama-chat",
+    "llama-simple",
 ]
 resolver = "2"
 
