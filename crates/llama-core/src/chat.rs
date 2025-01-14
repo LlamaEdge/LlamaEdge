@@ -93,7 +93,7 @@ async fn chat_stream(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "Process chat completion request in the stream mode.");
+    info!(target: "stdout", "Process chat completion request in the stream mode");
 
     let running_mode = running_mode()?;
     if running_mode == RunningMode::Embeddings {
@@ -2414,7 +2414,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
     match model_name {
         Some(model_name) => {
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "Set prompt to the chat model named {}.", model_name);
+            info!(target: "stdout", "Set prompt to the chat model named {}", model_name);
 
             match chat_graphs.contains_key(model_name) {
                 true => {
