@@ -4,8 +4,6 @@ use crate::error;
 use hyper::{Body, Request, Response};
 
 pub(crate) async fn handle_llama_request(req: Request<Body>) -> Response<Body> {
-    info!(target: "stdout", "handle llama request: {}", req.uri().path());
-
     match req.uri().path() {
         "/v1/chat/completions" => ggml::chat_completions_handler(req).await,
         "/v1/completions" => ggml::completions_handler(req).await,
