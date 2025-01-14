@@ -558,7 +558,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
 
                 while let Some(key) = map.next_key::<String>()? {
                     #[cfg(feature = "logging")]
-                    info!(target: "stdout", "key: {}", key);
+                    debug!(target: "stdout", "key: {}", key);
 
                     match key.as_str() {
                         "model" => model = map.next_value()?,
