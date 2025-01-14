@@ -418,7 +418,7 @@ impl std::fmt::Display for RunningMode {
 /// Return the current running mode.
 pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "Get the running mode.");
+    debug!(target: "stdout", "Get the running mode.");
 
     let mode = match RUNNING_MODE.get() {
         Some(mode) => match mode.read() {
