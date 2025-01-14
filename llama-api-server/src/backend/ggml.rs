@@ -297,7 +297,7 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
 
 /// Process a chat-completion request and returns a chat-completion response with the answer from the model.
 pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response<Body> {
-    info!(target: "stdout", "Handling the coming chat completion request.");
+    info!(target: "stdout", "Handling the coming chat completion request");
 
     if req.method().eq(&hyper::http::Method::OPTIONS) {
         let result = Response::builder()
@@ -320,7 +320,7 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
         }
     }
 
-    info!(target: "stdout", "Prepare the chat completion request.");
+    info!(target: "stdout", "Prepare the chat completion request");
 
     // parse request
     let body_bytes = match to_bytes(req.body_mut()).await {
@@ -445,7 +445,7 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
     };
 
     // log
-    info!(target: "stdout", "Send the chat completion response.");
+    info!(target: "stdout", "Send the chat completion response");
 
     res
 }
