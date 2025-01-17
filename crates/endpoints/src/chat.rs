@@ -656,10 +656,10 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
 
                 #[cfg(all(feature = "rag", feature = "index"))]
                 if let Some(name) = &index_name {
-                    #[cfg(feature = "logging")]
-                    warn!(target: "stdout", "Found empty index name");
-
                     if name.is_empty() {
+                        #[cfg(feature = "logging")]
+                        warn!(target: "stdout", "Found empty index name");
+
                         index_name = None;
                     }
                 }
