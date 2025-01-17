@@ -6,6 +6,7 @@ use endpoints::{
     rag::{RagScoredPoint, RetrieveObject},
 };
 use qdrant::*;
+use serde_json::Value;
 use std::collections::HashSet;
 
 /// Convert document chunks to embeddings.
@@ -240,7 +241,7 @@ pub async fn rag_retrieve_context(
             let mut points: Vec<RagScoredPoint> = vec![];
             for point in unique_scored_points.iter() {
                 if let Some(payload) = &point.payload {
-                    if let Some(source) = payload.get("source") {
+                    if let Some(source) = payload.get("source").and_then(Value::as_str) {
                         points.push(RagScoredPoint {
                             source: source.to_string(),
                             score: point.score,
@@ -249,7 +250,7 @@ pub async fn rag_retrieve_context(
 
                     // For debugging purpose, log the optional search field if it exists
                     #[cfg(feature = "logging")]
-                    if let Some(search) = payload.get("search") {
+                    if let Some(search) = payload.get("search").and_then(Value::as_str) {
                         info!(target: "stdout", "search: {}", search);
                     }
                 }
