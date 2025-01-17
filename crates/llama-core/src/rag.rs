@@ -64,7 +64,7 @@ pub async fn rag_doc_chunks_to_embeddings(
 
     #[cfg(feature = "logging")]
     if let Ok(request_str) = serde_json::to_string(&embedding_request) {
-        info!(target: "stdout", "Embedding request: {}", request_str);
+        debug!(target: "stdout", "Embedding request: {}", request_str);
     }
 
     // compute embeddings for the document
