@@ -84,6 +84,8 @@ fn test_rag_deserialize_retrieve_object() {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateRagResponse {
     #[cfg(feature = "index")]
+    #[serde(rename = "index", skip_serializing_if = "Option::is_none")]
     pub index_response: Option<IndexResponse>,
+    #[serde(rename = "embeddings")]
     pub embeddings_response: EmbeddingsResponse,
 }
