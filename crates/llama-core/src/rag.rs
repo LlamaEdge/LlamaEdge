@@ -69,8 +69,8 @@ pub async fn rag_doc_chunks_to_embeddings(
     }
 
     // compute embeddings for the document
-    let response = embeddings(embedding_request).await?;
-    let embeddings = response.data.as_slice();
+    let embeddings_response = embeddings(embedding_request).await?;
+    let embeddings = embeddings_response.data.as_slice();
     let dim = embeddings[0].embedding.len();
 
     // create a Qdrant client
@@ -108,7 +108,7 @@ pub async fn rag_doc_chunks_to_embeddings(
     )
     .await?;
 
-    Ok(response)
+    Ok(embeddings_response)
 }
 
 /// Convert a query to embeddings.
