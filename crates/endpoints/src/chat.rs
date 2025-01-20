@@ -381,6 +381,17 @@ impl ChatCompletionRequestBuilder {
         self
     }
 
+    /// Sets the URL of the keyword search server.
+    ///
+    /// # Arguments
+    ///
+    /// * `kw_search_url` - The URL of the keyword search server.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    pub fn with_kw_search_url(mut self, kw_search_url: impl Into<String>) -> Self {
+        self.req.kw_search_url = Some(kw_search_url.into());
+        self
+    }
+
     /// Sets the index name for keyword search.
     ///
     /// # Arguments
@@ -532,11 +543,14 @@ pub struct ChatCompletionRequest {
     #[serde(rename = "vdb_api_key", skip_serializing_if = "Option::is_none")]
     pub vdb_api_key: Option<String>,
 
+    /// The URL of the keyword search server.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    #[serde(rename = "kw_search_url", skip_serializing_if = "Option::is_none")]
+    pub kw_search_url: Option<String>,
     /// The name of the index to use for the keyword search. This parameter is only used in RAG chat completions.
     #[cfg(all(feature = "rag", feature = "index"))]
     #[serde(rename = "kw_index_name", skip_serializing_if = "Option::is_none")]
     pub kw_index_name: Option<String>,
-
     /// The number of top keyword search results to return. Defaults to 5. This parameter is only used in RAG chat completions.
     #[cfg(all(feature = "rag", feature = "index"))]
     #[serde(rename = "kw_top_k", skip_serializing_if = "Option::is_none")]
@@ -594,6 +608,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 #[cfg(feature = "rag")]
                 let mut vdb_api_key = None;
                 #[cfg(all(feature = "rag", feature = "index"))]
+                let mut kw_search_url = None;
+                #[cfg(all(feature = "rag", feature = "index"))]
                 let mut kw_index_name: Option<String> = None;
                 #[cfg(all(feature = "rag", feature = "index"))]
                 let mut kw_top_k: Option<u64> = None;
@@ -634,6 +650,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                         "score_threshold" => score_threshold = map.next_value()?,
                         #[cfg(feature = "rag")]
                         "vdb_api_key" => vdb_api_key = map.next_value()?,
+                        #[cfg(all(feature = "rag", feature = "index"))]
+                        "kw_search_url" => kw_search_url = map.next_value()?,
                         #[cfg(all(feature = "rag", feature = "index"))]
                         "kw_index_name" => kw_index_name = map.next_value()?,
                         #[cfg(all(feature = "rag", feature = "index"))]
@@ -729,6 +747,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     #[cfg(feature = "rag")]
                     vdb_api_key,
                     #[cfg(all(feature = "rag", feature = "index"))]
+                    kw_search_url,
+                    #[cfg(all(feature = "rag", feature = "index"))]
                     kw_index_name,
                     #[cfg(all(feature = "rag", feature = "index"))]
                     kw_top_k,
@@ -768,6 +788,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
             "score_threshold",
             #[cfg(feature = "rag")]
             "vdb_api_key",
+            #[cfg(all(feature = "rag", feature = "index"))]
+            "kw_search_url",
             #[cfg(all(feature = "rag", feature = "index"))]
             "kw_index_name",
             #[cfg(all(feature = "rag", feature = "index"))]
@@ -815,6 +837,8 @@ impl Default for ChatCompletionRequest {
             score_threshold: None,
             #[cfg(feature = "rag")]
             vdb_api_key: None,
+            #[cfg(all(feature = "rag", feature = "index"))]
+            kw_search_url: None,
             #[cfg(all(feature = "rag", feature = "index"))]
             kw_index_name: None,
             #[cfg(all(feature = "rag", feature = "index"))]
@@ -1283,13 +1307,14 @@ fn test_chat_serialize_chat_request() {
                 &[0.5, 0.6],
                 None,
             )
+            .with_kw_search_url("http://localhost:9069")
             .with_kw_index_name("index-name")
             .with_kw_top_k(5)
             .build();
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_index_name":"index-name","kw_top_k":5}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_search_url":"http://localhost:9069","kw_index_name":"index-name","kw_top_k":5}"#
         );
     }
 }
@@ -1480,7 +1505,7 @@ fn test_chat_deserialize_chat_request() {
 
     #[cfg(all(feature = "rag", feature = "index"))]
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"index_name":"index-name"}"#;
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_search_url":"http://localhost:9069","kw_index_name":"index-name","kw_top_k":5}"#;
 
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         let tool_choice = request.tool_choice.unwrap();
@@ -1495,7 +1520,11 @@ fn test_chat_deserialize_chat_request() {
         );
         assert_eq!(request.limit, Some(vec![10, 20]));
         assert_eq!(request.score_threshold, Some(vec![0.5, 0.6]));
-        assert_eq!(request.kw_index_name, None);
+        assert_eq!(
+            request.kw_search_url,
+            Some("http://localhost:9069".to_string())
+        );
+        assert_eq!(request.kw_index_name, Some("index-name".to_string()));
         assert_eq!(request.kw_top_k, Some(5));
     }
 }
