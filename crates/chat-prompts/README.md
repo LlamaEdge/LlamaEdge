@@ -108,6 +108,8 @@ The available prompt templates are listed below:
     <|begin_of_sentence|>{system_message}<|User|>{user_message_1}<|Assistant|>{assistant_message_1}<|end_of_sentence|><|User|>{user_message_2}<|Assistant|>
     ```
 
+  - Example: [second-state/DeepSeek-V2.5-GGUF](https://huggingface.co/second-state/DeepSeek-V2.5-GGUF)
+
 - `deepseek-coder`
   - Prompt string
 
