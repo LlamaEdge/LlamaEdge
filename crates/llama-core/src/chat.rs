@@ -46,9 +46,9 @@ pub async fn chat(
 > {
     #[cfg(feature = "logging")]
     {
-        info!(target: "stdout", "tool choice: {:?}", chat_request.tool_choice.as_ref());
-        info!(target: "stdout", "tools: {:?}", chat_request.tools.as_ref());
-        info!(target: "stdout", "stream mode: {:?}", chat_request.stream);
+        debug!(target: "stdout", "tool choice: {:?}", chat_request.tool_choice.as_ref());
+        debug!(target: "stdout", "tools: {:?}", chat_request.tools.as_ref());
+        debug!(target: "stdout", "stream mode: {:?}", chat_request.stream);
     }
 
     let model_name = chat_request.model.clone();
@@ -65,7 +65,7 @@ pub async fn chat(
     };
 
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "Reset the model metadata.");
+    info!(target: "stdout", "Reset the model metadata");
 
     // reset the model metadata
     reset_model_metadata(model_name.as_ref())?;
@@ -93,7 +93,7 @@ async fn chat_stream(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "Process chat completion request in the stream mode.");
+    info!(target: "stdout", "Process chat completion request in the stream mode");
 
     let running_mode = running_mode()?;
     if running_mode == RunningMode::Embeddings {
@@ -126,8 +126,14 @@ async fn chat_stream(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "include_usage: {}", include_usage);
 
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Check model metadata");
+
     // update metadata
     let mut metadata = check_model_metadata(chat_request).await?;
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Build the chat prompt");
 
     // build prompt
     let (prompt, avaible_completion_tokens, tool_use) =
@@ -139,6 +145,9 @@ async fn chat_stream(
         info!(target: "stdout", "available_completion_tokens: {}", avaible_completion_tokens);
         info!(target: "stdout", "tool_use: {}", tool_use);
     }
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Update the n_predict");
 
     // update metadata n_predict
     update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
@@ -633,7 +642,7 @@ async fn chat_once(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<ChatCompletionObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "Processing chat completion request in non-stream mode.");
+    info!(target: "stdout", "Processing chat completion request in non-stream mode");
 
     let running_mode = running_mode()?;
     if running_mode == RunningMode::Embeddings {
@@ -657,8 +666,14 @@ async fn chat_once(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "user: {}", &id);
 
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Check model metadata");
+
     // update metadata
     let mut metadata = check_model_metadata(chat_request).await?;
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Build the chat prompt");
 
     // build prompt
     let (prompt, avaible_completion_tokens, tool_use) =
@@ -671,17 +686,23 @@ async fn chat_once(
         info!(target: "stdout", "tool_use: {}", tool_use);
     }
 
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Update n_predict");
+
     // update metadata n_predict
     update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
 
     // feed the prompt to the model
     set_prompt(model_name.as_ref(), &prompt)?;
 
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Compute chat completion.");
+
     // compute
     let res = compute(model_name.as_ref(), id, tool_use);
 
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "End of the chat completion.");
+    info!(target: "stdout", "End of the chat completion");
 
     res
 }
@@ -691,9 +712,6 @@ fn compute(
     id: impl Into<String>,
     tool_use: bool,
 ) -> Result<ChatCompletionObject, LlamaCoreError> {
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Compute chat completion.");
-
     let chat_graphs = match CHAT_GRAPHS.get() {
         Some(chat_graphs) => chat_graphs,
         None => {
@@ -1727,12 +1745,6 @@ fn parse_tool_calls(
 async fn check_model_metadata(
     chat_request: &ChatCompletionRequest,
 ) -> Result<GgmlMetadata, LlamaCoreError> {
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Check model metadata.");
-
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Get the model metadata.");
-
     let mut should_update = false;
     let mut metadata = get_model_metadata(chat_request.model.as_ref())?;
 
@@ -1852,7 +1864,7 @@ async fn update_n_predict(
     let mut should_update = false;
 
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "available_completion_tokens: {}, n_predict: {}", available_completion_tokens, metadata.n_predict);
+    info!(target: "stdout", "n_predict: {}", metadata.n_predict);
 
     // From high to low priority
     // 1. chat_request.max_tokens & chat_request.max_completion_tokens
@@ -1916,9 +1928,6 @@ fn post_process(
     output: impl AsRef<str>,
     template_ty: &PromptTemplateType,
 ) -> Result<String, String> {
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Post-process the generated output.");
-
     let output = if *template_ty == PromptTemplateType::Baichuan2 {
         if output.as_ref().contains("用户:") {
             output.as_ref().trim_end_matches("用户:").trim().to_owned()
@@ -2129,11 +2138,6 @@ fn build_prompt(
     model_name: Option<&String>,
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<(String, u64, bool), LlamaCoreError> {
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Build the chat prompt from the chat messages.");
-
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Get the model metadata.");
     let metadata = get_model_metadata(model_name)?;
     let ctx_size = metadata.ctx_size as u64;
     let chat_prompt = ChatPrompt::from(metadata.prompt_template);
@@ -2410,7 +2414,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
     match model_name {
         Some(model_name) => {
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "Set prompt to the chat model named {}.", model_name);
+            info!(target: "stdout", "Set prompt to the chat model named {}", model_name);
 
             match chat_graphs.contains_key(model_name) {
                 true => {

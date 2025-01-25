@@ -1,6 +1,6 @@
 [package]
 name = "endpoints"
-version = "0.24.0"
+version = "0.24.1"
 edition = "2021"
 readme = "README.md"
 repository = "https://github.com/LlamaEdge/LlamaEdge"
@@ -21,10 +21,11 @@ serde_json.workspace = true
 
 [features]
 default = []
-full = ["rag", "whisper", "logging"]
+full = ["rag", "whisper", "logging", "index"]
 rag = []
 whisper = []
 logging = ["log"]
+index = []
 
 [package.metadata.docs.rs]
 all-features = true

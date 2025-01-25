@@ -6,6 +6,7 @@ use endpoints::{
     rag::{RagScoredPoint, RetrieveObject},
 };
 use qdrant::*;
+use serde_json::Value;
 use std::collections::HashSet;
 
 /// Convert document chunks to embeddings.
@@ -64,12 +65,12 @@ pub async fn rag_doc_chunks_to_embeddings(
 
     #[cfg(feature = "logging")]
     if let Ok(request_str) = serde_json::to_string(&embedding_request) {
-        info!(target: "stdout", "Embedding request: {}", request_str);
+        debug!(target: "stdout", "Embedding request: {}", request_str);
     }
 
     // compute embeddings for the document
-    let response = embeddings(embedding_request).await?;
-    let embeddings = response.data.as_slice();
+    let embeddings_response = embeddings(embedding_request).await?;
+    let embeddings = embeddings_response.data.as_slice();
     let dim = embeddings[0].embedding.len();
 
     // create a Qdrant client
@@ -107,7 +108,7 @@ pub async fn rag_doc_chunks_to_embeddings(
     )
     .await?;
 
-    Ok(response)
+    Ok(embeddings_response)
 }
 
 /// Convert a query to embeddings.
@@ -240,7 +241,7 @@ pub async fn rag_retrieve_context(
             let mut points: Vec<RagScoredPoint> = vec![];
             for point in unique_scored_points.iter() {
                 if let Some(payload) = &point.payload {
-                    if let Some(source) = payload.get("source") {
+                    if let Some(source) = payload.get("source").and_then(Value::as_str) {
                         points.push(RagScoredPoint {
                             source: source.to_string(),
                             score: point.score,
@@ -249,7 +250,7 @@ pub async fn rag_retrieve_context(
 
                     // For debugging purpose, log the optional search field if it exists
                     #[cfg(feature = "logging")]
-                    if let Some(search) = payload.get("search") {
+                    if let Some(search) = payload.get("search").and_then(Value::as_str) {
                         info!(target: "stdout", "search: {}", search);
                     }
                 }

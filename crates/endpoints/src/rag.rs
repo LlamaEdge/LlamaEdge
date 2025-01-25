@@ -1,5 +1,8 @@
 //! Define types for the `rag` endpoint.
 
+use crate::embeddings::EmbeddingsResponse;
+#[cfg(feature = "index")]
+use crate::keyword_search::IndexResponse;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -75,4 +78,14 @@ fn test_rag_deserialize_retrieve_object() {
         assert_eq!(ro.score_threshold, 0.5);
         assert!(ro.points.is_none());
     }
+}
+
+/// Defines the response of rag creation.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateRagResponse {
+    #[cfg(feature = "index")]
+    #[serde(rename = "index", skip_serializing_if = "Option::is_none")]
+    pub index_response: Option<IndexResponse>,
+    #[serde(rename = "embeddings")]
+    pub embeddings_response: EmbeddingsResponse,
 }

@@ -2,149 +2,155 @@
 //!
 //! **Example 1** Create a normal chat completion request.
 //! ```
-//! use endpoints::chat::*;
+//! #[cfg(not(feature = "index"))]
+//! {
+//!   use endpoints::chat::*;
 //!
-//! let mut messages = Vec::new();
+//!   let mut messages = Vec::new();
 //!
-//! // create a system message
-//! let system_message = ChatCompletionRequestMessage::System(
-//!     ChatCompletionSystemMessage::new("Hello, world!", None),
-//! );
-//! messages.push(system_message);
+//!   // create a system message
+//!   let system_message = ChatCompletionRequestMessage::System(
+//!       ChatCompletionSystemMessage::new("Hello, world!", None),
+//!   );
+//!   messages.push(system_message);
 //!
-//! // create a user message
-//! let user_message_content = ChatCompletionUserMessageContent::Parts(vec![
-//!     ContentPart::Text(TextContentPart::new("what is in the picture?")),
-//!     ContentPart::Image(ImageContentPart::new(Image {
-//!         url: "https://example.com/image.png".to_string(),
-//!         detail: None,
-//!     })),
-//! ]);
-//! let user_message =
-//!     ChatCompletionRequestMessage::new_user_message(user_message_content, None);
-//! messages.push(user_message);
+//!   // create a user message
+//!   let user_message_content = ChatCompletionUserMessageContent::Parts(vec![
+//!       ContentPart::Text(TextContentPart::new("what is in the picture?")),
+//!       ContentPart::Image(ImageContentPart::new(Image {
+//!           url: "https://example.com/image.png".to_string(),
+//!           detail: None,
+//!       })),
+//!   ]);
+//!   let user_message =
+//!       ChatCompletionRequestMessage::new_user_message(user_message_content, None);
+//!   messages.push(user_message);
 //!
-//! // create a chat completion request
-//! let request = ChatCompletionRequestBuilder::new(&messages)
-//!     .with_model("model-id")
-//!     .with_tool_choice(ToolChoice::None)
-//!     .build();
+//!   // create a chat completion request
+//!   let request = ChatCompletionRequestBuilder::new(&messages)
+//!       .with_model("model-id")
+//!       .with_tool_choice(ToolChoice::None)
+//!       .build();
 //!
-//! // serialize the request to JSON string
-//! let json = serde_json::to_string(&request).unwrap();
-//! assert_eq!(
-//!     json,
-//!     r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"temperature":0.8,"top_p":0.9,"n":1,"stream":false,"max_tokens":-1,"max_completion_tokens":-1,"presence_penalty":0.0,"frequency_penalty":0.0,"tool_choice":"none"}"#
-//! );
+//!   // serialize the request to JSON string
+//!   let json = serde_json::to_string(&request).unwrap();
+//!   assert_eq!(
+//!       json,
+//!       r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"temperature":0.8,"top_p":0.9,"n":1,"stream":false,"max_tokens":-1,"max_completion_tokens":-1,"presence_penalty":0.0,"frequency_penalty":0.0,"tool_choice":"none"}"#
+//!   );
+//! }
 //! ```
 //!
 //! **Example 2** Create a chat completion request with available tools.
 //! ```
-//! use endpoints::chat::*;
+//! #[cfg(not(feature = "index"))]
+//! {
+//!   use endpoints::chat::*;
 //!
-//! let mut messages = Vec::new();
+//!   let mut messages = Vec::new();
 //!
-//! // create a system message
-//! let system_message = ChatCompletionRequestMessage::System(
-//!     ChatCompletionSystemMessage::new("Hello, world!", None),
-//! );
-//! messages.push(system_message);
+//!   // create a system message
+//!   let system_message = ChatCompletionRequestMessage::System(
+//!       ChatCompletionSystemMessage::new("Hello, world!", None),
+//!   );
+//!   messages.push(system_message);
 //!
-//! // create a user message
-//! let user_message = ChatCompletionRequestMessage::User(ChatCompletionUserMessage::new(
-//!     ChatCompletionUserMessageContent::Text("Hello, world!".to_string()),
-//!     None,
-//! ));
-//! messages.push(user_message);
-//! let assistant_message = ChatCompletionRequestMessage::Assistant(
-//!     ChatCompletionAssistantMessage::new(Some("Hello, world!".to_string()), None, None),
-//! );
-//! messages.push(assistant_message);
+//!   // create a user message
+//!   let user_message = ChatCompletionRequestMessage::User(ChatCompletionUserMessage::new(
+//!       ChatCompletionUserMessageContent::Text("Hello, world!".to_string()),
+//!       None,
+//!   ));
+//!   messages.push(user_message);
+//!   let assistant_message = ChatCompletionRequestMessage::Assistant(
+//!       ChatCompletionAssistantMessage::new(Some("Hello, world!".to_string()), None, None),
+//!   );
+//!   messages.push(assistant_message);
 //!
-//! // create a tool
-//! let params = ToolFunctionParameters {
-//!     schema_type: JSONSchemaType::Object,
-//!     properties: Some(
-//!         vec![
-//!             (
-//!                 "location".to_string(),
-//!                 Box::new(JSONSchemaDefine {
-//!                     schema_type: Some(JSONSchemaType::String),
-//!                     description: Some(
-//!                         "The city and state, e.g. San Francisco, CA".to_string(),
-//!                     ),
-//!                     enum_values: None,
-//!                     properties: None,
-//!                     required: None,
-//!                     items: None,
-//!                     default: None,
-//!                     maximum: None,
-//!                     minimum: None,
-//!                     title: None,
-//!                     examples: None,
-//!                 }),
-//!             ),
-//!             (
-//!                 "unit".to_string(),
-//!                 Box::new(JSONSchemaDefine {
-//!                     schema_type: Some(JSONSchemaType::String),
-//!                     description: None,
-//!                     enum_values: Some(vec![
-//!                         "celsius".to_string(),
-//!                         "fahrenheit".to_string(),
-//!                     ]),
-//!                     properties: None,
-//!                     required: None,
-//!                     items: None,
-//!                     default: None,
-//!                     maximum: None,
-//!                     minimum: None,
-//!                     title: None,
-//!                     examples: None,
-//!                 }),
-//!             ),
-//!         ]
-//!         .into_iter()
-//!         .collect(),
-//!     ),
-//!     required: Some(vec!["location".to_string()]),
-//! };
-//! let tool = Tool {
-//!     ty: "function".to_string(),
-//!     function: ToolFunction {
-//!         name: "my_function".to_string(),
-//!         description: None,
-//!         parameters: Some(params),
-//!     },
-//! };
+//!   // create a tool
+//!   let params = ToolFunctionParameters {
+//!       schema_type: JSONSchemaType::Object,
+//!       properties: Some(
+//!           vec![
+//!               (
+//!                   "location".to_string(),
+//!                   Box::new(JSONSchemaDefine {
+//!                       schema_type: Some(JSONSchemaType::String),
+//!                       description: Some(
+//!                           "The city and state, e.g. San Francisco, CA".to_string(),
+//!                       ),
+//!                       enum_values: None,
+//!                       properties: None,
+//!                       required: None,
+//!                       items: None,
+//!                       default: None,
+//!                       maximum: None,
+//!                       minimum: None,
+//!                       title: None,
+//!                       examples: None,
+//!                   }),
+//!               ),
+//!               (
+//!                   "unit".to_string(),
+//!                   Box::new(JSONSchemaDefine {
+//!                       schema_type: Some(JSONSchemaType::String),
+//!                       description: None,
+//!                       enum_values: Some(vec![
+//!                           "celsius".to_string(),
+//!                           "fahrenheit".to_string(),
+//!                       ]),
+//!                       properties: None,
+//!                       required: None,
+//!                       items: None,
+//!                       default: None,
+//!                       maximum: None,
+//!                       minimum: None,
+//!                       title: None,
+//!                       examples: None,
+//!                   }),
+//!               ),
+//!           ]
+//!           .into_iter()
+//!           .collect(),
+//!       ),
+//!       required: Some(vec!["location".to_string()]),
+//!   };
+//!   let tool = Tool {
+//!       ty: "function".to_string(),
+//!       function: ToolFunction {
+//!           name: "my_function".to_string(),
+//!           description: None,
+//!           parameters: Some(params),
+//!       },
+//!   };
 //!
-//! // create a chat completion request
-//! let request = ChatCompletionRequestBuilder::new(&messages)
-//!     .with_model("model-id")
-//!     .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
-//!     .with_n_choices(3)
-//!     .enable_stream(true)
-//!     .include_usage()
-//!     .with_stop(vec!["stop1".to_string(), "stop2".to_string()])
-//!     .with_max_completion_tokens(100)
-//!     .with_presence_penalty(0.5)
-//!     .with_frequency_penalty(0.5)
-//!     .with_reponse_format(ChatResponseFormat::default())
-//!     .with_tools(vec![tool])
-//!     .with_tool_choice(ToolChoice::Tool(ToolChoiceTool {
-//!         ty: "function".to_string(),
-//!         function: ToolChoiceToolFunction {
-//!             name: "my_function".to_string(),
-//!         },
-//!     }))
-//!     .build();
+//!   // create a chat completion request
+//!   let request = ChatCompletionRequestBuilder::new(&messages)
+//!       .with_model("model-id")
+//!       .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
+//!       .with_n_choices(3)
+//!       .enable_stream(true)
+//!       .include_usage()
+//!       .with_stop(vec!["stop1".to_string(), "stop2".to_string()])
+//!       .with_max_completion_tokens(100)
+//!       .with_presence_penalty(0.5)
+//!       .with_frequency_penalty(0.5)
+//!       .with_reponse_format(ChatResponseFormat::default())
+//!       .with_tools(vec![tool])
+//!       .with_tool_choice(ToolChoice::Tool(ToolChoiceTool {
+//!           ty: "function".to_string(),
+//!           function: ToolChoiceToolFunction {
+//!               name: "my_function".to_string(),
+//!           },
+//!       }))
+//!       .build();
 //!
-//! // serialize the request to JSON string
-//! let json = serde_json::to_string(&request).unwrap();
-//! assert_eq!(
-//!     json,
-//!     r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#
-//! );
+//!   // serialize the request to JSON string
+//!   let json = serde_json::to_string(&request).unwrap();
+//!   assert_eq!(
+//!       json,
+//!       r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#
+//!   );
+//! }
 //! ```
 
 use crate::common::{FinishReason, Usage};
@@ -375,6 +381,39 @@ impl ChatCompletionRequestBuilder {
         self
     }
 
+    /// Sets the URL of the keyword search server.
+    ///
+    /// # Arguments
+    ///
+    /// * `kw_search_url` - The URL of the keyword search server.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    pub fn with_kw_search_url(mut self, kw_search_url: impl Into<String>) -> Self {
+        self.req.kw_search_url = Some(kw_search_url.into());
+        self
+    }
+
+    /// Sets the index name for keyword search.
+    ///
+    /// # Arguments
+    ///
+    /// * `kw_index_name` - The name of the index to use for keyword search.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    pub fn with_kw_index_name(mut self, kw_index_name: impl Into<String>) -> Self {
+        self.req.kw_index_name = Some(kw_index_name.into());
+        self
+    }
+
+    /// Sets the number of top keyword search results to return.
+    ///
+    /// # Arguments
+    ///
+    /// * `kw_top_k` - The number of top keyword search results to return.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    pub fn with_kw_top_k(mut self, kw_top_k: u64) -> Self {
+        self.req.kw_top_k = Some(kw_top_k);
+        self
+    }
+
     /// Builds the chat completion request.
     pub fn build(self) -> ChatCompletionRequest {
         self.req
@@ -503,6 +542,19 @@ pub struct ChatCompletionRequest {
     #[cfg(feature = "rag")]
     #[serde(rename = "vdb_api_key", skip_serializing_if = "Option::is_none")]
     pub vdb_api_key: Option<String>,
+
+    /// The URL of the keyword search server.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    #[serde(rename = "kw_search_url", skip_serializing_if = "Option::is_none")]
+    pub kw_search_url: Option<String>,
+    /// The name of the index to use for the keyword search. This parameter is only used in RAG chat completions.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    #[serde(rename = "kw_index_name", skip_serializing_if = "Option::is_none")]
+    pub kw_index_name: Option<String>,
+    /// The number of top keyword search results to return. Defaults to 5. This parameter is only used in RAG chat completions.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    #[serde(rename = "kw_top_k", skip_serializing_if = "Option::is_none")]
+    pub kw_top_k: Option<u64>,
 }
 #[allow(deprecated)]
 impl<'de> Deserialize<'de> for ChatCompletionRequest {
@@ -555,10 +607,16 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 let mut score_threshold = None;
                 #[cfg(feature = "rag")]
                 let mut vdb_api_key = None;
+                #[cfg(all(feature = "rag", feature = "index"))]
+                let mut kw_search_url = None;
+                #[cfg(all(feature = "rag", feature = "index"))]
+                let mut kw_index_name: Option<String> = None;
+                #[cfg(all(feature = "rag", feature = "index"))]
+                let mut kw_top_k: Option<u64> = None;
 
                 while let Some(key) = map.next_key::<String>()? {
                     #[cfg(feature = "logging")]
-                    info!(target: "stdout", "key: {}", key);
+                    debug!(target: "stdout", "key: {}", key);
 
                     match key.as_str() {
                         "model" => model = map.next_value()?,
@@ -592,6 +650,12 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                         "score_threshold" => score_threshold = map.next_value()?,
                         #[cfg(feature = "rag")]
                         "vdb_api_key" => vdb_api_key = map.next_value()?,
+                        #[cfg(all(feature = "rag", feature = "index"))]
+                        "kw_search_url" => kw_search_url = map.next_value()?,
+                        #[cfg(all(feature = "rag", feature = "index"))]
+                        "kw_index_name" => kw_index_name = map.next_value()?,
+                        #[cfg(all(feature = "rag", feature = "index"))]
+                        "kw_top_k" => kw_top_k = map.next_value()?,
                         _ => {
                             // Ignore unknown fields
                             let _ = map.next_value::<IgnoredAny>()?;
@@ -634,6 +698,21 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     stream = Some(false);
                 }
 
+                #[cfg(all(feature = "rag", feature = "index"))]
+                if let Some(name) = &kw_index_name {
+                    if name.is_empty() {
+                        #[cfg(feature = "logging")]
+                        warn!(target: "stdout", "Found empty index name");
+
+                        kw_index_name = None;
+                    }
+                }
+
+                #[cfg(all(feature = "rag", feature = "index"))]
+                if kw_top_k.is_none() {
+                    kw_top_k = Some(5);
+                }
+
                 // Construct ChatCompletionRequest with all fields
                 Ok(ChatCompletionRequest {
                     model,
@@ -667,6 +746,12 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     score_threshold,
                     #[cfg(feature = "rag")]
                     vdb_api_key,
+                    #[cfg(all(feature = "rag", feature = "index"))]
+                    kw_search_url,
+                    #[cfg(all(feature = "rag", feature = "index"))]
+                    kw_index_name,
+                    #[cfg(all(feature = "rag", feature = "index"))]
+                    kw_top_k,
                 })
             }
         }
@@ -703,6 +788,12 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
             "score_threshold",
             #[cfg(feature = "rag")]
             "vdb_api_key",
+            #[cfg(all(feature = "rag", feature = "index"))]
+            "kw_search_url",
+            #[cfg(all(feature = "rag", feature = "index"))]
+            "kw_index_name",
+            #[cfg(all(feature = "rag", feature = "index"))]
+            "kw_top_k",
         ];
         deserializer.deserialize_struct(
             "ChatCompletionRequest",
@@ -746,12 +837,19 @@ impl Default for ChatCompletionRequest {
             score_threshold: None,
             #[cfg(feature = "rag")]
             vdb_api_key: None,
+            #[cfg(all(feature = "rag", feature = "index"))]
+            kw_search_url: None,
+            #[cfg(all(feature = "rag", feature = "index"))]
+            kw_index_name: None,
+            #[cfg(all(feature = "rag", feature = "index"))]
+            kw_top_k: Some(5),
         }
     }
 }
 
 #[test]
 fn test_chat_serialize_chat_request() {
+    #[cfg(not(feature = "index"))]
     {
         let mut messages = Vec::new();
         let system_message = ChatCompletionRequestMessage::System(
@@ -786,6 +884,7 @@ fn test_chat_serialize_chat_request() {
         );
     }
 
+    #[cfg(not(feature = "index"))]
     {
         let mut messages = Vec::new();
         let system_message = ChatCompletionRequestMessage::System(
@@ -815,6 +914,7 @@ fn test_chat_serialize_chat_request() {
         );
     }
 
+    #[cfg(not(feature = "index"))]
     {
         let mut messages = Vec::new();
         let system_message = ChatCompletionRequestMessage::System(
@@ -914,6 +1014,7 @@ fn test_chat_serialize_chat_request() {
         );
     }
 
+    #[cfg(not(feature = "index"))]
     {
         let mut messages = Vec::new();
         let system_message = ChatCompletionRequestMessage::System(
@@ -1008,7 +1109,7 @@ fn test_chat_serialize_chat_request() {
         );
     }
 
-    #[cfg(feature = "rag")]
+    #[cfg(all(feature = "rag", not(feature = "index")))]
     {
         let mut messages = Vec::new();
         let system_message = ChatCompletionRequestMessage::System(
@@ -1107,7 +1208,113 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":1024,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6]}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6]}"#
+        );
+    }
+
+    #[cfg(all(feature = "rag", feature = "index"))]
+    {
+        let mut messages = Vec::new();
+        let system_message = ChatCompletionRequestMessage::System(
+            ChatCompletionSystemMessage::new("Hello, world!", None),
+        );
+        messages.push(system_message);
+        let user_message = ChatCompletionRequestMessage::User(ChatCompletionUserMessage::new(
+            ChatCompletionUserMessageContent::Text("Hello, world!".to_string()),
+            None,
+        ));
+        messages.push(user_message);
+        let assistant_message = ChatCompletionRequestMessage::Assistant(
+            ChatCompletionAssistantMessage::new(Some("Hello, world!".to_string()), None, None),
+        );
+        messages.push(assistant_message);
+
+        let params = ToolFunctionParameters {
+            schema_type: JSONSchemaType::Object,
+            properties: Some(
+                vec![
+                    (
+                        "location".to_string(),
+                        Box::new(JSONSchemaDefine {
+                            schema_type: Some(JSONSchemaType::String),
+                            description: Some(
+                                "The city and state, e.g. San Francisco, CA".to_string(),
+                            ),
+                            enum_values: None,
+                            properties: None,
+                            required: None,
+                            items: None,
+                            default: None,
+                            maximum: None,
+                            minimum: None,
+                            title: None,
+                            examples: None,
+                        }),
+                    ),
+                    (
+                        "unit".to_string(),
+                        Box::new(JSONSchemaDefine {
+                            schema_type: Some(JSONSchemaType::String),
+                            description: None,
+                            enum_values: Some(vec![
+                                "celsius".to_string(),
+                                "fahrenheit".to_string(),
+                            ]),
+                            properties: None,
+                            required: None,
+                            items: None,
+                            default: None,
+                            maximum: None,
+                            minimum: None,
+                            title: None,
+                            examples: None,
+                        }),
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+            ),
+            required: Some(vec!["location".to_string()]),
+        };
+
+        let tool = Tool {
+            ty: "function".to_string(),
+            function: ToolFunction {
+                name: "my_function".to_string(),
+                description: None,
+                parameters: Some(params),
+            },
+        };
+
+        let request = ChatCompletionRequestBuilder::new(&messages)
+            .with_model("model-id")
+            .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
+            .with_n_choices(3)
+            .enable_stream(true)
+            .include_usage()
+            .with_stop(vec!["stop1".to_string(), "stop2".to_string()])
+            .with_max_completion_tokens(100)
+            .with_presence_penalty(0.5)
+            .with_frequency_penalty(0.5)
+            .with_reponse_format(ChatResponseFormat::default())
+            .with_tools(vec![tool])
+            .with_tool_choice(ToolChoice::Auto)
+            .with_rag_context_window(3)
+            .with_rag_vdb_settings(
+                "http://localhost:6333",
+                &["collection1".to_string(), "collection2".to_string()],
+                &[10, 20],
+                &[0.5, 0.6],
+                None,
+            )
+            .with_kw_search_url("http://localhost:9069")
+            .with_kw_index_name("index-name")
+            .with_kw_top_k(5)
+            .build();
+        let json = serde_json::to_string(&request).unwrap();
+        assert_eq!(
+            json,
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_search_url":"http://localhost:9069","kw_index_name":"index-name","kw_top_k":5}"#
         );
     }
 }
@@ -1294,6 +1501,31 @@ fn test_chat_deserialize_chat_request() {
         );
         assert_eq!(request.limit, Some(vec![10, 20]));
         assert_eq!(request.score_threshold, Some(vec![0.5, 0.6]));
+    }
+
+    #[cfg(all(feature = "rag", feature = "index"))]
+    {
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_search_url":"http://localhost:9069","kw_index_name":"index-name","kw_top_k":5}"#;
+
+        let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
+        let tool_choice = request.tool_choice.unwrap();
+        assert_eq!(tool_choice, ToolChoice::None);
+        assert_eq!(
+            request.vdb_server_url,
+            Some("http://localhost:6333".to_string())
+        );
+        assert_eq!(
+            request.vdb_collection_name,
+            Some(vec!["collection1".to_string(), "collection2".to_string()])
+        );
+        assert_eq!(request.limit, Some(vec![10, 20]));
+        assert_eq!(request.score_threshold, Some(vec![0.5, 0.6]));
+        assert_eq!(
+            request.kw_search_url,
+            Some("http://localhost:9069".to_string())
+        );
+        assert_eq!(request.kw_index_name, Some("index-name".to_string()));
+        assert_eq!(request.kw_top_k, Some(5));
     }
 }
 

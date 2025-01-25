@@ -155,7 +155,7 @@ fn compute_embeddings(
             })?;
 
         #[cfg(feature = "logging")]
-        info!(target: "stdout", "compute embeddings for chunk {}", idx + 1);
+        debug!(target: "stdout", "compute embeddings for chunk {}", idx + 1);
 
         match graph.compute() {
             Ok(_) => {
