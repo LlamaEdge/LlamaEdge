@@ -114,6 +114,7 @@ pub enum PromptTemplateType {
     Null,
 }
 impl PromptTemplateType {
+    /// Check if the prompt template has a system prompt.
     pub fn has_system_prompt(&self) -> bool {
         match self {
             PromptTemplateType::Llama2Chat
@@ -166,6 +167,16 @@ impl PromptTemplateType {
             | PromptTemplateType::Embedding
             | PromptTemplateType::Null => false,
         }
+    }
+
+    /// Check if the prompt template supports image input.
+    pub fn is_image_supported(&self) -> bool {
+        matches!(
+            self,
+            PromptTemplateType::MiniCPMV
+                | PromptTemplateType::Qwen2vl
+                | PromptTemplateType::VicunaLlava
+        )
     }
 }
 impl FromStr for PromptTemplateType {
