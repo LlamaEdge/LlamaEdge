@@ -349,6 +349,15 @@ The available prompt templates are listed below:
 
   - Example: [second-state/MistralLite-7B-GGUF](https://huggingface.co/second-state/MistralLite-7B-GGUF)
 
+- `mistral-small-chat`
+  - Prompt string
+
+    ```text
+    <s>[SYSTEM_PROMPT]<system prompt>[/SYSTEM_PROMPT][INST]<user message>[/INST]<assistant response></s>[INST]<user message>[/INST]
+    ```
+
+  - Example: [second-state/Mistral-Small-24B-Instruct-2501-GGUF](https://huggingface.co/second-state/Mistral-Small-24B-Instruct-2501-GGUF)
+
 - `mistral-tool`
   - Prompt string
 
