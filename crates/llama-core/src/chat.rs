@@ -1991,6 +1991,7 @@ fn post_process(
         || *template_ty == PromptTemplateType::MistralLite
         || *template_ty == PromptTemplateType::MistralTool
         || *template_ty == PromptTemplateType::MistralInstruct
+        || *template_ty == PromptTemplateType::MistralSmallChat
         || *template_ty == PromptTemplateType::BreezeInstruct
     {
         if output.as_ref().contains("</s><") {
