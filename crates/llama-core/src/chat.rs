@@ -1749,39 +1749,42 @@ async fn check_model_metadata(
     let mut metadata = get_model_metadata(chat_request.model.as_ref())?;
 
     // check if necessary to update `image`
-    if let Some(ChatCompletionRequestMessage::User(user_message)) = chat_request.messages.last() {
-        if let ChatCompletionUserMessageContent::Parts(parts) = user_message.content() {
-            for part in parts {
-                if let ContentPart::Image(image_part) = part {
-                    let image = image_part.image();
+    if metadata.prompt_template.is_image_supported() {
+        if let Some(ChatCompletionRequestMessage::User(user_message)) = chat_request.messages.last()
+        {
+            if let ChatCompletionUserMessageContent::Parts(parts) = user_message.content() {
+                for part in parts {
+                    if let ContentPart::Image(image_part) = part {
+                        let image = image_part.image();
 
-                    if image.is_url() {
-                        #[cfg(feature = "logging")]
-                        info!(target: "stdout", "The image is provided in URL format.");
+                        if image.is_url() {
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "The image is provided in URL format.");
 
-                        // download the image
-                        let img_path_str = download_image(&image.url).await?;
+                            // download the image
+                            let img_path_str = download_image(&image.url).await?;
 
-                        #[cfg(feature = "logging")]
-                        info!(target: "stdout", "The image is saved to {}", img_path_str);
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "The image is saved to {}", img_path_str);
 
-                        // update metadata image
-                        metadata.image = Some(img_path_str);
+                            // update metadata image
+                            metadata.image = Some(img_path_str);
 
-                        if !should_update {
-                            should_update = true;
+                            if !should_update {
+                                should_update = true;
+                            }
+
+                            // TODO: now only support a single image
+
+                            break;
+                        } else {
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "The image is provided in base64 format.");
+
+                            // TODO: now only support a single image
+
+                            break;
                         }
-
-                        // TODO: now only support a single image
-
-                        break;
-                    } else {
-                        #[cfg(feature = "logging")]
-                        info!(target: "stdout", "The image is provided in base64 format.");
-
-                        // TODO: now only support a single image
-
-                        break;
                     }
                 }
             }
@@ -1991,6 +1994,7 @@ fn post_process(
         || *template_ty == PromptTemplateType::MistralLite
         || *template_ty == PromptTemplateType::MistralTool
         || *template_ty == PromptTemplateType::MistralInstruct
+        || *template_ty == PromptTemplateType::MistralSmallChat
         || *template_ty == PromptTemplateType::BreezeInstruct
     {
         if output.as_ref().contains("</s><") {

@@ -26,6 +26,8 @@ pub enum PromptTemplateType {
     MistralTool,
     #[value(name = "mistrallite")]
     MistralLite,
+    #[value(name = "mistral-small-chat")]
+    MistralSmallChat,
     #[value(name = "openchat")]
     OpenChat,
     #[value(name = "codellama-instruct")]
@@ -112,6 +114,7 @@ pub enum PromptTemplateType {
     Null,
 }
 impl PromptTemplateType {
+    /// Check if the prompt template has a system prompt.
     pub fn has_system_prompt(&self) -> bool {
         match self {
             PromptTemplateType::Llama2Chat
@@ -144,7 +147,8 @@ impl PromptTemplateType {
             | PromptTemplateType::MoxinChat
             | PromptTemplateType::Falcon3
             | PromptTemplateType::Megrez
-            | PromptTemplateType::Qwen2vl => true,
+            | PromptTemplateType::Qwen2vl
+            | PromptTemplateType::MistralSmallChat => true,
             PromptTemplateType::MistralInstruct
             | PromptTemplateType::MistralTool
             | PromptTemplateType::MistralLite
@@ -164,6 +168,16 @@ impl PromptTemplateType {
             | PromptTemplateType::Null => false,
         }
     }
+
+    /// Check if the prompt template supports image input.
+    pub fn is_image_supported(&self) -> bool {
+        matches!(
+            self,
+            PromptTemplateType::MiniCPMV
+                | PromptTemplateType::Qwen2vl
+                | PromptTemplateType::VicunaLlava
+        )
+    }
 }
 impl FromStr for PromptTemplateType {
     type Err = error::PromptError;
@@ -176,6 +190,7 @@ impl FromStr for PromptTemplateType {
             "mistral-instruct" => Ok(PromptTemplateType::MistralInstruct),
             "mistral-tool" => Ok(PromptTemplateType::MistralTool),
             "mistrallite" => Ok(PromptTemplateType::MistralLite),
+            "mistral-small-chat" => Ok(PromptTemplateType::MistralSmallChat),
             "codellama-instruct" => Ok(PromptTemplateType::CodeLlama),
             "codellama-super-instruct" => Ok(PromptTemplateType::CodeLlamaSuper),
             "belle-llama-2-chat" => Ok(PromptTemplateType::HumanAssistant),
@@ -234,6 +249,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::MistralInstruct => write!(f, "mistral-instruct"),
             PromptTemplateType::MistralTool => write!(f, "mistral-tool"),
             PromptTemplateType::MistralLite => write!(f, "mistrallite"),
+            PromptTemplateType::MistralSmallChat => write!(f, "mistral-small-chat"),
             PromptTemplateType::OpenChat => write!(f, "openchat"),
             PromptTemplateType::CodeLlama => write!(f, "codellama-instruct"),
             PromptTemplateType::HumanAssistant => write!(f, "human-asistant"),

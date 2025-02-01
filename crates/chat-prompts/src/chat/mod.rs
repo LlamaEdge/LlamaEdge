@@ -74,6 +74,7 @@ pub enum ChatPrompt {
     MistralInstructPrompt,
     MistralToolPrompt,
     MistralLitePrompt,
+    MistralSmallChatPrompt,
     OpenChatPrompt,
     CodeLlamaInstructPrompt,
     CodeLlamaSuperInstructPrompt,
@@ -127,6 +128,9 @@ impl From<PromptTemplateType> for ChatPrompt {
             }
             PromptTemplateType::MistralTool => ChatPrompt::MistralToolPrompt(MistralToolPrompt),
             PromptTemplateType::MistralLite => ChatPrompt::MistralLitePrompt(MistralLitePrompt),
+            PromptTemplateType::MistralSmallChat => {
+                ChatPrompt::MistralSmallChatPrompt(MistralSmallChatPrompt)
+            }
             PromptTemplateType::OpenChat => ChatPrompt::OpenChatPrompt(OpenChatPrompt),
             PromptTemplateType::CodeLlama => {
                 ChatPrompt::CodeLlamaInstructPrompt(CodeLlamaInstructPrompt)
