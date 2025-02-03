@@ -152,9 +152,10 @@ async fn chat_stream(
     // update metadata n_predict
     update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
 
-    // set prompt
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "Set prompt to the chat model named {:?}", model_name.as_ref());
+    info!(target: "stdout", "Feed the prompt to the model");
+
+    // set prompt
     set_prompt(chat_request.model.as_ref(), &prompt)?;
 
     let stream = match tool_use {
@@ -694,9 +695,10 @@ async fn chat_once(
     // update metadata n_predict
     update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
 
-    // feed the prompt to the model
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "Set prompt to the chat model named {:?}", model_name.as_ref());
+    info!(target: "stdout", "Feed the prompt to the model");
+
+    // feed the prompt to the model
     set_prompt(model_name.as_ref(), &prompt)?;
 
     #[cfg(feature = "logging")]
@@ -2238,10 +2240,10 @@ fn build_prompt(
                 }
             },
         };
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Try to set prompt: {}", prompt);
 
         // set prompt
-        #[cfg(feature = "logging")]
-        info!(target: "stdout", "Set prompt to the chat model named {:?}", model_name.as_ref());
         set_prompt(model_name, &prompt)?;
 
         // Retrieve the number of prompt tokens.
@@ -2251,20 +2253,35 @@ fn build_prompt(
             true => {
                 match chat_request.messages[0].role() {
                     ChatCompletionRole::System => {
-                        if chat_request.messages.len() >= 3 {
+                        if chat_request.messages.len() > 2 {
                             #[cfg(feature = "logging")]
                             info!(target: "stdout", "Prune chat history: current length {}", chat_request.messages.len());
 
                             // remove user_1 if it exists
                             // For example, `system -> user_1 -> ... -> user_2 -> ... -> user_latest` will be converted to `system -> ... -> user_2 -> ... -> user_latest`
                             if chat_request.messages[1].role() == ChatCompletionRole::User {
-                                chat_request.messages.remove(1);
+                                let user_message = chat_request.messages.remove(1);
+
+                                #[cfg(feature = "logging")]
+                                info!(target: "stdout", "Remove a user message from the chat history: {:?}", user_message);
                             }
 
                             // remove all messages until the message is of `user`
                             // For example, `system -> ... -> user_2 -> ... -> user_latest` will be converted to `system -> user_2 -> ... -> user_latest`
                             while chat_request.messages[1].role() != ChatCompletionRole::User {
-                                chat_request.messages.remove(1);
+                                let message = chat_request.messages.remove(1);
+
+                                #[cfg(feature = "logging")]
+                                info!(target: "stdout", "Remove a {} message from the chat history: {:?}", message.role(), message);
+
+                                if chat_request.messages.len() == 1 {
+                                    let err_msg = format!("The last message in the chat history should be a user message, but found a {} message.", message.role());
+
+                                    #[cfg(feature = "logging")]
+                                    error!(target: "stdout", "{}", err_msg);
+
+                                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                                }
                             }
                         } else if token_info.prompt_tokens > ctx_size {
                             let err_msg = format!(
@@ -2281,25 +2298,35 @@ fn build_prompt(
                         }
                     }
                     ChatCompletionRole::User => {
-                        if chat_request.messages.len() >= 3 {
+                        if chat_request.messages.len() > 1 {
                             // user_1 -> ... -> user_2 -> ... -> user_latest
 
                             // remove user_1 if it exists
                             // For example, `user_1 -> ... -> user_2 -> ... -> user_latest` will be converted to `... -> user_2 -> ... -> user_latest`
                             if chat_request.messages[0].role() == ChatCompletionRole::User {
-                                chat_request.messages.remove(0);
+                                let user_message = chat_request.messages.remove(0);
+
+                                #[cfg(feature = "logging")]
+                                info!(target: "stdout", "Remove a user message from the chat history: {:?}", user_message);
                             }
 
                             // remove all messages until the message is of `user`
                             // For example, `... -> user_2 -> ... -> user_latest` will be converted to `user_2 -> ... -> user_latest`
-                            while chat_request.messages[1].role() != ChatCompletionRole::User {
-                                chat_request.messages.remove(1);
+                            while chat_request.messages[0].role() != ChatCompletionRole::User {
+                                let message = chat_request.messages.remove(0);
+
+                                #[cfg(feature = "logging")]
+                                info!(target: "stdout", "Remove a {} message from the chat history: {:?}", message.role(), message);
+
+                                if chat_request.messages.is_empty() {
+                                    let err_msg = format!("The last message in the chat history should be a user message, but found a {} message.", message.role());
+
+                                    #[cfg(feature = "logging")]
+                                    error!(target: "stdout", "{}", err_msg);
+
+                                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                                }
                             }
-                        } else if chat_request.messages.len() == 2
-                            && chat_request.messages[0].role() == ChatCompletionRole::User
-                        {
-                            // deal with "user_1 -> user_latest"
-                            chat_request.messages.remove(0);
                         } else if token_info.prompt_tokens > ctx_size {
                             let err_msg = format!(
                                     "The number of prompt tokens ({}) is greater than the context size ({}). Please increase the context size, or simplify the input message.",
