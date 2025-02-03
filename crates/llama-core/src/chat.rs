@@ -153,6 +153,8 @@ async fn chat_stream(
     update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
 
     // set prompt
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Set prompt to the chat model named {:?}", model_name.as_ref());
     set_prompt(chat_request.model.as_ref(), &prompt)?;
 
     let stream = match tool_use {
@@ -693,6 +695,8 @@ async fn chat_once(
     update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
 
     // feed the prompt to the model
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Set prompt to the chat model named {:?}", model_name.as_ref());
     set_prompt(model_name.as_ref(), &prompt)?;
 
     #[cfg(feature = "logging")]
@@ -2151,18 +2155,20 @@ fn build_prompt(
 
     loop {
         // ! DO NOT REMOVE
-        // build prompt
-        // let prompt = match chat_prompt.build(&mut chat_request.messages) {
-        //     Ok(prompt) => prompt,
-        //     Err(e) => {
-        //         let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
+        {
+            // // build prompt
+            // let prompt = match chat_prompt.build(&mut chat_request.messages) {
+            //     Ok(prompt) => prompt,
+            //     Err(e) => {
+            //         let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
 
-        //         #[cfg(feature = "logging")]
-        //         error!(target: "stdout", "{}", &err_msg);
+            //         #[cfg(feature = "logging")]
+            //         error!(target: "stdout", "{}", &err_msg);
 
-        //         return Err(LlamaCoreError::Operation(err_msg));
-        //     }
-        // };
+            //         return Err(LlamaCoreError::Operation(err_msg));
+            //     }
+            // };
+        }
 
         if chat_request.messages.is_empty() {
             let err_msg = "The messages in the chat request are empty.";
@@ -2234,6 +2240,8 @@ fn build_prompt(
         };
 
         // set prompt
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Set prompt to the chat model named {:?}", model_name.as_ref());
         set_prompt(model_name, &prompt)?;
 
         // Retrieve the number of prompt tokens.
@@ -2244,6 +2252,9 @@ fn build_prompt(
                 match chat_request.messages[0].role() {
                     ChatCompletionRole::System => {
                         if chat_request.messages.len() >= 3 {
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "Prune chat history: current length {}", chat_request.messages.len());
+
                             // remove user_1 if it exists
                             // For example, `system -> user_1 -> ... -> user_2 -> ... -> user_latest` will be converted to `system -> ... -> user_2 -> ... -> user_latest`
                             if chat_request.messages[1].role() == ChatCompletionRole::User {
