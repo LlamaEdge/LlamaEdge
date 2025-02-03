@@ -2181,6 +2181,19 @@ fn build_prompt(
             return Err(LlamaCoreError::Operation(err_msg.to_owned()));
         }
 
+        #[cfg(feature = "logging")]
+        {
+            let mut role_chain = String::new();
+            for (idx, message) in chat_request.messages.iter().enumerate() {
+                if idx == chat_request.messages.len() - 1 {
+                    role_chain.push_str(&format!("{}", message.role()));
+                } else {
+                    role_chain.push_str(&format!("{} -> ", message.role()));
+                }
+            }
+            info!(target: "stdout", "Role chain: {}", role_chain);
+        }
+
         let (prompt, tool_use) = match chat_request.tool_choice.as_ref() {
             Some(tool_choice) => match tool_choice {
                 ToolChoice::None => {
@@ -2280,7 +2293,7 @@ fn build_prompt(
                                     #[cfg(feature = "logging")]
                                     error!(target: "stdout", "{}", err_msg);
 
-                                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                                    return Err(LlamaCoreError::Operation(err_msg));
                                 }
                             }
                         } else if token_info.prompt_tokens > ctx_size {
@@ -2324,7 +2337,7 @@ fn build_prompt(
                                     #[cfg(feature = "logging")]
                                     error!(target: "stdout", "{}", err_msg);
 
-                                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                                    return Err(LlamaCoreError::Operation(err_msg));
                                 }
                             }
                         } else if token_info.prompt_tokens > ctx_size {
