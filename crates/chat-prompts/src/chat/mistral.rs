@@ -479,3 +479,176 @@ impl BuildChatPrompt for MistralSmallChatPrompt {
         Ok(prompt)
     }
 }
+
+/// Generate prompts for `Mistral-Small-24B-Instruct` model
+#[derive(Debug, Default, Clone)]
+pub struct MistralSmallToolPrompt;
+impl MistralSmallToolPrompt {
+    /// Create a system prompt from a chat completion request message.
+    fn create_system_prompt(&self, message: &ChatCompletionSystemMessage) -> String {
+        let content = message.content();
+        match content.is_empty() {
+            true => String::from("You are Mistral Small 3, a Large Language Model (LLM) created by Mistral AI, a French startup headquartered in Paris.\nYour knowledge base was last updated on 2023-10-01. The current date is 2025-01-30.\nWhen you're not sure about some information, you say that you don't have the information and don't make up anything.\nIf the user's question is not clear, ambiguous, or does not provide enough context for you to accurately answer the question, you do not try to answer it right away and you rather ask the user to clarify their request (e.g. \"What are some good restaurants around me?\" => \"Where are you?\" or \"When is the next flight to Tokyo\" => \"Where do you travel from?\")"),
+            false => format!(
+                "{system_prompt}",
+                system_prompt = content
+            ),
+        }
+    }
+
+    /// Create a user prompt from a chat completion request message.
+    fn append_user_message(
+        &self,
+        chat_history: impl AsRef<str>,
+        system_prompt: impl AsRef<str>,
+        message: &ChatCompletionUserMessage,
+        tools: Option<&[Tool]>,
+        last_user_message: bool,
+    ) -> String {
+        let content = match message.content() {
+            ChatCompletionUserMessageContent::Text(text) => text.to_string(),
+            ChatCompletionUserMessageContent::Parts(parts) => {
+                let mut content = String::new();
+                for part in parts {
+                    if let ContentPart::Text(text_content) = part {
+                        content.push_str(text_content.text());
+                        content.push('\n');
+                    }
+                }
+                content
+            }
+        };
+
+        match chat_history.as_ref().is_empty() {
+            true => match last_user_message {
+                true => match tools {
+                    Some(tools) => {
+                        let json = serde_json::to_string(tools).unwrap();
+
+                        format!(
+                            "<s>[AVAILABLE_TOOLS] {available_tools}[/AVAILABLE_TOOLS][INST] {system_prompt}<0x0A><0x0A>{user_message}[/INST]",
+                            available_tools = json,
+                            system_prompt = system_prompt.as_ref().trim(),
+                            user_message = content.trim(),
+                        )
+                    }
+                    None => format!(
+                        "<s>[INST] {system_prompt}<0x0A><0x0A>{user_message}[/INST]",
+                        system_prompt = system_prompt.as_ref().trim(),
+                        user_message = content.trim(),
+                    ),
+                },
+                false => format!(
+                    "[INST] {user_message}[/INST]",
+                    user_message = content.trim(),
+                ),
+            },
+            false => match last_user_message {
+                true => match tools {
+                    Some(tools) => {
+                        let json = serde_json::to_string(tools).unwrap();
+
+                        format!(
+                            "{chat_history}[AVAILABLE_TOOLS] {available_tools}[/AVAILABLE_TOOLS][INST] {system_prompt}<0x0A><0x0A>{user_message}[/INST]",
+                            chat_history = chat_history.as_ref().trim(),
+                            available_tools = json,
+                            system_prompt = system_prompt.as_ref().trim(),
+                            user_message = content.trim(),
+                        )
+                    }
+                    None => format!(
+                        "{chat_history}[INST] {system_prompt}<0x0A><0x0A>{user_message}[/INST]",
+                        chat_history = chat_history.as_ref().trim(),
+                        system_prompt = system_prompt.as_ref().trim(),
+                        user_message = content.trim(),
+                    ),
+                },
+                false => format!(
+                    "{chat_history}[INST] {user_message}[/INST]",
+                    chat_history = chat_history.as_ref().trim(),
+                    user_message = content.trim(),
+                ),
+            },
+        }
+    }
+
+    /// create an assistant prompt from a chat completion request message.
+    fn append_assistant_message(
+        &self,
+        chat_history: impl AsRef<str>,
+        message: &ChatCompletionAssistantMessage,
+    ) -> Result<String> {
+        match message.tool_calls() {
+            Some(tool_calls) => {
+                let json = serde_json::to_string(tool_calls).unwrap();
+                Ok(format!(
+                    "{chat_history}[TOOL_CALLS] {tool_calls}</s>",
+                    chat_history = chat_history.as_ref().trim(),
+                    tool_calls = json
+                ))
+            }
+            None => match message.content() {
+                Some(content) => Ok(format!(
+                    "{chat_history} {assistant_message}</s>",
+                    chat_history = chat_history.as_ref().trim(),
+                    assistant_message = content.trim(),
+                )),
+                None => return Err(PromptError::NoAssistantMessage),
+            },
+        }
+    }
+
+    fn append_tool_message(
+        &self,
+        chat_history: impl AsRef<str>,
+        message: &ChatCompletionToolMessage,
+    ) -> String {
+        format!(
+            "{chat_history}[TOOL_RESULTS] {tool_result}[/TOOL_RESULTS]",
+            chat_history = chat_history.as_ref().trim(),
+            tool_result = message.content().trim()
+        )
+    }
+}
+impl BuildChatPrompt for MistralSmallToolPrompt {
+    fn build(&self, _messages: &mut Vec<ChatCompletionRequestMessage>) -> Result<String> {
+        unimplemented!()
+    }
+
+    fn build_with_tools(
+        &self,
+        messages: &mut Vec<ChatCompletionRequestMessage>,
+        tools: Option<&[endpoints::chat::Tool]>,
+    ) -> Result<String> {
+        if messages.is_empty() {
+            return Err(crate::error::PromptError::NoMessages);
+        }
+
+        // system prompt
+        let system_prompt = match messages[0] {
+            ChatCompletionRequestMessage::System(ref message) => self.create_system_prompt(message),
+            _ => String::from("You are Mistral Small 3, a Large Language Model (LLM) created by Mistral AI, a French startup headquartered in Paris.\nYour knowledge base was last updated on 2023-10-01. The current date is 2025-01-30.\nWhen you're not sure about some information, you say that you don't have the information and don't make up anything.\nIf the user's question is not clear, ambiguous, or does not provide enough context for you to accurately answer the question, you do not try to answer it right away and you rather ask the user to clarify their request (e.g. \"What are some good restaurants around me?\" => \"Where are you?\" or \"When is the next flight to Tokyo\" => \"Where do you travel from?\")"),
+        };
+
+        // append user/assistant messages
+        let mut prompt = String::new();
+        for (idx, message) in messages.iter().enumerate() {
+            match message {
+                ChatCompletionRequestMessage::User(message) => {
+                    let last = idx == messages.len() - 1;
+                    prompt =
+                        self.append_user_message(&prompt, &system_prompt, message, tools, last);
+                }
+                ChatCompletionRequestMessage::Assistant(message) => {
+                    prompt = self.append_assistant_message(&prompt, message)?;
+                }
+                ChatCompletionRequestMessage::Tool(message) => {
+                    prompt = self.append_tool_message(&prompt, message);
+                }
+                _ => continue,
+            }
+        }
+
+        Ok(prompt)
+    }
+}
