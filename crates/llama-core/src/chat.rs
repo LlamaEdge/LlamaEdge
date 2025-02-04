@@ -833,8 +833,9 @@ fn compute_by_graph(
                         && graph.metadata.prompt_template != PromptTemplateType::NemotronTool
                         && graph.metadata.prompt_template != PromptTemplateType::FunctionaryV32
                         && graph.metadata.prompt_template != PromptTemplateType::FunctionaryV31
+                        && graph.metadata.prompt_template != PromptTemplateType::MistralSmallTool
                     {
-                        let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', and 'functionary-32' prompt templates.", graph.metadata.prompt_template);
+                        let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', and 'mistral-small-tool' prompt templates.", graph.metadata.prompt_template);
 
                         #[cfg(feature = "logging")]
                         error!(target: "stdout", "{}", &err_msg);
@@ -1728,9 +1729,82 @@ fn parse_tool_calls(
                 }
             }
         }
+        PromptTemplateType::MistralSmallTool => {
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "raw input: {}", input);
+
+            match regex::Regex::new(r"\[TOOL_CALLS\](\[(.*?)\])</s>") {
+                Ok(re) => {
+                    let mut values: Vec<serde_json::Value> = vec![];
+                    if let Some(cap) = re.captures(input) {
+                        let matched = cap[1].trim();
+
+                        #[cfg(feature = "logging")]
+                        info!(target: "stdout", "captured: {}", matched);
+
+                        match serde_json::from_str::<Vec<serde_json::Value>>(matched) {
+                            Ok(vals) => values = vals,
+                            Err(e) => {
+                                let err_msg = format!(
+                                    "Failed to deserialize generated tool calls. Reason: {}",
+                                    e
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "stdout", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            }
+                        }
+                    };
+
+                    let mut tool_calls: Vec<ToolCall> = vec![];
+                    for value in values.iter() {
+                        let name = match value.get("name") {
+                            Some(name) => name.to_string().replace("\"", ""),
+                            None => String::new(),
+                        };
+
+                        let arguments = match value.get("arguments") {
+                            Some(arguments) => arguments.to_string(),
+                            None => String::new(),
+                        };
+
+                        let function = Function { name, arguments };
+
+                        let tool_call = ToolCall {
+                            id: "call_abc123".to_string(),
+                            ty: "function".to_string(),
+                            function,
+                        };
+
+                        tool_calls.push(tool_call);
+                    }
+
+                    let parsed = ParseResult {
+                        raw: input.to_owned(),
+                        content: None,
+                        tool_calls,
+                    };
+
+                    #[cfg(feature = "logging")]
+                    info!(target: "stdout", "parsed result: {:?}", parsed);
+
+                    Ok(parsed)
+                }
+                Err(e) => {
+                    let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "stdout", "{}", &err_msg);
+
+                    Err(LlamaCoreError::Operation(err_msg))
+                }
+            }
+        }
         _ => {
             let err_msg = format!(
-                "The tool use is only supported for prompt templates: {}, {}, {}, {}, {}, {}, and {}.",
+                "The tool use is only supported for prompt templates: {}, {}, {}, {}, {}, {}, {}, and {}.",
                 PromptTemplateType::MistralTool,
                 PromptTemplateType::ChatMLTool,
                 PromptTemplateType::GroqLlama3Tool,
@@ -1738,6 +1812,7 @@ fn parse_tool_calls(
                 PromptTemplateType::InternLM2Tool,
                 PromptTemplateType::NemotronTool,
                 PromptTemplateType::FunctionaryV32,
+                PromptTemplateType::MistralSmallTool,
             );
 
             #[cfg(feature = "logging")]
@@ -2001,6 +2076,7 @@ fn post_process(
         || *template_ty == PromptTemplateType::MistralTool
         || *template_ty == PromptTemplateType::MistralInstruct
         || *template_ty == PromptTemplateType::MistralSmallChat
+        || *template_ty == PromptTemplateType::MistralSmallTool
         || *template_ty == PromptTemplateType::BreezeInstruct
     {
         if output.as_ref().contains("</s><") {
