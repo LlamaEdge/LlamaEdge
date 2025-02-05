@@ -1733,7 +1733,7 @@ fn parse_tool_calls(
             #[cfg(feature = "logging")]
             info!(target: "stdout", "raw input: {}", input);
 
-            match regex::Regex::new(r"\[TOOL_CALLS\](\[(.*?)\])</s>") {
+            match regex::Regex::new(r"\[TOOL_CALLS\]\s*(\[(.*?)\])") {
                 Ok(re) => {
                     let mut values: Vec<serde_json::Value> = vec![];
                     if let Some(cap) = re.captures(input) {
@@ -1760,25 +1760,108 @@ fn parse_tool_calls(
 
                     let mut tool_calls: Vec<ToolCall> = vec![];
                     for value in values.iter() {
-                        let name = match value.get("name") {
-                            Some(name) => name.to_string().replace("\"", ""),
-                            None => String::new(),
-                        };
+                        if let Some(object_map) = value.as_object() {
+                            if object_map.contains_key("function") {
+                                let mut function = Function {
+                                    name: String::new(),
+                                    arguments: String::new(),
+                                };
 
-                        let arguments = match value.get("arguments") {
-                            Some(arguments) => arguments.to_string(),
-                            None => String::new(),
-                        };
+                                let value = object_map.get("function").unwrap();
+                                let func_map = value.as_object().unwrap();
+                                if func_map.contains_key("name") {
+                                    let func_name = func_map.get("name").unwrap().as_str().unwrap();
+                                    println!("Function name: {:?}", func_name);
 
-                        let function = Function { name, arguments };
+                                    function.name = func_name.to_string();
+                                }
+                                if func_map.contains_key("arguments") {
+                                    let args = func_map.get("arguments").unwrap();
+                                    let arguments = args.to_string();
+                                    println!("Arguments: {:?}", arguments);
 
-                        let tool_call = ToolCall {
-                            id: "call_abc123".to_string(),
-                            ty: "function".to_string(),
-                            function,
-                        };
+                                    function.arguments = arguments;
+                                }
 
-                        tool_calls.push(tool_call);
+                                let tool_call = ToolCall {
+                                    id: "call_abc123".to_string(),
+                                    ty: "function".to_string(),
+                                    function,
+                                };
+
+                                tool_calls.push(tool_call);
+                            } else if object_map.contains_key("name") {
+                                let mut function = Function {
+                                    name: String::new(),
+                                    arguments: String::new(),
+                                };
+
+                                let name = object_map.get("name").unwrap().as_str().unwrap();
+                                println!("name: {:?}", name);
+                                function.name = name.to_string();
+
+                                if object_map.contains_key("arguments") {
+                                    let args = object_map.get("arguments").unwrap();
+                                    let arguments = args.to_string();
+                                    println!("Arguments: {:?}", arguments);
+
+                                    function.arguments = arguments;
+                                }
+
+                                let tool_call = ToolCall {
+                                    id: "call_abc123".to_string(),
+                                    ty: "function".to_string(),
+                                    function,
+                                };
+
+                                tool_calls.push(tool_call);
+                            }
+                        }
+
+                        // match value.get("function") {
+                        //     Some(func) => {
+                        //         let name = match func.get("name") {
+                        //             Some(name) => name.as_str().unwrap().to_string(),
+                        //             None => String::new(),
+                        //         };
+
+                        //         let arguments = match func.get("arguments") {
+                        //             Some(arguments) => arguments.to_string(),
+                        //             None => String::new(),
+                        //         };
+
+                        //         let function = Function { name, arguments };
+
+                        //         let tool_call = ToolCall {
+                        //             id: "call_abc123".to_string(),
+                        //             ty: "function".to_string(),
+                        //             function,
+                        //         };
+
+                        //         tool_calls.push(tool_call);
+                        //     }
+                        //     None => {
+                        //         let name = match value.get("name") {
+                        //             Some(name) => name.as_str().unwrap().to_string(),
+                        //             None => String::new(),
+                        //         };
+
+                        //         let arguments = match value.get("arguments") {
+                        //             Some(arguments) => arguments.to_string(),
+                        //             None => String::new(),
+                        //         };
+
+                        //         let function = Function { name, arguments };
+
+                        //         let tool_call = ToolCall {
+                        //             id: "call_abc123".to_string(),
+                        //             ty: "function".to_string(),
+                        //             function,
+                        //         };
+
+                        //         tool_calls.push(tool_call);
+                        //     }
+                        // }
                     }
 
                     let parsed = ParseResult {
@@ -4453,6 +4536,7 @@ fn compute_stream(
     res
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 struct ParseResult {
     raw: String,
