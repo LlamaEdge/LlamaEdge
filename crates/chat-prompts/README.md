@@ -358,6 +358,21 @@ The available prompt templates are listed below:
 
   - Example: [second-state/Mistral-Small-24B-Instruct-2501-GGUF](https://huggingface.co/second-state/Mistral-Small-24B-Instruct-2501-GGUF)
 
+- `mistral-small-tool`
+  - Prompt string
+
+    ```text
+    <s>[INST] {user_message_1}[/INST][TOOL_CALLS] [{tool_call_1},{tool_call_2}]</s>[TOOL_RESULTS] {tool_result_1}[/TOOL_RESULTS] {assistant_message_1}</s>[AVAILABLE_TOOLS] [{tool_1},{tool_2}][/AVAILABLE_TOOLS][INST] {system_message}<0x0A><0x0A>{user_message_2}[/INST]
+    ```
+
+    - Example
+
+      ```text
+      [INST] What is the weather like in San Francisco in Celsius?[/INST][TOOL_CALLS] [{"id":"call_abc123","type":"function","function":{"name":"get_current_weather","arguments":"{\"location\":\"San Francisco, CA\",\"unit\":\"celsius\"}"}}]</s>[TOOL_RESULTS] {"id":"call_abc123","content":{"temperature":"30","unit":"celsius"}}[/TOOL_RESULTS] The current temperature in San Francisco is 30°C.</s>[INST] What is the weather like in San Francisco in the coming 24 hours in Celsius?[/INST][TOOL_CALLS] [{"id":"call_abc123","type":"function","function":{"name":"predict_weather","arguments":"{}"}}]</s>[TOOL_RESULTS] {"id":"call_abc124","content":{"temperature":"25","unit":"celsius"}}[/TOOL_RESULTS]
+      ```
+
+  - Example: [second-state/Mistral-Small-24B-Instruct-2501-GGUF](https://huggingface.co/second-state/Mistral-Small-24B-Instruct-2501-GGUF)
+
 - `mistral-tool`
   - Prompt string
 
