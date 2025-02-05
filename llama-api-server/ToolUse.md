@@ -15,6 +15,7 @@ The following models with tool use capabilities are supported by LlamaEdge API s
 - [second-state/Llama-3-Groq-8B-Tool-Use-GGUF](https://huggingface.co/second-state/Llama-3-Groq-8B-Tool-Use-GGUF)
 - [second-state/Meta-Llama-3.1-8B-Instruct-GGUF](https://huggingface.co/second-state/Meta-Llama-3.1-8B-Instruct-GGUF)
 - [second-state/internlm2_5-7b-chat-GGUF](https://huggingface.co/second-state/internlm2_5-7b-chat-GGUF)
+- [second-state/Mistral-Small-24B-Instruct-2501-GGUF](https://huggingface.co/second-state/Mistral-Small-24B-Instruct-2501-GGUF)
 
 ### Example
 
