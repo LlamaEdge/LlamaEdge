@@ -152,6 +152,9 @@ async fn chat_stream(
     // update metadata n_predict
     update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
 
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Feed the prompt to the model");
+
     // set prompt
     set_prompt(chat_request.model.as_ref(), &prompt)?;
 
@@ -692,6 +695,9 @@ async fn chat_once(
     // update metadata n_predict
     update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
 
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Feed the prompt to the model");
+
     // feed the prompt to the model
     set_prompt(model_name.as_ref(), &prompt)?;
 
@@ -827,8 +833,9 @@ fn compute_by_graph(
                         && graph.metadata.prompt_template != PromptTemplateType::NemotronTool
                         && graph.metadata.prompt_template != PromptTemplateType::FunctionaryV32
                         && graph.metadata.prompt_template != PromptTemplateType::FunctionaryV31
+                        && graph.metadata.prompt_template != PromptTemplateType::MistralSmallTool
                     {
-                        let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', and 'functionary-32' prompt templates.", graph.metadata.prompt_template);
+                        let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', and 'mistral-small-tool' prompt templates.", graph.metadata.prompt_template);
 
                         #[cfg(feature = "logging")]
                         error!(target: "stdout", "{}", &err_msg);
@@ -1722,9 +1729,165 @@ fn parse_tool_calls(
                 }
             }
         }
+        PromptTemplateType::MistralSmallTool => {
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "raw input: {}", input);
+
+            match regex::Regex::new(r"\[TOOL_CALLS\]\s*(\[(.*?)\])") {
+                Ok(re) => {
+                    let mut values: Vec<serde_json::Value> = vec![];
+                    if let Some(cap) = re.captures(input) {
+                        let matched = cap[1].trim();
+
+                        #[cfg(feature = "logging")]
+                        info!(target: "stdout", "captured: {}", matched);
+
+                        match serde_json::from_str::<Vec<serde_json::Value>>(matched) {
+                            Ok(vals) => values = vals,
+                            Err(e) => {
+                                let err_msg = format!(
+                                    "Failed to deserialize generated tool calls. Reason: {}",
+                                    e
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "stdout", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            }
+                        }
+                    };
+
+                    let mut tool_calls: Vec<ToolCall> = vec![];
+                    for value in values.iter() {
+                        if let Some(object_map) = value.as_object() {
+                            if object_map.contains_key("function") {
+                                let mut function = Function {
+                                    name: String::new(),
+                                    arguments: String::new(),
+                                };
+
+                                let value = object_map.get("function").unwrap();
+                                let func_map = value.as_object().unwrap();
+                                if func_map.contains_key("name") {
+                                    let func_name = func_map.get("name").unwrap().as_str().unwrap();
+                                    println!("Function name: {:?}", func_name);
+
+                                    function.name = func_name.to_string();
+                                }
+                                if func_map.contains_key("arguments") {
+                                    let args = func_map.get("arguments").unwrap();
+                                    let arguments = args.to_string();
+                                    println!("Arguments: {:?}", arguments);
+
+                                    function.arguments = arguments;
+                                }
+
+                                let tool_call = ToolCall {
+                                    id: "call_abc123".to_string(),
+                                    ty: "function".to_string(),
+                                    function,
+                                };
+
+                                tool_calls.push(tool_call);
+                            } else if object_map.contains_key("name") {
+                                let mut function = Function {
+                                    name: String::new(),
+                                    arguments: String::new(),
+                                };
+
+                                let name = object_map.get("name").unwrap().as_str().unwrap();
+                                println!("name: {:?}", name);
+                                function.name = name.to_string();
+
+                                if object_map.contains_key("arguments") {
+                                    let args = object_map.get("arguments").unwrap();
+                                    let arguments = args.to_string();
+                                    println!("Arguments: {:?}", arguments);
+
+                                    function.arguments = arguments;
+                                }
+
+                                let tool_call = ToolCall {
+                                    id: "call_abc123".to_string(),
+                                    ty: "function".to_string(),
+                                    function,
+                                };
+
+                                tool_calls.push(tool_call);
+                            }
+                        }
+
+                        // match value.get("function") {
+                        //     Some(func) => {
+                        //         let name = match func.get("name") {
+                        //             Some(name) => name.as_str().unwrap().to_string(),
+                        //             None => String::new(),
+                        //         };
+
+                        //         let arguments = match func.get("arguments") {
+                        //             Some(arguments) => arguments.to_string(),
+                        //             None => String::new(),
+                        //         };
+
+                        //         let function = Function { name, arguments };
+
+                        //         let tool_call = ToolCall {
+                        //             id: "call_abc123".to_string(),
+                        //             ty: "function".to_string(),
+                        //             function,
+                        //         };
+
+                        //         tool_calls.push(tool_call);
+                        //     }
+                        //     None => {
+                        //         let name = match value.get("name") {
+                        //             Some(name) => name.as_str().unwrap().to_string(),
+                        //             None => String::new(),
+                        //         };
+
+                        //         let arguments = match value.get("arguments") {
+                        //             Some(arguments) => arguments.to_string(),
+                        //             None => String::new(),
+                        //         };
+
+                        //         let function = Function { name, arguments };
+
+                        //         let tool_call = ToolCall {
+                        //             id: "call_abc123".to_string(),
+                        //             ty: "function".to_string(),
+                        //             function,
+                        //         };
+
+                        //         tool_calls.push(tool_call);
+                        //     }
+                        // }
+                    }
+
+                    let parsed = ParseResult {
+                        raw: input.to_owned(),
+                        content: None,
+                        tool_calls,
+                    };
+
+                    #[cfg(feature = "logging")]
+                    info!(target: "stdout", "parsed result: {:?}", parsed);
+
+                    Ok(parsed)
+                }
+                Err(e) => {
+                    let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "stdout", "{}", &err_msg);
+
+                    Err(LlamaCoreError::Operation(err_msg))
+                }
+            }
+        }
         _ => {
             let err_msg = format!(
-                "The tool use is only supported for prompt templates: {}, {}, {}, {}, {}, {}, and {}.",
+                "The tool use is only supported for prompt templates: {}, {}, {}, {}, {}, {}, {}, and {}.",
                 PromptTemplateType::MistralTool,
                 PromptTemplateType::ChatMLTool,
                 PromptTemplateType::GroqLlama3Tool,
@@ -1732,6 +1895,7 @@ fn parse_tool_calls(
                 PromptTemplateType::InternLM2Tool,
                 PromptTemplateType::NemotronTool,
                 PromptTemplateType::FunctionaryV32,
+                PromptTemplateType::MistralSmallTool,
             );
 
             #[cfg(feature = "logging")]
@@ -1995,6 +2159,7 @@ fn post_process(
         || *template_ty == PromptTemplateType::MistralTool
         || *template_ty == PromptTemplateType::MistralInstruct
         || *template_ty == PromptTemplateType::MistralSmallChat
+        || *template_ty == PromptTemplateType::MistralSmallTool
         || *template_ty == PromptTemplateType::BreezeInstruct
     {
         if output.as_ref().contains("</s><") {
@@ -2151,18 +2316,20 @@ fn build_prompt(
 
     loop {
         // ! DO NOT REMOVE
-        // build prompt
-        // let prompt = match chat_prompt.build(&mut chat_request.messages) {
-        //     Ok(prompt) => prompt,
-        //     Err(e) => {
-        //         let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
+        {
+            // // build prompt
+            // let prompt = match chat_prompt.build(&mut chat_request.messages) {
+            //     Ok(prompt) => prompt,
+            //     Err(e) => {
+            //         let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
 
-        //         #[cfg(feature = "logging")]
-        //         error!(target: "stdout", "{}", &err_msg);
+            //         #[cfg(feature = "logging")]
+            //         error!(target: "stdout", "{}", &err_msg);
 
-        //         return Err(LlamaCoreError::Operation(err_msg));
-        //     }
-        // };
+            //         return Err(LlamaCoreError::Operation(err_msg));
+            //     }
+            // };
+        }
 
         if chat_request.messages.is_empty() {
             let err_msg = "The messages in the chat request are empty.";
@@ -2171,6 +2338,19 @@ fn build_prompt(
             error!(target: "stdout", "{}", err_msg);
 
             return Err(LlamaCoreError::Operation(err_msg.to_owned()));
+        }
+
+        #[cfg(feature = "logging")]
+        {
+            let mut role_chain = String::new();
+            for (idx, message) in chat_request.messages.iter().enumerate() {
+                if idx == chat_request.messages.len() - 1 {
+                    role_chain.push_str(&format!("{}", message.role()));
+                } else {
+                    role_chain.push_str(&format!("{} -> ", message.role()));
+                }
+            }
+            info!(target: "stdout", "Role chain: {}", role_chain);
         }
 
         let (prompt, tool_use) = match chat_request.tool_choice.as_ref() {
@@ -2232,6 +2412,8 @@ fn build_prompt(
                 }
             },
         };
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Try to set prompt: {}", prompt);
 
         // set prompt
         set_prompt(model_name, &prompt)?;
@@ -2243,17 +2425,35 @@ fn build_prompt(
             true => {
                 match chat_request.messages[0].role() {
                     ChatCompletionRole::System => {
-                        if chat_request.messages.len() >= 3 {
+                        if chat_request.messages.len() > 2 {
+                            #[cfg(feature = "logging")]
+                            info!(target: "stdout", "Prune chat history: current length {}", chat_request.messages.len());
+
                             // remove user_1 if it exists
                             // For example, `system -> user_1 -> ... -> user_2 -> ... -> user_latest` will be converted to `system -> ... -> user_2 -> ... -> user_latest`
                             if chat_request.messages[1].role() == ChatCompletionRole::User {
-                                chat_request.messages.remove(1);
+                                let user_message = chat_request.messages.remove(1);
+
+                                #[cfg(feature = "logging")]
+                                info!(target: "stdout", "Remove a user message from the chat history: {:?}", user_message);
                             }
 
                             // remove all messages until the message is of `user`
                             // For example, `system -> ... -> user_2 -> ... -> user_latest` will be converted to `system -> user_2 -> ... -> user_latest`
                             while chat_request.messages[1].role() != ChatCompletionRole::User {
-                                chat_request.messages.remove(1);
+                                let message = chat_request.messages.remove(1);
+
+                                #[cfg(feature = "logging")]
+                                info!(target: "stdout", "Remove a {} message from the chat history: {:?}", message.role(), message);
+
+                                if chat_request.messages.len() == 1 {
+                                    let err_msg = format!("The last message in the chat history should be a user message, but found a {} message.", message.role());
+
+                                    #[cfg(feature = "logging")]
+                                    error!(target: "stdout", "{}", err_msg);
+
+                                    return Err(LlamaCoreError::Operation(err_msg));
+                                }
                             }
                         } else if token_info.prompt_tokens > ctx_size {
                             let err_msg = format!(
@@ -2270,25 +2470,35 @@ fn build_prompt(
                         }
                     }
                     ChatCompletionRole::User => {
-                        if chat_request.messages.len() >= 3 {
+                        if chat_request.messages.len() > 1 {
                             // user_1 -> ... -> user_2 -> ... -> user_latest
 
                             // remove user_1 if it exists
                             // For example, `user_1 -> ... -> user_2 -> ... -> user_latest` will be converted to `... -> user_2 -> ... -> user_latest`
                             if chat_request.messages[0].role() == ChatCompletionRole::User {
-                                chat_request.messages.remove(0);
+                                let user_message = chat_request.messages.remove(0);
+
+                                #[cfg(feature = "logging")]
+                                info!(target: "stdout", "Remove a user message from the chat history: {:?}", user_message);
                             }
 
                             // remove all messages until the message is of `user`
                             // For example, `... -> user_2 -> ... -> user_latest` will be converted to `user_2 -> ... -> user_latest`
-                            while chat_request.messages[1].role() != ChatCompletionRole::User {
-                                chat_request.messages.remove(1);
+                            while chat_request.messages[0].role() != ChatCompletionRole::User {
+                                let message = chat_request.messages.remove(0);
+
+                                #[cfg(feature = "logging")]
+                                info!(target: "stdout", "Remove a {} message from the chat history: {:?}", message.role(), message);
+
+                                if chat_request.messages.is_empty() {
+                                    let err_msg = format!("The last message in the chat history should be a user message, but found a {} message.", message.role());
+
+                                    #[cfg(feature = "logging")]
+                                    error!(target: "stdout", "{}", err_msg);
+
+                                    return Err(LlamaCoreError::Operation(err_msg));
+                                }
                             }
-                        } else if chat_request.messages.len() == 2
-                            && chat_request.messages[0].role() == ChatCompletionRole::User
-                        {
-                            // deal with "user_1 -> user_latest"
-                            chat_request.messages.remove(0);
                         } else if token_info.prompt_tokens > ctx_size {
                             let err_msg = format!(
                                     "The number of prompt tokens ({}) is greater than the context size ({}). Please increase the context size, or simplify the input message.",
@@ -4326,6 +4536,7 @@ fn compute_stream(
     res
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 struct ParseResult {
     raw: String,

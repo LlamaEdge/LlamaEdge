@@ -28,6 +28,8 @@ pub enum PromptTemplateType {
     MistralLite,
     #[value(name = "mistral-small-chat")]
     MistralSmallChat,
+    #[value(name = "mistral-small-tool")]
+    MistralSmallTool,
     #[value(name = "openchat")]
     OpenChat,
     #[value(name = "codellama-instruct")]
@@ -148,7 +150,8 @@ impl PromptTemplateType {
             | PromptTemplateType::Falcon3
             | PromptTemplateType::Megrez
             | PromptTemplateType::Qwen2vl
-            | PromptTemplateType::MistralSmallChat => true,
+            | PromptTemplateType::MistralSmallChat
+            | PromptTemplateType::MistralSmallTool => true,
             PromptTemplateType::MistralInstruct
             | PromptTemplateType::MistralTool
             | PromptTemplateType::MistralLite
@@ -191,6 +194,7 @@ impl FromStr for PromptTemplateType {
             "mistral-tool" => Ok(PromptTemplateType::MistralTool),
             "mistrallite" => Ok(PromptTemplateType::MistralLite),
             "mistral-small-chat" => Ok(PromptTemplateType::MistralSmallChat),
+            "mistral-small-tool" => Ok(PromptTemplateType::MistralSmallTool),
             "codellama-instruct" => Ok(PromptTemplateType::CodeLlama),
             "codellama-super-instruct" => Ok(PromptTemplateType::CodeLlamaSuper),
             "belle-llama-2-chat" => Ok(PromptTemplateType::HumanAssistant),
@@ -250,6 +254,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::MistralTool => write!(f, "mistral-tool"),
             PromptTemplateType::MistralLite => write!(f, "mistrallite"),
             PromptTemplateType::MistralSmallChat => write!(f, "mistral-small-chat"),
+            PromptTemplateType::MistralSmallTool => write!(f, "mistral-small-tool"),
             PromptTemplateType::OpenChat => write!(f, "openchat"),
             PromptTemplateType::CodeLlama => write!(f, "codellama-instruct"),
             PromptTemplateType::HumanAssistant => write!(f, "human-asistant"),
