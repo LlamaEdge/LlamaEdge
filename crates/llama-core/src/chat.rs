@@ -286,13 +286,17 @@ fn chat_stream_by_graph(
                 && graph.metadata.prompt_template != PromptTemplateType::GroqLlama3Tool
                 && graph.metadata.prompt_template != PromptTemplateType::Llama3Tool
                 && graph.metadata.prompt_template != PromptTemplateType::InternLM2Tool
+                && graph.metadata.prompt_template != PromptTemplateType::NemotronTool
+                && graph.metadata.prompt_template != PromptTemplateType::FunctionaryV32
+                && graph.metadata.prompt_template != PromptTemplateType::FunctionaryV31
+                && graph.metadata.prompt_template != PromptTemplateType::MistralSmallTool
             {
-                let err_msg = "The tool use is only supported for 'mistral-chat' and 'chatml' prompt templates.";
+                let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', and 'mistral-small-tool' prompt templates.", graph.metadata.prompt_template);
 
                 #[cfg(feature = "logging")]
                 error!(target: "stdout", "{}", &err_msg);
 
-                return Err(LlamaCoreError::Operation(err_msg.into()));
+                return Err(LlamaCoreError::Operation(err_msg));
             }
 
             let parsed_result = parse_tool_calls(&message, graph.metadata.prompt_template)?;
@@ -2282,6 +2286,13 @@ fn post_process(
 
         if s.ends_with("<|im_end|>") {
             s.trim_end_matches("<|im_end|>").trim().to_owned()
+        } else {
+            s.to_owned()
+        }
+    } else if *template_ty == PromptTemplateType::VicunaLlava {
+        let s = output.as_ref().trim();
+        if s.ends_with("</s>") {
+            s.trim_end_matches("</s>").trim().to_owned()
         } else {
             s.to_owned()
         }
