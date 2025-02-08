@@ -3297,6 +3297,9 @@ fn compute_stream(
                         Err(wasmedge_wasi_nn::Error::BackendError(
                             wasmedge_wasi_nn::BackendError::EndOfSequence,
                         )) => {
+                            #[cfg(feature = "logging")]
+                            debug!(target: "stdout", "End of sequence");
+
                             match stream_state {
                                 StreamState::Usage => {
                                     *stream_state = StreamState::Done;
@@ -3367,6 +3370,9 @@ fn compute_stream(
                         Err(wasmedge_wasi_nn::Error::BackendError(
                             wasmedge_wasi_nn::BackendError::ContextFull,
                         )) => {
+                            #[cfg(feature = "logging")]
+                            debug!(target: "stdout", "Context full");
+
                             match context_full_state {
                                 ContextFullState::Message => {
                                     match include_usage {
@@ -3491,6 +3497,9 @@ fn compute_stream(
                         Err(wasmedge_wasi_nn::Error::BackendError(
                             wasmedge_wasi_nn::BackendError::PromptTooLong,
                         )) => {
+                            #[cfg(feature = "logging")]
+                            debug!(target: "stdout", "Prompt too long");
+
                             match prompt_too_long_state {
                                 PromptTooLongState::Message => {
                                     match include_usage {
@@ -3770,6 +3779,9 @@ fn compute_stream(
                                 Err(wasmedge_wasi_nn::Error::BackendError(
                                     wasmedge_wasi_nn::BackendError::EndOfSequence,
                                 )) => {
+                                    #[cfg(feature = "logging")]
+                                    debug!(target: "stdout", "End of sequence");
+
                                     match stream_state {
                                         StreamState::Usage => {
                                             *stream_state = StreamState::Done;
@@ -3841,6 +3853,9 @@ fn compute_stream(
                                 Err(wasmedge_wasi_nn::Error::BackendError(
                                     wasmedge_wasi_nn::BackendError::ContextFull,
                                 )) => {
+                                    #[cfg(feature = "logging")]
+                                    debug!(target: "stdout", "Context full");
+
                                     match context_full_state {
                                         ContextFullState::Message => {
                                             match include_usage {
@@ -3972,6 +3987,9 @@ fn compute_stream(
                                 Err(wasmedge_wasi_nn::Error::BackendError(
                                     wasmedge_wasi_nn::BackendError::PromptTooLong,
                                 )) => {
+                                    #[cfg(feature = "logging")]
+                                    debug!(target: "stdout", "Prompt too long");
+
                                     match prompt_too_long_state {
                                         PromptTooLongState::Message => {
                                             match include_usage {
@@ -4264,6 +4282,9 @@ fn compute_stream(
                         Err(wasmedge_wasi_nn::Error::BackendError(
                             wasmedge_wasi_nn::BackendError::EndOfSequence,
                         )) => {
+                            #[cfg(feature = "logging")]
+                            debug!(target: "stdout", "End of sequence");
+
                             match stream_state {
                                 StreamState::Usage => {
                                     *stream_state = StreamState::Done;
@@ -4334,6 +4355,9 @@ fn compute_stream(
                         Err(wasmedge_wasi_nn::Error::BackendError(
                             wasmedge_wasi_nn::BackendError::ContextFull,
                         )) => {
+                            #[cfg(feature = "logging")]
+                            debug!(target: "stdout", "Context full");
+
                             match context_full_state {
                                 ContextFullState::Message => {
                                     match include_usage {
@@ -4458,6 +4482,9 @@ fn compute_stream(
                         Err(wasmedge_wasi_nn::Error::BackendError(
                             wasmedge_wasi_nn::BackendError::PromptTooLong,
                         )) => {
+                            #[cfg(feature = "logging")]
+                            debug!(target: "stdout", "Prompt too long");
+
                             match prompt_too_long_state {
                                 PromptTooLongState::Message => {
                                     match include_usage {
