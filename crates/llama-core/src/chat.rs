@@ -3067,7 +3067,7 @@ impl futures::Stream for ChatStream {
     fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if self.cache.is_none() {
             let this = self.get_mut();
-            let x = compute_stream(
+            let res = compute_stream(
                 this.model.clone(),
                 this.id.clone(),
                 this.include_usage,
@@ -3076,7 +3076,7 @@ impl futures::Stream for ChatStream {
                 &mut this.stream_state,
             );
 
-            match x {
+            match res {
                 Ok(x) => {
                     #[cfg(feature = "logging")]
                     info!(target: "stdout", "next item: {}", &x);
@@ -3116,6 +3116,13 @@ fn compute_stream(
 ) -> Result<String, LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Compute the chat stream chunk.");
+
+    #[cfg(feature = "logging")]
+    debug!(target: "stdout", "prompt_too_long_state: {:?}", *prompt_too_long_state);
+    #[cfg(feature = "logging")]
+    debug!(target: "stdout", "context_full_state: {:?}", *context_full_state);
+    #[cfg(feature = "logging")]
+    debug!(target: "stdout", "stream_state: {:?}", *stream_state);
 
     if *prompt_too_long_state == PromptTooLongState::EndOfSequence
         || *context_full_state == ContextFullState::EndOfSequence
@@ -3157,22 +3164,25 @@ fn compute_stream(
                     // compute
                     match graph.compute_single() {
                         Ok(_) => {
-                            #[cfg(feature = "logging")]
-                            info!(target: "stdout", "Compute the chat stream chunk successfully.");
+                            match stream_state {
+                                StreamState::Usage => {
+                                    #[cfg(feature = "logging")]
+                                    info!(target: "stdout", "Compute the chat stream chunk successfully.");
 
-                            // Retrieve the output
-                            let output_buffer = get_output_buffer_single(graph, OUTPUT_TENSOR)?;
+                                    // Retrieve the output
+                                    let output_buffer =
+                                        get_output_buffer_single(graph, OUTPUT_TENSOR)?;
 
-                            #[cfg(feature = "logging")]
-                            info!(target: "stdout", "retrieved the output buffer");
+                                    #[cfg(feature = "logging")]
+                                    info!(target: "stdout", "retrieved the output buffer");
 
-                            // decode the output buffer to a utf8 string
-                            let output = match String::from_utf8(output_buffer.clone()) {
-                                Ok(token) => token,
-                                Err(_) => {
-                                    let mutex = CACHED_UTF8_ENCODINGS
-                                        .get_or_init(|| Mutex::new(Vec::new()));
-                                    let mut cached_encodings = mutex.lock().map_err(|e| {
+                                    // decode the output buffer to a utf8 string
+                                    let output = match String::from_utf8(output_buffer.clone()) {
+                                        Ok(token) => token,
+                                        Err(_) => {
+                                            let mutex = CACHED_UTF8_ENCODINGS
+                                                .get_or_init(|| Mutex::new(Vec::new()));
+                                            let mut cached_encodings = mutex.lock().map_err(|e| {
                                             let err_msg = format!(
                                                 "Fail to acquire the lock of `UTF8_ENCODINGS`. Reason: {}",
                                                 e
@@ -3185,90 +3195,104 @@ fn compute_stream(
                                             LlamaCoreError::Operation(err_msg)
                                         })?;
 
-                                    // cache the bytes for future decoding
-                                    cached_encodings.extend_from_slice(&output_buffer[..]);
+                                            // cache the bytes for future decoding
+                                            cached_encodings.extend_from_slice(&output_buffer[..]);
 
-                                    match String::from_utf8(cached_encodings.to_vec()) {
-                                        Ok(token) => {
-                                            // clear encodings
-                                            cached_encodings.clear();
+                                            match String::from_utf8(cached_encodings.to_vec()) {
+                                                Ok(token) => {
+                                                    // clear encodings
+                                                    cached_encodings.clear();
 
-                                            token
-                                        }
-                                        Err(e) => {
-                                            // TODO This is a temp check. In case, infinite cached encodings happen.
-                                            if cached_encodings.len() > 4 {
-                                                let err_msg = format!("Fail to convert a vector of bytes to string. The length of the utf8 bytes exceeds 4. {}", e);
+                                                    token
+                                                }
+                                                Err(e) => {
+                                                    // TODO This is a temp check. In case, infinite cached encodings happen.
+                                                    if cached_encodings.len() > 4 {
+                                                        let err_msg = format!("Fail to convert a vector of bytes to string. The length of the utf8 bytes exceeds 4. {}", e);
 
-                                                #[cfg(feature = "logging")]
-                                                error!(target: "stdout", "{}", &err_msg);
+                                                        #[cfg(feature = "logging")]
+                                                        error!(target: "stdout", "{}", &err_msg);
 
-                                                return Err(LlamaCoreError::Operation(err_msg));
-                                            } else {
-                                                let warn_msg = format!("Fail to convert a vector of bytes to string. {}", e);
+                                                        return Err(LlamaCoreError::Operation(
+                                                            err_msg,
+                                                        ));
+                                                    } else {
+                                                        let warn_msg = format!("Fail to convert a vector of bytes to string. {}", e);
 
-                                                #[cfg(feature = "logging")]
-                                                warn!(target: "stdout", "{}", &warn_msg);
+                                                        #[cfg(feature = "logging")]
+                                                        warn!(target: "stdout", "{}", &warn_msg);
 
-                                                String::from(" ")
+                                                        String::from(" ")
+                                                    }
+                                                }
                                             }
                                         }
-                                    }
-                                }
-                            };
-
-                            #[cfg(feature = "logging")]
-                            info!(target: "stdout", "decoded the output buffer");
-
-                            let created = SystemTime::now()
-                                .duration_since(std::time::UNIX_EPOCH)
-                                .map_err(|e| {
-                                let err_msg =
-                                    format!("Failed to get the current time. Reason: {}", e);
-
-                                #[cfg(feature = "logging")]
-                                error!(target: "stdout", "{}", &err_msg);
-
-                                LlamaCoreError::Operation(err_msg)
-                            })?;
-
-                            let chat_completion_chunk = ChatCompletionChunk {
-                                id,
-                                object: "chat.completion.chunk".to_string(),
-                                created: created.as_secs(),
-                                model: graph.name().to_owned(),
-                                system_fingerprint: "fp_44709d6fcb".to_string(),
-                                choices: vec![ChatCompletionChunkChoice {
-                                    index: 0,
-                                    delta: ChatCompletionChunkChoiceDelta {
-                                        role: ChatCompletionRole::Assistant,
-                                        content: Some(output),
-                                        tool_calls: vec![],
-                                    },
-                                    logprobs: None,
-                                    finish_reason: None,
-                                }],
-                                usage: None,
-                            };
-
-                            #[cfg(feature = "logging")]
-                            info!(target: "stdout", "created chat completion chunk");
-
-                            // serialize chat completion chunk
-                            let chunk_str =
-                                serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                                    let err_msg = format!(
-                                        "Failed to serialize chat completion chunk. Reason: {}",
-                                        e
-                                    );
+                                    };
 
                                     #[cfg(feature = "logging")]
-                                    error!(target: "stdout", "{}", &err_msg);
+                                    info!(target: "stdout", "decoded the output buffer");
 
-                                    LlamaCoreError::Operation(err_msg)
-                                })?;
+                                    let created = SystemTime::now()
+                                        .duration_since(std::time::UNIX_EPOCH)
+                                        .map_err(|e| {
+                                            let err_msg = format!(
+                                                "Failed to get the current time. Reason: {}",
+                                                e
+                                            );
 
-                            Ok(format!("data: {}\n\n", chunk_str))
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "stdout", "{}", &err_msg);
+
+                                            LlamaCoreError::Operation(err_msg)
+                                        })?;
+
+                                    let chat_completion_chunk = ChatCompletionChunk {
+                                        id,
+                                        object: "chat.completion.chunk".to_string(),
+                                        created: created.as_secs(),
+                                        model: graph.name().to_owned(),
+                                        system_fingerprint: "fp_44709d6fcb".to_string(),
+                                        choices: vec![ChatCompletionChunkChoice {
+                                            index: 0,
+                                            delta: ChatCompletionChunkChoiceDelta {
+                                                role: ChatCompletionRole::Assistant,
+                                                content: Some(output),
+                                                tool_calls: vec![],
+                                            },
+                                            logprobs: None,
+                                            finish_reason: None,
+                                        }],
+                                        usage: None,
+                                    };
+
+                                    #[cfg(feature = "logging")]
+                                    info!(target: "stdout", "created chat completion chunk");
+
+                                    // serialize chat completion chunk
+                                    let chunk_str = serde_json::to_string(&chat_completion_chunk)
+                                        .map_err(|e| {
+                                        let err_msg = format!(
+                                            "Failed to serialize chat completion chunk. Reason: {}",
+                                            e
+                                        );
+
+                                        #[cfg(feature = "logging")]
+                                        error!(target: "stdout", "{}", &err_msg);
+
+                                        LlamaCoreError::Operation(err_msg)
+                                    })?;
+
+                                    Ok(format!("data: {}\n\n", chunk_str))
+                                }
+                                StreamState::Done => {
+                                    *stream_state = StreamState::EndOfSequence;
+
+                                    Ok("data: [DONE]\n\n".to_string())
+                                }
+                                StreamState::EndOfSequence => {
+                                    Ok("[GGML] End of sequence".to_string())
+                                }
+                            }
                         }
                         Err(wasmedge_wasi_nn::Error::BackendError(
                             wasmedge_wasi_nn::BackendError::EndOfSequence,
