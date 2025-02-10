@@ -359,6 +359,8 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
     // log user id
     info!(target: "stdout", "user: {}", chat_request.user.clone().unwrap());
 
+    debug!(target: "stdout", "request: {}", serde_json::to_string(&chat_request).unwrap());
+
     let res = match llama_core::chat::chat(&mut chat_request).await {
         Ok(result) => match result {
             either::Left(stream) => {
