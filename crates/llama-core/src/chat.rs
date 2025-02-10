@@ -2856,6 +2856,7 @@ enum ContextFullState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StreamState {
     Usage,
+    NoUsage,
     Done,
     EndOfSequence,
 }
@@ -2887,7 +2888,7 @@ impl ChatStream {
         let stream_state = if include_usage {
             StreamState::Usage
         } else {
-            StreamState::Done
+            StreamState::NoUsage
         };
 
         ChatStream {
@@ -3164,11 +3165,11 @@ fn compute_stream(
                     // compute
                     match graph.compute_single() {
                         Ok(_) => {
-                            match stream_state {
-                                StreamState::Usage => {
-                                    #[cfg(feature = "logging")]
-                                    info!(target: "stdout", "Compute the chat stream chunk successfully.");
+                            #[cfg(feature = "logging")]
+                            debug!(target: "stdout", "Compute the chat stream chunk successfully.");
 
+                            match stream_state {
+                                StreamState::Usage | StreamState::NoUsage => {
                                     // Retrieve the output
                                     let output_buffer =
                                         get_output_buffer_single(graph, OUTPUT_TENSOR)?;
@@ -3357,7 +3358,7 @@ fn compute_stream(
 
                                     Ok(format!("data: {}\n\n", chunk_str))
                                 }
-                                StreamState::Done => {
+                                StreamState::Done | StreamState::NoUsage => {
                                     *stream_state = StreamState::EndOfSequence;
 
                                     Ok("data: [DONE]\n\n".to_string())
@@ -3638,11 +3639,11 @@ fn compute_stream(
                             // compute
                             match graph.compute_single() {
                                 Ok(_) => {
-                                    match stream_state {
-                                        StreamState::Usage => {
-                                            #[cfg(feature = "logging")]
-                                            info!(target: "stdout", "Compute the chat stream chunk successfully.");
+                                    #[cfg(feature = "logging")]
+                                    debug!(target: "stdout", "Compute the chat stream chunk successfully.");
 
+                                    match stream_state {
+                                        StreamState::Usage | StreamState::NoUsage => {
                                             // Retrieve the output
                                             let output_buffer =
                                                 get_output_buffer_single(graph, OUTPUT_TENSOR)?;
@@ -3840,7 +3841,7 @@ fn compute_stream(
 
                                             Ok(format!("data: {}\n\n", chunk_str))
                                         }
-                                        StreamState::Done => {
+                                        StreamState::Done | StreamState::NoUsage => {
                                             *stream_state = StreamState::EndOfSequence;
 
                                             Ok("data: [DONE]\n\n".to_string())
@@ -4151,11 +4152,11 @@ fn compute_stream(
                     // compute
                     match graph.compute_single() {
                         Ok(_) => {
-                            match stream_state {
-                                StreamState::Usage => {
-                                    #[cfg(feature = "logging")]
-                                    info!(target: "stdout", "Compute the chat stream chunk successfully.");
+                            #[cfg(feature = "logging")]
+                            debug!(target: "stdout", "Compute the chat stream chunk successfully.");
 
+                            match stream_state {
+                                StreamState::Usage | StreamState::NoUsage => {
                                     // Retrieve the output
                                     let output_buffer =
                                         get_output_buffer_single(graph, OUTPUT_TENSOR)?;
@@ -4342,7 +4343,7 @@ fn compute_stream(
 
                                     Ok(format!("data: {}\n\n", chunk_str))
                                 }
-                                StreamState::Done => {
+                                StreamState::Done | StreamState::NoUsage => {
                                     *stream_state = StreamState::EndOfSequence;
 
                                     Ok("data: [DONE]\n\n".to_string())
