@@ -1,11 +1,6 @@
-//! Define APIs for audio generation, transcription, and translation.
-
+use crate::{error::LlamaCoreError, utils::set_tensor_data, MAX_BUFFER_SIZE, PIPER_GRAPH};
 #[cfg(feature = "whisper")]
-use crate::AUDIO_GRAPH;
-use crate::{
-    error::LlamaCoreError, metadata::whisper::WhisperMetadata, utils::set_tensor_data,
-    MAX_BUFFER_SIZE, PIPER_GRAPH,
-};
+use crate::{metadata::whisper::WhisperMetadata, AUDIO_GRAPH};
 use endpoints::audio::speech::SpeechRequest;
 #[cfg(feature = "whisper")]
 use endpoints::audio::{
@@ -633,6 +628,7 @@ pub async fn create_speech(request: SpeechRequest) -> Result<Vec<u8>, LlamaCoreE
     Ok(output_buffer)
 }
 
+#[cfg(feature = "whisper")]
 fn reset_model_metadata() -> Result<(), LlamaCoreError> {
     // get metadata
     let metadata = get_model_metadata()?;
@@ -642,6 +638,7 @@ fn reset_model_metadata() -> Result<(), LlamaCoreError> {
 }
 
 /// Get a copy of the metadata of the model.
+#[cfg(feature = "whisper")]
 fn get_model_metadata() -> Result<WhisperMetadata, LlamaCoreError> {
     let audio_graph = match AUDIO_GRAPH.get() {
         Some(audio_graph) => audio_graph,
@@ -667,6 +664,7 @@ fn get_model_metadata() -> Result<WhisperMetadata, LlamaCoreError> {
     Ok(audio_graph.metadata.clone())
 }
 
+#[cfg(feature = "whisper")]
 fn update_model_metadata(metadata: &WhisperMetadata) -> Result<(), LlamaCoreError> {
     let config = match serde_json::to_string(metadata) {
         Ok(config) => config,
