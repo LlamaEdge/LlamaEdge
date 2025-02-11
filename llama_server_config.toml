@@ -1,6 +1,5 @@
 [server]
 socket_addr = "0.0.0.0:8080"     # Socket address to listen on. Default is "0.0.0.0:8080".
-port = "8080"                    # Port to listen on. Default is "8080".
 
 
 [chat]
@@ -9,7 +8,7 @@ model_alias = "default"          # Alias of the chat model. Default is "default"
 ctx_size = 4096                  # Context size. Default is 4096.
 batch_size = 512                 # Batch size. Default is 512.
 ubatch_size = 512                # Physical maximum batch size. Default is 512.
-prompt_template = "llama-2-chat" # Prompt template
+prompt_template = "none"         # Required for running chat model. "none" means no prompt template, which should be replaced by the prompt template according to the model to use.
 reverse_prompt = ""              # Halt generation at PROMPT, return control. Default is empty string.
 n_predict = -1                   # Number of tokens to predict. -1 = infinity, -2 = until context filled. Default is -1.
 n_gpu_layers = 100               # Number of layers to run on GPU. Default is 100.
@@ -34,7 +33,7 @@ model_alias = "embedding"        # Alias of the embedding model. Default is "emb
 ctx_size = 384                   # Context size. Default is 384.
 batch_size = 512                 # Batch size. Default is 512.
 ubatch_size = 512                # Physical maximum batch size. Default is 512.
-prompt_template = "embedding"    # Prompt template. Default is "embedding".
+prompt_template = "embedding"    # Prompt template. Do not set this value.
 
 
 [tts]
