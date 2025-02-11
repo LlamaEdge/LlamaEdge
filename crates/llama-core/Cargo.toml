@@ -1,47 +1,47 @@
 [package]
-name = "llama-core"
-version = "0.26.7"
-edition = "2021"
-readme = "README.md"
-repository = "https://github.com/LlamaEdge/LlamaEdge"
-license = "Apache-2.0"
+name          = "llama-core"
+version       = "0.27.0"
+edition       = "2021"
+readme        = "README.md"
+repository    = "https://github.com/LlamaEdge/LlamaEdge"
+license       = "Apache-2.0"
 documentation = "https://llamaedge.github.io/LlamaEdge/llama_core/index.html"
-categories = ["wasm", "science"]
-description = "The core library of LlamaEdge"
+categories    = ["wasm", "science"]
+description   = "The core library of LlamaEdge"
 
 [dependencies]
-endpoints.workspace = true
-chat-prompts.workspace = true
+endpoints.workspace        = true
+chat-prompts.workspace     = true
 wasmedge-wasi-nn.workspace = true
-thiserror.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-uuid.workspace = true
-once_cell.workspace = true
-futures.workspace = true
-reqwest.workspace = true
-qdrant = { package = "qdrant_rest_client", version = "0.2.1", optional = true }
-text-splitter = { version = "^0.7", features = ["tiktoken-rs", "markdown"] }
-tiktoken-rs = "^0.5"
-wasi-logger = { workspace = true, optional = true }
-log = { workspace = true, optional = true }
-regex = "1"
-either.workspace = true
-wasmedge_stable_diffusion = { version = "=0.3.2" }
-base64.workspace = true
-walkdir = "2.5.0"
+thiserror.workspace        = true
+serde.workspace            = true
+serde_json.workspace       = true
+uuid.workspace             = true
+once_cell.workspace        = true
+futures.workspace          = true
+reqwest.workspace          = true
+qdrant                     = { package = "qdrant_rest_client", version = "0.2.1", optional = true }
+text-splitter              = { version = "^0.7", features = ["tiktoken-rs", "markdown"] }
+tiktoken-rs                = "^0.5"
+wasi-logger                = { workspace = true, optional = true }
+log                        = { workspace = true, optional = true }
+regex                      = "1"
+either.workspace           = true
+wasmedge_stable_diffusion  = { version = "=0.3.2" }
+base64.workspace           = true
+walkdir                    = "2.5.0"
 
 [package.metadata.cargo-machete]
 ignored = ["wasi-logger"]
 
 [features]
 default = []
-full = ["logging", "search", "rag", "whisper", "index"]
+full    = ["logging", "search", "rag", "whisper", "index"]
 logging = ["wasi-logger", "log", "endpoints/logging"]
-search = []
-rag = ["endpoints/rag", "qdrant"]
+search  = []
+rag     = ["endpoints/rag", "qdrant"]
 whisper = ["endpoints/whisper"]
-index = ["endpoints/index"]
+index   = ["endpoints/index"]
 
 [package.metadata.docs.rs]
 all-features = true
