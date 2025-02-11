@@ -113,24 +113,22 @@ async fn chat_stream(
         Some(id) => id.clone(),
         None => gen_chat_id(),
     };
-
     #[cfg(feature = "logging")]
     info!(target: "stdout", "user: {}", &id);
-
-    // parse the `include_usage` option
-    let include_usage = match chat_request.stream_options {
-        Some(ref stream_options) => stream_options.include_usage.unwrap_or_default(),
-        None => false,
-    };
-
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "include_usage: {}", include_usage);
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Check model metadata");
 
     // update metadata
     let mut metadata = check_model_metadata(chat_request).await?;
+
+    // parse the `include_usage` option
+    let include_usage = match chat_request.stream_options {
+        Some(ref stream_options) => stream_options.include_usage.unwrap_or_default(),
+        None => metadata.include_usage,
+    };
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "include_usage: {}", include_usage);
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Build the chat prompt");
