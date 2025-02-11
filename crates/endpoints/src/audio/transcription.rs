@@ -49,8 +49,6 @@ pub struct TranscriptionRequest {
     /// Split audio chunks on word rather than on token. Defaults to false. This param is reserved for `whisper.cpp`.
     #[serde(skip_serializing_if = "Option::is_none", rename = "split-on-word")]
     pub split_on_word: Option<bool>,
-    /// Use the new computation context. Defaults to false. This param is reserved for `whisper.cpp`.
-    pub use_new_context: bool,
 }
 impl Default for TranscriptionRequest {
     fn default() -> Self {
@@ -68,7 +66,6 @@ impl Default for TranscriptionRequest {
             max_context: Some(-1),
             max_len: Some(0),
             split_on_word: Some(false),
-            use_new_context: false,
         }
     }
 }
@@ -93,7 +90,7 @@ impl<'de> Deserialize<'de> for TranscriptionRequest {
                 let mut file = None;
                 let mut model = None;
                 let mut language = None;
-                let mut prompt = None;
+                let mut prompt: Option<String> = None;
                 let mut response_format = None;
                 let mut temperature = None;
                 let mut timestamp_granularities = None;
@@ -103,7 +100,6 @@ impl<'de> Deserialize<'de> for TranscriptionRequest {
                 let mut max_context = None;
                 let mut max_len = None;
                 let mut split_on_word = None;
-                let mut use_new_context = None;
 
                 while let Some(key) = map.next_key::<String>()? {
                     match key.as_str() {
@@ -185,12 +181,6 @@ impl<'de> Deserialize<'de> for TranscriptionRequest {
                             }
                             split_on_word = Some(map.next_value()?);
                         }
-                        "use_new_context" => {
-                            if use_new_context.is_some() {
-                                return Err(de::Error::duplicate_field("use_new_context"));
-                            }
-                            use_new_context = Some(map.next_value()?);
-                        }
                         _ => {
                             // Ignore unknown fields
                             let _ = map.next_value::<IgnoredAny>()?;
@@ -216,6 +206,8 @@ impl<'de> Deserialize<'de> for TranscriptionRequest {
                         }
                     }
                 }
+
+                prompt = prompt.and_then(|p| if p.is_empty() { None } else { Some(p) });
 
                 if response_format.is_none() {
                     response_format = Some("json".to_string());
@@ -258,8 +250,6 @@ impl<'de> Deserialize<'de> for TranscriptionRequest {
                     split_on_word = Some(false);
                 }
 
-                let use_new_context = use_new_context.unwrap_or(false);
-
                 Ok(TranscriptionRequest {
                     file,
                     model,
@@ -274,7 +264,6 @@ impl<'de> Deserialize<'de> for TranscriptionRequest {
                     max_context,
                     max_len,
                     split_on_word,
-                    use_new_context,
                 })
             }
         }
@@ -293,7 +282,6 @@ impl<'de> Deserialize<'de> for TranscriptionRequest {
             "max_context",
             "max_len",
             "split_on_word",
-            "use_new_context",
         ];
 
         deserializer.deserialize_struct("TranscriptionRequest", FIELDS, TranscriptionRequestVisitor)
