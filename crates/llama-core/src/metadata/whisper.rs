@@ -123,6 +123,13 @@ impl WhisperMetadataBuilder {
         self
     }
 
+    pub fn with_prompt(mut self, prompt: String) -> Self {
+        if !prompt.is_empty() {
+            self.metadata.prompt = Some(prompt);
+        }
+        self
+    }
+
     pub fn build(self) -> WhisperMetadata {
         self.metadata
     }
@@ -189,7 +196,8 @@ pub struct WhisperMetadata {
     #[serde(rename = "detect-language")]
     pub detect_language: bool,
     /// Text to guide the model. The max length is n_text_ctx/2 tokens.
-    pub prompt: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prompt: Option<String>,
 }
 impl Default for WhisperMetadata {
     fn default() -> Self {
@@ -216,7 +224,7 @@ impl Default for WhisperMetadata {
             output_json: false,
             temperature: 0.0,
             detect_language: false,
-            prompt: String::new(),
+            prompt: None,
         }
     }
 }

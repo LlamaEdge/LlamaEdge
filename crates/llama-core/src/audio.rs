@@ -1,8 +1,6 @@
-//! Define APIs for audio generation, transcription, and translation.
-
-#[cfg(feature = "whisper")]
-use crate::AUDIO_GRAPH;
 use crate::{error::LlamaCoreError, utils::set_tensor_data, MAX_BUFFER_SIZE, PIPER_GRAPH};
+#[cfg(feature = "whisper")]
+use crate::{metadata::whisper::WhisperMetadata, AUDIO_GRAPH};
 use endpoints::audio::speech::SpeechRequest;
 #[cfg(feature = "whisper")]
 use endpoints::audio::{
@@ -16,6 +14,21 @@ use std::path::Path;
 #[cfg(feature = "whisper")]
 #[cfg_attr(docsrs, doc(cfg(feature = "whisper")))]
 pub async fn audio_transcriptions(
+    request: TranscriptionRequest,
+) -> Result<TranscriptionObject, LlamaCoreError> {
+    let res = transcribe_audio(request).await;
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Reset the model metadata.");
+
+    // reset the model metadata
+    reset_model_metadata()?;
+
+    res
+}
+
+#[cfg(feature = "whisper")]
+async fn transcribe_audio(
     request: TranscriptionRequest,
 ) -> Result<TranscriptionObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
@@ -49,16 +62,18 @@ pub async fn audio_transcriptions(
     {
         let mut should_update = false;
 
+        let mut metadata = graph.metadata.clone();
+
         #[cfg(feature = "logging")]
-        info!(target: "stdout", "current metadata: {:?}", &graph.metadata);
+        info!(target: "stdout", "current metadata: {:?}", &metadata);
 
         #[cfg(feature = "logging")]
         info!(target: "stdout", "Check model metadata.");
 
         // check `translate` field
-        if graph.metadata.translate {
+        if metadata.translate {
             // update the metadata
-            graph.metadata.translate = false;
+            metadata.translate = false;
 
             if !should_update {
                 should_update = true;
@@ -67,9 +82,9 @@ pub async fn audio_transcriptions(
 
         // check `language` field
         if let Some(language) = &request.language {
-            if *language != graph.metadata.language {
+            if *language != metadata.language {
                 // update the metadata
-                graph.metadata.language = language.clone();
+                metadata.language = language.clone();
 
                 if !should_update {
                     should_update = true;
@@ -79,9 +94,9 @@ pub async fn audio_transcriptions(
 
         // check `detect_language` field
         if let Some(detect_language) = &request.detect_language {
-            if *detect_language != graph.metadata.detect_language {
+            if *detect_language != metadata.detect_language {
                 // update the metadata
-                graph.metadata.detect_language = *detect_language;
+                metadata.detect_language = *detect_language;
 
                 if !should_update {
                     should_update = true;
@@ -91,9 +106,9 @@ pub async fn audio_transcriptions(
 
         // check `offset_time` field
         if let Some(offset_time) = &request.offset_time {
-            if *offset_time != graph.metadata.offset_time {
+            if *offset_time != metadata.offset_time {
                 // update the metadata
-                graph.metadata.offset_time = *offset_time;
+                metadata.offset_time = *offset_time;
 
                 if !should_update {
                     should_update = true;
@@ -103,9 +118,9 @@ pub async fn audio_transcriptions(
 
         // check `duration` field
         if let Some(duration) = &request.duration {
-            if *duration != graph.metadata.duration {
+            if *duration != metadata.duration {
                 // update the metadata
-                graph.metadata.duration = *duration;
+                metadata.duration = *duration;
 
                 if !should_update {
                     should_update = true;
@@ -115,9 +130,9 @@ pub async fn audio_transcriptions(
 
         // check `max_context` field
         if let Some(max_context) = &request.max_context {
-            if *max_context != graph.metadata.max_context {
+            if *max_context != metadata.max_context {
                 // update the metadata
-                graph.metadata.max_context = *max_context;
+                metadata.max_context = *max_context;
 
                 if !should_update {
                     should_update = true;
@@ -127,9 +142,9 @@ pub async fn audio_transcriptions(
 
         // check `max_len` field
         if let Some(max_len) = &request.max_len {
-            if *max_len != graph.metadata.max_len {
+            if *max_len != metadata.max_len {
                 // update the metadata
-                graph.metadata.max_len = *max_len;
+                metadata.max_len = *max_len;
 
                 if !should_update {
                     should_update = true;
@@ -139,9 +154,9 @@ pub async fn audio_transcriptions(
 
         // check `temperature` field
         if let Some(temperature) = &request.temperature {
-            if *temperature != graph.metadata.temperature {
+            if *temperature != metadata.temperature {
                 // update the metadata
-                graph.metadata.temperature = *temperature;
+                metadata.temperature = *temperature;
 
                 if !should_update {
                     should_update = true;
@@ -151,9 +166,9 @@ pub async fn audio_transcriptions(
 
         // check `split_on_word` field
         if let Some(split_on_word) = &request.split_on_word {
-            if *split_on_word != graph.metadata.split_on_word {
+            if *split_on_word != metadata.split_on_word {
                 // update the metadata
-                graph.metadata.split_on_word = *split_on_word;
+                metadata.split_on_word = *split_on_word;
 
                 if !should_update {
                     should_update = true;
@@ -163,24 +178,35 @@ pub async fn audio_transcriptions(
 
         // check `prompt` field
         if let Some(prompt) = &request.prompt {
-            if *prompt != graph.metadata.prompt {
-                // update the metadata
-                graph.metadata.prompt = prompt.clone();
+            if !prompt.is_empty() {
+                match &metadata.prompt {
+                    Some(p) => {
+                        if *p != *prompt {
+                            metadata.prompt = Some(prompt.clone());
 
-                if !should_update {
-                    should_update = true;
+                            if !should_update {
+                                should_update = true;
+                            }
+                        }
+                    }
+                    None => {
+                        metadata.prompt = Some(prompt.clone());
+                        if !should_update {
+                            should_update = true;
+                        }
+                    }
                 }
             }
         }
-
-        #[cfg(feature = "logging")]
-        info!(target: "stdout", "metadata: {:?}", &graph.metadata);
 
         if should_update {
             #[cfg(feature = "logging")]
             info!(target: "stdout", "Set the metadata to the model.");
 
-            match serde_json::to_string(&graph.metadata) {
+            #[cfg(feature = "logging")]
+            debug!(target: "stdout", "new metadata: {}", serde_json::to_string(&metadata).unwrap());
+
+            match serde_json::to_string(&metadata) {
                 Ok(config) => {
                     // update metadata
                     set_tensor_data(&mut graph, 1, config.as_bytes(), [1])?;
@@ -310,6 +336,19 @@ fn _remove_blank_audio(input: &str) -> String {
 pub async fn audio_translations(
     request: TranslationRequest,
 ) -> Result<TranslationObject, LlamaCoreError> {
+    let res = translate_audio(request).await;
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Reset the model metadata.");
+
+    // reset the model metadata
+    reset_model_metadata()?;
+
+    res
+}
+
+#[cfg(feature = "whisper")]
+async fn translate_audio(request: TranslationRequest) -> Result<TranslationObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "processing audio translation request");
 
@@ -341,15 +380,17 @@ pub async fn audio_translations(
     {
         let mut should_update = false;
 
+        let mut metadata = graph.metadata.clone();
+
         #[cfg(feature = "logging")]
-        info!(target: "stdout", "current metadata: {:?}", &graph.metadata);
+        info!(target: "stdout", "current metadata: {:?}", &metadata);
 
         #[cfg(feature = "logging")]
         info!(target: "stdout", "Check model metadata.");
 
         // check `translate` field
-        if !graph.metadata.translate {
-            graph.metadata.translate = true;
+        if !metadata.translate {
+            metadata.translate = true;
 
             if !should_update {
                 should_update = true;
@@ -358,8 +399,8 @@ pub async fn audio_translations(
 
         // check `language` field
         if let Some(language) = &request.language {
-            if *language != graph.metadata.language {
-                graph.metadata.language = language.clone();
+            if *language != metadata.language {
+                metadata.language = language.clone();
 
                 if !should_update {
                     should_update = true;
@@ -369,8 +410,8 @@ pub async fn audio_translations(
 
         // check `detect_language` field
         if let Some(detect_language) = &request.detect_language {
-            if *detect_language != graph.metadata.detect_language {
-                graph.metadata.detect_language = *detect_language;
+            if *detect_language != metadata.detect_language {
+                metadata.detect_language = *detect_language;
 
                 if !should_update {
                     should_update = true;
@@ -380,9 +421,9 @@ pub async fn audio_translations(
 
         // check `offset_time` field
         if let Some(offset_time) = &request.offset_time {
-            if *offset_time != graph.metadata.offset_time {
+            if *offset_time != metadata.offset_time {
                 // update the metadata
-                graph.metadata.offset_time = *offset_time;
+                metadata.offset_time = *offset_time;
 
                 if !should_update {
                     should_update = true;
@@ -392,8 +433,8 @@ pub async fn audio_translations(
 
         // check `duration` field
         if let Some(duration) = &request.duration {
-            if *duration != graph.metadata.duration {
-                graph.metadata.duration = *duration;
+            if *duration != metadata.duration {
+                metadata.duration = *duration;
 
                 if !should_update {
                     should_update = true;
@@ -403,8 +444,8 @@ pub async fn audio_translations(
 
         // check `max_context` field
         if let Some(max_context) = &request.max_context {
-            if *max_context != graph.metadata.max_context {
-                graph.metadata.max_context = *max_context;
+            if *max_context != metadata.max_context {
+                metadata.max_context = *max_context;
 
                 if !should_update {
                     should_update = true;
@@ -414,8 +455,8 @@ pub async fn audio_translations(
 
         // check `max_len` field
         if let Some(max_len) = &request.max_len {
-            if *max_len != graph.metadata.max_len {
-                graph.metadata.max_len = *max_len;
+            if *max_len != metadata.max_len {
+                metadata.max_len = *max_len;
 
                 if !should_update {
                     should_update = true;
@@ -425,8 +466,8 @@ pub async fn audio_translations(
 
         // check `temperature` field
         if let Some(temperature) = &request.temperature {
-            if *temperature != graph.metadata.temperature {
-                graph.metadata.temperature = *temperature;
+            if *temperature != metadata.temperature {
+                metadata.temperature = *temperature;
 
                 if !should_update {
                     should_update = true;
@@ -436,8 +477,8 @@ pub async fn audio_translations(
 
         // check `split_on_word` field
         if let Some(split_on_word) = &request.split_on_word {
-            if *split_on_word != graph.metadata.split_on_word {
-                graph.metadata.split_on_word = *split_on_word;
+            if *split_on_word != metadata.split_on_word {
+                metadata.split_on_word = *split_on_word;
 
                 if !should_update {
                     should_update = true;
@@ -447,23 +488,35 @@ pub async fn audio_translations(
 
         // check `prompt` field
         if let Some(prompt) = &request.prompt {
-            if *prompt != graph.metadata.prompt {
-                graph.metadata.prompt = prompt.clone();
+            if !prompt.is_empty() {
+                match &metadata.prompt {
+                    Some(p) => {
+                        if *p != *prompt {
+                            metadata.prompt = Some(prompt.clone());
 
-                if !should_update {
-                    should_update = true;
+                            if !should_update {
+                                should_update = true;
+                            }
+                        }
+                    }
+                    None => {
+                        metadata.prompt = Some(prompt.clone());
+                        if !should_update {
+                            should_update = true;
+                        }
+                    }
                 }
             }
         }
-
-        #[cfg(feature = "logging")]
-        info!(target: "stdout", "metadata: {:?}", &graph.metadata);
 
         if should_update {
             #[cfg(feature = "logging")]
             info!(target: "stdout", "Set the metadata to the model.");
 
-            match serde_json::to_string(&graph.metadata) {
+            #[cfg(feature = "logging")]
+            debug!(target: "stdout", "new metadata: {}", serde_json::to_string(&metadata).unwrap());
+
+            match serde_json::to_string(&metadata) {
                 Ok(config) => {
                     // update metadata
                     set_tensor_data(&mut graph, 1, config.as_bytes(), [1])?;
@@ -554,6 +607,9 @@ pub async fn audio_translations(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "End of the audio translation.");
 
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Reset the model metadata.");
+
     Ok(obj)
 }
 
@@ -623,4 +679,88 @@ pub async fn create_speech(request: SpeechRequest) -> Result<Vec<u8>, LlamaCoreE
     info!(target: "stdout", "Output buffer size: {}", output_size);
 
     Ok(output_buffer)
+}
+
+#[cfg(feature = "whisper")]
+fn reset_model_metadata() -> Result<(), LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    debug!(target: "stdout", "Get the original metadata.");
+
+    // get metadata
+    let metadata = get_model_metadata()?;
+
+    #[cfg(feature = "logging")]
+    debug!(target: "stdout", "Set the original metadata to the model.");
+
+    #[cfg(feature = "logging")]
+    debug!(target: "stdout", "original metadata: {}", serde_json::to_string(&metadata).unwrap());
+
+    // update model with the original metadata
+    update_model_metadata(&metadata)
+}
+
+/// Get a copy of the metadata of the model.
+#[cfg(feature = "whisper")]
+fn get_model_metadata() -> Result<WhisperMetadata, LlamaCoreError> {
+    let audio_graph = match AUDIO_GRAPH.get() {
+        Some(audio_graph) => audio_graph,
+        None => {
+            let err_msg = "Fail to get the underlying value of `AUDIO_GRAPH`.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.into()));
+        }
+    };
+
+    let audio_graph = audio_graph.lock().map_err(|e| {
+        let err_msg = format!("Fail to acquire the lock of `AUDIO_GRAPH`. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
+
+    Ok(audio_graph.metadata.clone())
+}
+
+#[cfg(feature = "whisper")]
+fn update_model_metadata(metadata: &WhisperMetadata) -> Result<(), LlamaCoreError> {
+    let config = match serde_json::to_string(metadata) {
+        Ok(config) => config,
+        Err(e) => {
+            let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg));
+        }
+    };
+
+    let audio_graph = match AUDIO_GRAPH.get() {
+        Some(audio_graph) => audio_graph,
+        None => {
+            let err_msg = "Fail to get the underlying value of `AUDIO_GRAPH`.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.into()));
+        }
+    };
+
+    let mut audio_graph = audio_graph.lock().map_err(|e| {
+        let err_msg = format!("Fail to acquire the lock of `AUDIO_GRAPH`. Reason: {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
+
+    // update metadata
+    set_tensor_data::<u8, WhisperMetadata>(&mut audio_graph, 1, config.as_bytes(), [1])
 }

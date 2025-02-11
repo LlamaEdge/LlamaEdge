@@ -146,6 +146,11 @@ impl GgmlMetadataBuilder {
         self
     }
 
+    pub fn include_usage(mut self, include: bool) -> Self {
+        self.metadata.include_usage = include;
+        self
+    }
+
     pub fn build(self) -> GgmlMetadata {
         self.metadata
     }
@@ -247,6 +252,9 @@ pub struct GgmlMetadata {
     /// JSON schema to constrain generations (<https://json-schema.org/>), e.g. `{}` for any JSON object. For schemas w/ external $refs, use --grammar + example/json_schema_to_grammar.py instead.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub json_schema: Option<String>,
+
+    /// Whether to include usage in the stream response. Defaults to false.
+    pub include_usage: bool,
 }
 impl Default for GgmlMetadata {
     fn default() -> Self {
@@ -278,6 +286,7 @@ impl Default for GgmlMetadata {
             frequency_penalty: 0.0,
             grammar: String::new(),
             json_schema: None,
+            include_usage: false,
         }
     }
 }

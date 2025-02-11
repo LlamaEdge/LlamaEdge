@@ -116,6 +116,9 @@ struct Cli {
     /// Path to the multimodal projector file
     #[arg(long)]
     llava_mmproj: Option<String>,
+    /// Whether to include usage in the stream response. Defaults to false.
+    #[arg(long, default_value = "false")]
+    include_usage: bool,
     /// Socket address of LlamaEdge API Server instance. For example, `0.0.0.0:8080`.
     #[arg(long, default_value = None, value_parser = clap::value_parser!(SocketAddr), group = "socket_address_group")]
     socket_addr: Option<SocketAddr>,
@@ -767,6 +770,9 @@ async fn main() -> Result<(), ServerError> {
         info!(target: "stdout", "llava_mmproj: {}", llava_mmproj);
     }
 
+    // log include_usage
+    info!(target: "stdout", "include_usage: {}", cli.include_usage);
+
     // initialize the core context
     let mut chat_model_config = None;
     let mut embedding_model_config = None;
@@ -844,6 +850,7 @@ async fn main() -> Result<(), ServerError> {
                 .with_mmproj(cli.llava_mmproj.clone())
                 .enable_plugin_log(true)
                 .enable_debug_log(plugin_debug)
+                .include_usage(cli.include_usage)
                 .build();
 
                 // set the chat model config
@@ -901,6 +908,7 @@ async fn main() -> Result<(), ServerError> {
         .with_mmproj(cli.llava_mmproj.clone())
         .enable_plugin_log(true)
         .enable_debug_log(plugin_debug)
+        .include_usage(cli.include_usage)
         .build();
 
         // set the chat model config

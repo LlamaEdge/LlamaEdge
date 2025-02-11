@@ -44,8 +44,6 @@ pub struct TranslationRequest {
     /// Split audio chunks on word rather than on token. Defaults to false. This param is reserved for `whisper.cpp`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub split_on_word: Option<bool>,
-    /// Use the new computation context. Defaults to false. This param is reserved for `whisper.cpp`.
-    pub use_new_context: bool,
 }
 impl Default for TranslationRequest {
     fn default() -> Self {
@@ -62,7 +60,6 @@ impl Default for TranslationRequest {
             max_context: Some(-1),
             max_len: Some(0),
             split_on_word: Some(false),
-            use_new_context: false,
         }
     }
 }
@@ -86,7 +83,7 @@ impl<'de> Deserialize<'de> for TranslationRequest {
             {
                 let mut file = None;
                 let mut model = None;
-                let mut prompt = None;
+                let mut prompt: Option<String> = None;
                 let mut response_format = None;
                 let mut temperature = None;
                 let mut language = None;
@@ -96,7 +93,6 @@ impl<'de> Deserialize<'de> for TranslationRequest {
                 let mut max_context = None;
                 let mut max_len = None;
                 let mut split_on_word = None;
-                let mut use_new_context = None;
 
                 while let Some(key) = map.next_key::<String>()? {
                     match key.as_str() {
@@ -172,12 +168,6 @@ impl<'de> Deserialize<'de> for TranslationRequest {
                             }
                             split_on_word = Some(map.next_value()?);
                         }
-                        "use_new_context" => {
-                            if use_new_context.is_some() {
-                                return Err(de::Error::duplicate_field("use_new_context"));
-                            }
-                            use_new_context = Some(map.next_value()?);
-                        }
                         _ => {
                             // Ignore unknown fields
                             let _ = map.next_value::<IgnoredAny>()?;
@@ -203,6 +193,8 @@ impl<'de> Deserialize<'de> for TranslationRequest {
                         }
                     }
                 }
+
+                prompt = prompt.and_then(|p| if p.is_empty() { None } else { Some(p) });
 
                 if response_format.is_none() {
                     response_format = Some("json".to_string());
@@ -232,8 +224,6 @@ impl<'de> Deserialize<'de> for TranslationRequest {
                     split_on_word = Some(false);
                 }
 
-                let use_new_context = use_new_context.unwrap_or(false);
-
                 Ok(TranslationRequest {
                     file,
                     model,
@@ -247,7 +237,6 @@ impl<'de> Deserialize<'de> for TranslationRequest {
                     max_context,
                     max_len,
                     split_on_word,
-                    use_new_context,
                 })
             }
         }
@@ -265,7 +254,6 @@ impl<'de> Deserialize<'de> for TranslationRequest {
             "max_context",
             "max_len",
             "split_on_word",
-            "use_new_context",
         ];
         deserializer.deserialize_struct("TranslationRequest", FIELDS, TranslationRequestVisitor)
     }
@@ -277,6 +265,7 @@ fn test_deserialize_translation_request() {
     let obj: TranslationRequest = serde_json::from_str(&json).unwrap();
     assert_eq!(obj.detect_language, Some(true));
     assert_eq!(obj.language, Some("auto".to_string()));
+    assert!(obj.prompt.is_none());
 }
 
 /// Represents a translation object.

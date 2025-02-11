@@ -1,11 +1,11 @@
 [package]
-name = "llama-simple"
-version = "0.16.7"
+name    = "llama-simple"
+version = "0.16.8"
 edition = "2021"
 
 [dependencies]
 wasmedge-wasi-nn.workspace = true
-clap.workspace = true
-once_cell.workspace = true
-serde.workspace = true
-serde_json.workspace = true
+clap.workspace             = true
+once_cell.workspace        = true
+serde.workspace            = true
+serde_json.workspace       = true
