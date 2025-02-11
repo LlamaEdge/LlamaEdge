@@ -16,6 +16,20 @@ use std::path::Path;
 pub async fn audio_transcriptions(
     request: TranscriptionRequest,
 ) -> Result<TranscriptionObject, LlamaCoreError> {
+    let res = transcribe_audio(request).await;
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Reset the model metadata.");
+
+    // reset the model metadata
+    reset_model_metadata()?;
+
+    res
+}
+
+async fn transcribe_audio(
+    request: TranscriptionRequest,
+) -> Result<TranscriptionObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "processing audio transcription request");
 
@@ -163,22 +177,33 @@ pub async fn audio_transcriptions(
 
         // check `prompt` field
         if let Some(prompt) = &request.prompt {
-            if *prompt != metadata.prompt {
-                // update the metadata
-                metadata.prompt = prompt.clone();
+            if !prompt.is_empty() {
+                match &metadata.prompt {
+                    Some(p) => {
+                        if *p != *prompt {
+                            metadata.prompt = Some(prompt.clone());
 
-                if !should_update {
-                    should_update = true;
+                            if !should_update {
+                                should_update = true;
+                            }
+                        }
+                    }
+                    None => {
+                        metadata.prompt = Some(prompt.clone());
+                        if !should_update {
+                            should_update = true;
+                        }
+                    }
                 }
             }
         }
 
-        #[cfg(feature = "logging")]
-        info!(target: "stdout", "metadata: {:?}", &metadata);
-
         if should_update {
             #[cfg(feature = "logging")]
             info!(target: "stdout", "Set the metadata to the model.");
+
+            #[cfg(feature = "logging")]
+            debug!(target: "stdout", "new metadata: {}", serde_json::to_string(&metadata).unwrap());
 
             match serde_json::to_string(&metadata) {
                 Ok(config) => {
@@ -274,9 +299,6 @@ pub async fn audio_transcriptions(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "End of the audio transcription.");
 
-    // reset the model metadata
-    reset_model_metadata()?;
-
     Ok(obj)
 }
 
@@ -313,6 +335,18 @@ fn _remove_blank_audio(input: &str) -> String {
 pub async fn audio_translations(
     request: TranslationRequest,
 ) -> Result<TranslationObject, LlamaCoreError> {
+    let res = translate_audio(request).await;
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Reset the model metadata.");
+
+    // reset the model metadata
+    reset_model_metadata()?;
+
+    res
+}
+
+async fn translate_audio(request: TranslationRequest) -> Result<TranslationObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "processing audio translation request");
 
@@ -452,21 +486,33 @@ pub async fn audio_translations(
 
         // check `prompt` field
         if let Some(prompt) = &request.prompt {
-            if *prompt != metadata.prompt {
-                metadata.prompt = prompt.clone();
+            if !prompt.is_empty() {
+                match &metadata.prompt {
+                    Some(p) => {
+                        if *p != *prompt {
+                            metadata.prompt = Some(prompt.clone());
 
-                if !should_update {
-                    should_update = true;
+                            if !should_update {
+                                should_update = true;
+                            }
+                        }
+                    }
+                    None => {
+                        metadata.prompt = Some(prompt.clone());
+                        if !should_update {
+                            should_update = true;
+                        }
+                    }
                 }
             }
         }
 
-        #[cfg(feature = "logging")]
-        info!(target: "stdout", "metadata: {:?}", &metadata);
-
         if should_update {
             #[cfg(feature = "logging")]
             info!(target: "stdout", "Set the metadata to the model.");
+
+            #[cfg(feature = "logging")]
+            debug!(target: "stdout", "new metadata: {}", serde_json::to_string(&metadata).unwrap());
 
             match serde_json::to_string(&metadata) {
                 Ok(config) => {
@@ -559,8 +605,8 @@ pub async fn audio_translations(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "End of the audio translation.");
 
-    // reset the model metadata
-    reset_model_metadata()?;
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Reset the model metadata.");
 
     Ok(obj)
 }
@@ -635,8 +681,17 @@ pub async fn create_speech(request: SpeechRequest) -> Result<Vec<u8>, LlamaCoreE
 
 #[cfg(feature = "whisper")]
 fn reset_model_metadata() -> Result<(), LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    debug!(target: "stdout", "Get the original metadata.");
+
     // get metadata
     let metadata = get_model_metadata()?;
+
+    #[cfg(feature = "logging")]
+    debug!(target: "stdout", "Set the original metadata to the model.");
+
+    #[cfg(feature = "logging")]
+    debug!(target: "stdout", "original metadata: {}", serde_json::to_string(&metadata).unwrap());
 
     // update model with the original metadata
     update_model_metadata(&metadata)
