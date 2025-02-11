@@ -1,31 +1,31 @@
 [package]
-name = "endpoints"
-version = "0.24.1"
-edition = "2021"
-readme = "README.md"
-repository = "https://github.com/LlamaEdge/LlamaEdge"
-license = "Apache-2.0"
+name          = "endpoints"
+version       = "0.25.0"
+edition       = "2021"
+readme        = "README.md"
+repository    = "https://github.com/LlamaEdge/LlamaEdge"
+license       = "Apache-2.0"
 documentation = "https://docs.rs/endpoints/"
-categories = ["data-structures"]
-description = "A collection of data structures for the OpenAI-compatible endpoints."
+categories    = ["data-structures"]
+description   = "A collection of data structures for the OpenAI-compatible endpoints."
 
 [dependencies]
-serde.workspace = true
+serde.workspace      = true
 serde_json.workspace = true
-url = "2.5"
-indexmap = { version = "^2.2", features = ["serde"] }
-log = { workspace = true, optional = true }
+url                  = "2.5"
+indexmap             = { version = "^2.2", features = ["serde"] }
+log                  = { workspace = true, optional = true }
 
 [dev-dependencies]
 serde_json.workspace = true
 
 [features]
 default = []
-full = ["rag", "whisper", "logging", "index"]
-rag = []
+full    = ["rag", "whisper", "logging", "index"]
+rag     = []
 whisper = []
 logging = ["log"]
-index = []
+index   = []
 
 [package.metadata.docs.rs]
 all-features = true
