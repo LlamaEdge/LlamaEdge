@@ -27,6 +27,7 @@ pub async fn audio_transcriptions(
     res
 }
 
+#[cfg(feature = "whisper")]
 async fn transcribe_audio(
     request: TranscriptionRequest,
 ) -> Result<TranscriptionObject, LlamaCoreError> {
@@ -346,6 +347,7 @@ pub async fn audio_translations(
     res
 }
 
+#[cfg(feature = "whisper")]
 async fn translate_audio(request: TranslationRequest) -> Result<TranslationObject, LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "processing audio translation request");
