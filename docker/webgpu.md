@@ -6,21 +6,21 @@ a different container image for each GPU / driver combination. In some cases, th
 accessible from inside containers. For example, the "impossible triangle of LLM app, Docker, and Mac GPU"
 refers to the lack of Mac GPU access from containers.
 
-Docker is supporting the WebGPU API for container apps. It will allow any underlying GPU or accelerator 
+Docker is supporting the WebGPU API for container apps. It will allow any underlying GPU or accelerator
 hardware to be accessed through WebGPU. That means container apps just need to write to the WebGPU API
 and they will automatically become portable across all GPUs supported by Docker.
-However, asking developers to rewrite existing LLM apps, which use the CUDA or Metal or other GPU APIs, 
+However, asking developers to rewrite existing LLM apps, which use the CUDA or Metal or other GPU APIs,
 to WebGPU is a challenge.
 
-LlamaEdge provides an ecosystem of portable AI / LLM apps and components 
+LlamaEdge provides an ecosystem of portable AI / LLM apps and components
 that can run on multiple inference backends including the WebGPU.
 It supports any programming language that can be compiled into Wasm, such as Rust.
-Furthermore, LlamaEdge apps are lightweight and binary portable across different CPUs and OSes, making it an ideal 
+Furthermore, LlamaEdge apps are lightweight and binary portable across different CPUs and OSes, making it an ideal
 runtime to embed into container images.
 
 > Based on the [WasmEdge runtime](https://github.com/WasmEdge/WasmEdge), LlamaEdge features a pluggable architecture that can easily switch between different inference backends without changing the compiled Wasm binary files.
 
-In this article, we will showcase an [OpenAI-compatible speech-to-text API server](https://platform.openai.com/docs/guides/speech-to-text) implemented in LlamaEdge and running inside Docker taking advantage of GPUs through the WebGPU API. 
+In this article, we will showcase an [OpenAI-compatible speech-to-text API server](https://platform.openai.com/docs/guides/speech-to-text) implemented in LlamaEdge and running inside Docker taking advantage of GPUs through the WebGPU API.
 
 ## Install Docker Desktop Preview with WebGPU
 
@@ -59,7 +59,7 @@ platform Docker supports.
 ## Use the API server
 
 The API server is [OpenAI-compatible](https://platform.openai.com/docs/guides/speech-to-text).
-You can use HTTP POST to submit a `.wav` file to transcribe. 
+You can use HTTP POST to submit a `.wav` file to transcribe.
 You can use [this file](https://huggingface.co/second-state/whisper-burn/resolve/main/audio16k.wav) as an example.
 
 ```
@@ -84,7 +84,7 @@ The result is as follows.
 
 ### Create your own audio file
 
-The current demo requires `.wav` file in a specific format. 
+The current demo requires `.wav` file in a specific format.
 It should use `lpcm` and the sample rate should be `16000.0`.
 
 The [yt-dlp](https://github.com/yt-dlp/yt-dlp) program can download YouTube audio track in the above format.
@@ -95,15 +95,15 @@ yt-dlp -f bestaudio --extract-audio --audio-format wav --postprocessor-args "-ss
 
 ## Build and publish the API server
 
-The source code for the API server is [here](https://github.com/LlamaEdge/whisper-api-server/). 
+The source code for the API server is [here](https://github.com/LlamaEdge/whisper-api-server/).
 It uses WasmEdge's [burn](https://github.com/second-state/wasmedge-burn-plugin) plugin to run
 inference operations via WebGPU. But its source code has no dependency on `burn`. Instead, it uses the standard
 and portable WASI-NN inferface to interact with the underlying inference runtime.
 You can simply compile the Rust project to wasm.
 
 ```
-cargo build --release --target wasm32-wasi
-cp target/wasm32-wasi/release/whisper-api-server.wasm  .
+cargo build --release --target wasm32-wasip1
+cp target/wasm32-wasip1/release/whisper-api-server.wasm  .
 ```
 
 Download the whispter AI model files for speech-to-text inference.
