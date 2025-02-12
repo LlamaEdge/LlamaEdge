@@ -45,6 +45,9 @@ pub(crate) static CHAT_GRAPHS: OnceCell<Mutex<HashMap<String, Graph<GgmlMetadata
 // key: model_name, value: Graph
 pub(crate) static EMBEDDING_GRAPHS: OnceCell<Mutex<HashMap<String, Graph<GgmlMetadata>>>> =
     OnceCell::new();
+// key: model_name, value: Graph
+pub(crate) static TTS_GRAPHS: OnceCell<Mutex<HashMap<String, Graph<GgmlMetadata>>>> =
+    OnceCell::new();
 // cache bytes for decoding utf8
 pub(crate) static CACHED_UTF8_ENCODINGS: OnceCell<Mutex<Vec<u8>>> = OnceCell::new();
 // running mode
@@ -70,12 +73,16 @@ pub const ARCHIVES_DIR: &str = "archives";
 pub fn init_ggml_context(
     metadata_for_chats: Option<&[GgmlMetadata]>,
     metadata_for_embeddings: Option<&[GgmlMetadata]>,
+    metadata_for_tts: Option<&[GgmlMetadata]>,
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Initializing the core context");
 
-    if metadata_for_chats.is_none() && metadata_for_embeddings.is_none() {
-        let err_msg = "Failed to initialize the core context. Please set metadata for chat completions and/or embeddings.";
+    if metadata_for_chats.is_none()
+        && metadata_for_embeddings.is_none()
+        && metadata_for_tts.is_none()
+    {
+        let err_msg = "Failed to initialize the core context. Please set metadata for chat, embeddings, and/or TTS model.";
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", err_msg);
@@ -125,6 +132,25 @@ pub fn init_ggml_context(
         if mode == RunningMode::Chat {
             mode = RunningMode::ChatEmbedding;
         }
+    }
+
+    if let Some(metadata_tts) = metadata_for_tts {
+        let mut tts_graphs = HashMap::new();
+        for metadata in metadata_tts {
+            let graph = Graph::new(metadata.clone())?;
+
+            tts_graphs.insert(graph.name().to_string(), graph);
+        }
+        TTS_GRAPHS.set(Mutex::new(tts_graphs)).map_err(|_| {
+            let err_msg = "Failed to initialize the core context. Reason: The `TTS_GRAPHS` has already been initialized";
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            LlamaCoreError::InitContext(err_msg.into())
+        })?;
+
+        mode = RunningMode::Tts;
     }
 
     #[cfg(feature = "logging")]
@@ -403,6 +429,7 @@ pub enum RunningMode {
     Embeddings,
     ChatEmbedding,
     Rag,
+    Tts,
 }
 impl std::fmt::Display for RunningMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -411,6 +438,7 @@ impl std::fmt::Display for RunningMode {
             RunningMode::Embeddings => write!(f, "embeddings"),
             RunningMode::ChatEmbedding => write!(f, "chat-embeddings"),
             RunningMode::Rag => write!(f, "rag"),
+            RunningMode::Tts => write!(f, "tts"),
         }
     }
 }
