@@ -223,7 +223,6 @@ pub(crate) struct EmbeddingConfig {
     pub(crate) ctx_size: u64,
     pub(crate) batch_size: u64,
     pub(crate) ubatch_size: u64,
-    pub(crate) prompt_template: PromptTemplateType,
     pub(crate) split_mode: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) main_gpu: Option<u64>,
@@ -239,7 +238,6 @@ impl Default for EmbeddingConfig {
             ctx_size: 384,
             batch_size: 512,
             ubatch_size: 512,
-            prompt_template: PromptTemplateType::Embedding,
             split_mode: "layer".to_string(),
             main_gpu: None,
             tensor_split: None,
@@ -252,7 +250,7 @@ impl<'de> Deserialize<'de> for EmbeddingConfig {
     where
         D: serde::Deserializer<'de>,
     {
-        use serde::de::Error;
+        // use serde::de::Error;
 
         #[derive(Deserialize)]
         #[serde(rename = "embedding")]
@@ -262,7 +260,6 @@ impl<'de> Deserialize<'de> for EmbeddingConfig {
             ctx_size: u64,
             batch_size: u64,
             ubatch_size: u64,
-            prompt_template: String,
             split_mode: String,
             main_gpu: Option<u64>,
             tensor_split: Option<String>,
@@ -271,23 +268,12 @@ impl<'de> Deserialize<'de> for EmbeddingConfig {
 
         let helper = Helper::deserialize(deserializer)?;
 
-        let prompt_template = helper
-            .prompt_template
-            .parse::<PromptTemplateType>()
-            .map_err(|e| {
-                Error::custom(format!(
-                    "Failed to parse prompt_template from config file: {}",
-                    e
-                ))
-            })?;
-
         Ok(EmbeddingConfig {
             model_name: helper.model_name,
             model_alias: helper.model_alias,
             ctx_size: helper.ctx_size,
             batch_size: helper.batch_size,
             ubatch_size: helper.ubatch_size,
-            prompt_template,
             split_mode: helper.split_mode,
             main_gpu: helper.main_gpu,
             tensor_split: helper.tensor_split,
