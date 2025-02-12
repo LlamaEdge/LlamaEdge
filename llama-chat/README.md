@@ -174,7 +174,7 @@ Options:
 Run the following command:
 
 ```console
-cargo build --target wasm32-wasi --release
+cargo build --target wasm32-wasip1 --release
 ```
 
-The `llama-chat.wasm` will be generated in the `target/wasm32-wasi/release` folder.
+The `llama-chat.wasm` will be generated in the `target/wasm32-wasip1/release` folder.

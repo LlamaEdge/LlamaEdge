@@ -93,7 +93,7 @@ Robert Oppenheimer was a brilliant student. He attended the Ethical Culture Scho
 Compile the application to WebAssembly:
 
 ```bash
-cargo build --target wasm32-wasi --release
+cargo build --target wasm32-wasip1 --release
 ```
 
-The output wasm file will be at `target/wasm32-wasi/release/`.
+The output wasm file will be at `target/wasm32-wasip1/release/`.
