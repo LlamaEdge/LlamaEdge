@@ -345,8 +345,6 @@ async fn main() -> Result<(), ServerError> {
 
                     info!(target: "stdout", "embedding ubatch size: {}", config.embedding.ubatch_size);
 
-                    info!(target: "stdout", "embedding prompt template: {}", config.embedding.prompt_template);
-
                     info!(target: "stdout", "embedding split mode: {}", config.embedding.split_mode);
 
                     info!(target: "stdout", "embedding main gpu: {:?}", config.embedding.main_gpu);
@@ -359,7 +357,7 @@ async fn main() -> Result<(), ServerError> {
                     let metadata_embedding = GgmlMetadataBuilder::new(
                         config.embedding.model_name,
                         config.embedding.model_alias,
-                        config.embedding.prompt_template,
+                        PromptTemplateType::Embedding,
                     )
                     .with_ctx_size(config.embedding.ctx_size)
                     .with_batch_size(config.embedding.batch_size)
@@ -398,7 +396,8 @@ async fn main() -> Result<(), ServerError> {
                 }
 
                 // tts model
-                // let mut tts_model_config = None;
+                let mut tts_model_config = None;
+                let mut metadata_for_tts = None;
                 if tts {
                     info!(target: "stdout", "tts model name: {}", config.tts.model_name);
 
@@ -417,6 +416,43 @@ async fn main() -> Result<(), ServerError> {
                     info!(target: "stdout", "tts n_predict: {}", config.tts.n_predict);
 
                     info!(target: "stdout", "tts n_gpu_layers: {}", config.tts.n_gpu_layers);
+
+                    // create a Metadata instance
+                    let metadata_tts = GgmlMetadataBuilder::new(
+                        config.tts.model_name,
+                        config.tts.model_alias,
+                        PromptTemplateType::Tts,
+                    )
+                    .with_ctx_size(config.tts.ctx_size)
+                    .with_batch_size(config.tts.batch_size)
+                    .with_ubatch_size(config.tts.ubatch_size)
+                    .enable_plugin_log(true)
+                    .enable_debug_log(plugin_debug)
+                    .build();
+
+                    // set the tts model config
+                    tts_model_config = Some(ModelConfig {
+                        name: metadata_tts.model_name.clone(),
+                        ty: "tts".to_string(),
+                        ctx_size: metadata_tts.ctx_size,
+                        batch_size: metadata_tts.batch_size,
+                        ubatch_size: metadata_tts.ubatch_size,
+                        prompt_template: Some(PromptTemplateType::Tts),
+                        n_predict: Some(metadata_tts.n_predict),
+                        reverse_prompt: None,
+                        n_gpu_layers: None,
+                        use_mmap: None,
+                        temperature: None,
+                        top_p: None,
+                        repeat_penalty: None,
+                        presence_penalty: None,
+                        frequency_penalty: None,
+                        split_mode: None,
+                        main_gpu: None,
+                        tensor_split: None,
+                    });
+
+                    metadata_for_tts = Some(vec![metadata_tts]);
                 }
 
                 if metadata_for_chats.is_none() && metadata_for_embeddings.is_none() {
@@ -431,6 +467,7 @@ async fn main() -> Result<(), ServerError> {
                 llama_core::init_ggml_context(
                     metadata_for_chats.as_deref(),
                     metadata_for_embeddings.as_deref(),
+                    metadata_for_tts.as_deref(),
                 )
                 .map_err(|e| ServerError::Operation(format!("{}", e)))?;
 
@@ -467,6 +504,7 @@ async fn main() -> Result<(), ServerError> {
                     },
                     chat_model: chat_model_config,
                     embedding_model: embedding_model_config,
+                    tts_model: tts_model_config,
                     extras: HashMap::new(),
                 };
                 SERVER_INFO.set(server_info).map_err(|_| {
@@ -703,7 +741,7 @@ async fn main() -> Result<(), ServerError> {
                     });
 
                     // initialize the core context
-                    llama_core::init_ggml_context(None, Some(&[metadata_embedding]))
+                    llama_core::init_ggml_context(None, Some(&[metadata_embedding]), None)
                         .map_err(|e| ServerError::Operation(format!("{}", e)))?;
                 }
                 _ => {
@@ -760,7 +798,7 @@ async fn main() -> Result<(), ServerError> {
                     });
 
                     // initialize the core context
-                    llama_core::init_ggml_context(Some(&[metadata_chat]), None)
+                    llama_core::init_ggml_context(Some(&[metadata_chat]), None, None)
                         .map_err(|e| ServerError::Operation(format!("{}", e)))?;
                 }
             }
@@ -857,8 +895,12 @@ async fn main() -> Result<(), ServerError> {
             });
 
             // initialize the core context
-            llama_core::init_ggml_context(Some(&[metadata_chat]), Some(&[metadata_embedding]))
-                .map_err(|e| ServerError::Operation(format!("{}", e)))?;
+            llama_core::init_ggml_context(
+                Some(&[metadata_chat]),
+                Some(&[metadata_embedding]),
+                None,
+            )
+            .map_err(|e| ServerError::Operation(format!("{}", e)))?;
         }
 
         // log plugin version
@@ -897,6 +939,7 @@ async fn main() -> Result<(), ServerError> {
             },
             chat_model: chat_model_config,
             embedding_model: embedding_model_config,
+            tts_model: None,
             extras: HashMap::new(),
         };
         SERVER_INFO
@@ -1060,6 +1103,8 @@ pub(crate) struct ServerInfo {
     chat_model: Option<ModelConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     embedding_model: Option<ModelConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tts_model: Option<ModelConfig>,
     extras: HashMap<String, String>,
 }
 
