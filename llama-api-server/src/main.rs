@@ -52,6 +52,18 @@ enum Commands {
         /// Path to the configuration file (*.toml)
         #[arg(short, long)]
         file: PathBuf,
+
+        /// Use chat model
+        #[arg(short, long, default_value = "false")]
+        chat: bool,
+
+        /// Use embedding model
+        #[arg(short, long, default_value = "false")]
+        embedding: bool,
+
+        /// Use the TTS model
+        #[arg(short, long, default_value = "false")]
+        tts: bool,
     },
 }
 
@@ -187,10 +199,10 @@ async fn main() -> Result<(), ServerError> {
         }
     }
 
-    info!(target: "stdout", "log_level: {}", log_level);
+    info!(target: "stdout", "LOG LEVEL: {}", log_level);
 
     // log the version of the server
-    info!(target: "stdout", "server version: {}", env!("CARGO_PKG_VERSION"));
+    info!(target: "stdout", "SERVER VERSION: {}", env!("CARGO_PKG_VERSION"));
 
     // parse the command line arguments
     let cli = Cli::parse();
@@ -198,13 +210,292 @@ async fn main() -> Result<(), ServerError> {
     // Handle subcommands
     if let Some(command) = cli.command {
         match command {
-            Commands::Config { file } => {
+            Commands::Config {
+                file,
+                chat,
+                embedding,
+                tts,
+            } => {
+                if !chat && !embedding && !tts {
+                    let err_msg = "Specify at least one of the following: chat, embedding, and/or TTS. by using --chat, --embedding, and/or --tts.";
+
+                    error!(target: "stdout", "{}", err_msg);
+
+                    return Err(ServerError::Operation(err_msg.to_string()));
+                }
+
+                info!(target: "stdout", "CONFIG FILE: {}", file.to_string_lossy().to_string());
                 let config = config::Config::load(&file)?;
-                info!(target: "stdout", "{}", serde_json::to_string(&config).unwrap());
 
-                // TODO: initialize the core context
+                // chat model
+                let mut chat_model_config = None;
+                let mut metadata_for_chats = None;
+                if chat {
+                    info!(target: "stdout", "chat model name: {}", config.chat.model_name);
 
-                return Ok(());
+                    info!(target: "stdout", "chat model alias: {}", config.chat.model_alias);
+
+                    info!(target: "stdout", "chat context size: {}", config.chat.ctx_size);
+
+                    info!(target: "stdout", "chat batch size: {}", config.chat.batch_size);
+
+                    info!(target: "stdout", "chat ubatch size: {}", config.chat.ubatch_size);
+
+                    info!(target: "stdout", "chat prompt template: {}", config.chat.prompt_template);
+
+                    info!(target: "stdout", "chat split mode: {}", config.chat.split_mode);
+
+                    info!(target: "stdout", "chat main gpu: {:?}", config.chat.main_gpu);
+
+                    info!(target: "stdout", "chat tensor split: {:?}", config.chat.tensor_split);
+
+                    info!(target: "stdout", "chat threads: {}", config.chat.threads);
+
+                    info!(target: "stdout", "chat no_mmap: {}", config.chat.no_mmap);
+
+                    info!(target: "stdout", "chat temp: {}", config.chat.temp);
+
+                    info!(target: "stdout", "chat top_p: {}", config.chat.top_p);
+
+                    info!(target: "stdout", "chat repeat_penalty: {}", config.chat.repeat_penalty);
+
+                    info!(target: "stdout", "chat presence_penalty: {}", config.chat.presence_penalty);
+
+                    info!(target: "stdout", "chat frequency_penalty: {}", config.chat.frequency_penalty);
+
+                    info!(target: "stdout", "chat grammar: {:?}", config.chat.grammar);
+
+                    info!(target: "stdout", "chat json_schema: {:?}", config.chat.json_schema);
+
+                    info!(target: "stdout", "chat llava_mmproj: {:?}", config.chat.llava_mmproj);
+
+                    info!(target: "stdout", "chat include_usage: {}", config.chat.include_usage);
+
+                    // create a Metadata instance
+                    let metadata_chat = GgmlMetadataBuilder::new(
+                        config.chat.model_name,
+                        config.chat.model_alias,
+                        config.chat.prompt_template,
+                    )
+                    .with_ctx_size(config.chat.ctx_size)
+                    .with_batch_size(config.chat.batch_size)
+                    .with_ubatch_size(config.chat.ubatch_size)
+                    .with_n_predict(config.chat.n_predict)
+                    .with_n_gpu_layers(config.chat.n_gpu_layers)
+                    .with_split_mode(config.chat.split_mode)
+                    .with_main_gpu(config.chat.main_gpu)
+                    .with_tensor_split(config.chat.tensor_split)
+                    .with_threads(config.chat.threads)
+                    .disable_mmap(Some(config.chat.no_mmap))
+                    .with_temperature(config.chat.temp)
+                    .with_top_p(config.chat.top_p)
+                    .with_repeat_penalty(config.chat.repeat_penalty)
+                    .with_presence_penalty(config.chat.presence_penalty)
+                    .with_frequency_penalty(config.chat.frequency_penalty)
+                    .with_grammar(config.chat.grammar.unwrap_or_default())
+                    .with_json_schema(config.chat.json_schema)
+                    .with_reverse_prompt(config.chat.reverse_prompt)
+                    .with_mmproj(
+                        config
+                            .chat
+                            .llava_mmproj
+                            .map(|p| p.to_string_lossy().to_string()),
+                    )
+                    .enable_plugin_log(true)
+                    .enable_debug_log(plugin_debug)
+                    .include_usage(config.chat.include_usage)
+                    .build();
+
+                    // set the chat model config
+                    chat_model_config = Some(ModelConfig {
+                        name: metadata_chat.model_name.clone(),
+                        ty: "chat".to_string(),
+                        ctx_size: metadata_chat.ctx_size,
+                        batch_size: metadata_chat.batch_size,
+                        ubatch_size: metadata_chat.ubatch_size,
+                        prompt_template: Some(metadata_chat.prompt_template),
+                        n_predict: Some(metadata_chat.n_predict),
+                        reverse_prompt: metadata_chat.reverse_prompt.clone(),
+                        n_gpu_layers: Some(metadata_chat.n_gpu_layers),
+                        use_mmap: metadata_chat.use_mmap,
+                        temperature: Some(metadata_chat.temperature),
+                        top_p: Some(metadata_chat.top_p),
+                        repeat_penalty: Some(metadata_chat.repeat_penalty),
+                        presence_penalty: Some(metadata_chat.presence_penalty),
+                        frequency_penalty: Some(metadata_chat.frequency_penalty),
+                        split_mode: Some(metadata_chat.split_mode.clone()),
+                        main_gpu: metadata_chat.main_gpu,
+                        tensor_split: metadata_chat.tensor_split.clone(),
+                    });
+
+                    metadata_for_chats = Some(vec![metadata_chat]);
+                }
+
+                // embedding model
+                let mut embedding_model_config = None;
+                let mut metadata_for_embeddings = None;
+                if embedding {
+                    info!(target: "stdout", "embedding model name: {}", config.embedding.model_name);
+
+                    info!(target: "stdout", "embedding model alias: {}", config.embedding.model_alias);
+
+                    info!(target: "stdout", "embedding context size: {}", config.embedding.ctx_size);
+
+                    info!(target: "stdout", "embedding batch size: {}", config.embedding.batch_size);
+
+                    info!(target: "stdout", "embedding ubatch size: {}", config.embedding.ubatch_size);
+
+                    info!(target: "stdout", "embedding prompt template: {}", config.embedding.prompt_template);
+
+                    info!(target: "stdout", "embedding split mode: {}", config.embedding.split_mode);
+
+                    info!(target: "stdout", "embedding main gpu: {:?}", config.embedding.main_gpu);
+
+                    info!(target: "stdout", "embedding tensor split: {:?}", config.embedding.tensor_split);
+
+                    info!(target: "stdout", "embedding threads: {}", config.embedding.threads);
+
+                    // create a Metadata instance
+                    let metadata_embedding = GgmlMetadataBuilder::new(
+                        config.embedding.model_name,
+                        config.embedding.model_alias,
+                        config.embedding.prompt_template,
+                    )
+                    .with_ctx_size(config.embedding.ctx_size)
+                    .with_batch_size(config.embedding.batch_size)
+                    .with_ubatch_size(config.embedding.ubatch_size)
+                    .with_split_mode(config.embedding.split_mode)
+                    .with_main_gpu(config.embedding.main_gpu)
+                    .with_tensor_split(config.embedding.tensor_split)
+                    .with_threads(config.embedding.threads)
+                    .enable_plugin_log(true)
+                    .enable_debug_log(plugin_debug)
+                    .build();
+
+                    // set the embedding model config
+                    embedding_model_config = Some(ModelConfig {
+                        name: metadata_embedding.model_name.clone(),
+                        ty: "embedding".to_string(),
+                        ctx_size: metadata_embedding.ctx_size,
+                        batch_size: metadata_embedding.batch_size,
+                        ubatch_size: metadata_embedding.ubatch_size,
+                        prompt_template: Some(PromptTemplateType::Embedding),
+                        n_predict: Some(cli.server_args.n_predict),
+                        reverse_prompt: metadata_embedding.reverse_prompt.clone(),
+                        n_gpu_layers: Some(metadata_embedding.n_gpu_layers),
+                        use_mmap: metadata_embedding.use_mmap,
+                        temperature: Some(metadata_embedding.temperature),
+                        top_p: Some(metadata_embedding.top_p),
+                        repeat_penalty: Some(metadata_embedding.repeat_penalty),
+                        presence_penalty: Some(metadata_embedding.presence_penalty),
+                        frequency_penalty: Some(metadata_embedding.frequency_penalty),
+                        split_mode: Some(metadata_embedding.split_mode.clone()),
+                        main_gpu: metadata_embedding.main_gpu,
+                        tensor_split: metadata_embedding.tensor_split.clone(),
+                    });
+
+                    metadata_for_embeddings = Some(vec![metadata_embedding]);
+                }
+
+                // tts model
+                // let mut tts_model_config = None;
+                if tts {
+                    info!(target: "stdout", "tts model name: {}", config.tts.model_name);
+
+                    info!(target: "stdout", "tts model alias: {}", config.tts.model_alias);
+
+                    info!(target: "stdout", "tts codec model: {:?}", config.tts.codec_model);
+
+                    info!(target: "stdout", "tts output file: {}", config.tts.output_file);
+
+                    info!(target: "stdout", "tts context size: {}", config.tts.ctx_size);
+
+                    info!(target: "stdout", "tts batch size: {}", config.tts.batch_size);
+
+                    info!(target: "stdout", "tts ubatch size: {}", config.tts.ubatch_size);
+
+                    info!(target: "stdout", "tts n_predict: {}", config.tts.n_predict);
+
+                    info!(target: "stdout", "tts n_gpu_layers: {}", config.tts.n_gpu_layers);
+                }
+
+                if metadata_for_chats.is_none() && metadata_for_embeddings.is_none() {
+                    let err_msg = "No chat, embedding, and/or TTS configuration is specified.";
+
+                    error!(target: "stdout", "{}", err_msg);
+
+                    return Err(ServerError::Operation(err_msg.to_string()));
+                }
+
+                // initialize the core context
+                llama_core::init_ggml_context(
+                    metadata_for_chats.as_deref(),
+                    metadata_for_embeddings.as_deref(),
+                )
+                .map_err(|e| ServerError::Operation(format!("{}", e)))?;
+
+                // log plugin version
+                let plugin_info = llama_core::get_plugin_info()
+                    .map_err(|e| ServerError::Operation(e.to_string()))?;
+                let plugin_version = format!(
+                    "b{build_number} (commit {commit_id})",
+                    build_number = plugin_info.build_number,
+                    commit_id = plugin_info.commit_id,
+                );
+                info!(target: "stdout", "plugin_ggml_version: {}", plugin_version);
+
+                // socket address
+                let addr = config.server.socket_addr;
+                let port = addr.port().to_string();
+
+                // get the environment variable `NODE_VERSION`
+                // Note that this is for satisfying the requirement of `gaianet-node` project.
+                let node = std::env::var("NODE_VERSION").ok();
+                if node.is_some() {
+                    // log node version
+                    info!(target: "stdout", "gaianet_node_version: {}", node.as_ref().unwrap());
+                }
+
+                // create server info
+                let server_info = ServerInfo {
+                    node,
+                    server: ApiServer {
+                        ty: "llama".to_string(),
+                        version: env!("CARGO_PKG_VERSION").to_string(),
+                        plugin_version,
+                        port,
+                    },
+                    chat_model: chat_model_config,
+                    embedding_model: embedding_model_config,
+                    extras: HashMap::new(),
+                };
+                SERVER_INFO.set(server_info).map_err(|_| {
+                    ServerError::Operation("Failed to set `SERVER_INFO`.".to_string())
+                })?;
+
+                let new_service = make_service_fn(move |conn: &AddrStream| {
+                    // log socket address
+                    info!(target: "stdout", "remote_addr: {}, local_addr: {}", conn.remote_addr().to_string(), conn.local_addr().to_string());
+
+                    // web ui
+                    let web_ui = cli.server_args.web_ui.to_string_lossy().to_string();
+
+                    async move {
+                        Ok::<_, Error>(service_fn(move |req| handle_request(req, web_ui.clone())))
+                    }
+                });
+
+                let tcp_listener = TcpListener::bind(addr).await.unwrap();
+                info!(target: "stdout", "Listening on {}", addr);
+
+                let server = Server::from_tcp(tcp_listener.into_std().unwrap())
+                    .unwrap()
+                    .serve(new_service);
+
+                match server.await {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(ServerError::Operation(e.to_string())),
+                }
             }
         }
     } else {
