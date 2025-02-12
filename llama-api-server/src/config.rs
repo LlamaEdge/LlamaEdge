@@ -64,33 +64,33 @@ impl<'de> Deserialize<'de> for ServerConfig {
 pub(crate) struct ChatConfig {
     pub(crate) model_name: String,
     pub(crate) model_alias: String,
-    pub(crate) ctx_size: i32,
-    pub(crate) batch_size: i32,
-    pub(crate) ubatch_size: i32,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) prompt_template: Option<PromptTemplateType>,
+    pub(crate) ctx_size: u64,
+    pub(crate) batch_size: u64,
+    pub(crate) ubatch_size: u64,
+    pub(crate) prompt_template: PromptTemplateType,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) reverse_prompt: Option<String>,
     pub(crate) n_predict: i32,
-    pub(crate) n_gpu_layers: i32,
+    pub(crate) n_gpu_layers: u64,
     pub(crate) split_mode: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) main_gpu: Option<i32>,
+    pub(crate) main_gpu: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) tensor_split: Option<String>,
-    pub(crate) threads: i32,
+    pub(crate) threads: u64,
     pub(crate) no_mmap: bool,
-    pub(crate) temp: f32,
-    pub(crate) top_p: f32,
-    pub(crate) repeat_penalty: f32,
-    pub(crate) presence_penalty: f32,
-    pub(crate) frequency_penalty: f32,
+    pub(crate) temp: f64,
+    pub(crate) top_p: f64,
+    pub(crate) repeat_penalty: f64,
+    pub(crate) presence_penalty: f64,
+    pub(crate) frequency_penalty: f64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) grammar: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) json_schema: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) llava_mmproj: Option<PathBuf>,
+    pub(crate) include_usage: bool,
 }
 impl Default for ChatConfig {
     fn default() -> Self {
@@ -100,7 +100,7 @@ impl Default for ChatConfig {
             ctx_size: 4096,
             batch_size: 512,
             ubatch_size: 512,
-            prompt_template: None,
+            prompt_template: PromptTemplateType::Null,
             reverse_prompt: None,
             n_predict: -1,
             n_gpu_layers: 100,
@@ -117,6 +117,7 @@ impl Default for ChatConfig {
             grammar: None,
             json_schema: None,
             llava_mmproj: None,
+            include_usage: false,
         }
     }
 }
@@ -132,43 +133,41 @@ impl<'de> Deserialize<'de> for ChatConfig {
         struct Helper {
             model_name: String,
             model_alias: String,
-            ctx_size: i32,
-            batch_size: i32,
-            ubatch_size: i32,
-            prompt_template: Option<String>,
+            ctx_size: u64,
+            batch_size: u64,
+            ubatch_size: u64,
+            prompt_template: String,
             reverse_prompt: Option<String>,
             n_predict: i32,
-            n_gpu_layers: i32,
+            n_gpu_layers: u64,
             split_mode: String,
-            main_gpu: Option<i32>,
+            main_gpu: Option<u64>,
             tensor_split: Option<String>,
-            threads: i32,
+            threads: u64,
             no_mmap: bool,
-            temp: f32,
-            top_p: f32,
-            repeat_penalty: f32,
-            presence_penalty: f32,
-            frequency_penalty: f32,
+            temp: f64,
+            top_p: f64,
+            repeat_penalty: f64,
+            presence_penalty: f64,
+            frequency_penalty: f64,
             grammar: Option<String>,
             json_schema: Option<String>,
             llava_mmproj: Option<String>,
+            include_usage: bool,
         }
 
         let helper = Helper::deserialize(deserializer)?;
 
         // prompt_template
-        let prompt_template = if let Some(template) = helper.prompt_template {
-            let prompt_template = template.parse::<PromptTemplateType>().map_err(|e| {
+        let prompt_template = helper
+            .prompt_template
+            .parse::<PromptTemplateType>()
+            .map_err(|e| {
                 Error::custom(format!(
                     "Failed to parse prompt_template from config file: {}",
                     e
                 ))
             })?;
-
-            Some(prompt_template)
-        } else {
-            None
-        };
 
         // grammar
         let grammar = helper.grammar.filter(|grammar| !grammar.is_empty());
@@ -212,6 +211,7 @@ impl<'de> Deserialize<'de> for ChatConfig {
             grammar,
             json_schema,
             llava_mmproj,
+            include_usage: helper.include_usage,
         })
     }
 }
@@ -220,10 +220,16 @@ impl<'de> Deserialize<'de> for ChatConfig {
 pub(crate) struct EmbeddingConfig {
     pub(crate) model_name: String,
     pub(crate) model_alias: String,
-    pub(crate) ctx_size: i32,
-    pub(crate) batch_size: i32,
-    pub(crate) ubatch_size: i32,
+    pub(crate) ctx_size: u64,
+    pub(crate) batch_size: u64,
+    pub(crate) ubatch_size: u64,
     pub(crate) prompt_template: PromptTemplateType,
+    pub(crate) split_mode: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) main_gpu: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) tensor_split: Option<String>,
+    pub(crate) threads: u64,
 }
 impl Default for EmbeddingConfig {
     fn default() -> Self {
@@ -234,6 +240,10 @@ impl Default for EmbeddingConfig {
             batch_size: 512,
             ubatch_size: 512,
             prompt_template: PromptTemplateType::Embedding,
+            split_mode: "layer".to_string(),
+            main_gpu: None,
+            tensor_split: None,
+            threads: 2,
         }
     }
 }
@@ -249,10 +259,14 @@ impl<'de> Deserialize<'de> for EmbeddingConfig {
         struct Helper {
             model_name: String,
             model_alias: String,
-            ctx_size: i32,
-            batch_size: i32,
-            ubatch_size: i32,
+            ctx_size: u64,
+            batch_size: u64,
+            ubatch_size: u64,
             prompt_template: String,
+            split_mode: String,
+            main_gpu: Option<u64>,
+            tensor_split: Option<String>,
+            threads: u64,
         }
 
         let helper = Helper::deserialize(deserializer)?;
@@ -274,6 +288,10 @@ impl<'de> Deserialize<'de> for EmbeddingConfig {
             batch_size: helper.batch_size,
             ubatch_size: helper.ubatch_size,
             prompt_template,
+            split_mode: helper.split_mode,
+            main_gpu: helper.main_gpu,
+            tensor_split: helper.tensor_split,
+            threads: helper.threads,
         })
     }
 }
@@ -284,6 +302,11 @@ pub(crate) struct TtsConfig {
     pub(crate) model_alias: String,
     pub(crate) codec_model: PathBuf,
     pub(crate) output_file: String,
+    pub(crate) ctx_size: u64,
+    pub(crate) batch_size: u64,
+    pub(crate) ubatch_size: u64,
+    pub(crate) n_predict: i32,
+    pub(crate) n_gpu_layers: u64,
 }
 impl Default for TtsConfig {
     fn default() -> Self {
@@ -292,6 +315,11 @@ impl Default for TtsConfig {
             model_alias: "tts".to_string(),
             codec_model: PathBuf::from(""),
             output_file: "output.wav".to_string(),
+            ctx_size: 8192,
+            batch_size: 8192,
+            ubatch_size: 8192,
+            n_predict: 4096,
+            n_gpu_layers: 100,
         }
     }
 }
@@ -307,6 +335,11 @@ impl<'de> Deserialize<'de> for TtsConfig {
             model_alias: String,
             codec_model: String,
             output_file: String,
+            ctx_size: u64,
+            batch_size: u64,
+            ubatch_size: u64,
+            n_predict: i32,
+            n_gpu_layers: u64,
         }
 
         let helper = Helper::deserialize(deserializer)?;
@@ -317,6 +350,11 @@ impl<'de> Deserialize<'de> for TtsConfig {
             model_alias: helper.model_alias,
             codec_model,
             output_file: helper.output_file,
+            ctx_size: helper.ctx_size,
+            batch_size: helper.batch_size,
+            ubatch_size: helper.ubatch_size,
+            n_predict: helper.n_predict,
+            n_gpu_layers: helper.n_gpu_layers,
         })
     }
 }
