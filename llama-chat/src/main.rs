@@ -7,7 +7,7 @@ use endpoints::chat::{
     ChatCompletionRequestSampling, ChatCompletionUserMessageContent,
 };
 use futures::TryStreamExt;
-use llama_core::{init_ggml_context, metadata::ggml::GgmlMetadataBuilder};
+use llama_core::metadata::ggml::GgmlMetadataBuilder;
 use serde::{Deserialize, Serialize};
 use std::io::{self, Write};
 
@@ -226,8 +226,8 @@ async fn main() -> anyhow::Result<()> {
     // create a Metadata instance
     let metadata = builder.build();
 
-    // initialize the core context
-    init_ggml_context(Some(&[metadata]), None)?;
+    // initialize the chat context
+    llama_core::init_ggml_chat_context(&[metadata])?;
 
     // get the plugin version info
     let plugin_info = llama_core::get_plugin_info()?;
