@@ -320,7 +320,8 @@ fn summarize(
         .for_each(|result| search_output_string.push_str(result.text_content.as_str()));
 
     // Error on embedding running mode.
-    if crate::running_mode()? == crate::RunningMode::EMBEDDINGS {
+    let running_mode = crate::running_mode()?;
+    if running_mode.contains(crate::RunningMode::EMBEDDINGS) {
         let err_msg = "Summarization is not supported in the EMBEDDINGS running mode.";
 
         #[cfg(feature = "logging")]

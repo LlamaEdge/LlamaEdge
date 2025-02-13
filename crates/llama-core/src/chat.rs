@@ -97,12 +97,12 @@ async fn chat_stream(
 
     let running_mode = running_mode()?;
     if !running_mode.contains(RunningMode::CHAT) && !running_mode.contains(RunningMode::RAG) {
-        let err_msg = format!("The chat completion is only supported in the chat or rag mode.");
+        let err_msg = "The chat completion is only supported in the chat or rag mode.";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", &err_msg);
+        error!(target: "stdout", "{}", err_msg);
 
-        return Err(LlamaCoreError::Operation(err_msg));
+        return Err(LlamaCoreError::Operation(err_msg.to_string()));
     }
 
     let model_name = chat_request.model.clone();
@@ -648,12 +648,12 @@ async fn chat_once(
 
     let running_mode = running_mode()?;
     if !running_mode.contains(RunningMode::CHAT) && !running_mode.contains(RunningMode::RAG) {
-        let err_msg = format!("The chat completion is only supported in the chat or rag mode.");
+        let err_msg = "The chat completion is only supported in the chat or rag mode.";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", &err_msg);
+        error!(target: "stdout", "{}", err_msg);
 
-        return Err(LlamaCoreError::Operation(err_msg));
+        return Err(LlamaCoreError::Operation(err_msg.to_string()));
     }
 
     let model_name = chat_request.model.clone();

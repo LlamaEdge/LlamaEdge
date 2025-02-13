@@ -531,7 +531,7 @@ pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
                 #[cfg(feature = "logging")]
                 error!(target: "stdout", "{}", err_msg);
 
-                return Err(LlamaCoreError::Operation(err_msg));
+                Err(LlamaCoreError::Operation(err_msg))
             }
         },
         None => {
@@ -540,7 +540,7 @@ pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", err_msg);
 
-            return Err(LlamaCoreError::Operation(err_msg.into()));
+            Err(LlamaCoreError::Operation(err_msg.into()))
         }
     }
 }
