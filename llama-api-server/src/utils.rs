@@ -1,3 +1,4 @@
+use bitflags::bitflags;
 use serde::{Deserialize, Serialize};
 
 pub(crate) fn gen_chat_id() -> String {
@@ -66,5 +67,33 @@ impl std::str::FromStr for LogLevel {
             "critical" => Ok(LogLevel::Critical),
             _ => Err(format!("Invalid log level: {}", s)),
         }
+    }
+}
+
+bitflags! {
+    pub(crate) struct RunningMode: u8 {
+        const UNSET = 0b0000;
+        const CHAT = 0b0001;
+        const EMBEDDINGS = 0b0010;
+        const TTS = 0b0100;
+    }
+}
+impl std::fmt::Display for RunningMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let mut mode = String::new();
+
+        if self.contains(RunningMode::CHAT) {
+            mode.push_str("chat, ");
+        }
+        if self.contains(RunningMode::EMBEDDINGS) {
+            mode.push_str("embeddings, ");
+        }
+        if self.contains(RunningMode::TTS) {
+            mode.push_str("tts, ");
+        }
+
+        mode = mode.trim_end_matches(", ").to_string();
+
+        write!(f, "{}", mode)
     }
 }
