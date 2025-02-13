@@ -25,7 +25,7 @@ pub async fn rag_doc_chunks_to_embeddings(
     info!(target: "stdout", "Convert document chunks to embeddings.");
 
     let running_mode = running_mode()?;
-    if running_mode != RunningMode::Rag {
+    if running_mode != RunningMode::RAG {
         let err_msg = format!(
             "Creating knowledge base is not supported in the {} mode.",
             running_mode
@@ -123,7 +123,7 @@ pub async fn rag_query_to_embeddings(
     info!(target: "stdout", "Compute embeddings for the user query.");
 
     let running_mode = running_mode()?;
-    if running_mode != RunningMode::Rag {
+    if running_mode != RunningMode::RAG {
         let err_msg = format!("The RAG query is not supported in the {running_mode} mode.",);
 
         #[cfg(feature = "logging")]
@@ -164,7 +164,7 @@ pub async fn rag_retrieve_context(
     }
 
     let running_mode = running_mode()?;
-    if running_mode != RunningMode::Rag {
+    if running_mode != RunningMode::RAG {
         let err_msg = format!(
             "The context retrieval is not supported in the {} mode.",
             running_mode

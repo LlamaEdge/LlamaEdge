@@ -402,7 +402,7 @@ where
 }
 
 bitflags! {
-    #[derive(Debug, Clone, Copy)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct RunningMode: u32 {
         const UNSET = 0b00000000;
         const CHAT = 0b00000001;
