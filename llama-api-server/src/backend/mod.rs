@@ -1,6 +1,6 @@
 pub(crate) mod ggml;
 
-use crate::{error, utils::RunningMode, RUNNING_MODE};
+use crate::error;
 use hyper::{Body, Request, Response};
 
 pub(crate) async fn handle_llama_request(req: Request<Body>) -> Response<Body> {
@@ -10,19 +10,7 @@ pub(crate) async fn handle_llama_request(req: Request<Body>) -> Response<Body> {
         "/v1/models" => ggml::models_handler().await,
         "/v1/embeddings" => ggml::embeddings_handler(req).await,
         "/v1/chunks" => ggml::chunks_handler(req).await,
-        "/v1/audio/speech" => {
-            if RUNNING_MODE
-                .get()
-                .unwrap()
-                .read()
-                .unwrap()
-                .contains(RunningMode::TTS)
-            {
-                ggml::audio_speech_handler(req).await
-            } else {
-                error::invalid_endpoint("/v1/audio/speech")
-            }
-        }
+        "/v1/audio/speech" => ggml::audio_speech_handler(req).await,
         "/v1/info" => ggml::server_info_handler().await,
         path => {
             if path.starts_with("/v1/files") {
