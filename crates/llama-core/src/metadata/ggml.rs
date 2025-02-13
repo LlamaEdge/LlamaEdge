@@ -3,6 +3,7 @@
 use super::BaseMetadata;
 use chat_prompts::PromptTemplateType;
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 
 /// Builder for creating a ggml metadata
 #[derive(Debug)]
@@ -302,5 +303,132 @@ impl BaseMetadata for GgmlMetadata {
 impl GgmlMetadata {
     pub fn prompt_template(&self) -> PromptTemplateType {
         self.prompt_template
+    }
+}
+
+/// Builder for creating a ggml tts metadata
+#[derive(Debug)]
+pub struct GgmlTtsMetadataBuilder {
+    metadata: GgmlTtsMetadata,
+}
+impl GgmlTtsMetadataBuilder {
+    pub fn new<S: Into<String>, P: AsRef<Path>>(
+        model_name: S,
+        model_alias: S,
+        codec_model: P,
+    ) -> Self {
+        let metadata = GgmlTtsMetadata {
+            model_name: model_name.into(),
+            model_alias: model_alias.into(),
+            codec_model: codec_model.as_ref().to_path_buf(),
+            ..Default::default()
+        };
+
+        Self { metadata }
+    }
+
+    pub fn enable_tts(mut self, enable: bool) -> Self {
+        self.metadata.enable_tts = enable;
+        self
+    }
+
+    pub fn with_ctx_size(mut self, size: u64) -> Self {
+        self.metadata.ctx_size = size;
+        self
+    }
+
+    pub fn with_batch_size(mut self, size: u64) -> Self {
+        self.metadata.batch_size = size;
+        self
+    }
+
+    pub fn with_ubatch_size(mut self, size: u64) -> Self {
+        self.metadata.ubatch_size = size;
+        self
+    }
+
+    pub fn with_n_predict(mut self, n: i32) -> Self {
+        self.metadata.n_predict = n;
+        self
+    }
+
+    pub fn with_n_gpu_layers(mut self, n: u64) -> Self {
+        self.metadata.n_gpu_layers = n;
+        self
+    }
+
+    pub fn with_output_file(mut self, file: impl Into<String>) -> Self {
+        self.metadata.output_file = file.into();
+        self
+    }
+
+    pub fn enable_plugin_log(mut self, enable: bool) -> Self {
+        self.metadata.log_enable = enable;
+        self
+    }
+
+    pub fn enable_debug_log(mut self, enable: bool) -> Self {
+        self.metadata.debug_log = enable;
+        self
+    }
+
+    pub fn build(self) -> GgmlTtsMetadata {
+        self.metadata
+    }
+}
+
+/// Metadata for TTS models
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct GgmlTtsMetadata {
+    pub model_name: String,
+    pub model_alias: String,
+    #[serde(rename = "tts")]
+    pub enable_tts: bool,
+    #[serde(rename = "model-vocoder")]
+    pub codec_model: PathBuf,
+    pub output_file: String,
+    #[serde(rename = "ctx-size")]
+    pub ctx_size: u64,
+    #[serde(rename = "batch-size")]
+    pub batch_size: u64,
+    #[serde(rename = "ubatch-size")]
+    pub ubatch_size: u64,
+    pub n_predict: i32,
+    pub n_gpu_layers: u64,
+    #[serde(rename = "enable-log")]
+    pub log_enable: bool,
+    #[serde(rename = "enable-debug-log")]
+    pub debug_log: bool,
+}
+impl Default for GgmlTtsMetadata {
+    fn default() -> Self {
+        Self {
+            model_name: "tts".to_string(),
+            model_alias: "tts".to_string(),
+            enable_tts: false,
+            codec_model: PathBuf::from(""),
+            output_file: "output.wav".to_string(),
+            ctx_size: 8192,
+            batch_size: 8192,
+            ubatch_size: 8192,
+            n_predict: 4096,
+            n_gpu_layers: 100,
+            log_enable: false,
+            debug_log: false,
+        }
+    }
+}
+impl BaseMetadata for GgmlTtsMetadata {
+    fn model_name(&self) -> &str {
+        &self.model_name
+    }
+
+    fn model_alias(&self) -> &str {
+        &self.model_alias
+    }
+}
+impl GgmlTtsMetadata {
+    pub fn prompt_template(&self) -> PromptTemplateType {
+        PromptTemplateType::Tts
     }
 }
