@@ -2683,23 +2683,6 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
     }
 }
 
-// fn set_tensor_data_u8(
-//     graph: &mut Graph,
-//     idx: usize,
-//     tensor_data: &[u8],
-// ) -> Result<(), LlamaCoreError> {
-//     if graph
-//         .set_input(idx, wasmedge_wasi_nn::TensorType::U8, &[1], tensor_data)
-//         .is_err()
-//     {
-//         return Err(LlamaCoreError::Operation(String::from(
-//             "Fail to set input tensor",
-//         )));
-//     };
-
-//     Ok(())
-// }
-
 /// Get a copy of the metadata of the model.
 fn get_model_metadata(model_name: Option<&String>) -> Result<GgmlMetadata, LlamaCoreError> {
     let chat_graphs = match CHAT_GRAPHS.get() {
