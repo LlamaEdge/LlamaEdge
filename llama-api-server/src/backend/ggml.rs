@@ -8,6 +8,7 @@ use endpoints::{
 };
 use futures_util::TryStreamExt;
 use hyper::{body::to_bytes, Body, Method, Request, Response};
+use llama_core::utils::RunningMode;
 use multipart::server::{Multipart, ReadEntry, ReadEntryResult};
 use multipart_2021 as multipart;
 use std::{
@@ -76,6 +77,25 @@ pub(crate) async fn models_handler() -> Response<Body> {
 pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body> {
     // log
     info!(target: "stdout", "Handling the coming embeddings request");
+
+    let running_mode = match llama_core::running_mode() {
+        Ok(mode) => mode,
+        Err(e) => {
+            let err_msg = format!("Failed to get running mode: {}", e);
+
+            error!(target: "stdout", "{}", e);
+
+            return error::internal_server_error(err_msg);
+        }
+    };
+    if !running_mode.contains(RunningMode::CHAT) && !running_mode.contains(RunningMode::EMBEDDINGS)
+    {
+        let err_msg = "Embeddings tasks are only supported in the chat or embeddingsmode.";
+
+        error!(target: "stdout", "{}", err_msg);
+
+        return error::internal_server_error(err_msg.to_string());
+    }
 
     if req.method().eq(&hyper::http::Method::OPTIONS) {
         let result = Response::builder()
@@ -189,6 +209,24 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
     // log
     info!(target: "stdout", "Handling the coming completions request.");
 
+    let running_mode = match llama_core::running_mode() {
+        Ok(mode) => mode,
+        Err(e) => {
+            let err_msg = format!("Failed to get running mode: {}", e);
+
+            error!(target: "stdout", "{}", e);
+
+            return error::internal_server_error(err_msg);
+        }
+    };
+    if !running_mode.contains(RunningMode::CHAT) {
+        let err_msg = "Completions tasks are only supported in the chat mode.";
+
+        error!(target: "stdout", "{}", err_msg);
+
+        return error::internal_server_error(err_msg.to_string());
+    }
+
     if req.method().eq(&hyper::http::Method::OPTIONS) {
         let result = Response::builder()
             .header("Access-Control-Allow-Origin", "*")
@@ -299,6 +337,24 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
 /// Process a chat-completion request and returns a chat-completion response with the answer from the model.
 pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response<Body> {
     info!(target: "stdout", "Handling the coming chat completion request");
+
+    let running_mode = match llama_core::running_mode() {
+        Ok(mode) => mode,
+        Err(e) => {
+            let err_msg = format!("Failed to get running mode: {}", e);
+
+            error!(target: "stdout", "{}", e);
+
+            return error::internal_server_error(err_msg);
+        }
+    };
+    if !running_mode.contains(RunningMode::CHAT) {
+        let err_msg = "Chat completion tasks are only supported in the chat mode.";
+
+        error!(target: "stdout", "{}", err_msg);
+
+        return error::internal_server_error(err_msg.to_string());
+    }
 
     if req.method().eq(&hyper::http::Method::OPTIONS) {
         let result = Response::builder()
@@ -1217,6 +1273,24 @@ pub(crate) async fn server_info_handler() -> Response<Body> {
 pub(crate) async fn audio_speech_handler(req: Request<Body>) -> Response<Body> {
     // log
     info!(target: "stdout", "Handling the coming audio speech request.");
+
+    let running_mode = match llama_core::running_mode() {
+        Ok(mode) => mode,
+        Err(e) => {
+            let err_msg = format!("Failed to get running mode: {}", e);
+
+            error!(target: "stdout", "{}", e);
+
+            return error::internal_server_error(err_msg);
+        }
+    };
+    if !running_mode.contains(RunningMode::TTS) {
+        let err_msg = "Audio speech tasks are only supported in the tts mode.";
+
+        error!(target: "stdout", "{}", err_msg);
+
+        return error::internal_server_error(err_msg.to_string());
+    }
 
     if req.method().eq(&Method::OPTIONS) {
         let result = Response::builder()

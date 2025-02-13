@@ -20,9 +20,9 @@ use hyper::{
 use llama_core::metadata::ggml::{GgmlMetadataBuilder, GgmlTtsMetadataBuilder};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, net::SocketAddr, path::PathBuf, sync::RwLock};
+use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
 use tokio::net::TcpListener;
-use utils::{LogLevel, RunningMode};
+use utils::LogLevel;
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -31,9 +31,6 @@ pub(crate) static SERVER_INFO: OnceCell<ServerInfo> = OnceCell::new();
 
 // API key
 pub(crate) static LLAMA_API_KEY: OnceCell<String> = OnceCell::new();
-
-// running mode
-pub(crate) static RUNNING_MODE: OnceCell<RwLock<RunningMode>> = OnceCell::new();
 
 // default port
 const DEFAULT_PORT: &str = "8080";
@@ -232,7 +229,6 @@ async fn main() -> Result<(), ServerError> {
 
                 // chat model
                 let mut chat_model_config = None;
-                let mut metadata_for_chats = None;
                 if chat {
                     info!(target: "stdout", "chat model name: {}", config.chat.model_name);
 
@@ -331,12 +327,13 @@ async fn main() -> Result<(), ServerError> {
                         tensor_split: metadata_chat.tensor_split.clone(),
                     });
 
-                    metadata_for_chats = Some(vec![metadata_chat]);
+                    // initialize the chat context
+                    llama_core::init_ggml_chat_context(&[metadata_chat])
+                        .map_err(|e| ServerError::Operation(format!("{}", e)))?;
                 }
 
                 // embedding model
                 let mut embedding_model_config = None;
-                let mut metadata_for_embeddings = None;
                 if embedding {
                     info!(target: "stdout", "embedding model name: {}", config.embedding.model_name);
 
@@ -395,12 +392,13 @@ async fn main() -> Result<(), ServerError> {
                         tensor_split: metadata_embedding.tensor_split.clone(),
                     });
 
-                    metadata_for_embeddings = Some(vec![metadata_embedding]);
+                    // initialize the embeddings context
+                    llama_core::init_ggml_embeddings_context(&[metadata_embedding])
+                        .map_err(|e| ServerError::Operation(format!("{}", e)))?;
                 }
 
                 // tts model
                 let mut tts_model_config = None;
-                let mut metadata_for_tts = None;
                 if tts {
                     info!(target: "stdout", "tts model name: {}", config.tts.model_name);
 
@@ -475,75 +473,15 @@ async fn main() -> Result<(), ServerError> {
                         tensor_split: None,
                     });
 
-                    metadata_for_tts = Some(vec![metadata_tts]);
+                    // initialize the tts context
+                    llama_core::init_ggml_tts_context(&[metadata_tts])
+                        .map_err(|e| ServerError::Operation(format!("{}", e)))?;
                 }
 
-                let mut running_mode = RunningMode::UNSET;
-
-                // initialize the core context
-                if chat || embedding {
-                    if metadata_for_chats.is_none() && metadata_for_embeddings.is_none() {
-                        let err_msg = "No chat and/or embedding configuration is specified.";
-
-                        error!(target: "stdout", "{}", err_msg);
-
-                        return Err(ServerError::Operation(err_msg.to_string()));
-                    }
-
-                    llama_core::init_ggml_context(
-                        metadata_for_chats.as_deref(),
-                        metadata_for_embeddings.as_deref(),
-                    )
-                    .map_err(|e| ServerError::Operation(format!("{}", e)))?;
-
-                    if chat {
-                        running_mode |= RunningMode::CHAT;
-                    }
-
-                    if embedding {
-                        running_mode |= RunningMode::EMBEDDINGS;
-                    }
-                }
-
-                // initialize the TTS context
-                if tts {
-                    match metadata_for_tts {
-                        Some(metadata_for_tts) => match metadata_for_tts.is_empty() {
-                            false => {
-                                llama_core::init_ggml_tts_context(&metadata_for_tts[..])
-                                    .map_err(|e| ServerError::Operation(format!("{}", e)))?;
-
-                                running_mode |= RunningMode::TTS;
-                            }
-                            true => {
-                                let err_msg = "Failed to initialize the TTS context. No tts configuration is specified.";
-
-                                error!(target: "stdout", "{}", err_msg);
-
-                                return Err(ServerError::Operation(err_msg.to_string()));
-                            }
-                        },
-                        None => {
-                            let err_msg = "Failed to initialize the TTS context. No tts configuration is specified.";
-
-                            error!(target: "stdout", "{}", err_msg);
-
-                            return Err(ServerError::Operation(err_msg.to_string()));
-                        }
-                    }
-                }
-
-                // log running mode
-                info!(target: "stdout", "running mode: {}", running_mode);
-
-                // set the running mode
-                RUNNING_MODE.set(RwLock::new(running_mode)).map_err(|_| {
-                    let err_msg = "Failed to set `RUNNING_MODE`. It has already been initialized";
-
-                    error!(target: "stdout", "{}", err_msg);
-
-                    ServerError::Operation(err_msg.into())
-                })?;
+                // get running mode
+                let running_mode = llama_core::running_mode()
+                    .map_err(|e| ServerError::Operation(e.to_string()))?;
+                info!(target: "stdout", "running_mode: {}", running_mode);
 
                 // log plugin version
                 let plugin_info = llama_core::get_plugin_info()
@@ -814,8 +752,8 @@ async fn main() -> Result<(), ServerError> {
                         tensor_split: metadata_embedding.tensor_split.clone(),
                     });
 
-                    // initialize the core context
-                    llama_core::init_ggml_context(None, Some(&[metadata_embedding]))
+                    // initialize the embeddings context
+                    llama_core::init_ggml_embeddings_context(&[metadata_embedding])
                         .map_err(|e| ServerError::Operation(format!("{}", e)))?;
                 }
                 _ => {
@@ -871,8 +809,8 @@ async fn main() -> Result<(), ServerError> {
                         tensor_split: metadata_chat.tensor_split.clone(),
                     });
 
-                    // initialize the core context
-                    llama_core::init_ggml_context(Some(&[metadata_chat]), None)
+                    // initialize the chat context
+                    llama_core::init_ggml_chat_context(&[metadata_chat])
                         .map_err(|e| ServerError::Operation(format!("{}", e)))?;
                 }
             }
@@ -929,6 +867,10 @@ async fn main() -> Result<(), ServerError> {
                 tensor_split: metadata_chat.tensor_split.clone(),
             });
 
+            // initialize the chat context
+            llama_core::init_ggml_chat_context(&[metadata_chat])
+                .map_err(|e| ServerError::Operation(format!("{}", e)))?;
+
             // create a Metadata instance
             let metadata_embedding = GgmlMetadataBuilder::new(
                 cli.server_args.model_name[1].clone(),
@@ -968,10 +910,15 @@ async fn main() -> Result<(), ServerError> {
                 tensor_split: metadata_embedding.tensor_split.clone(),
             });
 
-            // initialize the core context
-            llama_core::init_ggml_context(Some(&[metadata_chat]), Some(&[metadata_embedding]))
+            // initialize the embeddings context
+            llama_core::init_ggml_embeddings_context(&[metadata_embedding])
                 .map_err(|e| ServerError::Operation(format!("{}", e)))?;
         }
+
+        // get running mode
+        let running_mode =
+            llama_core::running_mode().map_err(|e| ServerError::Operation(e.to_string()))?;
+        info!(target: "stdout", "running_mode: {}", running_mode);
 
         // log plugin version
         let plugin_info =
