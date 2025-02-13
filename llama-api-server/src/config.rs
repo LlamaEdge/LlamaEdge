@@ -287,7 +287,6 @@ pub(crate) struct TtsConfig {
     pub(crate) model_name: String,
     pub(crate) model_alias: String,
     pub(crate) codec_model: PathBuf,
-    pub(crate) output_file: String,
     pub(crate) ctx_size: u64,
     pub(crate) batch_size: u64,
     pub(crate) ubatch_size: u64,
@@ -297,10 +296,9 @@ pub(crate) struct TtsConfig {
 impl Default for TtsConfig {
     fn default() -> Self {
         TtsConfig {
-            model_name: "default".to_string(),
+            model_name: "tts".to_string(),
             model_alias: "tts".to_string(),
             codec_model: PathBuf::from(""),
-            output_file: "output.wav".to_string(),
             ctx_size: 8192,
             batch_size: 8192,
             ubatch_size: 8192,
@@ -320,7 +318,6 @@ impl<'de> Deserialize<'de> for TtsConfig {
             model_name: String,
             model_alias: String,
             codec_model: String,
-            output_file: String,
             ctx_size: u64,
             batch_size: u64,
             ubatch_size: u64,
@@ -329,13 +326,13 @@ impl<'de> Deserialize<'de> for TtsConfig {
         }
 
         let helper = Helper::deserialize(deserializer)?;
+
         let codec_model = PathBuf::from(helper.codec_model);
 
         Ok(TtsConfig {
             model_name: helper.model_name,
             model_alias: helper.model_alias,
             codec_model,
-            output_file: helper.output_file,
             ctx_size: helper.ctx_size,
             batch_size: helper.batch_size,
             ubatch_size: helper.ubatch_size,
