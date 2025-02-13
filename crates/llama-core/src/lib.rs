@@ -238,7 +238,7 @@ pub fn init_ggml_rag_context(
             LlamaCoreError::InitContext(err_msg.into())
         })?;
 
-    let running_mode = RunningMode::Rag;
+    let running_mode = RunningMode::RAG;
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "running mode: {}", running_mode);
