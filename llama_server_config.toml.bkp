@@ -39,10 +39,9 @@ tensor_split    = "3:2"         # How split tensors should be distributed accros
 threads         = 2             # Number of threads to use during computation. Default is 2.
 
 [tts]
-model_name   = "default"        # Name of the TTS model. Default is "default".
+model_name   = "tts"            # Name of the TTS model. Default is "default".
 model_alias  = "tts"            # Alias of the TTS model. Default is "tts".
 codec_model  = ""               # Required. Path to the codec model file.
-output_file   = "output.wav"     # Output file. Default is "output.wav".
 ctx_size     = 8192             # Context size. Default is 8192.
 batch_size   = 8192             # Batch size. Default is 8192.
 ubatch_size  = 8192             # Physical maximum batch size. Default is 8192.
