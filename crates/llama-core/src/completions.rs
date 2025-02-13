@@ -19,11 +19,8 @@ pub async fn completions(request: &CompletionRequest) -> Result<CompletionObject
     info!(target: "stdout", "Generate completions");
 
     let running_mode = running_mode()?;
-    if running_mode == RunningMode::Embeddings || running_mode == RunningMode::Rag {
-        let err_msg = format!(
-            "The completion is not supported in the {} mode.",
-            running_mode
-        );
+    if !running_mode.contains(RunningMode::CHAT) {
+        let err_msg = format!("The completion is only supported in the chat mode.");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);

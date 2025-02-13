@@ -30,6 +30,7 @@ either.workspace           = true
 wasmedge_stable_diffusion  = { version = "=0.3.2" }
 base64.workspace           = true
 walkdir                    = "2.5.0"
+bitflags                   = "2.0"
 
 [package.metadata.cargo-machete]
 ignored = ["wasi-logger"]
