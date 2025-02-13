@@ -24,7 +24,6 @@ wasi-logger.workspace  = true
 log.workspace          = true
 either.workspace       = true
 toml                   = "0.8"
-bitflags               = "2.0"
 
 [features]
 default = []
