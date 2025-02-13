@@ -94,7 +94,7 @@ pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body>
 
         error!(target: "stdout", "{}", err_msg);
 
-        return error::internal_server_error(err_msg.to_string());
+        return error::internal_server_error(err_msg);
     }
 
     if req.method().eq(&hyper::http::Method::OPTIONS) {
@@ -224,7 +224,7 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
 
         error!(target: "stdout", "{}", err_msg);
 
-        return error::internal_server_error(err_msg.to_string());
+        return error::internal_server_error(err_msg);
     }
 
     if req.method().eq(&hyper::http::Method::OPTIONS) {
@@ -353,7 +353,7 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
 
         error!(target: "stdout", "{}", err_msg);
 
-        return error::internal_server_error(err_msg.to_string());
+        return error::internal_server_error(err_msg);
     }
 
     if req.method().eq(&hyper::http::Method::OPTIONS) {
@@ -1289,7 +1289,7 @@ pub(crate) async fn audio_speech_handler(req: Request<Body>) -> Response<Body> {
 
         error!(target: "stdout", "{}", err_msg);
 
-        return error::internal_server_error(err_msg.to_string());
+        return error::internal_server_error(err_msg);
     }
 
     if req.method().eq(&Method::OPTIONS) {
