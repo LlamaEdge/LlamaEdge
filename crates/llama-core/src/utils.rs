@@ -4,6 +4,7 @@ use crate::{
     error::{BackendError, LlamaCoreError},
     BaseMetadata, Graph, CHAT_GRAPHS, EMBEDDING_GRAPHS, MAX_BUFFER_SIZE,
 };
+use bitflags::bitflags;
 use chat_prompts::PromptTemplateType;
 use serde_json::Value;
 
@@ -398,4 +399,34 @@ where
     };
 
     Ok(())
+}
+
+bitflags! {
+    #[derive(Debug, Clone, Copy)]
+    pub struct RunningMode: u32 {
+        const UNSET = 0b00000000;
+        const CHAT = 0b00000001;
+        const EMBEDDINGS = 0b00000010;
+        const TTS = 0b00000100;
+        const RAG = 0b00001000;
+    }
+}
+impl std::fmt::Display for RunningMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let mut mode = String::new();
+
+        if self.contains(RunningMode::CHAT) {
+            mode.push_str("chat, ");
+        }
+        if self.contains(RunningMode::EMBEDDINGS) {
+            mode.push_str("embeddings, ");
+        }
+        if self.contains(RunningMode::TTS) {
+            mode.push_str("tts, ");
+        }
+
+        mode = mode.trim_end_matches(", ").to_string();
+
+        write!(f, "{}", mode)
+    }
 }
