@@ -22,13 +22,18 @@ pub mod rag;
 #[cfg(feature = "search")]
 #[cfg_attr(docsrs, doc(cfg(feature = "search")))]
 pub mod search;
+pub mod tts;
 pub mod utils;
 
 pub use error::LlamaCoreError;
 pub use graph::{EngineType, Graph, GraphBuilder};
 #[cfg(feature = "whisper")]
 use metadata::whisper::WhisperMetadata;
-pub use metadata::{ggml::GgmlMetadata, piper::PiperMetadata, BaseMetadata};
+pub use metadata::{
+    ggml::{GgmlMetadata, GgmlTtsMetadata},
+    piper::PiperMetadata,
+    BaseMetadata,
+};
 
 use once_cell::sync::OnceCell;
 use std::{
@@ -46,7 +51,7 @@ pub(crate) static CHAT_GRAPHS: OnceCell<Mutex<HashMap<String, Graph<GgmlMetadata
 pub(crate) static EMBEDDING_GRAPHS: OnceCell<Mutex<HashMap<String, Graph<GgmlMetadata>>>> =
     OnceCell::new();
 // key: model_name, value: Graph
-pub(crate) static TTS_GRAPHS: OnceCell<Mutex<HashMap<String, Graph<GgmlMetadata>>>> =
+pub(crate) static TTS_GRAPHS: OnceCell<Mutex<HashMap<String, Graph<GgmlTtsMetadata>>>> =
     OnceCell::new();
 // cache bytes for decoding utf8
 pub(crate) static CACHED_UTF8_ENCODINGS: OnceCell<Mutex<Vec<u8>>> = OnceCell::new();
@@ -73,16 +78,12 @@ pub const ARCHIVES_DIR: &str = "archives";
 pub fn init_ggml_context(
     metadata_for_chats: Option<&[GgmlMetadata]>,
     metadata_for_embeddings: Option<&[GgmlMetadata]>,
-    metadata_for_tts: Option<&[GgmlMetadata]>,
 ) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Initializing the core context");
 
-    if metadata_for_chats.is_none()
-        && metadata_for_embeddings.is_none()
-        && metadata_for_tts.is_none()
-    {
-        let err_msg = "Failed to initialize the core context. Please set metadata for chat, embeddings, and/or TTS model.";
+    if metadata_for_chats.is_none() && metadata_for_embeddings.is_none() {
+        let err_msg = "Failed to initialize the core context. Please set metadata for chat and/or embeddings model.";
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", err_msg);
@@ -132,25 +133,6 @@ pub fn init_ggml_context(
         if mode == RunningMode::Chat {
             mode = RunningMode::ChatEmbedding;
         }
-    }
-
-    if let Some(metadata_tts) = metadata_for_tts {
-        let mut tts_graphs = HashMap::new();
-        for metadata in metadata_tts {
-            let graph = Graph::new(metadata.clone())?;
-
-            tts_graphs.insert(graph.name().to_string(), graph);
-        }
-        TTS_GRAPHS.set(Mutex::new(tts_graphs)).map_err(|_| {
-            let err_msg = "Failed to initialize the core context. Reason: The `TTS_GRAPHS` has already been initialized";
-
-            #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
-
-            LlamaCoreError::InitContext(err_msg.into())
-        })?;
-
-        mode = RunningMode::Tts;
     }
 
     #[cfg(feature = "logging")]
@@ -251,6 +233,50 @@ pub fn init_ggml_rag_context(
     Ok(())
 }
 
+/// Initialize the ggml context for TTS scenarios.
+pub fn init_ggml_tts_context(metadata_for_tts: &[GgmlTtsMetadata]) -> Result<(), LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Initializing the TTS context");
+
+    if metadata_for_tts.is_empty() {
+        let err_msg = "The metadata for tts models is empty";
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", err_msg);
+
+        return Err(LlamaCoreError::InitContext(err_msg.into()));
+    }
+
+    let mut tts_graphs = HashMap::new();
+    for metadata in metadata_for_tts {
+        let graph = Graph::new(metadata.clone())?;
+
+        tts_graphs.insert(graph.name().to_string(), graph);
+    }
+    TTS_GRAPHS.set(Mutex::new(tts_graphs)).map_err(|_| {
+        let err_msg = "Failed to initialize the core context. Reason: The `TTS_GRAPHS` has already been initialized";
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", err_msg);
+
+        LlamaCoreError::InitContext(err_msg.into())
+    })?;
+
+    RUNNING_MODE.set(RwLock::new(RunningMode::Tts)).map_err(|_| {
+        let err_msg = "Failed to initialize the core context. Reason: The `RUNNING_MODE` has already been initialized";
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", err_msg);
+
+        LlamaCoreError::InitContext(err_msg.into())
+    })?;
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "The TTS context has been initialized");
+
+    Ok(())
+}
+
 /// Get the plugin info
 ///
 /// Note that it is required to call `init_core_context` before calling this function.
@@ -285,6 +311,42 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
                 Some(graph) => graph,
                 None => {
                     let err_msg = "Fail to get the underlying value of `EMBEDDING_GRAPHS`.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "stdout", "{}", err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                }
+            };
+
+            get_plugin_info_by_graph(graph)
+        }
+        RunningMode::Tts => {
+            let tts_graphs = match TTS_GRAPHS.get() {
+                Some(tts_graphs) => tts_graphs,
+                None => {
+                    let err_msg = "Fail to get the underlying value of `TTS_GRAPHS`.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "stdout", "{}", err_msg);
+
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                }
+            };
+
+            let tts_graphs = tts_graphs.lock().map_err(|e| {
+                let err_msg = format!("Fail to acquire the lock of `TTS_GRAPHS`. {}", e);
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
+            })?;
+
+            let graph = match tts_graphs.values().next() {
+                Some(graph) => graph,
+                None => {
+                    let err_msg = "Fail to get the underlying value of `TTS_GRAPHS`.";
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", err_msg);
