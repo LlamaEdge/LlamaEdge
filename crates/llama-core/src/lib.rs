@@ -34,14 +34,13 @@ pub use metadata::{
     piper::PiperMetadata,
     BaseMetadata,
 };
-
 use once_cell::sync::OnceCell;
 use std::{
     collections::HashMap,
     path::Path,
     sync::{Mutex, RwLock},
 };
-use utils::get_output_buffer;
+use utils::{get_output_buffer, RunningMode};
 use wasmedge_stable_diffusion::*;
 
 // key: model_name, value: Graph
@@ -75,15 +74,12 @@ const PLUGIN_VERSION: usize = 1;
 pub const ARCHIVES_DIR: &str = "archives";
 
 /// Initialize the ggml context
-pub fn init_ggml_context(
-    metadata_for_chats: Option<&[GgmlMetadata]>,
-    metadata_for_embeddings: Option<&[GgmlMetadata]>,
-) -> Result<(), LlamaCoreError> {
+pub fn init_ggml_chat_context(metadata_for_chats: &[GgmlMetadata]) -> Result<(), LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Initializing the core context");
 
-    if metadata_for_chats.is_none() && metadata_for_embeddings.is_none() {
-        let err_msg = "Failed to initialize the core context. Please set metadata for chat and/or embeddings model.";
+    if metadata_for_chats.is_empty() {
+        let err_msg = "The metadata for chat models is empty";
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", err_msg);
@@ -91,16 +87,13 @@ pub fn init_ggml_context(
         return Err(LlamaCoreError::InitContext(err_msg.into()));
     }
 
-    let mut mode = RunningMode::Embeddings;
+    let mut chat_graphs = HashMap::new();
+    for metadata in metadata_for_chats {
+        let graph = Graph::new(metadata.clone())?;
 
-    if let Some(metadata_chats) = metadata_for_chats {
-        let mut chat_graphs = HashMap::new();
-        for metadata in metadata_chats {
-            let graph = Graph::new(metadata.clone())?;
-
-            chat_graphs.insert(graph.name().to_string(), graph);
-        }
-        CHAT_GRAPHS.set(Mutex::new(chat_graphs)).map_err(|_| {
+        chat_graphs.insert(graph.name().to_string(), graph);
+    }
+    CHAT_GRAPHS.set(Mutex::new(chat_graphs)).map_err(|_| {
             let err_msg = "Failed to initialize the core context. Reason: The `CHAT_GRAPHS` has already been initialized";
 
             #[cfg(feature = "logging")]
@@ -109,17 +102,51 @@ pub fn init_ggml_context(
             LlamaCoreError::InitContext(err_msg.into())
         })?;
 
-        mode = RunningMode::Chat
+    // set running mode
+    let running_mode = RunningMode::CHAT;
+    match RUNNING_MODE.get() {
+        Some(mode) => {
+            let mut mode = mode.write().unwrap();
+            *mode |= running_mode;
+        }
+        None => {
+            RUNNING_MODE.set(RwLock::new(running_mode)).map_err(|_| {
+                let err_msg = "Failed to initialize the chat context. Reason: The `RUNNING_MODE` has already been initialized";
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", err_msg);
+
+                LlamaCoreError::InitContext(err_msg.into())
+            })?;
+        }
     }
 
-    if let Some(metadata_embeddings) = metadata_for_embeddings {
-        let mut embedding_graphs = HashMap::new();
-        for metadata in metadata_embeddings {
-            let graph = Graph::new(metadata.clone())?;
+    Ok(())
+}
 
-            embedding_graphs.insert(graph.name().to_string(), graph);
-        }
-        EMBEDDING_GRAPHS
+/// Initialize the ggml context
+pub fn init_ggml_embeddings_context(
+    metadata_for_embeddings: &[GgmlMetadata],
+) -> Result<(), LlamaCoreError> {
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Initializing the embeddings context");
+
+    if metadata_for_embeddings.is_empty() {
+        let err_msg = "The metadata for chat models is empty";
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", err_msg);
+
+        return Err(LlamaCoreError::InitContext(err_msg.into()));
+    }
+
+    let mut embedding_graphs = HashMap::new();
+    for metadata in metadata_for_embeddings {
+        let graph = Graph::new(metadata.clone())?;
+
+        embedding_graphs.insert(graph.name().to_string(), graph);
+    }
+    EMBEDDING_GRAPHS
             .set(Mutex::new(embedding_graphs))
             .map_err(|_| {
                 let err_msg = "Failed to initialize the core context. Reason: The `EMBEDDING_GRAPHS` has already been initialized";
@@ -130,25 +157,24 @@ pub fn init_ggml_context(
                 LlamaCoreError::InitContext(err_msg.into())
             })?;
 
-        if mode == RunningMode::Chat {
-            mode = RunningMode::ChatEmbedding;
+    // set running mode
+    let running_mode = RunningMode::EMBEDDINGS;
+    match RUNNING_MODE.get() {
+        Some(mode) => {
+            let mut mode = mode.write().unwrap();
+            *mode |= running_mode;
+        }
+        None => {
+            RUNNING_MODE.set(RwLock::new(running_mode)).map_err(|_| {
+                let err_msg = "Failed to initialize the embeddings context. Reason: The `RUNNING_MODE` has already been initialized";
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", err_msg);
+
+                LlamaCoreError::InitContext(err_msg.into())
+            })?;
         }
     }
-
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "running mode: {}", mode);
-
-    RUNNING_MODE.set(RwLock::new(mode)).map_err(|_| {
-        let err_msg = "Failed to initialize the core context. Reason: The `RUNNING_MODE` has already been initialized";
-
-        #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", err_msg);
-
-        LlamaCoreError::InitContext(err_msg.into())
-    })?;
-
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "The core context has been initialized");
 
     Ok(())
 }
@@ -262,17 +288,24 @@ pub fn init_ggml_tts_context(metadata_for_tts: &[GgmlTtsMetadata]) -> Result<(),
         LlamaCoreError::InitContext(err_msg.into())
     })?;
 
-    RUNNING_MODE.set(RwLock::new(RunningMode::Tts)).map_err(|_| {
-        let err_msg = "Failed to initialize the core context. Reason: The `RUNNING_MODE` has already been initialized";
+    // set running mode
+    let running_mode = RunningMode::TTS;
+    match RUNNING_MODE.get() {
+        Some(mode) => {
+            let mut mode = mode.write().unwrap();
+            *mode |= running_mode;
+        }
+        None => {
+            RUNNING_MODE.set(RwLock::new(running_mode)).map_err(|_| {
+                let err_msg = "Failed to initialize the embeddings context. Reason: The `RUNNING_MODE` has already been initialized";
 
-        #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", err_msg);
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", err_msg);
 
-        LlamaCoreError::InitContext(err_msg.into())
-    })?;
-
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "The TTS context has been initialized");
+                LlamaCoreError::InitContext(err_msg.into())
+            })?;
+        }
+    }
 
     Ok(())
 }
@@ -282,117 +315,117 @@ pub fn init_ggml_tts_context(metadata_for_tts: &[GgmlTtsMetadata]) -> Result<(),
 /// Note that it is required to call `init_core_context` before calling this function.
 pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "Getting the plugin info");
+    debug!(target: "stdout", "Getting the plugin info");
 
-    match running_mode()? {
-        RunningMode::Embeddings => {
-            let embedding_graphs = match EMBEDDING_GRAPHS.get() {
-                Some(embedding_graphs) => embedding_graphs,
-                None => {
-                    let err_msg = "Fail to get the underlying value of `EMBEDDING_GRAPHS`.";
+    let running_mode = running_mode()?;
 
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
-
-                    return Err(LlamaCoreError::Operation(err_msg.into()));
-                }
-            };
-
-            let embedding_graphs = embedding_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}", e);
+    if running_mode.contains(RunningMode::CHAT) {
+        let chat_graphs = match CHAT_GRAPHS.get() {
+            Some(chat_graphs) => chat_graphs,
+            None => {
+                let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
+                error!(target: "stdout", "{}", err_msg);
 
-                LlamaCoreError::Operation(err_msg)
-            })?;
+                return Err(LlamaCoreError::Operation(err_msg.into()));
+            }
+        };
 
-            let graph = match embedding_graphs.values().next() {
-                Some(graph) => graph,
-                None => {
-                    let err_msg = "Fail to get the underlying value of `EMBEDDING_GRAPHS`.";
+        let chat_graphs = chat_graphs.lock().map_err(|e| {
+            let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
 
-                    return Err(LlamaCoreError::Operation(err_msg.into()));
-                }
-            };
+            LlamaCoreError::Operation(err_msg)
+        })?;
 
-            get_plugin_info_by_graph(graph)
-        }
-        RunningMode::Tts => {
-            let tts_graphs = match TTS_GRAPHS.get() {
-                Some(tts_graphs) => tts_graphs,
-                None => {
-                    let err_msg = "Fail to get the underlying value of `TTS_GRAPHS`.";
-
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
-
-                    return Err(LlamaCoreError::Operation(err_msg.into()));
-                }
-            };
-
-            let tts_graphs = tts_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `TTS_GRAPHS`. {}", e);
+        let graph = match chat_graphs.values().next() {
+            Some(graph) => graph,
+            None => {
+                let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
+                error!(target: "stdout", "{}", err_msg);
 
-                LlamaCoreError::Operation(err_msg)
-            })?;
+                return Err(LlamaCoreError::Operation(err_msg.into()));
+            }
+        };
 
-            let graph = match tts_graphs.values().next() {
-                Some(graph) => graph,
-                None => {
-                    let err_msg = "Fail to get the underlying value of `TTS_GRAPHS`.";
-
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
-
-                    return Err(LlamaCoreError::Operation(err_msg.into()));
-                }
-            };
-
-            get_plugin_info_by_graph(graph)
-        }
-        _ => {
-            let chat_graphs = match CHAT_GRAPHS.get() {
-                Some(chat_graphs) => chat_graphs,
-                None => {
-                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
-
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
-
-                    return Err(LlamaCoreError::Operation(err_msg.into()));
-                }
-            };
-
-            let chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+        get_plugin_info_by_graph(graph)
+    } else if running_mode.contains(RunningMode::EMBEDDINGS) {
+        let embedding_graphs = match EMBEDDING_GRAPHS.get() {
+            Some(embedding_graphs) => embedding_graphs,
+            None => {
+                let err_msg = "Fail to get the underlying value of `EMBEDDING_GRAPHS`.";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
+                error!(target: "stdout", "{}", err_msg);
 
-                LlamaCoreError::Operation(err_msg)
-            })?;
+                return Err(LlamaCoreError::Operation(err_msg.into()));
+            }
+        };
 
-            let graph = match chat_graphs.values().next() {
-                Some(graph) => graph,
-                None => {
-                    let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+        let embedding_graphs = embedding_graphs.lock().map_err(|e| {
+            let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}", e);
 
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
 
-                    return Err(LlamaCoreError::Operation(err_msg.into()));
-                }
-            };
+            LlamaCoreError::Operation(err_msg)
+        })?;
 
-            get_plugin_info_by_graph(graph)
-        }
+        let graph = match embedding_graphs.values().next() {
+            Some(graph) => graph,
+            None => {
+                let err_msg = "Fail to get the underlying value of `EMBEDDING_GRAPHS`.";
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", err_msg);
+
+                return Err(LlamaCoreError::Operation(err_msg.into()));
+            }
+        };
+
+        get_plugin_info_by_graph(graph)
+    } else if running_mode.contains(RunningMode::TTS) {
+        let tts_graphs = match TTS_GRAPHS.get() {
+            Some(tts_graphs) => tts_graphs,
+            None => {
+                let err_msg = "Fail to get the underlying value of `TTS_GRAPHS`.";
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", err_msg);
+
+                return Err(LlamaCoreError::Operation(err_msg.into()));
+            }
+        };
+
+        let tts_graphs = tts_graphs.lock().map_err(|e| {
+            let err_msg = format!("Fail to acquire the lock of `TTS_GRAPHS`. {}", e);
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            LlamaCoreError::Operation(err_msg)
+        })?;
+
+        let graph = match tts_graphs.values().next() {
+            Some(graph) => graph,
+            None => {
+                let err_msg = "Fail to get the underlying value of `TTS_GRAPHS`.";
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", err_msg);
+
+                return Err(LlamaCoreError::Operation(err_msg.into()));
+            }
+        };
+
+        get_plugin_info_by_graph(graph)
+    } else {
+        Err(LlamaCoreError::Operation("RUNNING_MODE is not set".into()))
     }
 }
 
@@ -400,7 +433,7 @@ fn get_plugin_info_by_graph<M: BaseMetadata + serde::Serialize + Clone + Default
     graph: &Graph<M>,
 ) -> Result<PluginInfo, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "Getting the plugin info by the graph named {}", graph.name());
+    debug!(target: "stdout", "Getting the plugin info by the graph named {}", graph.name());
 
     // get the plugin metadata
     let output_buffer = get_output_buffer(graph, PLUGIN_VERSION)?;
@@ -460,7 +493,7 @@ fn get_plugin_info_by_graph<M: BaseMetadata + serde::Serialize + Clone + Default
     };
 
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "Plugin info: b{}(commit {})", plugin_build_number, plugin_commit);
+    debug!(target: "stdout", "Plugin info: b{}(commit {})", plugin_build_number, plugin_commit);
 
     Ok(PluginInfo {
         build_number: plugin_build_number,
@@ -484,35 +517,14 @@ impl std::fmt::Display for PluginInfo {
     }
 }
 
-/// Running mode
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum RunningMode {
-    Chat,
-    Embeddings,
-    ChatEmbedding,
-    Rag,
-    Tts,
-}
-impl std::fmt::Display for RunningMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            RunningMode::Chat => write!(f, "chat"),
-            RunningMode::Embeddings => write!(f, "embeddings"),
-            RunningMode::ChatEmbedding => write!(f, "chat-embeddings"),
-            RunningMode::Rag => write!(f, "rag"),
-            RunningMode::Tts => write!(f, "tts"),
-        }
-    }
-}
-
 /// Return the current running mode.
 pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
     #[cfg(feature = "logging")]
     debug!(target: "stdout", "Get the running mode.");
 
-    let mode = match RUNNING_MODE.get() {
+    match RUNNING_MODE.get() {
         Some(mode) => match mode.read() {
-            Ok(mode) => mode.to_owned(),
+            Ok(mode) => Ok(*mode),
             Err(e) => {
                 let err_msg = format!("Fail to get the underlying value of `RUNNING_MODE`. {}", e);
 
@@ -530,12 +542,7 @@ pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
-    };
-
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "running mode: {}", &mode);
-
-    Ok(mode.to_owned())
+    }
 }
 
 /// Initialize the stable-diffusion context with the given full diffusion model
