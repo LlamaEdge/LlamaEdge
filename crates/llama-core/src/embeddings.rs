@@ -31,7 +31,7 @@ pub async fn embeddings(
     info!(target: "stdout", "Computing embeddings");
 
     let running_mode = running_mode()?;
-    if !running_mode.contains(RunningMode::EMBEDDINGS) || !running_mode.contains(RunningMode::RAG) {
+    if !running_mode.contains(RunningMode::EMBEDDINGS) && !running_mode.contains(RunningMode::RAG) {
         let err_msg = "Computing embeddings is only supported in the embeddings and rag modes.";
 
         #[cfg(feature = "logging")]
