@@ -238,12 +238,8 @@ pub fn init_ggml_rag_context(
             LlamaCoreError::InitContext(err_msg.into())
         })?;
 
-    let running_mode = RunningMode::RAG;
-
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "running mode: {}", running_mode);
-
     // set running mode
+    let running_mode = RunningMode::RAG;
     RUNNING_MODE.set(RwLock::new(running_mode)).map_err(|_| {
             let err_msg = "Failed to initialize the core context. Reason: The `RUNNING_MODE` has already been initialized";
 
@@ -252,9 +248,6 @@ pub fn init_ggml_rag_context(
 
             LlamaCoreError::InitContext(err_msg.into())
         })?;
-
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "The core context for RAG scenarios has been initialized");
 
     Ok(())
 }
