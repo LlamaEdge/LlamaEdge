@@ -14,6 +14,7 @@ pub struct SpeechRequest {
     /// The text to generate audio for.
     pub input: String,
     /// The voice to use when generating the audio. Supported voices are `alloy`, `echo`, `fable`, `onyx`, `nova`, and `shimmer`.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub voice: Option<SpeechVoice>,
     /// The format to audio in. Supported formats are `mp3`, `opus`, `aac`, `flac`, `wav`, and `pcm`. Defaults to `wav`.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -29,6 +30,7 @@ pub struct SpeechRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub noise_scale: Option<f64>,
     /// Speed of speaking (1 = normal, < 1 is faster, > 1 is slower). Defaults to `1.0`. This param is only supported for `Piper`.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub length_scale: Option<f64>,
     /// Variation in phoneme lengths. Defaults to `0.8`. This param is only supported for `Piper`.
     #[serde(skip_serializing_if = "Option::is_none")]
