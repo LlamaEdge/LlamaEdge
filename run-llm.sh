@@ -63,7 +63,7 @@ function print_usage {
     printf "  --port:         port number, default is 8080\n"
     printf "  --ggml-version: ggml version (for example, b2963). If the option is not used, then install the latest version.\n"
     printf "Example:\n\n"
-    printf '  bash <(curl -sSfL 'https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/run-llm.sh')\n\n'
+    printf '  curl -sSfL 'https://github.com/LlamaEdge/LlamaEdge/raw/refs/heads/dev/run-llm.sh' | bash\n\n'
 }
 
 while [[ $# -gt 0 ]]; do
