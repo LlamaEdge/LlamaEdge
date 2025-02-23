@@ -406,6 +406,10 @@ async fn main() -> Result<(), ServerError> {
 
                     info!(target: "stdout", "tts codec model: {}", config.tts.codec_model.to_string_lossy());
 
+                    if let Some(speaker_file) = &config.tts.speaker_file {
+                        info!(target: "stdout", "tts speaker file: {}", speaker_file.to_string_lossy())
+                    }
+
                     info!(target: "stdout", "tts context size: {}", config.tts.ctx_size);
 
                     info!(target: "stdout", "tts batch size: {}", config.tts.batch_size);
@@ -416,24 +420,6 @@ async fn main() -> Result<(), ServerError> {
 
                     info!(target: "stdout", "tts n_gpu_layers: {}", config.tts.n_gpu_layers);
 
-                    // output file
-                    // let output_file = {
-                    //     // create a unique file id
-                    //     let id = format!("file_{}", uuid::Uuid::new_v4());
-
-                    //     // save the file
-                    //     let path = Path::new("archives");
-                    //     if !path.exists() {
-                    //         fs::create_dir(path).unwrap();
-                    //     }
-                    //     let file_path = path.join(&id);
-                    //     if !file_path.exists() {
-                    //         fs::create_dir(&file_path).unwrap();
-                    //     }
-                    //     file_path.join("output.wav").to_string_lossy().to_string()
-                    // };
-                    let output_file = "output.wav".to_string();
-
                     // create a Metadata instance
                     let metadata_tts = GgmlTtsMetadataBuilder::new(
                         config.tts.model_name,
@@ -441,12 +427,13 @@ async fn main() -> Result<(), ServerError> {
                         config.tts.codec_model,
                     )
                     .enable_tts(true)
+                    .with_speaker_file(config.tts.speaker_file)
                     .with_ctx_size(config.tts.ctx_size)
                     .with_batch_size(config.tts.batch_size)
                     .with_ubatch_size(config.tts.ubatch_size)
                     .with_n_predict(config.tts.n_predict)
                     .with_n_gpu_layers(config.tts.n_gpu_layers)
-                    .with_output_file(output_file)
+                    // .with_output_file(output_file)
                     .enable_plugin_log(true)
                     .enable_debug_log(plugin_debug)
                     .build();
