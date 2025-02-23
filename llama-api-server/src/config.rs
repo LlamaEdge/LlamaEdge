@@ -287,6 +287,8 @@ pub(crate) struct TtsConfig {
     pub(crate) model_name: String,
     pub(crate) model_alias: String,
     pub(crate) codec_model: PathBuf,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) speaker_file: Option<PathBuf>,
     pub(crate) ctx_size: u64,
     pub(crate) batch_size: u64,
     pub(crate) ubatch_size: u64,
@@ -299,6 +301,7 @@ impl Default for TtsConfig {
             model_name: "tts".to_string(),
             model_alias: "tts".to_string(),
             codec_model: PathBuf::from(""),
+            speaker_file: None,
             ctx_size: 8192,
             batch_size: 8192,
             ubatch_size: 8192,
@@ -318,6 +321,7 @@ impl<'de> Deserialize<'de> for TtsConfig {
             model_name: String,
             model_alias: String,
             codec_model: String,
+            speaker_file: String,
             ctx_size: u64,
             batch_size: u64,
             ubatch_size: u64,
@@ -329,10 +333,17 @@ impl<'de> Deserialize<'de> for TtsConfig {
 
         let codec_model = PathBuf::from(helper.codec_model);
 
+        let speaker_file = if helper.speaker_file.is_empty() {
+            None
+        } else {
+            Some(PathBuf::from(helper.speaker_file))
+        };
+
         Ok(TtsConfig {
             model_name: helper.model_name,
             model_alias: helper.model_alias,
             codec_model,
+            speaker_file,
             ctx_size: helper.ctx_size,
             batch_size: helper.batch_size,
             ubatch_size: helper.ubatch_size,
