@@ -362,11 +362,6 @@ impl GgmlTtsMetadataBuilder {
         self
     }
 
-    // pub fn with_output_file(mut self, file: impl Into<String>) -> Self {
-    //     self.metadata.output_file = file.into();
-    //     self
-    // }
-
     pub fn enable_plugin_log(mut self, enable: bool) -> Self {
         self.metadata.log_enable = enable;
         self
@@ -393,7 +388,6 @@ pub struct GgmlTtsMetadata {
     pub codec_model: PathBuf,
     #[serde(rename = "tts-speaker-file", skip_serializing_if = "Option::is_none")]
     pub speaker_file: Option<PathBuf>,
-    // pub output_file: String,
     #[serde(rename = "ctx-size")]
     pub ctx_size: u64,
     #[serde(rename = "batch-size")]
@@ -415,7 +409,6 @@ impl Default for GgmlTtsMetadata {
             enable_tts: false,
             codec_model: PathBuf::from(""),
             speaker_file: None,
-            // output_file: "output.wav".to_string(),
             ctx_size: 8192,
             batch_size: 8192,
             ubatch_size: 8192,
