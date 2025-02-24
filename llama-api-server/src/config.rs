@@ -294,6 +294,7 @@ pub(crate) struct TtsConfig {
     pub(crate) ubatch_size: u64,
     pub(crate) n_predict: i32,
     pub(crate) n_gpu_layers: u64,
+    pub(crate) temp: f64,
 }
 impl Default for TtsConfig {
     fn default() -> Self {
@@ -307,6 +308,7 @@ impl Default for TtsConfig {
             ubatch_size: 8192,
             n_predict: 4096,
             n_gpu_layers: 100,
+            temp: 0.8,
         }
     }
 }
@@ -327,6 +329,7 @@ impl<'de> Deserialize<'de> for TtsConfig {
             ubatch_size: u64,
             n_predict: i32,
             n_gpu_layers: u64,
+            temp: f64,
         }
 
         let helper = Helper::deserialize(deserializer)?;
@@ -349,6 +352,7 @@ impl<'de> Deserialize<'de> for TtsConfig {
             ubatch_size: helper.ubatch_size,
             n_predict: helper.n_predict,
             n_gpu_layers: helper.n_gpu_layers,
+            temp: helper.temp,
         })
     }
 }
