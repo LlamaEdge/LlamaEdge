@@ -379,8 +379,10 @@ pub enum MergeRagContextPolicy {
     ///
     /// Note that this policy is only applicable when the chat template has a system message.
     #[default]
+    #[serde(rename = "system-message")]
     SystemMessage,
     /// Merge RAG context into the last user message.
+    #[serde(rename = "last-user-message")]
     LastUserMessage,
 }
 impl std::fmt::Display for MergeRagContextPolicy {
