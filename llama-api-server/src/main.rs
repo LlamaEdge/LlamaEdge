@@ -420,6 +420,8 @@ async fn main() -> Result<(), ServerError> {
 
                     info!(target: "stdout", "tts n_gpu_layers: {}", config.tts.n_gpu_layers);
 
+                    info!(target: "stdout", "tts temp: {}", config.tts.temp);
+
                     // create a Metadata instance
                     let metadata_tts = GgmlTtsMetadataBuilder::new(
                         config.tts.model_name,
@@ -433,7 +435,7 @@ async fn main() -> Result<(), ServerError> {
                     .with_ubatch_size(config.tts.ubatch_size)
                     .with_n_predict(config.tts.n_predict)
                     .with_n_gpu_layers(config.tts.n_gpu_layers)
-                    // .with_output_file(output_file)
+                    .with_temperature(config.tts.temp)
                     .enable_plugin_log(true)
                     .enable_debug_log(plugin_debug)
                     .build();
@@ -450,7 +452,7 @@ async fn main() -> Result<(), ServerError> {
                         reverse_prompt: None,
                         n_gpu_layers: None,
                         use_mmap: None,
-                        temperature: None,
+                        temperature: Some(metadata_tts.temperature),
                         top_p: None,
                         repeat_penalty: None,
                         presence_penalty: None,
