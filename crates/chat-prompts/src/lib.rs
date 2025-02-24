@@ -391,3 +391,18 @@ impl std::fmt::Display for MergeRagContextPolicy {
         }
     }
 }
+impl FromStr for MergeRagContextPolicy {
+    type Err = error::PromptError;
+
+    fn from_str(policy: &str) -> std::result::Result<Self, Self::Err> {
+        Ok(match policy {
+            "system-message" => MergeRagContextPolicy::SystemMessage,
+            "last-user-message" => MergeRagContextPolicy::LastUserMessage,
+            _ => {
+                return Err(error::PromptError::UnknownMergeRagContextPolicy(
+                    policy.to_string(),
+                ))
+            }
+        })
+    }
+}
