@@ -362,6 +362,11 @@ impl GgmlTtsMetadataBuilder {
         self
     }
 
+    pub fn with_temperature(mut self, temp: f64) -> Self {
+        self.metadata.temperature = temp;
+        self
+    }
+
     pub fn enable_plugin_log(mut self, enable: bool) -> Self {
         self.metadata.log_enable = enable;
         self
@@ -396,6 +401,8 @@ pub struct GgmlTtsMetadata {
     pub ubatch_size: u64,
     pub n_predict: i32,
     pub n_gpu_layers: u64,
+    #[serde(rename = "temp")]
+    pub temperature: f64,
     #[serde(rename = "enable-log")]
     pub log_enable: bool,
     #[serde(rename = "enable-debug-log")]
@@ -414,6 +421,7 @@ impl Default for GgmlTtsMetadata {
             ubatch_size: 8192,
             n_predict: 4096,
             n_gpu_layers: 100,
+            temperature: 0.8,
             log_enable: false,
             debug_log: false,
         }
