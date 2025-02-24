@@ -19,6 +19,8 @@ pub enum PromptError {
     UnknownRole(ChatCompletionRole),
     #[error("Unknown prompt template type: {0}")]
     UnknownPromptTemplateType(String),
+    #[error("Unknown merge RAG context policy: {0}")]
+    UnknownMergeRagContextPolicy(String),
     #[error("Failed to build prompt. Reason: {0}")]
     Operation(String),
 }
