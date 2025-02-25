@@ -1,10 +1,10 @@
 [server]
-socket_addr = "0.0.0.0:10086" # Socket address to listen on.
+socket_addr = "0.0.0.0:8080" # Socket address to listen on.
 # Default is "0.0.0.0:8080".
 
 
 [chat]
-model_name      = "Llama-3.2-3B" # Name of the chat model. Default is "default".
+model_name      = "Llama-3.2-1B" # Name of the chat model. Default is "default".
 model_alias     = "default"      # Alias of the chat model. Default is "default".
 ctx_size        = 4096           # Context size. Default is 4096.
 batch_size      = 512            # Batch size. Default is 512.
