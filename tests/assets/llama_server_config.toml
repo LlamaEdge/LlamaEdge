@@ -73,10 +73,10 @@ model_name  = "OuteTTS-0.2-500M"                    # Name of the TTS model. Def
 model_alias = "tts"                                 # Alias of the TTS model. Default is "tts".
 codec_model = "wavtokenizer-large-75-ggml-f16.gguf" # Required. Path to the codec
 # model file.
-speaker_file = "en_male_1.json" # Path to an alternative speaker file.
-ctx_size     = 8192             # Context size. Default is 8192.
-batch_size   = 8192             # Batch size. Default is 8192.
-ubatch_size  = 8192             # Physical maximum batch size. Default is 8192.
-n_predict    = 4096             # Number of tokens to predict. Default is 4096.
-n_gpu_layers = 100              # Number of layers to run on GPU. Default is 100.
-temp         = 0.8              # Temperature. Default is 0.8.
+speaker_file = ""   # Path to an alternative speaker file.
+ctx_size     = 4096 # Context size. Default is 8192.
+batch_size   = 4096 # Batch size. Default is 8192.
+ubatch_size  = 4096 # Physical maximum batch size. Default is 8192.
+n_predict    = 4096 # Number of tokens to predict. Default is 4096.
+n_gpu_layers = 100  # Number of layers to run on GPU. Default is 100.
+temp         = 0.8  # Temperature. Default is 0.8.
