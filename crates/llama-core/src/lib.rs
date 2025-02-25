@@ -320,7 +320,7 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
 
     let running_mode = running_mode()?;
 
-    if running_mode.contains(RunningMode::CHAT) {
+    if running_mode.contains(RunningMode::CHAT) || running_mode.contains(RunningMode::RAG) {
         let chat_graphs = match CHAT_GRAPHS.get() {
             Some(chat_graphs) => chat_graphs,
             None => {
