@@ -77,17 +77,13 @@ source $HOME/.bashrc
 
 ## Get LlamaEdge API server
 
-- Download LlamaEdge API server with the support for `HTTP` scheme only:
+Run the following command to download the latest LlamaEdge API server:
 
-  ```console
-  curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
-  ```
+```console
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server.wasm
+```
 
-- Download LlamaEdge API server with the support for `HTTP` and `WebSocket` schemes:
-
-  ```console
-  curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-api-server-full.wasm
-  ```
+If you'd like to download a specific version of the LlamaEdge API server, all release versions can be found in the [Releases](https://github.com/LlamaEdge/LlamaEdge/releases) page.
 
 ## Get model
 
