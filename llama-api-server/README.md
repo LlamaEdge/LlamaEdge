@@ -11,7 +11,9 @@ LlamaEdge API server offers OpenAI-compatible REST APIs. It can accelerate devel
   - [Get LlamaEdge API server](#get-llamaedge-api-server)
   - [Get model](#get-model)
   - [Run LlamaEdge API server](#run-llamaedge-api-server)
-    - [API Key](#api-key)
+    - [Start server with CLI options](#start-server-with-cli-options)
+    - [Start server with configuration file](#start-server-with-configuration-file)
+    - [API Key Support](#api-key-support)
   - [Endpoints](#endpoints)
     - [List models](#list-models)
     - [Chat completions](#chat-completions)
@@ -93,6 +95,8 @@ source $HOME/.bashrc
 
 ## Run LlamaEdge API server
 
+### Start server with CLI options
+
 Run the API server with the following command:
 
 ```bash
@@ -111,9 +115,36 @@ The command above starts the API server on the default socket address. Besides, 
 - The `--prompt-template llama-3-chat` is the prompt template for the model.
 - The `--model-name llama-3-8b` specifies the model name. It is used in the chat request.
 
-### API Key
+### Start server with configuration file
 
-To run the API server with a API key, use `API_KEY` environment variable to specify the API key:
+To start the API server with a configuration file, use the `config` subcommand:
+
+```bash
+Usage: llama-api-server.wasm config [OPTIONS] --file <FILE>
+
+Options:
+  -f, --file <FILE>  Path to the configuration file (*.toml)
+  -c, --chat         Use chat model
+  -e, --embedding    Use embedding model
+  -t, --tts          Use the TTS model
+  -h, --help         Print help
+```
+
+For example, to start the API server with a configuration file named `llama_server_config.toml` and use a chat model and an embedding model, use the following command:
+
+```bash
+wasmedge --dir .:. \
+  --nn-preload default:GGML:AUTO:Llama-3.2-3B-Instruct-Q5_K_M.gguf \
+  --nn-preload embedding:GGML:AUTO:nomic-embed-text-v1.5-f16.gguf \
+  llama-api-server.wasm \
+  config --file llama_server_config.toml --chat --embedding
+```
+
+Note that the template of the configuration file `llama_server_config.toml.bkp` can be found in the root directory of the repo.
+
+### API Key Support
+
+To run the API server with a API key, use `API_KEY` environment variable to specify the API key. The following example command demonstrates how to specify API key:
 
 ```bash
 export LLAMA_API_KEY=<your-api-key>
@@ -569,7 +600,11 @@ $ wasmedge llama-api-server.wasm -h
 
 LlamaEdge API Server
 
-Usage: llama-api-server.wasm [OPTIONS] --prompt-template <PROMPT_TEMPLATE>
+Usage: llama-api-server.wasm [OPTIONS] [COMMAND]
+
+Commands:
+  config  Generate or validate configuration file
+  help    Print this message or the help of the given subcommand(s)
 
 Options:
   -m, --model-name <MODEL_NAME>
@@ -583,7 +618,7 @@ Options:
   -u, --ubatch-size <UBATCH_SIZE>
           Sets physical maximum batch sizes for chat and/or embedding models. To run both chat and embedding models, the sizes should be separated by comma without space, for example, '--ubatch-size 512,512'. The first value is for the chat model, and the second for the embedding model [default: 512,512]
   -p, --prompt-template <PROMPT_TEMPLATE>
-          Sets prompt templates for chat and/or embedding models, respectively. To run both chat and embedding models, the prompt templates should be separated by comma without space, for example, '--prompt-template llama-2-chat,embedding'. The first value is for the chat model, and the second is for the embedding model [possible values: llama-2-chat, llama-3-chat, llama-3-tool, mistral-instruct, mistral-tool, mistrallite, mistral-small-chat, mistral-small-tool, openchat, codellama-instruct, codellama-super-instruct, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, chatml-tool, internlm-2-tool, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, deepseek-chat-2, deepseek-chat-25, deepseek-chat-3, solar-instruct, phi-2-chat, phi-2-instruct, phi-3-chat, phi-3-instruct, phi-4-chat, gemma-instruct, octopus, glm-4-chat, groq-llama3-tool, mediatek-breeze, nemotron-chat, nemotron-tool, functionary-32, functionary-31, minicpmv, moxin-chat, falcon3, megrez, qwen2-vision, embedding, none]
+          Sets prompt templates for chat and/or embedding models, respectively. To run both chat and embedding models, the prompt templates should be separated by comma without space, for example, '--prompt-template llama-2-chat,embedding'. The first value is for the chat model, and the second is for the embedding model [possible values: llama-2-chat, llama-3-chat, llama-3-tool, mistral-instruct, mistral-tool, mistrallite, mistral-small-chat, mistral-small-tool, openchat, codellama-instruct, codellama-super-instruct, human-assistant, vicuna-1.0-chat, vicuna-1.1-chat, vicuna-llava, chatml, chatml-tool, internlm-2-tool, baichuan-2, wizard-coder, zephyr, stablelm-zephyr, intel-neural, deepseek-chat, deepseek-coder, deepseek-chat-2, deepseek-chat-25, deepseek-chat-3, solar-instruct, phi-2-chat, phi-2-instruct, phi-3-chat, phi-3-instruct, phi-4-chat, gemma-instruct, octopus, glm-4-chat, groq-llama3-tool, mediatek-breeze, nemotron-chat, nemotron-tool, functionary-32, functionary-31, minicpmv, moxin-chat, falcon3, megrez, qwen2-vision, embedding, tts, none]
   -r, --reverse-prompt <REVERSE_PROMPT>
           Halt generation at PROMPT, return control
   -n, --n-predict <N_PREDICT>
@@ -622,8 +657,6 @@ Options:
           Socket address of LlamaEdge API Server instance. For example, `0.0.0.0:8080`
       --port <PORT>
           Port number [default: 8080]
-      --config <CONFIG>
-          Path to the configuration file (*.yaml)
       --web-ui <WEB_UI>
           Root path for the Web UI files [default: chatbot-ui]
       --log-prompts
