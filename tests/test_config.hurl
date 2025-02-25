@@ -54,7 +54,7 @@ Content-Type: application/json
 ```json
 {
     "model": "OuteTTS-0.2-500M",
-    "input": "The Old Man and the Sea was an immediate success throughout the world."
+    "input": "Hello world"
 }
 ```
 HTTP 200
