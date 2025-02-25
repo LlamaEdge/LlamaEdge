@@ -4,7 +4,7 @@ use crate::{
     error::{BackendError, LlamaCoreError},
     metadata::ggml::GgmlMetadata,
     running_mode,
-    utils::{get_output_buffer, get_token_info_by_graph},
+    utils::{get_output_buffer, get_token_info_by_graph, set_tensor_data_u8},
     Graph, RunningMode, CHAT_GRAPHS, EMBEDDING_GRAPHS, OUTPUT_TENSOR,
 };
 use endpoints::{
@@ -42,87 +42,92 @@ pub async fn embeddings(
 
     let model_name = &embedding_request.model;
 
-    // For general embedding scenario, the embedding model is the same as the chat model.
-    // For RAG scenario, the embedding model is different from the chat model.
-    let embedding_graphs = match EMBEDDING_GRAPHS.get() {
-        Some(embedding_graphs) => embedding_graphs,
-        None => match CHAT_GRAPHS.get() {
-            Some(chat_graphs) => chat_graphs,
-            None => {
-                let err_msg = "No embedding model is available.";
+    let embedding_reponse = {
+        // For general embedding scenario, the embedding model is the same as the chat model.
+        // For RAG scenario, the embedding model is different from the chat model.
+        let embedding_graphs = match EMBEDDING_GRAPHS.get() {
+            Some(embedding_graphs) => embedding_graphs,
+            None => match CHAT_GRAPHS.get() {
+                Some(chat_graphs) => chat_graphs,
+                None => {
+                    let err_msg = "No embedding model is available.";
 
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                    #[cfg(feature = "logging")]
+                    error!(target: "stdout", "{}", err_msg);
 
-                return Err(LlamaCoreError::Operation(err_msg.into()));
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                }
+            },
+        };
+
+        let mut embedding_graphs = embedding_graphs.lock().map_err(|e| {
+            let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}", e);
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            LlamaCoreError::Operation(err_msg)
+        })?;
+
+        let graph = match model_name {
+            Some(model_name) if embedding_graphs.contains_key(model_name) => {
+                embedding_graphs.get_mut(model_name).unwrap()
             }
-        },
-    };
+            _ => match embedding_graphs.iter_mut().next() {
+                Some((_, graph)) => graph,
+                None => {
+                    let err_msg = "Not found available model in the embedding graphs.";
 
-    let mut embedding_graphs = embedding_graphs.lock().map_err(|e| {
-        let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}", e);
+                    #[cfg(feature = "logging")]
+                    error!(target: "stdout", "{}", &err_msg);
 
-        #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", &err_msg);
+                    return Err(LlamaCoreError::Operation(err_msg.into()));
+                }
+            },
+        };
 
-        LlamaCoreError::Operation(err_msg)
-    })?;
-
-    let graph = match model_name {
-        Some(model_name) if embedding_graphs.contains_key(model_name) => {
-            embedding_graphs.get_mut(model_name).unwrap()
+        // check if the `embedding` option of metadata is enabled
+        if !graph.metadata.embeddings {
+            graph.metadata.embeddings = true;
+            graph.update_metadata()?;
         }
-        _ => match embedding_graphs.iter_mut().next() {
-            Some((_, graph)) => graph,
-            None => {
-                let err_msg = "Not found available model in the embedding graphs.";
 
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
-
-                return Err(LlamaCoreError::Operation(err_msg.into()));
+        // compute embeddings
+        let (data, usage) = match &embedding_request.input {
+            InputText::String(text) => compute_embeddings(graph, &[text.to_owned()])?,
+            InputText::ArrayOfStrings(texts) => compute_embeddings(graph, texts.as_slice())?,
+            InputText::ArrayOfTokens(tokens) => {
+                let texts: Vec<String> = tokens.iter().map(|t| t.to_string()).collect();
+                compute_embeddings(graph, texts.as_slice())?
             }
-        },
-    };
+            InputText::ArrayOfTokenArrays(token_arrays) => {
+                let texts: Vec<String> = token_arrays
+                    .iter()
+                    .map(|tokens| {
+                        tokens
+                            .iter()
+                            .map(|t| t.to_string())
+                            .collect::<Vec<String>>()
+                            .join(" ")
+                    })
+                    .collect();
+                compute_embeddings(graph, texts.as_slice())?
+            }
+        };
 
-    // check if the `embedding` option of metadata is enabled
-    if !graph.metadata.embeddings {
-        graph.metadata.embeddings = true;
-        graph.update_metadata()?;
-    }
-
-    // compute embeddings
-    let (data, usage) = match &embedding_request.input {
-        InputText::String(text) => compute_embeddings(graph, &[text.to_owned()])?,
-        InputText::ArrayOfStrings(texts) => compute_embeddings(graph, texts.as_slice())?,
-        InputText::ArrayOfTokens(tokens) => {
-            let texts: Vec<String> = tokens.iter().map(|t| t.to_string()).collect();
-            compute_embeddings(graph, texts.as_slice())?
+        EmbeddingsResponse {
+            object: String::from("list"),
+            data,
+            model: graph.name().to_owned(),
+            usage,
         }
-        InputText::ArrayOfTokenArrays(token_arrays) => {
-            let texts: Vec<String> = token_arrays
-                .iter()
-                .map(|tokens| {
-                    tokens
-                        .iter()
-                        .map(|t| t.to_string())
-                        .collect::<Vec<String>>()
-                        .join(" ")
-                })
-                .collect();
-            compute_embeddings(graph, texts.as_slice())?
-        }
-    };
-
-    let embedding_reponse = EmbeddingsResponse {
-        object: String::from("list"),
-        data,
-        model: graph.name().to_owned(),
-        usage,
     };
 
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "Embeddings computed successfully.");
+    info!(target: "stdout", "Reset the model metadata");
+
+    // reset the model metadata
+    reset_model_metadata(model_name.as_ref())?;
 
     Ok(embedding_reponse)
 }
@@ -395,4 +400,150 @@ pub fn chunk_text(
             Err(LlamaCoreError::Operation(err_msg.into()))
         }
     }
+}
+
+/// Get a copy of the metadata of the model.
+fn get_model_metadata(model_name: Option<&String>) -> Result<GgmlMetadata, LlamaCoreError> {
+    let embedding_graphs = match EMBEDDING_GRAPHS.get() {
+        Some(embedding_graphs) => embedding_graphs,
+        None => {
+            let err_msg = "Fail to get the underlying value of `EMBEDDING_GRAPHS`.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.into()));
+        }
+    };
+
+    let embedding_graphs = embedding_graphs.lock().map_err(|e| {
+        let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}", e);
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
+
+    match model_name {
+        Some(model_name) => match embedding_graphs.contains_key(model_name) {
+            true => {
+                let graph = embedding_graphs.get(model_name).unwrap();
+                Ok(graph.metadata.clone())
+            }
+            false => match embedding_graphs.iter().next() {
+                Some((_, graph)) => Ok(graph.metadata.clone()),
+                None => {
+                    let err_msg = "There is no model available in the embedding graphs.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "stdout", "{}", &err_msg);
+
+                    Err(LlamaCoreError::Operation(err_msg.into()))
+                }
+            },
+        },
+        None => match embedding_graphs.iter().next() {
+            Some((_, graph)) => Ok(graph.metadata.clone()),
+            None => {
+                let err_msg = "There is no model available in the embedding graphs.";
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", err_msg);
+
+                Err(LlamaCoreError::Operation(err_msg.into()))
+            }
+        },
+    }
+}
+
+fn update_model_metadata(
+    model_name: Option<&String>,
+    metadata: &GgmlMetadata,
+) -> Result<(), LlamaCoreError> {
+    let config = match serde_json::to_string(metadata) {
+        Ok(config) => config,
+        Err(e) => {
+            let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg));
+        }
+    };
+
+    let embedding_graphs = match EMBEDDING_GRAPHS.get() {
+        Some(embedding_graphs) => embedding_graphs,
+        None => {
+            let err_msg = "Fail to get the underlying value of `EMBEDDING_GRAPHS`.";
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", err_msg);
+
+            return Err(LlamaCoreError::Operation(err_msg.into()));
+        }
+    };
+
+    let mut embedding_graphs = embedding_graphs.lock().map_err(|e| {
+        let err_msg = format!(
+            "Fail to acquire the lock of `EMBEDDING_GRAPHS`. Reason: {}",
+            e
+        );
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
+
+    match model_name {
+        Some(model_name) => {
+            match embedding_graphs.contains_key(model_name) {
+                true => {
+                    let graph = embedding_graphs.get_mut(model_name).unwrap();
+                    // update metadata
+                    set_tensor_data_u8(graph, 1, config.as_bytes())
+                }
+                false => match embedding_graphs.iter_mut().next() {
+                    Some((_, graph)) => {
+                        // update metadata
+                        set_tensor_data_u8(graph, 1, config.as_bytes())
+                    }
+                    None => {
+                        let err_msg = "There is no model available in the embedding graphs.";
+
+                        #[cfg(feature = "logging")]
+                        error!(target: "stdout", "{}", &err_msg);
+
+                        Err(LlamaCoreError::Operation(err_msg.into()))
+                    }
+                },
+            }
+        }
+        None => {
+            match embedding_graphs.iter_mut().next() {
+                Some((_, graph)) => {
+                    // update metadata
+                    set_tensor_data_u8(graph, 1, config.as_bytes())
+                }
+                None => {
+                    let err_msg = "There is no model available in the embedding graphs.";
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "stdout", "{}", err_msg);
+
+                    Err(LlamaCoreError::Operation(err_msg.into()))
+                }
+            }
+        }
+    }
+}
+
+fn reset_model_metadata(model_name: Option<&String>) -> Result<(), LlamaCoreError> {
+    // get metadata
+    let metadata = get_model_metadata(model_name)?;
+
+    // update model with the original metadata
+    update_model_metadata(model_name, &metadata)
 }
