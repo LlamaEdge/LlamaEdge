@@ -87,7 +87,7 @@ If you'd like to download a specific version of the LlamaEdge API server, all re
 
 ## Get model
 
-[huggingface.co/second-state](https://huggingface.co/second-state?search_models=GGUF) maintains a group of GGUF models for different usages. In addition, you can also pick a GGUF model from the [https://huggingface.co/models?sort=trending&search=gguf](https://huggingface.co/models?sort=trending&search=gguf).
+We upload and maintain GGUF models in the [huggingface.co/second-state](https://huggingface.co/second-state) repo. In addition, you can also pick a GGUF model from the [https://huggingface.co/models?sort=trending&search=gguf](https://huggingface.co/models?sort=trending&search=gguf).
 
 ## Run LlamaEdge API server
 
