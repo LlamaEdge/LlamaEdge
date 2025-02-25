@@ -240,14 +240,22 @@ pub fn init_ggml_rag_context(
 
     // set running mode
     let running_mode = RunningMode::RAG;
-    RUNNING_MODE.set(RwLock::new(running_mode)).map_err(|_| {
-            let err_msg = "Failed to initialize the core context. Reason: The `RUNNING_MODE` has already been initialized";
+    match RUNNING_MODE.get() {
+        Some(mode) => {
+            let mut mode = mode.write().unwrap();
+            *mode |= running_mode;
+        }
+        None => {
+            RUNNING_MODE.set(RwLock::new(running_mode)).map_err(|_| {
+                    let err_msg = "Failed to initialize the rag context. Reason: The `RUNNING_MODE` has already been initialized";
 
-            #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+                    #[cfg(feature = "logging")]
+                    error!(target: "stdout", "{}", err_msg);
 
-            LlamaCoreError::InitContext(err_msg.into())
-        })?;
+                    LlamaCoreError::InitContext(err_msg.into())
+                })?;
+        }
+    }
 
     Ok(())
 }
@@ -418,7 +426,12 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
 
         get_plugin_info_by_graph(graph)
     } else {
-        Err(LlamaCoreError::Operation("RUNNING_MODE is not set".into()))
+        let err_msg = "RUNNING_MODE is not set";
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", err_msg);
+
+        Err(LlamaCoreError::Operation(err_msg.into()))
     }
 }
 
