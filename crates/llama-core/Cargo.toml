@@ -36,7 +36,7 @@ bitflags                   = "2.0"
 ignored = ["wasi-logger"]
 
 [features]
-default = ["rag"]
+default = []
 full    = ["logging", "search", "rag", "whisper", "index"]
 logging = ["wasi-logger", "log", "endpoints/logging"]
 search  = []
