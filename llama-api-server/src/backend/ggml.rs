@@ -1,5 +1,6 @@
 use crate::{error, utils::gen_chat_id, SERVER_INFO};
 use endpoints::{
+    audio::speech::SpeechRequest,
     chat::ChatCompletionRequest,
     completions::CompletionRequest,
     embeddings::{ChunksRequest, ChunksResponse, EmbeddingRequest},
@@ -7,6 +8,7 @@ use endpoints::{
 };
 use futures_util::TryStreamExt;
 use hyper::{body::to_bytes, Body, Method, Request, Response};
+use llama_core::utils::RunningMode;
 use multipart::server::{Multipart, ReadEntry, ReadEntryResult};
 use multipart_2021 as multipart;
 use std::{
@@ -75,6 +77,25 @@ pub(crate) async fn models_handler() -> Response<Body> {
 pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body> {
     // log
     info!(target: "stdout", "Handling the coming embeddings request");
+
+    let running_mode = match llama_core::running_mode() {
+        Ok(mode) => mode,
+        Err(e) => {
+            let err_msg = format!("Failed to get running mode: {}", e);
+
+            error!(target: "stdout", "{}", e);
+
+            return error::internal_server_error(err_msg);
+        }
+    };
+    if !running_mode.contains(RunningMode::CHAT) && !running_mode.contains(RunningMode::EMBEDDINGS)
+    {
+        let err_msg = "Embeddings tasks are only supported in the chat or embeddingsmode.";
+
+        error!(target: "stdout", "{}", err_msg);
+
+        return error::internal_server_error(err_msg);
+    }
 
     if req.method().eq(&hyper::http::Method::OPTIONS) {
         let result = Response::builder()
@@ -188,6 +209,24 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
     // log
     info!(target: "stdout", "Handling the coming completions request.");
 
+    let running_mode = match llama_core::running_mode() {
+        Ok(mode) => mode,
+        Err(e) => {
+            let err_msg = format!("Failed to get running mode: {}", e);
+
+            error!(target: "stdout", "{}", e);
+
+            return error::internal_server_error(err_msg);
+        }
+    };
+    if !running_mode.contains(RunningMode::CHAT) {
+        let err_msg = "Completions tasks are only supported in the chat mode.";
+
+        error!(target: "stdout", "{}", err_msg);
+
+        return error::internal_server_error(err_msg);
+    }
+
     if req.method().eq(&hyper::http::Method::OPTIONS) {
         let result = Response::builder()
             .header("Access-Control-Allow-Origin", "*")
@@ -298,6 +337,24 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
 /// Process a chat-completion request and returns a chat-completion response with the answer from the model.
 pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response<Body> {
     info!(target: "stdout", "Handling the coming chat completion request");
+
+    let running_mode = match llama_core::running_mode() {
+        Ok(mode) => mode,
+        Err(e) => {
+            let err_msg = format!("Failed to get running mode: {}", e);
+
+            error!(target: "stdout", "{}", e);
+
+            return error::internal_server_error(err_msg);
+        }
+    };
+    if !running_mode.contains(RunningMode::CHAT) {
+        let err_msg = "Chat completion tasks are only supported in the chat mode.";
+
+        error!(target: "stdout", "{}", err_msg);
+
+        return error::internal_server_error(err_msg);
+    }
 
     if req.method().eq(&hyper::http::Method::OPTIONS) {
         let result = Response::builder()
@@ -1208,6 +1265,114 @@ pub(crate) async fn server_info_handler() -> Response<Body> {
     };
 
     info!(target: "stdout", "Send the server info response.");
+
+    res
+}
+
+/// Create the audio speech.
+pub(crate) async fn audio_speech_handler(req: Request<Body>) -> Response<Body> {
+    // log
+    info!(target: "stdout", "Handling the coming audio speech request.");
+
+    let running_mode = match llama_core::running_mode() {
+        Ok(mode) => mode,
+        Err(e) => {
+            let err_msg = format!("Failed to get running mode: {}", e);
+
+            error!(target: "stdout", "{}", e);
+
+            return error::internal_server_error(err_msg);
+        }
+    };
+    if !running_mode.contains(RunningMode::TTS) {
+        let err_msg = "Audio speech tasks are only supported in the tts mode.";
+
+        error!(target: "stdout", "{}", err_msg);
+
+        return error::internal_server_error(err_msg);
+    }
+
+    if req.method().eq(&Method::OPTIONS) {
+        let result = Response::builder()
+            .header("Access-Control-Allow-Origin", "*")
+            .header("Access-Control-Allow-Methods", "*")
+            .header("Access-Control-Allow-Headers", "*")
+            .header("Content-Type", "application/json")
+            .body(Body::empty());
+
+        match result {
+            Ok(response) => return response,
+            Err(e) => {
+                let err_msg = e.to_string();
+
+                // log
+                error!(target: "stdout", "{}", &err_msg);
+
+                return error::internal_server_error(err_msg);
+            }
+        }
+    }
+
+    info!(target: "stdout", "Prepare the chat completion request.");
+
+    // parse request
+    let body_bytes = match to_bytes(req.into_body()).await {
+        Ok(body_bytes) => body_bytes,
+        Err(e) => {
+            let err_msg = format!("Fail to read buffer from request body. {}", e);
+
+            // log
+            error!(target: "stdout", "{}", &err_msg);
+
+            return error::internal_server_error(err_msg);
+        }
+    };
+    let speech_request: SpeechRequest = match serde_json::from_slice(&body_bytes) {
+        Ok(speech_request) => speech_request,
+        Err(e) => {
+            let err_msg = format!("Fail to deserialize speech request: {msg}", msg = e);
+
+            // log
+            error!(target: "stdout", "{}", &err_msg);
+
+            return error::bad_request(err_msg);
+        }
+    };
+
+    let audio_buffer = match llama_core::tts::create_speech(speech_request).await {
+        Ok(buffer) => buffer,
+        Err(e) => {
+            let err_msg = format!("Failed to transcribe the audio. {}", e);
+
+            // log
+            error!(target: "stdout", "{}", &err_msg);
+
+            return error::internal_server_error(err_msg);
+        }
+    };
+
+    // return response
+    let result = Response::builder()
+        .header("Access-Control-Allow-Origin", "*")
+        .header("Access-Control-Allow-Methods", "*")
+        .header("Access-Control-Allow-Headers", "*")
+        .header("Content-Type", "audio/wav")
+        .header("Content-Disposition", "attachment; filename=audio.wav")
+        .body(Body::from(audio_buffer));
+
+    let res = match result {
+        Ok(response) => response,
+        Err(e) => {
+            let err_msg = e.to_string();
+
+            // log
+            error!(target: "stdout", "{}", &err_msg);
+
+            error::internal_server_error(err_msg)
+        }
+    };
+
+    info!(target: "stdout", "Send the audio speech response");
 
     res
 }

@@ -112,6 +112,8 @@ pub enum PromptTemplateType {
     Qwen2vl,
     #[value(name = "embedding")]
     Embedding,
+    #[value(name = "tts")]
+    Tts,
     #[value(name = "none")]
     Null,
 }
@@ -168,6 +170,7 @@ impl PromptTemplateType {
             | PromptTemplateType::FunctionaryV32
             | PromptTemplateType::FunctionaryV31
             | PromptTemplateType::Embedding
+            | PromptTemplateType::Tts
             | PromptTemplateType::Null => false,
         }
     }
@@ -237,6 +240,7 @@ impl FromStr for PromptTemplateType {
             "megrez" => Ok(PromptTemplateType::Megrez),
             "qwen2-vision" => Ok(PromptTemplateType::Qwen2vl),
             "embedding" => Ok(PromptTemplateType::Embedding),
+            "tts" => Ok(PromptTemplateType::Tts),
             "none" => Ok(PromptTemplateType::Null),
             _ => Err(error::PromptError::UnknownPromptTemplateType(
                 template.to_string(),
@@ -296,6 +300,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::Megrez => write!(f, "megrez"),
             PromptTemplateType::Qwen2vl => write!(f, "qwen2-vision"),
             PromptTemplateType::Embedding => write!(f, "embedding"),
+            PromptTemplateType::Tts => write!(f, "tts"),
             PromptTemplateType::Null => write!(f, "none"),
         }
     }
@@ -374,8 +379,10 @@ pub enum MergeRagContextPolicy {
     ///
     /// Note that this policy is only applicable when the chat template has a system message.
     #[default]
+    #[serde(rename = "system-message")]
     SystemMessage,
     /// Merge RAG context into the last user message.
+    #[serde(rename = "last-user-message")]
     LastUserMessage,
 }
 impl std::fmt::Display for MergeRagContextPolicy {
@@ -384,5 +391,20 @@ impl std::fmt::Display for MergeRagContextPolicy {
             MergeRagContextPolicy::SystemMessage => write!(f, "system-message"),
             MergeRagContextPolicy::LastUserMessage => write!(f, "last-user-message"),
         }
+    }
+}
+impl FromStr for MergeRagContextPolicy {
+    type Err = error::PromptError;
+
+    fn from_str(policy: &str) -> std::result::Result<Self, Self::Err> {
+        Ok(match policy {
+            "system-message" => MergeRagContextPolicy::SystemMessage,
+            "last-user-message" => MergeRagContextPolicy::LastUserMessage,
+            _ => {
+                return Err(error::PromptError::UnknownMergeRagContextPolicy(
+                    policy.to_string(),
+                ))
+            }
+        })
     }
 }

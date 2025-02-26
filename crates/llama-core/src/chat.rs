@@ -96,16 +96,13 @@ async fn chat_stream(
     info!(target: "stdout", "Process chat completion request in the stream mode");
 
     let running_mode = running_mode()?;
-    if running_mode == RunningMode::Embeddings {
-        let err_msg = format!(
-            "The chat completion is not supported in the {} mode.",
-            running_mode
-        );
+    if !running_mode.contains(RunningMode::CHAT) && !running_mode.contains(RunningMode::RAG) {
+        let err_msg = "The chat completion is only supported in the chat or rag mode.";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", &err_msg);
+        error!(target: "stdout", "{}", err_msg);
 
-        return Err(LlamaCoreError::Operation(err_msg));
+        return Err(LlamaCoreError::Operation(err_msg.to_string()));
     }
 
     let model_name = chat_request.model.clone();
@@ -650,16 +647,13 @@ async fn chat_once(
     info!(target: "stdout", "Processing chat completion request in non-stream mode");
 
     let running_mode = running_mode()?;
-    if running_mode == RunningMode::Embeddings {
-        let err_msg = format!(
-            "The chat completion is not supported in the {} mode.",
-            running_mode
-        );
+    if !running_mode.contains(RunningMode::CHAT) && !running_mode.contains(RunningMode::RAG) {
+        let err_msg = "The chat completion is only supported in the chat or rag mode.";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", &err_msg);
+        error!(target: "stdout", "{}", err_msg);
 
-        return Err(LlamaCoreError::Operation(err_msg));
+        return Err(LlamaCoreError::Operation(err_msg.to_string()));
     }
 
     let model_name = chat_request.model.clone();
@@ -2682,23 +2676,6 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
         }
     }
 }
-
-// fn set_tensor_data_u8(
-//     graph: &mut Graph,
-//     idx: usize,
-//     tensor_data: &[u8],
-// ) -> Result<(), LlamaCoreError> {
-//     if graph
-//         .set_input(idx, wasmedge_wasi_nn::TensorType::U8, &[1], tensor_data)
-//         .is_err()
-//     {
-//         return Err(LlamaCoreError::Operation(String::from(
-//             "Fail to set input tensor",
-//         )));
-//     };
-
-//     Ok(())
-// }
 
 /// Get a copy of the metadata of the model.
 fn get_model_metadata(model_name: Option<&String>) -> Result<GgmlMetadata, LlamaCoreError> {

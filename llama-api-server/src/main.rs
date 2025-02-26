@@ -2,12 +2,13 @@
 extern crate log;
 
 mod backend;
+mod config;
 mod error;
 mod utils;
 
 use anyhow::Result;
 use chat_prompts::PromptTemplateType;
-use clap::{ArgGroup, Parser};
+use clap::{ArgGroup, Parser, Subcommand};
 use error::ServerError;
 use hyper::{
     body::HttpBody,
@@ -16,10 +17,10 @@ use hyper::{
     service::{make_service_fn, service_fn},
     Body, Request, Response, Server, StatusCode,
 };
-use llama_core::metadata::ggml::GgmlMetadataBuilder;
+use llama_core::metadata::ggml::{GgmlMetadataBuilder, GgmlTtsMetadataBuilder};
 use once_cell::sync::OnceCell;
-use serde::{de, Deserialize, Serialize};
-use std::{collections::HashMap, fs, net::SocketAddr, path::PathBuf};
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
 use tokio::net::TcpListener;
 use utils::LogLevel;
 
@@ -36,9 +37,39 @@ const DEFAULT_PORT: &str = "8080";
 
 #[derive(Debug, Parser)]
 #[command(name = "LlamaEdge API Server", version = env!("CARGO_PKG_VERSION"), author = env!("CARGO_PKG_AUTHORS"), about = "LlamaEdge API Server")]
-#[command(group = ArgGroup::new("socket_address_group").multiple(false).args(&["socket_addr", "port"]))]
-#[command(group = ArgGroup::new("config_group").multiple(false).args(&["config", "prompt_template"]))]
 struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+
+    #[command(flatten)]
+    server_args: ServerArgs,
+}
+
+#[derive(Debug, Subcommand)]
+enum Commands {
+    /// Generate or validate configuration file
+    Config {
+        /// Path to the configuration file (*.toml)
+        #[arg(short, long)]
+        file: PathBuf,
+
+        /// Use chat model
+        #[arg(short, long, default_value = "false")]
+        chat: bool,
+
+        /// Use embedding model
+        #[arg(short, long, default_value = "false")]
+        embedding: bool,
+
+        /// Use the TTS model
+        #[arg(short, long, default_value = "false")]
+        tts: bool,
+    },
+}
+
+#[derive(Debug, Parser)]
+#[command(group = ArgGroup::new("socket_address_group").multiple(false).args(&["socket_addr", "port"]))]
+struct ServerArgs {
     /// Sets names for chat and/or embedding models. To run both chat and embedding models, the names should be separated by comma without space, for example, '--model-name Llama-2-7b,all-minilm'. The first value is for the chat model, and the second is for the embedding model.
     #[arg(short, long, value_delimiter = ',', default_value = "default")]
     model_name: Vec<String>,
@@ -66,7 +97,7 @@ struct Cli {
     #[arg(short, long, value_delimiter = ',', default_value = "512,512", value_parser = clap::value_parser!(u64))]
     ubatch_size: Vec<u64>,
     /// Sets prompt templates for chat and/or embedding models, respectively. To run both chat and embedding models, the prompt templates should be separated by comma without space, for example, '--prompt-template llama-2-chat,embedding'. The first value is for the chat model, and the second is for the embedding model.
-    #[arg(short, long, value_delimiter = ',', value_parser = clap::value_parser!(PromptTemplateType), group = "config_group", required = true)]
+    #[arg(short, long, value_delimiter = ',', value_parser = clap::value_parser!(PromptTemplateType))]
     prompt_template: Vec<PromptTemplateType>,
     /// Halt generation at PROMPT, return control.
     #[arg(short, long)]
@@ -125,9 +156,6 @@ struct Cli {
     /// Port number
     #[arg(long, default_value = DEFAULT_PORT, value_parser = clap::value_parser!(u16), group = "socket_address_group")]
     port: u16,
-    /// Path to the configuration file (*.yaml)
-    #[arg(long, group = "config_group")]
-    config: Option<PathBuf>,
     /// Root path for the Web UI files
     #[arg(long, default_value = "chatbot-ui")]
     web_ui: PathBuf,
@@ -140,386 +168,6 @@ struct Cli {
     /// Deprecated. Print all log information to stdout
     #[arg(long)]
     log_all: bool,
-}
-
-#[derive(Debug)]
-struct CliConfig {
-    /// Sets names for chat and/or embedding models. To run both chat and embedding models, the names should be separated by comma without space, for example, '--model-name Llama-2-7b,all-minilm'. The first value is for the chat model, and the second is for the embedding model.
-    model_name: Vec<String>,
-    /// Model aliases for chat and embedding models
-    model_alias: Vec<String>,
-    /// Sets context sizes for chat and/or embedding models. To run both chat and embedding models, the sizes should be separated by comma without space, for example, '--ctx-size 4096,384'. The first value is for the chat model, and the second is for the embedding model.
-    ctx_size: Vec<u64>,
-    /// Sets batch sizes for chat and/or embedding models. To run both chat and embedding models, the sizes should be separated by comma without space, for example, '--batch-size 128,64'. The first value is for the chat model, and the second is for the embedding model.
-    batch_size: Vec<u64>,
-    /// Sets prompt templates for chat and/or embedding models, respectively. To run both chat and embedding models, the prompt templates should be separated by comma without space, for example, '--prompt-template llama-2-chat,embedding'. The first value is for the chat model, and the second is for the embedding model.
-    prompt_template: Vec<PromptTemplateType>,
-    /// Halt generation at PROMPT, return control.
-    reverse_prompt: Option<String>,
-    /// Number of tokens to predict, -1 = infinity, -2 = until context filled.
-    n_predict: i32,
-    /// Number of layers to run on the GPU
-    n_gpu_layers: u64,
-    /// Split the model across multiple GPUs. Possible values:
-    /// - `none`: use one GPU only
-    /// - `layer`: split layers and KV across GPUs (default)
-    /// - `row`: split rows across GPUs
-    split_mode: String,
-    /// The main GPU to use.
-    main_gpu: Option<u64>,
-    /// How split tensors should be distributed accross GPUs. If None the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1.
-    tensor_split: Option<String>,
-    /// Number of threads to use during computation
-    threads: u64,
-    /// Disable memory mapping for file access of chat models
-    no_mmap: bool,
-    /// Temperature for sampling
-    temp: f64,
-    /// An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. 1.0 = disabled
-    top_p: f64,
-    /// Penalize repeat sequence of tokens
-    repeat_penalty: f64,
-    /// Repeat alpha presence penalty. 0.0 = disabled
-    presence_penalty: f64,
-    /// Repeat alpha frequency penalty. 0.0 = disabled
-    frequency_penalty: f64,
-    /// BNF-like grammar to constrain generations (see samples in grammars/ dir).
-    grammar: Option<String>,
-    /// JSON schema to constrain generations (<https://json-schema.org/>), e.g. `{}` for any JSON object. For schemas w/ external $refs, use --grammar + example/json_schema_to_grammar.py instead.
-    json_schema: Option<String>,
-    /// Path to the multimodal projector file
-    llava_mmproj: Option<String>,
-    /// Socket address of LlamaEdge API Server instance. For example, `0.0.0.0:8080`.
-    socket_addr: Option<SocketAddr>,
-}
-impl<'de> Deserialize<'de> for CliConfig {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        #[serde(field_identifier, rename_all = "kebab-case")]
-        enum Field {
-            ModelName,
-            ModelAlias,
-            CtxSize,
-            BatchSize,
-            PromptTemplate,
-            ReversePrompt,
-            NPredict,
-            NGpuLayers,
-            SplitMode,
-            MainGpu,
-            TensorSplit,
-            Threads,
-            NoMmap,
-            Temp,
-            TopP,
-            RepeatPenalty,
-            PresencePenalty,
-            FrequencyPenalty,
-            Grammar,
-            JsonSchema,
-            LlavaMmproj,
-            SocketAddr,
-        }
-
-        struct CliConfigVisitor;
-
-        impl<'de> serde::de::Visitor<'de> for CliConfigVisitor {
-            type Value = CliConfig;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("struct CliConfig")
-            }
-
-            fn visit_map<V>(self, mut map: V) -> Result<CliConfig, V::Error>
-            where
-                V: serde::de::MapAccess<'de>,
-            {
-                let mut model_name = None;
-                let mut model_alias = None;
-                let mut ctx_size = None;
-                let mut batch_size = None;
-                let mut prompt_template: Option<Vec<String>> = None;
-                let mut reverse_prompt = None;
-                let mut n_predict = None;
-                let mut n_gpu_layers = None;
-                let mut split_mode = None;
-                let mut main_gpu = None;
-                let mut tensor_split = None;
-                let mut threads = None;
-                let mut no_mmap = None;
-                let mut temp = None;
-                let mut top_p = None;
-                let mut repeat_penalty = None;
-                let mut presence_penalty = None;
-                let mut frequency_penalty = None;
-                let mut grammar: Option<String> = None;
-                let mut json_schema = None;
-                let mut llava_mmproj = None;
-                let mut socket_addr: Option<SocketAddr> = None;
-
-                while let Some(key) = map.next_key()? {
-                    match key {
-                        Field::ModelName => {
-                            if model_name.is_some() {
-                                return Err(de::Error::duplicate_field("model-name"));
-                            }
-
-                            model_name = Some(map.next_value()?)
-                        }
-                        Field::ModelAlias => {
-                            if model_alias.is_some() {
-                                return Err(de::Error::duplicate_field("model-alias"));
-                            }
-
-                            model_alias = Some(map.next_value()?)
-                        }
-                        Field::CtxSize => {
-                            if ctx_size.is_some() {
-                                return Err(de::Error::duplicate_field("ctx-size"));
-                            }
-
-                            ctx_size = Some(map.next_value()?)
-                        }
-                        Field::BatchSize => {
-                            if batch_size.is_some() {
-                                return Err(de::Error::duplicate_field("batch-size"));
-                            }
-
-                            batch_size = Some(map.next_value()?)
-                        }
-                        Field::PromptTemplate => {
-                            if prompt_template.is_some() {
-                                return Err(de::Error::duplicate_field("prompt-template"));
-                            }
-
-                            prompt_template = Some(map.next_value()?);
-                        }
-                        Field::ReversePrompt => {
-                            if reverse_prompt.is_some() {
-                                return Err(de::Error::duplicate_field("reverse-prompt"));
-                            }
-
-                            reverse_prompt = Some(map.next_value()?)
-                        }
-                        Field::NPredict => {
-                            if n_predict.is_some() {
-                                return Err(de::Error::duplicate_field("n-predict"));
-                            }
-
-                            n_predict = Some(map.next_value()?)
-                        }
-                        Field::NGpuLayers => {
-                            if n_gpu_layers.is_some() {
-                                return Err(de::Error::duplicate_field("n-gpu-layers"));
-                            }
-
-                            n_gpu_layers = Some(map.next_value()?)
-                        }
-                        Field::SplitMode => {
-                            if split_mode.is_some() {
-                                return Err(de::Error::duplicate_field("split-mode"));
-                            }
-
-                            split_mode = Some(map.next_value()?)
-                        }
-                        Field::MainGpu => {
-                            if main_gpu.is_some() {
-                                return Err(de::Error::duplicate_field("main-gpu"));
-                            }
-
-                            main_gpu = Some(map.next_value()?)
-                        }
-                        Field::TensorSplit => {
-                            if tensor_split.is_some() {
-                                return Err(de::Error::duplicate_field("tensor-split"));
-                            }
-
-                            tensor_split = Some(map.next_value()?)
-                        }
-                        Field::Threads => {
-                            if threads.is_some() {
-                                return Err(de::Error::duplicate_field("threads"));
-                            }
-
-                            threads = Some(map.next_value()?)
-                        }
-                        Field::NoMmap => {
-                            if no_mmap.is_some() {
-                                return Err(de::Error::duplicate_field("no-mmap"));
-                            }
-
-                            no_mmap = Some(map.next_value()?)
-                        }
-                        Field::Temp => {
-                            if temp.is_some() {
-                                return Err(de::Error::duplicate_field("temp"));
-                            }
-
-                            temp = Some(map.next_value()?)
-                        }
-                        Field::TopP => {
-                            if top_p.is_some() {
-                                return Err(de::Error::duplicate_field("top-p"));
-                            }
-
-                            top_p = Some(map.next_value()?)
-                        }
-                        Field::RepeatPenalty => {
-                            if repeat_penalty.is_some() {
-                                return Err(de::Error::duplicate_field("repeat-penalty"));
-                            }
-
-                            repeat_penalty = Some(map.next_value()?)
-                        }
-                        Field::PresencePenalty => {
-                            if presence_penalty.is_some() {
-                                return Err(de::Error::duplicate_field("presence-penalty"));
-                            }
-
-                            presence_penalty = Some(map.next_value()?)
-                        }
-                        Field::FrequencyPenalty => {
-                            if frequency_penalty.is_some() {
-                                return Err(de::Error::duplicate_field("frequency-penalty"));
-                            }
-
-                            frequency_penalty = Some(map.next_value()?)
-                        }
-                        Field::Grammar => {
-                            if grammar.is_some() {
-                                return Err(de::Error::duplicate_field("grammar"));
-                            }
-
-                            grammar = Some(map.next_value()?)
-                        }
-                        Field::JsonSchema => {
-                            if json_schema.is_some() {
-                                return Err(de::Error::duplicate_field("json-schema"));
-                            }
-
-                            json_schema = Some(map.next_value()?)
-                        }
-                        Field::LlavaMmproj => {
-                            if llava_mmproj.is_some() {
-                                return Err(de::Error::duplicate_field("llava-mmproj"));
-                            }
-
-                            llava_mmproj = Some(map.next_value()?)
-                        }
-                        Field::SocketAddr => {
-                            if socket_addr.is_some() {
-                                return Err(de::Error::duplicate_field("socket-addr"));
-                            }
-
-                            socket_addr = Some(map.next_value()?)
-                        }
-                    }
-                }
-
-                let model_name = model_name
-                    .unwrap_or_else(|| vec!["default".to_string(), "embedding".to_string()]);
-
-                let model_alias = model_alias
-                    .unwrap_or_else(|| vec!["default".to_string(), "embedding".to_string()]);
-
-                let ctx_size = ctx_size.unwrap_or_else(|| vec![4096, 384]);
-
-                let batch_size = batch_size.unwrap_or_else(|| vec![512, 512]);
-
-                let prompt_template: Vec<PromptTemplateType> = match prompt_template {
-                    Some(prompt_template) => {
-                        prompt_template.iter().map(|p| p.parse().unwrap()).collect()
-                    }
-                    None => return Err(de::Error::missing_field("prompt-template")),
-                };
-
-                let reverse_prompt = reverse_prompt.unwrap_or_default();
-
-                let n_predict = n_predict.unwrap_or(-1);
-
-                let n_gpu_layers = n_gpu_layers.unwrap_or(100);
-
-                let split_mode = split_mode.unwrap_or("layer".to_string());
-
-                let main_gpu = main_gpu.unwrap();
-
-                let tensor_split = tensor_split.unwrap();
-
-                let threads = threads.unwrap_or(2);
-
-                let no_mmap = no_mmap.unwrap();
-
-                let temp = temp.unwrap_or(1.0);
-
-                let top_p = top_p.unwrap_or(1.0);
-
-                let repeat_penalty = repeat_penalty.unwrap_or(1.1);
-
-                let presence_penalty = presence_penalty.unwrap_or(0.0);
-
-                let frequency_penalty = frequency_penalty.unwrap_or(0.0);
-
-                let json_schema = json_schema.unwrap();
-
-                let llava_mmproj = llava_mmproj.unwrap();
-
-                Ok(CliConfig {
-                    model_name,
-                    model_alias,
-                    ctx_size,
-                    batch_size,
-                    prompt_template,
-                    reverse_prompt,
-                    n_predict,
-                    n_gpu_layers,
-                    split_mode,
-                    main_gpu,
-                    tensor_split,
-                    threads,
-                    no_mmap,
-                    temp,
-                    top_p,
-                    repeat_penalty,
-                    presence_penalty,
-                    frequency_penalty,
-                    grammar,
-                    json_schema,
-                    llava_mmproj,
-                    socket_addr,
-                })
-            }
-        }
-
-        const FIELDS: &[&str] = &[
-            "model-name",
-            "model-alias",
-            "ctx-size",
-            "batch-size",
-            "prompt-template",
-            "reverse-prompt",
-            "n-predict",
-            "n-gpu-layers",
-            "split-mode",
-            "main-gpu",
-            "tensor-split",
-            "threads",
-            "no-mmap",
-            "temp",
-            "top-p",
-            "repeat-penalty",
-            "presence-penalty",
-            "frequency-penalty",
-            "grammar",
-            "json-schema",
-            "llava-mmproj",
-            "socket-addr",
-        ];
-
-        deserializer.deserialize_struct("CliConfig", FIELDS, CliConfigVisitor)
-    }
 }
 
 #[allow(clippy::needless_return)]
@@ -551,494 +199,780 @@ async fn main() -> Result<(), ServerError> {
         }
     }
 
-    // parse the command line arguments
-    let mut cli = Cli::parse();
-
-    info!(target: "stdout", "log_level: {}", log_level);
+    info!(target: "stdout", "LOG LEVEL: {}", log_level);
 
     // log the version of the server
-    info!(target: "stdout", "server version: {}", env!("CARGO_PKG_VERSION"));
+    info!(target: "stdout", "SERVER VERSION: {}", env!("CARGO_PKG_VERSION"));
 
-    if let Some(config_file) = &cli.config {
-        match config_file.exists() {
-            true => {
-                let yaml_content = match fs::read_to_string(config_file) {
-                    Ok(yaml_content) => yaml_content,
-                    Err(e) => {
-                        let err_msg = format!("Failed to read config file: {}", e);
+    // parse the command line arguments
+    let cli = Cli::parse();
 
-                        error!(target: "stdout", "{}", err_msg);
+    // Handle subcommands
+    if let Some(command) = cli.command {
+        match command {
+            Commands::Config {
+                file,
+                chat,
+                embedding,
+                tts,
+            } => {
+                if !chat && !embedding && !tts {
+                    let err_msg = "Specify at least one of the following: chat, embedding, and/or TTS. by using --chat, --embedding, and/or --tts.";
 
-                        return Err(ServerError::Operation(err_msg));
+                    error!(target: "stdout", "{}", err_msg);
+
+                    return Err(ServerError::Operation(err_msg.to_string()));
+                }
+
+                info!(target: "stdout", "CONFIG FILE: {}", file.to_string_lossy().to_string());
+                let config = config::Config::load(&file)?;
+
+                // chat model
+                let mut chat_model_config = None;
+                if chat {
+                    info!(target: "stdout", "chat model name: {}", config.chat.model_name);
+
+                    info!(target: "stdout", "chat model alias: {}", config.chat.model_alias);
+
+                    info!(target: "stdout", "chat context size: {}", config.chat.ctx_size);
+
+                    info!(target: "stdout", "chat batch size: {}", config.chat.batch_size);
+
+                    info!(target: "stdout", "chat ubatch size: {}", config.chat.ubatch_size);
+
+                    info!(target: "stdout", "chat prompt template: {}", config.chat.prompt_template);
+
+                    info!(target: "stdout", "chat split mode: {}", config.chat.split_mode);
+
+                    info!(target: "stdout", "chat main gpu: {:?}", config.chat.main_gpu);
+
+                    info!(target: "stdout", "chat tensor split: {:?}", config.chat.tensor_split);
+
+                    info!(target: "stdout", "chat threads: {}", config.chat.threads);
+
+                    info!(target: "stdout", "chat no_mmap: {}", config.chat.no_mmap);
+
+                    info!(target: "stdout", "chat temp: {}", config.chat.temp);
+
+                    info!(target: "stdout", "chat top_p: {}", config.chat.top_p);
+
+                    info!(target: "stdout", "chat repeat_penalty: {}", config.chat.repeat_penalty);
+
+                    info!(target: "stdout", "chat presence_penalty: {}", config.chat.presence_penalty);
+
+                    info!(target: "stdout", "chat frequency_penalty: {}", config.chat.frequency_penalty);
+
+                    info!(target: "stdout", "chat grammar: {:?}", config.chat.grammar);
+
+                    info!(target: "stdout", "chat json_schema: {:?}", config.chat.json_schema);
+
+                    info!(target: "stdout", "chat llava_mmproj: {:?}", config.chat.llava_mmproj);
+
+                    info!(target: "stdout", "chat include_usage: {}", config.chat.include_usage);
+
+                    // create a Metadata instance
+                    let metadata_chat = GgmlMetadataBuilder::new(
+                        config.chat.model_name,
+                        config.chat.model_alias,
+                        config.chat.prompt_template,
+                    )
+                    .with_ctx_size(config.chat.ctx_size)
+                    .with_batch_size(config.chat.batch_size)
+                    .with_ubatch_size(config.chat.ubatch_size)
+                    .with_n_predict(config.chat.n_predict)
+                    .with_n_gpu_layers(config.chat.n_gpu_layers)
+                    .with_split_mode(config.chat.split_mode)
+                    .with_main_gpu(config.chat.main_gpu)
+                    .with_tensor_split(config.chat.tensor_split)
+                    .with_threads(config.chat.threads)
+                    .disable_mmap(Some(config.chat.no_mmap))
+                    .with_temperature(config.chat.temp)
+                    .with_top_p(config.chat.top_p)
+                    .with_repeat_penalty(config.chat.repeat_penalty)
+                    .with_presence_penalty(config.chat.presence_penalty)
+                    .with_frequency_penalty(config.chat.frequency_penalty)
+                    .with_grammar(config.chat.grammar.unwrap_or_default())
+                    .with_json_schema(config.chat.json_schema)
+                    .with_reverse_prompt(config.chat.reverse_prompt)
+                    .with_mmproj(
+                        config
+                            .chat
+                            .llava_mmproj
+                            .map(|p| p.to_string_lossy().to_string()),
+                    )
+                    .enable_plugin_log(true)
+                    .enable_debug_log(plugin_debug)
+                    .include_usage(config.chat.include_usage)
+                    .build();
+
+                    // set the chat model config
+                    chat_model_config = Some(ModelConfig {
+                        name: metadata_chat.model_name.clone(),
+                        ty: "chat".to_string(),
+                        ctx_size: metadata_chat.ctx_size,
+                        batch_size: metadata_chat.batch_size,
+                        ubatch_size: metadata_chat.ubatch_size,
+                        prompt_template: Some(metadata_chat.prompt_template),
+                        n_predict: Some(metadata_chat.n_predict),
+                        reverse_prompt: metadata_chat.reverse_prompt.clone(),
+                        n_gpu_layers: Some(metadata_chat.n_gpu_layers),
+                        use_mmap: metadata_chat.use_mmap,
+                        temperature: Some(metadata_chat.temperature),
+                        top_p: Some(metadata_chat.top_p),
+                        repeat_penalty: Some(metadata_chat.repeat_penalty),
+                        presence_penalty: Some(metadata_chat.presence_penalty),
+                        frequency_penalty: Some(metadata_chat.frequency_penalty),
+                        split_mode: Some(metadata_chat.split_mode.clone()),
+                        main_gpu: metadata_chat.main_gpu,
+                        tensor_split: metadata_chat.tensor_split.clone(),
+                    });
+
+                    // initialize the chat context
+                    llama_core::init_ggml_chat_context(&[metadata_chat])
+                        .map_err(|e| ServerError::Operation(format!("{}", e)))?;
+                }
+
+                // embedding model
+                let mut embedding_model_config = None;
+                if embedding {
+                    info!(target: "stdout", "embedding model name: {}", config.embedding.model_name);
+
+                    info!(target: "stdout", "embedding model alias: {}", config.embedding.model_alias);
+
+                    info!(target: "stdout", "embedding context size: {}", config.embedding.ctx_size);
+
+                    info!(target: "stdout", "embedding batch size: {}", config.embedding.batch_size);
+
+                    info!(target: "stdout", "embedding ubatch size: {}", config.embedding.ubatch_size);
+
+                    info!(target: "stdout", "embedding split mode: {}", config.embedding.split_mode);
+
+                    info!(target: "stdout", "embedding main gpu: {:?}", config.embedding.main_gpu);
+
+                    info!(target: "stdout", "embedding tensor split: {:?}", config.embedding.tensor_split);
+
+                    info!(target: "stdout", "embedding threads: {}", config.embedding.threads);
+
+                    // create a Metadata instance
+                    let metadata_embedding = GgmlMetadataBuilder::new(
+                        config.embedding.model_name,
+                        config.embedding.model_alias,
+                        PromptTemplateType::Embedding,
+                    )
+                    .with_ctx_size(config.embedding.ctx_size)
+                    .with_batch_size(config.embedding.batch_size)
+                    .with_ubatch_size(config.embedding.ubatch_size)
+                    .with_split_mode(config.embedding.split_mode)
+                    .with_main_gpu(config.embedding.main_gpu)
+                    .with_tensor_split(config.embedding.tensor_split)
+                    .with_threads(config.embedding.threads)
+                    .enable_plugin_log(true)
+                    .enable_debug_log(plugin_debug)
+                    .build();
+
+                    // set the embedding model config
+                    embedding_model_config = Some(ModelConfig {
+                        name: metadata_embedding.model_name.clone(),
+                        ty: "embedding".to_string(),
+                        ctx_size: metadata_embedding.ctx_size,
+                        batch_size: metadata_embedding.batch_size,
+                        ubatch_size: metadata_embedding.ubatch_size,
+                        prompt_template: Some(PromptTemplateType::Embedding),
+                        n_predict: Some(cli.server_args.n_predict),
+                        reverse_prompt: metadata_embedding.reverse_prompt.clone(),
+                        n_gpu_layers: Some(metadata_embedding.n_gpu_layers),
+                        use_mmap: metadata_embedding.use_mmap,
+                        temperature: Some(metadata_embedding.temperature),
+                        top_p: Some(metadata_embedding.top_p),
+                        repeat_penalty: Some(metadata_embedding.repeat_penalty),
+                        presence_penalty: Some(metadata_embedding.presence_penalty),
+                        frequency_penalty: Some(metadata_embedding.frequency_penalty),
+                        split_mode: Some(metadata_embedding.split_mode.clone()),
+                        main_gpu: metadata_embedding.main_gpu,
+                        tensor_split: metadata_embedding.tensor_split.clone(),
+                    });
+
+                    // initialize the embeddings context
+                    llama_core::init_ggml_embeddings_context(&[metadata_embedding])
+                        .map_err(|e| ServerError::Operation(format!("{}", e)))?;
+                }
+
+                // tts model
+                let mut tts_model_config = None;
+                if tts {
+                    info!(target: "stdout", "tts model name: {}", config.tts.model_name);
+
+                    info!(target: "stdout", "tts model alias: {}", config.tts.model_alias);
+
+                    info!(target: "stdout", "tts codec model: {}", config.tts.codec_model.to_string_lossy());
+
+                    if let Some(speaker_file) = &config.tts.speaker_file {
+                        info!(target: "stdout", "tts speaker file: {}", speaker_file.to_string_lossy())
                     }
+
+                    info!(target: "stdout", "tts context size: {}", config.tts.ctx_size);
+
+                    info!(target: "stdout", "tts batch size: {}", config.tts.batch_size);
+
+                    info!(target: "stdout", "tts ubatch size: {}", config.tts.ubatch_size);
+
+                    info!(target: "stdout", "tts n_predict: {}", config.tts.n_predict);
+
+                    info!(target: "stdout", "tts n_gpu_layers: {}", config.tts.n_gpu_layers);
+
+                    info!(target: "stdout", "tts temp: {}", config.tts.temp);
+
+                    // create a Metadata instance
+                    let metadata_tts = GgmlTtsMetadataBuilder::new(
+                        config.tts.model_name,
+                        config.tts.model_alias,
+                        config.tts.codec_model,
+                    )
+                    .enable_tts(true)
+                    .with_speaker_file(config.tts.speaker_file)
+                    .with_ctx_size(config.tts.ctx_size)
+                    .with_batch_size(config.tts.batch_size)
+                    .with_ubatch_size(config.tts.ubatch_size)
+                    .with_n_predict(config.tts.n_predict)
+                    .with_n_gpu_layers(config.tts.n_gpu_layers)
+                    .with_temperature(config.tts.temp)
+                    .enable_plugin_log(true)
+                    .enable_debug_log(plugin_debug)
+                    .build();
+
+                    // set the tts model config
+                    tts_model_config = Some(ModelConfig {
+                        name: metadata_tts.model_name.clone(),
+                        ty: "tts".to_string(),
+                        ctx_size: metadata_tts.ctx_size,
+                        batch_size: metadata_tts.batch_size,
+                        ubatch_size: metadata_tts.ubatch_size,
+                        prompt_template: Some(PromptTemplateType::Tts),
+                        n_predict: Some(metadata_tts.n_predict),
+                        reverse_prompt: None,
+                        n_gpu_layers: None,
+                        use_mmap: None,
+                        temperature: Some(metadata_tts.temperature),
+                        top_p: None,
+                        repeat_penalty: None,
+                        presence_penalty: None,
+                        frequency_penalty: None,
+                        split_mode: None,
+                        main_gpu: None,
+                        tensor_split: None,
+                    });
+
+                    // initialize the tts context
+                    llama_core::init_ggml_tts_context(&[metadata_tts])
+                        .map_err(|e| ServerError::Operation(format!("{}", e)))?;
+                }
+
+                // get running mode
+                let running_mode = llama_core::running_mode()
+                    .map_err(|e| ServerError::Operation(e.to_string()))?;
+                info!(target: "stdout", "running_mode: {}", running_mode);
+
+                // log plugin version
+                let plugin_info = llama_core::get_plugin_info()
+                    .map_err(|e| ServerError::Operation(e.to_string()))?;
+                let plugin_version = format!(
+                    "b{build_number} (commit {commit_id})",
+                    build_number = plugin_info.build_number,
+                    commit_id = plugin_info.commit_id,
+                );
+                info!(target: "stdout", "plugin_ggml_version: {}", plugin_version);
+
+                // socket address
+                let addr = config.server.socket_addr;
+                let port = addr.port().to_string();
+
+                // get the environment variable `NODE_VERSION`
+                // Note that this is for satisfying the requirement of `gaianet-node` project.
+                let node = std::env::var("NODE_VERSION").ok();
+                if node.is_some() {
+                    // log node version
+                    info!(target: "stdout", "gaianet_node_version: {}", node.as_ref().unwrap());
+                }
+
+                // create server info
+                let server_info = ServerInfo {
+                    node,
+                    server: ApiServer {
+                        ty: "llama".to_string(),
+                        version: env!("CARGO_PKG_VERSION").to_string(),
+                        plugin_version,
+                        port,
+                    },
+                    chat_model: chat_model_config,
+                    embedding_model: embedding_model_config,
+                    tts_model: tts_model_config,
+                    extras: HashMap::new(),
                 };
+                SERVER_INFO.set(server_info).map_err(|_| {
+                    ServerError::Operation("Failed to set `SERVER_INFO`.".to_string())
+                })?;
 
-                let config: CliConfig = match serde_yaml::from_str(&yaml_content) {
-                    Ok(config) => config,
-                    Err(e) => {
-                        let err_msg = format!("Failed to parse YAML: {}", e);
+                let new_service = make_service_fn(move |conn: &AddrStream| {
+                    // log socket address
+                    info!(target: "stdout", "remote_addr: {}, local_addr: {}", conn.remote_addr().to_string(), conn.local_addr().to_string());
 
-                        error!(target: "stdout", "{}", err_msg);
+                    // web ui
+                    let web_ui = cli.server_args.web_ui.to_string_lossy().to_string();
 
-                        return Err(ServerError::Operation(err_msg));
+                    async move {
+                        Ok::<_, Error>(service_fn(move |req| handle_request(req, web_ui.clone())))
                     }
-                };
+                });
 
-                debug!(target: "stdout", "config: {:?}", &config);
+                let tcp_listener = TcpListener::bind(addr).await.unwrap();
+                info!(target: "stdout", "Listening on {}", addr);
 
-                // update the CLI arguments with the config file
-                cli.model_name = config.model_name;
-                cli.model_alias = config.model_alias;
-                cli.ctx_size = config.ctx_size;
-                cli.batch_size = config.batch_size;
-                cli.prompt_template = config.prompt_template;
-                cli.reverse_prompt = config.reverse_prompt;
-                cli.n_predict = config.n_predict;
-                cli.n_gpu_layers = config.n_gpu_layers;
-                cli.split_mode = config.split_mode;
-                cli.main_gpu = config.main_gpu;
-                cli.tensor_split = config.tensor_split;
-                cli.threads = config.threads;
-                cli.no_mmap = Some(config.no_mmap);
-                cli.temp = config.temp;
-                cli.top_p = config.top_p;
-                cli.repeat_penalty = config.repeat_penalty;
-                cli.presence_penalty = config.presence_penalty;
-                cli.frequency_penalty = config.frequency_penalty;
-                cli.grammar = config.grammar.unwrap_or_default();
-                cli.json_schema = config.json_schema;
-                cli.llava_mmproj = config.llava_mmproj;
-                cli.socket_addr = config.socket_addr;
-            }
-            false => {
-                let err_msg = format!("Config file not found: {}", config_file.display());
+                let server = Server::from_tcp(tcp_listener.into_std().unwrap())
+                    .unwrap()
+                    .serve(new_service);
 
-                error!(target: "stdout", "{}", err_msg);
-
-                return Err(ServerError::Operation(err_msg));
+                match server.await {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(ServerError::Operation(e.to_string())),
+                }
             }
         }
-    }
-
-    // log model names
-    if cli.model_name.is_empty() && cli.model_name.len() > 2 {
-        return Err(ServerError::ArgumentError(
+    } else {
+        // log model names
+        if cli.server_args.model_name.is_empty() && cli.server_args.model_name.len() > 2 {
+            return Err(ServerError::ArgumentError(
             "Invalid setting for model name. For running chat or embedding model, please specify a single model name. For running both chat and embedding models, please specify two model names: the first one for chat model, the other for embedding model.".to_owned(),
         ));
-    }
-    info!(target: "stdout", "model_name: {}", cli.model_name.join(",").to_string());
+        }
+        info!(target: "stdout", "model_name: {}", cli.server_args.model_name.join(",").to_string());
 
-    // log model alias
-    let mut model_alias = String::new();
-    if cli.model_name.len() == 1 {
-        model_alias.clone_from(&cli.model_alias[0]);
-    } else if cli.model_alias.len() == 2 {
-        model_alias = cli.model_alias.join(",").to_string();
-    }
-    info!(target: "stdout", "model_alias: {}", model_alias);
+        // log model alias
+        let mut model_alias = String::new();
+        if cli.server_args.model_name.len() == 1 {
+            model_alias.clone_from(&cli.server_args.model_alias[0]);
+        } else if cli.server_args.model_alias.len() == 2 {
+            model_alias = cli.server_args.model_alias.join(",").to_string();
+        }
+        info!(target: "stdout", "model_alias: {}", model_alias);
 
-    // log context size
-    if cli.ctx_size.is_empty() && cli.ctx_size.len() > 2 {
-        return Err(ServerError::ArgumentError(
+        // log context size
+        if cli.server_args.ctx_size.is_empty() && cli.server_args.ctx_size.len() > 2 {
+            return Err(ServerError::ArgumentError(
             "Invalid setting for context size. For running chat or embedding model, please specify a single context size. For running both chat and embedding models, please specify two context sizes: the first one for chat model, the other for embedding model.".to_owned(),
         ));
-    }
-    let mut ctx_sizes_str = String::new();
-    if cli.model_name.len() == 1 {
-        ctx_sizes_str = cli.ctx_size[0].to_string();
-    } else if cli.model_name.len() == 2 {
-        ctx_sizes_str = cli
-            .ctx_size
-            .iter()
-            .map(|n| n.to_string())
-            .collect::<Vec<String>>()
-            .join(",");
-    }
-    info!(target: "stdout", "ctx_size: {}", ctx_sizes_str);
+        }
+        let mut ctx_sizes_str = String::new();
+        if cli.server_args.model_name.len() == 1 {
+            ctx_sizes_str = cli.server_args.ctx_size[0].to_string();
+        } else if cli.server_args.model_name.len() == 2 {
+            ctx_sizes_str = cli
+                .server_args
+                .ctx_size
+                .iter()
+                .map(|n| n.to_string())
+                .collect::<Vec<String>>()
+                .join(",");
+        }
+        info!(target: "stdout", "ctx_size: {}", ctx_sizes_str);
 
-    // log batch size
-    if cli.batch_size.is_empty() && cli.batch_size.len() > 2 {
-        return Err(ServerError::ArgumentError(
+        // log batch size
+        if cli.server_args.batch_size.is_empty() && cli.server_args.batch_size.len() > 2 {
+            return Err(ServerError::ArgumentError(
             "Invalid setting for batch size. For running chat or embedding model, please specify a single batch size. For running both chat and embedding models, please specify two batch sizes: the first one for chat model, the other for embedding model.".to_owned(),
         ));
-    }
-    let mut batch_sizes_str = String::new();
-    if cli.model_name.len() == 1 {
-        batch_sizes_str = cli.batch_size[0].to_string();
-    } else if cli.model_name.len() == 2 {
-        batch_sizes_str = cli
-            .batch_size
-            .iter()
-            .map(|n| n.to_string())
-            .collect::<Vec<String>>()
-            .join(",");
-    }
-    info!(target: "stdout", "batch_size: {}", batch_sizes_str);
-
-    // log ubatch size
-    let mut ubatch_sizes_str = String::new();
-    if cli.model_name.len() == 1 {
-        ubatch_sizes_str = cli.ubatch_size[0].to_string();
-    } else if cli.model_name.len() == 2 {
-        ubatch_sizes_str = cli
-            .ubatch_size
-            .iter()
-            .map(|n| n.to_string())
-            .collect::<Vec<String>>()
-            .join(",");
-    }
-    info!(target: "stdout", "ubatch_size: {}", ubatch_sizes_str);
-
-    // log prompt template
-    if cli.prompt_template.is_empty() && cli.prompt_template.len() > 2 {
-        return Err(ServerError::ArgumentError(
-            "LlamaEdge API server requires prompt templates. For running chat or embedding model, please specify a single prompt template. For running both chat and embedding models, please specify two prompt templates: the first one for chat model, the other for embedding model.".to_owned(),
-        ));
-    }
-    let prompt_template_str: String = cli
-        .prompt_template
-        .iter()
-        .map(|n| n.to_string())
-        .collect::<Vec<String>>()
-        .join(",");
-    info!(target: "stdout", "prompt_template: {}", prompt_template_str);
-    if cli.model_name.len() != cli.prompt_template.len() {
-        return Err(ServerError::ArgumentError(
-            "The number of model names and prompt templates must be the same.".to_owned(),
-        ));
-    }
-
-    // log reverse prompt
-    if let Some(reverse_prompt) = &cli.reverse_prompt {
-        info!(target: "stdout", "reverse_prompt: {}", reverse_prompt);
-    }
-
-    // log n_predict
-    info!(target: "stdout", "n_predict: {}", cli.n_predict);
-
-    // log n_gpu_layers
-    info!(target: "stdout", "n_gpu_layers: {}", cli.n_gpu_layers);
-
-    // log split_mode
-    info!(target: "stdout", "split_mode: {}", cli.split_mode);
-
-    // log main_gpu
-    if let Some(main_gpu) = &cli.main_gpu {
-        info!(target: "stdout", "main_gpu: {}", main_gpu);
-    }
-
-    // log tensor_split
-    if let Some(tensor_split) = &cli.tensor_split {
-        info!(target: "stdout", "tensor_split: {}", tensor_split);
-    }
-
-    // log threads
-    info!(target: "stdout", "threads: {}", cli.threads);
-
-    // log no_mmap
-    if let Some(no_mmap) = &cli.no_mmap {
-        info!(target: "stdout", "no_mmap: {}", no_mmap);
-    }
-
-    // log temperature
-    info!(target: "stdout", "temp: {}", cli.temp);
-
-    // log top-p sampling
-    info!(target: "stdout", "top_p: {}", cli.top_p);
-
-    // repeat penalty
-    info!(target: "stdout", "repeat_penalty: {}", cli.repeat_penalty);
-
-    // log presence penalty
-    info!(target: "stdout", "presence_penalty: {}", cli.presence_penalty);
-
-    // log frequency penalty
-    info!(target: "stdout", "frequency_penalty: {}", cli.frequency_penalty);
-
-    // log grammar
-    if !cli.grammar.is_empty() {
-        info!(target: "stdout", "grammar: {}", &cli.grammar);
-    }
-
-    // log json schema
-    if let Some(json_schema) = &cli.json_schema {
-        info!(target: "stdout", "json_schema: {}", json_schema);
-    }
-
-    // log multimodal projector
-    if let Some(llava_mmproj) = &cli.llava_mmproj {
-        info!(target: "stdout", "llava_mmproj: {}", llava_mmproj);
-    }
-
-    // log include_usage
-    info!(target: "stdout", "include_usage: {}", cli.include_usage);
-
-    // initialize the core context
-    let mut chat_model_config = None;
-    let mut embedding_model_config = None;
-    if cli.prompt_template.len() == 1 {
-        match cli.prompt_template[0] {
-            PromptTemplateType::Embedding => {
-                // create a Metadata instance
-                let metadata_embedding = GgmlMetadataBuilder::new(
-                    cli.model_name[0].clone(),
-                    cli.model_alias[0].clone(),
-                    cli.prompt_template[0],
-                )
-                .with_ctx_size(cli.ctx_size[0])
-                .with_batch_size(cli.batch_size[0])
-                .with_ubatch_size(cli.ubatch_size[0])
-                .with_split_mode(cli.split_mode)
-                .with_main_gpu(cli.main_gpu)
-                .with_tensor_split(cli.tensor_split)
-                .with_threads(cli.threads)
-                .enable_plugin_log(true)
-                .enable_debug_log(plugin_debug)
-                .build();
-
-                // set the embedding model config
-                embedding_model_config = Some(ModelConfig {
-                    name: metadata_embedding.model_name.clone(),
-                    ty: "embedding".to_string(),
-                    ctx_size: metadata_embedding.ctx_size,
-                    batch_size: metadata_embedding.batch_size,
-                    ubatch_size: metadata_embedding.ubatch_size,
-                    prompt_template: Some(PromptTemplateType::Embedding),
-                    n_predict: Some(cli.n_predict),
-                    reverse_prompt: metadata_embedding.reverse_prompt.clone(),
-                    n_gpu_layers: Some(metadata_embedding.n_gpu_layers),
-                    use_mmap: metadata_embedding.use_mmap,
-                    temperature: Some(metadata_embedding.temperature),
-                    top_p: Some(metadata_embedding.top_p),
-                    repeat_penalty: Some(metadata_embedding.repeat_penalty),
-                    presence_penalty: Some(metadata_embedding.presence_penalty),
-                    frequency_penalty: Some(metadata_embedding.frequency_penalty),
-                    split_mode: Some(metadata_embedding.split_mode.clone()),
-                    main_gpu: metadata_embedding.main_gpu,
-                    tensor_split: metadata_embedding.tensor_split.clone(),
-                });
-
-                // initialize the core context
-                llama_core::init_ggml_context(None, Some(&[metadata_embedding]))
-                    .map_err(|e| ServerError::Operation(format!("{}", e)))?;
-            }
-            _ => {
-                // create a Metadata instance
-                let metadata_chat = GgmlMetadataBuilder::new(
-                    cli.model_name[0].clone(),
-                    cli.model_alias[0].clone(),
-                    cli.prompt_template[0],
-                )
-                .with_ctx_size(cli.ctx_size[0])
-                .with_batch_size(cli.batch_size[0])
-                .with_ubatch_size(cli.ubatch_size[0])
-                .with_n_predict(cli.n_predict)
-                .with_n_gpu_layers(cli.n_gpu_layers)
-                .with_split_mode(cli.split_mode)
-                .with_main_gpu(cli.main_gpu)
-                .with_tensor_split(cli.tensor_split)
-                .with_threads(cli.threads)
-                .disable_mmap(cli.no_mmap)
-                .with_temperature(cli.temp)
-                .with_top_p(cli.top_p)
-                .with_repeat_penalty(cli.repeat_penalty)
-                .with_presence_penalty(cli.presence_penalty)
-                .with_frequency_penalty(cli.frequency_penalty)
-                .with_grammar(cli.grammar)
-                .with_json_schema(cli.json_schema)
-                .with_reverse_prompt(cli.reverse_prompt)
-                .with_mmproj(cli.llava_mmproj.clone())
-                .enable_plugin_log(true)
-                .enable_debug_log(plugin_debug)
-                .include_usage(cli.include_usage)
-                .build();
-
-                // set the chat model config
-                chat_model_config = Some(ModelConfig {
-                    name: metadata_chat.model_name.clone(),
-                    ty: "chat".to_string(),
-                    ctx_size: metadata_chat.ctx_size,
-                    batch_size: metadata_chat.batch_size,
-                    ubatch_size: metadata_chat.ubatch_size,
-                    prompt_template: Some(metadata_chat.prompt_template),
-                    n_predict: Some(metadata_chat.n_predict),
-                    reverse_prompt: metadata_chat.reverse_prompt.clone(),
-                    n_gpu_layers: Some(metadata_chat.n_gpu_layers),
-                    use_mmap: metadata_chat.use_mmap,
-                    temperature: Some(metadata_chat.temperature),
-                    top_p: Some(metadata_chat.top_p),
-                    repeat_penalty: Some(metadata_chat.repeat_penalty),
-                    presence_penalty: Some(metadata_chat.presence_penalty),
-                    frequency_penalty: Some(metadata_chat.frequency_penalty),
-                    split_mode: Some(metadata_chat.split_mode.clone()),
-                    main_gpu: metadata_chat.main_gpu,
-                    tensor_split: metadata_chat.tensor_split.clone(),
-                });
-
-                // initialize the core context
-                llama_core::init_ggml_context(Some(&[metadata_chat]), None)
-                    .map_err(|e| ServerError::Operation(format!("{}", e)))?;
-            }
         }
-    } else if cli.prompt_template.len() == 2 {
-        // create a Metadata instance
-        let metadata_chat = GgmlMetadataBuilder::new(
-            cli.model_name[0].clone(),
-            cli.model_alias[0].clone(),
-            cli.prompt_template[0],
-        )
-        .with_ctx_size(cli.ctx_size[0])
-        .with_batch_size(cli.batch_size[0])
-        .with_ubatch_size(cli.ubatch_size[0])
-        .with_n_predict(cli.n_predict)
-        .with_n_gpu_layers(cli.n_gpu_layers)
-        .with_split_mode(cli.split_mode.clone())
-        .with_main_gpu(cli.main_gpu)
-        .with_tensor_split(cli.tensor_split.clone())
-        .with_threads(cli.threads)
-        .disable_mmap(cli.no_mmap)
-        .with_temperature(cli.temp)
-        .with_top_p(cli.top_p)
-        .with_repeat_penalty(cli.repeat_penalty)
-        .with_presence_penalty(cli.presence_penalty)
-        .with_frequency_penalty(cli.frequency_penalty)
-        .with_grammar(cli.grammar)
-        .with_json_schema(cli.json_schema)
-        .with_reverse_prompt(cli.reverse_prompt)
-        .with_mmproj(cli.llava_mmproj.clone())
-        .enable_plugin_log(true)
-        .enable_debug_log(plugin_debug)
-        .include_usage(cli.include_usage)
-        .build();
+        let mut batch_sizes_str = String::new();
+        if cli.server_args.model_name.len() == 1 {
+            batch_sizes_str = cli.server_args.batch_size[0].to_string();
+        } else if cli.server_args.model_name.len() == 2 {
+            batch_sizes_str = cli
+                .server_args
+                .batch_size
+                .iter()
+                .map(|n| n.to_string())
+                .collect::<Vec<String>>()
+                .join(",");
+        }
+        info!(target: "stdout", "batch_size: {}", batch_sizes_str);
 
-        // set the chat model config
-        chat_model_config = Some(ModelConfig {
-            name: metadata_chat.model_name.clone(),
-            ty: "chat".to_string(),
-            ctx_size: metadata_chat.ctx_size,
-            batch_size: metadata_chat.batch_size,
-            ubatch_size: metadata_chat.ubatch_size,
-            prompt_template: Some(metadata_chat.prompt_template),
-            n_predict: Some(metadata_chat.n_predict),
-            reverse_prompt: metadata_chat.reverse_prompt.clone(),
-            n_gpu_layers: Some(metadata_chat.n_gpu_layers),
-            use_mmap: metadata_chat.use_mmap,
-            temperature: Some(metadata_chat.temperature),
-            top_p: Some(metadata_chat.top_p),
-            repeat_penalty: Some(metadata_chat.repeat_penalty),
-            presence_penalty: Some(metadata_chat.presence_penalty),
-            frequency_penalty: Some(metadata_chat.frequency_penalty),
-            split_mode: Some(metadata_chat.split_mode.clone()),
-            main_gpu: metadata_chat.main_gpu,
-            tensor_split: metadata_chat.tensor_split.clone(),
-        });
+        // log ubatch size
+        let mut ubatch_sizes_str = String::new();
+        if cli.server_args.model_name.len() == 1 {
+            ubatch_sizes_str = cli.server_args.ubatch_size[0].to_string();
+        } else if cli.server_args.model_name.len() == 2 {
+            ubatch_sizes_str = cli
+                .server_args
+                .ubatch_size
+                .iter()
+                .map(|n| n.to_string())
+                .collect::<Vec<String>>()
+                .join(",");
+        }
+        info!(target: "stdout", "ubatch_size: {}", ubatch_sizes_str);
 
-        // create a Metadata instance
-        let metadata_embedding = GgmlMetadataBuilder::new(
-            cli.model_name[1].clone(),
-            cli.model_alias[1].clone(),
-            cli.prompt_template[1],
-        )
-        .with_ctx_size(cli.ctx_size[1])
-        .with_batch_size(cli.batch_size[1])
-        .with_ubatch_size(cli.ubatch_size[1])
-        .with_split_mode(cli.split_mode)
-        .with_main_gpu(cli.main_gpu)
-        .with_tensor_split(cli.tensor_split)
-        .with_threads(cli.threads)
-        .enable_plugin_log(true)
-        .enable_debug_log(plugin_debug)
-        .build();
+        // log prompt template
+        if cli.server_args.prompt_template.is_empty() && cli.server_args.prompt_template.len() > 2 {
+            return Err(ServerError::ArgumentError(
+                "LlamaEdge API server requires prompt templates. For running chat or embedding model, please specify a single prompt template. For running both chat and embedding models, please specify two prompt templates: the first one for chat model, the other for embedding model.".to_owned(),
+            ));
+        }
 
-        // set the embedding model config
-        embedding_model_config = Some(ModelConfig {
-            name: metadata_embedding.model_name.clone(),
-            ty: "embedding".to_string(),
-            ctx_size: metadata_embedding.ctx_size,
-            batch_size: metadata_embedding.batch_size,
-            ubatch_size: metadata_embedding.ubatch_size,
-            prompt_template: Some(PromptTemplateType::Embedding),
-            n_predict: Some(cli.n_predict),
-            reverse_prompt: metadata_embedding.reverse_prompt.clone(),
-            n_gpu_layers: Some(metadata_embedding.n_gpu_layers),
-            use_mmap: metadata_embedding.use_mmap,
-            temperature: Some(metadata_embedding.temperature),
-            top_p: Some(metadata_embedding.top_p),
-            repeat_penalty: Some(metadata_embedding.repeat_penalty),
-            presence_penalty: Some(metadata_embedding.presence_penalty),
-            frequency_penalty: Some(metadata_embedding.frequency_penalty),
-            split_mode: Some(metadata_embedding.split_mode.clone()),
-            main_gpu: metadata_embedding.main_gpu,
-            tensor_split: metadata_embedding.tensor_split.clone(),
-        });
+        let prompt_template_str: String = cli
+            .server_args
+            .prompt_template
+            .iter()
+            .map(|n| n.to_string())
+            .collect::<Vec<String>>()
+            .join(",");
+        info!(target: "stdout", "prompt_template: {}", prompt_template_str);
+        if cli.server_args.model_name.len() != cli.server_args.prompt_template.len() {
+            return Err(ServerError::ArgumentError(
+                "The number of model names and prompt templates must be the same.".to_owned(),
+            ));
+        }
+
+        // log reverse prompt
+        if let Some(reverse_prompt) = &cli.server_args.reverse_prompt {
+            info!(target: "stdout", "reverse_prompt: {}", reverse_prompt);
+        }
+
+        // log n_predict
+        info!(target: "stdout", "n_predict: {}", cli.server_args.n_predict);
+
+        // log n_gpu_layers
+        info!(target: "stdout", "n_gpu_layers: {}", cli.server_args.n_gpu_layers);
+
+        // log split_mode
+        info!(target: "stdout", "split_mode: {}", cli.server_args.split_mode);
+
+        // log main_gpu
+        if let Some(main_gpu) = &cli.server_args.main_gpu {
+            info!(target: "stdout", "main_gpu: {}", main_gpu);
+        }
+
+        // log tensor_split
+        if let Some(tensor_split) = &cli.server_args.tensor_split {
+            info!(target: "stdout", "tensor_split: {}", tensor_split);
+        }
+
+        // log threads
+        info!(target: "stdout", "threads: {}", cli.server_args.threads);
+
+        // log no_mmap
+        if let Some(no_mmap) = &cli.server_args.no_mmap {
+            info!(target: "stdout", "no_mmap: {}", no_mmap);
+        }
+
+        // log temperature
+        info!(target: "stdout", "temp: {}", cli.server_args.temp);
+
+        // log top-p sampling
+        info!(target: "stdout", "top_p: {}", cli.server_args.top_p);
+
+        // repeat penalty
+        info!(target: "stdout", "repeat_penalty: {}", cli.server_args.repeat_penalty);
+
+        // log presence penalty
+        info!(target: "stdout", "presence_penalty: {}", cli.server_args.presence_penalty);
+
+        // log frequency penalty
+        info!(target: "stdout", "frequency_penalty: {}", cli.server_args.frequency_penalty);
+
+        // log grammar
+        if !cli.server_args.grammar.is_empty() {
+            info!(target: "stdout", "grammar: {}", &cli.server_args.grammar);
+        }
+
+        // log json schema
+        if let Some(json_schema) = &cli.server_args.json_schema {
+            info!(target: "stdout", "json_schema: {}", json_schema);
+        }
+
+        // log multimodal projector
+        if let Some(llava_mmproj) = &cli.server_args.llava_mmproj {
+            info!(target: "stdout", "llava_mmproj: {}", llava_mmproj);
+        }
+
+        // log include_usage
+        info!(target: "stdout", "include_usage: {}", cli.server_args.include_usage);
 
         // initialize the core context
-        llama_core::init_ggml_context(Some(&[metadata_chat]), Some(&[metadata_embedding]))
-            .map_err(|e| ServerError::Operation(format!("{}", e)))?;
-    }
+        let mut chat_model_config = None;
+        let mut embedding_model_config = None;
+        if cli.server_args.prompt_template.len() == 1 {
+            match cli.server_args.prompt_template[0] {
+                PromptTemplateType::Embedding => {
+                    // create a Metadata instance
+                    let metadata_embedding = GgmlMetadataBuilder::new(
+                        cli.server_args.model_name[0].clone(),
+                        cli.server_args.model_alias[0].clone(),
+                        cli.server_args.prompt_template[0],
+                    )
+                    .with_ctx_size(cli.server_args.ctx_size[0])
+                    .with_batch_size(cli.server_args.batch_size[0])
+                    .with_ubatch_size(cli.server_args.ubatch_size[0])
+                    .with_split_mode(cli.server_args.split_mode)
+                    .with_main_gpu(cli.server_args.main_gpu)
+                    .with_tensor_split(cli.server_args.tensor_split)
+                    .with_threads(cli.server_args.threads)
+                    .enable_plugin_log(true)
+                    .enable_debug_log(plugin_debug)
+                    .build();
 
-    // log plugin version
-    let plugin_info =
-        llama_core::get_plugin_info().map_err(|e| ServerError::Operation(e.to_string()))?;
-    let plugin_version = format!(
-        "b{build_number} (commit {commit_id})",
-        build_number = plugin_info.build_number,
-        commit_id = plugin_info.commit_id,
-    );
-    info!(target: "stdout", "plugin_ggml_version: {}", plugin_version);
+                    // set the embedding model config
+                    embedding_model_config = Some(ModelConfig {
+                        name: metadata_embedding.model_name.clone(),
+                        ty: "embedding".to_string(),
+                        ctx_size: metadata_embedding.ctx_size,
+                        batch_size: metadata_embedding.batch_size,
+                        ubatch_size: metadata_embedding.ubatch_size,
+                        prompt_template: Some(PromptTemplateType::Embedding),
+                        n_predict: Some(cli.server_args.n_predict),
+                        reverse_prompt: metadata_embedding.reverse_prompt.clone(),
+                        n_gpu_layers: Some(metadata_embedding.n_gpu_layers),
+                        use_mmap: metadata_embedding.use_mmap,
+                        temperature: Some(metadata_embedding.temperature),
+                        top_p: Some(metadata_embedding.top_p),
+                        repeat_penalty: Some(metadata_embedding.repeat_penalty),
+                        presence_penalty: Some(metadata_embedding.presence_penalty),
+                        frequency_penalty: Some(metadata_embedding.frequency_penalty),
+                        split_mode: Some(metadata_embedding.split_mode.clone()),
+                        main_gpu: metadata_embedding.main_gpu,
+                        tensor_split: metadata_embedding.tensor_split.clone(),
+                    });
 
-    // socket address
-    let addr = match cli.socket_addr {
-        Some(addr) => addr,
-        None => SocketAddr::from(([0, 0, 0, 0], cli.port)),
-    };
-    let port = addr.port().to_string();
+                    // initialize the embeddings context
+                    llama_core::init_ggml_embeddings_context(&[metadata_embedding])
+                        .map_err(|e| ServerError::Operation(format!("{}", e)))?;
+                }
+                _ => {
+                    // create a Metadata instance
+                    let metadata_chat = GgmlMetadataBuilder::new(
+                        cli.server_args.model_name[0].clone(),
+                        cli.server_args.model_alias[0].clone(),
+                        cli.server_args.prompt_template[0],
+                    )
+                    .with_ctx_size(cli.server_args.ctx_size[0])
+                    .with_batch_size(cli.server_args.batch_size[0])
+                    .with_ubatch_size(cli.server_args.ubatch_size[0])
+                    .with_n_predict(cli.server_args.n_predict)
+                    .with_n_gpu_layers(cli.server_args.n_gpu_layers)
+                    .with_split_mode(cli.server_args.split_mode)
+                    .with_main_gpu(cli.server_args.main_gpu)
+                    .with_tensor_split(cli.server_args.tensor_split)
+                    .with_threads(cli.server_args.threads)
+                    .disable_mmap(cli.server_args.no_mmap)
+                    .with_temperature(cli.server_args.temp)
+                    .with_top_p(cli.server_args.top_p)
+                    .with_repeat_penalty(cli.server_args.repeat_penalty)
+                    .with_presence_penalty(cli.server_args.presence_penalty)
+                    .with_frequency_penalty(cli.server_args.frequency_penalty)
+                    .with_grammar(cli.server_args.grammar)
+                    .with_json_schema(cli.server_args.json_schema)
+                    .with_reverse_prompt(cli.server_args.reverse_prompt)
+                    .with_mmproj(cli.server_args.llava_mmproj.clone())
+                    .enable_plugin_log(true)
+                    .enable_debug_log(plugin_debug)
+                    .include_usage(cli.server_args.include_usage)
+                    .build();
 
-    // get the environment variable `NODE_VERSION`
-    // Note that this is for satisfying the requirement of `gaianet-node` project.
-    let node = std::env::var("NODE_VERSION").ok();
-    if node.is_some() {
-        // log node version
-        info!(target: "stdout", "gaianet_node_version: {}", node.as_ref().unwrap());
-    }
+                    // set the chat model config
+                    chat_model_config = Some(ModelConfig {
+                        name: metadata_chat.model_name.clone(),
+                        ty: "chat".to_string(),
+                        ctx_size: metadata_chat.ctx_size,
+                        batch_size: metadata_chat.batch_size,
+                        ubatch_size: metadata_chat.ubatch_size,
+                        prompt_template: Some(metadata_chat.prompt_template),
+                        n_predict: Some(metadata_chat.n_predict),
+                        reverse_prompt: metadata_chat.reverse_prompt.clone(),
+                        n_gpu_layers: Some(metadata_chat.n_gpu_layers),
+                        use_mmap: metadata_chat.use_mmap,
+                        temperature: Some(metadata_chat.temperature),
+                        top_p: Some(metadata_chat.top_p),
+                        repeat_penalty: Some(metadata_chat.repeat_penalty),
+                        presence_penalty: Some(metadata_chat.presence_penalty),
+                        frequency_penalty: Some(metadata_chat.frequency_penalty),
+                        split_mode: Some(metadata_chat.split_mode.clone()),
+                        main_gpu: metadata_chat.main_gpu,
+                        tensor_split: metadata_chat.tensor_split.clone(),
+                    });
 
-    // create server info
-    let server_info = ServerInfo {
-        node,
-        server: ApiServer {
-            ty: "llama".to_string(),
-            version: env!("CARGO_PKG_VERSION").to_string(),
-            plugin_version,
-            port,
-        },
-        chat_model: chat_model_config,
-        embedding_model: embedding_model_config,
-        extras: HashMap::new(),
-    };
-    SERVER_INFO
-        .set(server_info)
-        .map_err(|_| ServerError::Operation("Failed to set `SERVER_INFO`.".to_string()))?;
+                    // initialize the chat context
+                    llama_core::init_ggml_chat_context(&[metadata_chat])
+                        .map_err(|e| ServerError::Operation(format!("{}", e)))?;
+                }
+            }
+        } else if cli.server_args.prompt_template.len() == 2 {
+            // create a Metadata instance
+            let metadata_chat = GgmlMetadataBuilder::new(
+                cli.server_args.model_name[0].clone(),
+                cli.server_args.model_alias[0].clone(),
+                cli.server_args.prompt_template[0],
+            )
+            .with_ctx_size(cli.server_args.ctx_size[0])
+            .with_batch_size(cli.server_args.batch_size[0])
+            .with_ubatch_size(cli.server_args.ubatch_size[0])
+            .with_n_predict(cli.server_args.n_predict)
+            .with_n_gpu_layers(cli.server_args.n_gpu_layers)
+            .with_split_mode(cli.server_args.split_mode.clone())
+            .with_main_gpu(cli.server_args.main_gpu)
+            .with_tensor_split(cli.server_args.tensor_split.clone())
+            .with_threads(cli.server_args.threads)
+            .disable_mmap(cli.server_args.no_mmap)
+            .with_temperature(cli.server_args.temp)
+            .with_top_p(cli.server_args.top_p)
+            .with_repeat_penalty(cli.server_args.repeat_penalty)
+            .with_presence_penalty(cli.server_args.presence_penalty)
+            .with_frequency_penalty(cli.server_args.frequency_penalty)
+            .with_grammar(cli.server_args.grammar)
+            .with_json_schema(cli.server_args.json_schema)
+            .with_reverse_prompt(cli.server_args.reverse_prompt)
+            .with_mmproj(cli.server_args.llava_mmproj.clone())
+            .enable_plugin_log(true)
+            .enable_debug_log(plugin_debug)
+            .include_usage(cli.server_args.include_usage)
+            .build();
 
-    let new_service = make_service_fn(move |conn: &AddrStream| {
-        // log socket address
-        info!(target: "stdout", "remote_addr: {}, local_addr: {}", conn.remote_addr().to_string(), conn.local_addr().to_string());
+            // set the chat model config
+            chat_model_config = Some(ModelConfig {
+                name: metadata_chat.model_name.clone(),
+                ty: "chat".to_string(),
+                ctx_size: metadata_chat.ctx_size,
+                batch_size: metadata_chat.batch_size,
+                ubatch_size: metadata_chat.ubatch_size,
+                prompt_template: Some(metadata_chat.prompt_template),
+                n_predict: Some(metadata_chat.n_predict),
+                reverse_prompt: metadata_chat.reverse_prompt.clone(),
+                n_gpu_layers: Some(metadata_chat.n_gpu_layers),
+                use_mmap: metadata_chat.use_mmap,
+                temperature: Some(metadata_chat.temperature),
+                top_p: Some(metadata_chat.top_p),
+                repeat_penalty: Some(metadata_chat.repeat_penalty),
+                presence_penalty: Some(metadata_chat.presence_penalty),
+                frequency_penalty: Some(metadata_chat.frequency_penalty),
+                split_mode: Some(metadata_chat.split_mode.clone()),
+                main_gpu: metadata_chat.main_gpu,
+                tensor_split: metadata_chat.tensor_split.clone(),
+            });
 
-        // web ui
-        let web_ui = cli.web_ui.to_string_lossy().to_string();
+            // initialize the chat context
+            llama_core::init_ggml_chat_context(&[metadata_chat])
+                .map_err(|e| ServerError::Operation(format!("{}", e)))?;
 
-        async move { Ok::<_, Error>(service_fn(move |req| handle_request(req, web_ui.clone()))) }
-    });
+            // create a Metadata instance
+            let metadata_embedding = GgmlMetadataBuilder::new(
+                cli.server_args.model_name[1].clone(),
+                cli.server_args.model_alias[1].clone(),
+                cli.server_args.prompt_template[1],
+            )
+            .with_ctx_size(cli.server_args.ctx_size[1])
+            .with_batch_size(cli.server_args.batch_size[1])
+            .with_ubatch_size(cli.server_args.ubatch_size[1])
+            .with_split_mode(cli.server_args.split_mode)
+            .with_main_gpu(cli.server_args.main_gpu)
+            .with_tensor_split(cli.server_args.tensor_split)
+            .with_threads(cli.server_args.threads)
+            .enable_plugin_log(true)
+            .enable_debug_log(plugin_debug)
+            .build();
 
-    let tcp_listener = TcpListener::bind(addr).await.unwrap();
-    info!(target: "stdout", "Listening on {}", addr);
+            // set the embedding model config
+            embedding_model_config = Some(ModelConfig {
+                name: metadata_embedding.model_name.clone(),
+                ty: "embedding".to_string(),
+                ctx_size: metadata_embedding.ctx_size,
+                batch_size: metadata_embedding.batch_size,
+                ubatch_size: metadata_embedding.ubatch_size,
+                prompt_template: Some(PromptTemplateType::Embedding),
+                n_predict: Some(cli.server_args.n_predict),
+                reverse_prompt: metadata_embedding.reverse_prompt.clone(),
+                n_gpu_layers: Some(metadata_embedding.n_gpu_layers),
+                use_mmap: metadata_embedding.use_mmap,
+                temperature: Some(metadata_embedding.temperature),
+                top_p: Some(metadata_embedding.top_p),
+                repeat_penalty: Some(metadata_embedding.repeat_penalty),
+                presence_penalty: Some(metadata_embedding.presence_penalty),
+                frequency_penalty: Some(metadata_embedding.frequency_penalty),
+                split_mode: Some(metadata_embedding.split_mode.clone()),
+                main_gpu: metadata_embedding.main_gpu,
+                tensor_split: metadata_embedding.tensor_split.clone(),
+            });
 
-    let server = Server::from_tcp(tcp_listener.into_std().unwrap())
-        .unwrap()
-        .serve(new_service);
+            // initialize the embeddings context
+            llama_core::init_ggml_embeddings_context(&[metadata_embedding])
+                .map_err(|e| ServerError::Operation(format!("{}", e)))?;
+        }
 
-    match server.await {
-        Ok(_) => Ok(()),
-        Err(e) => Err(ServerError::Operation(e.to_string())),
+        // get running mode
+        let running_mode =
+            llama_core::running_mode().map_err(|e| ServerError::Operation(e.to_string()))?;
+        info!(target: "stdout", "running_mode: {}", running_mode);
+
+        // log plugin version
+        let plugin_info =
+            llama_core::get_plugin_info().map_err(|e| ServerError::Operation(e.to_string()))?;
+        let plugin_version = format!(
+            "b{build_number} (commit {commit_id})",
+            build_number = plugin_info.build_number,
+            commit_id = plugin_info.commit_id,
+        );
+        info!(target: "stdout", "plugin_ggml_version: {}", plugin_version);
+
+        // socket address
+        let addr = match cli.server_args.socket_addr {
+            Some(addr) => addr,
+            None => SocketAddr::from(([0, 0, 0, 0], cli.server_args.port)),
+        };
+        let port = addr.port().to_string();
+
+        // get the environment variable `NODE_VERSION`
+        // Note that this is for satisfying the requirement of `gaianet-node` project.
+        let node = std::env::var("NODE_VERSION").ok();
+        if node.is_some() {
+            // log node version
+            info!(target: "stdout", "gaianet_node_version: {}", node.as_ref().unwrap());
+        }
+
+        // create server info
+        let server_info = ServerInfo {
+            node,
+            server: ApiServer {
+                ty: "llama".to_string(),
+                version: env!("CARGO_PKG_VERSION").to_string(),
+                plugin_version,
+                port,
+            },
+            chat_model: chat_model_config,
+            embedding_model: embedding_model_config,
+            tts_model: None,
+            extras: HashMap::new(),
+        };
+        SERVER_INFO
+            .set(server_info)
+            .map_err(|_| ServerError::Operation("Failed to set `SERVER_INFO`.".to_string()))?;
+
+        let new_service = make_service_fn(move |conn: &AddrStream| {
+            // log socket address
+            info!(target: "stdout", "remote_addr: {}, local_addr: {}", conn.remote_addr().to_string(), conn.local_addr().to_string());
+
+            // web ui
+            let web_ui = cli.server_args.web_ui.to_string_lossy().to_string();
+
+            async move { Ok::<_, Error>(service_fn(move |req| handle_request(req, web_ui.clone()))) }
+        });
+
+        let tcp_listener = TcpListener::bind(addr).await.unwrap();
+        info!(target: "stdout", "Listening on {}", addr);
+
+        let server = Server::from_tcp(tcp_listener.into_std().unwrap())
+            .unwrap()
+            .serve(new_service);
+
+        match server.await {
+            Ok(_) => Ok(()),
+            Err(e) => Err(ServerError::Operation(e.to_string())),
+        }
     }
 }
 
@@ -1175,6 +1109,8 @@ pub(crate) struct ServerInfo {
     chat_model: Option<ModelConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     embedding_model: Option<ModelConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tts_model: Option<ModelConfig>,
     extras: HashMap<String, String>,
 }
 

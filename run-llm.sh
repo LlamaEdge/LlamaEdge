@@ -63,7 +63,7 @@ function print_usage {
     printf "  --port:         port number, default is 8080\n"
     printf "  --ggml-version: ggml version (for example, b2963). If the option is not used, then install the latest version.\n"
     printf "Example:\n\n"
-    printf '  bash <(curl -sSfL 'https://code.flows.network/webhook/iwYN1SdN3AmPgR5ao5Gt/run-llm.sh')"\n\n'
+    printf '  curl -sSfL 'https://github.com/LlamaEdge/LlamaEdge/raw/refs/heads/dev/run-llm.sh' | bash\n\n'
 }
 
 while [[ $# -gt 0 ]]; do
@@ -109,7 +109,7 @@ for wt in "${wtypes[@]}"; do
 done
 
 ss_urls=(
-    "https://huggingface.co/second-state/gemma-2-9b-it-GGUF/resolve/main/gemma-2-9b-it-Q5_K_M.gguf"
+    "https://huggingface.co/second-state/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q5_K_M.gguf"
     "https://huggingface.co/second-state/Yi-1.5-9B-Chat-GGUF/resolve/main/Yi-1.5-9B-Chat-Q5_K_M.gguf"
     "https://huggingface.co/second-state/Phi-3-mini-4k-instruct-GGUF/resolve/main/Phi-3-mini-4k-instruct-Q5_K_M.gguf"
     "https://huggingface.co/second-state/Llama-3-8B-Instruct-GGUF/resolve/main/Meta-Llama-3-8B-Instruct-Q5_K_M.gguf"
@@ -129,7 +129,7 @@ ss_urls=(
 
 # sample models
 ss_models=(
-    "gemma-2-9b-it"
+    "Llama-3.2-3b"
     "yi-1.5-9b-chat"
     "phi-3-mini-4k"
     "llama-3-8b-instruct"
@@ -149,7 +149,7 @@ ss_models=(
 
 # prompt types
 prompt_types=(
-    "gemma-instruct"
+    "llama-3-chat"
     "chatml"
     "phi-3-chat"
     "llama-3-chat"
@@ -265,7 +265,7 @@ if [ -n "$model" ]; then
     printf "[+] Install WasmEdge with wasi-nn_ggml plugin ...\n\n"
 
     if [ "$ggml_version" = "latest" ]; then
-        if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v 0.14.0; then
+        if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v 0.14.1; then
             source $HOME/.wasmedge/env
             wasmedge_path=$(which wasmedge)
             printf "\n    The WasmEdge Runtime is installed in %s.\n\n" "$wasmedge_path"
@@ -274,7 +274,7 @@ if [ -n "$model" ]; then
             exit 1
         fi
     else
-        if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v 0.14.0 --ggmlbn=$ggml_version; then
+        if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v 0.14.1 --ggmlbn=$ggml_version; then
             source $HOME/.wasmedge/env
             wasmedge_path=$(which wasmedge)
             printf "\n    The WasmEdge Runtime is installed in %s.\n\n" "$wasmedge_path"
@@ -327,7 +327,7 @@ elif [ "$interactive" -eq 0 ]; then
     printf "[+] Installing WasmEdge with wasi-nn_ggml plugin ...\n\n"
 
     if [ "$ggml_version" = "latest" ]; then
-        if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v 0.14.0; then
+        if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v 0.14.1; then
             source $HOME/.wasmedge/env
             wasmedge_path=$(which wasmedge)
             printf "\n    The WasmEdge Runtime is installed in %s.\n\n" "$wasmedge_path"
@@ -336,7 +336,7 @@ elif [ "$interactive" -eq 0 ]; then
             exit 1
         fi
     else
-        if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v 0.14.0 --ggmlbn=$ggml_version; then
+        if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v 0.14.1 --ggmlbn=$ggml_version; then
             source $HOME/.wasmedge/env
             wasmedge_path=$(which wasmedge)
             printf "\n    The WasmEdge Runtime is installed in %s.\n\n" "$wasmedge_path"
@@ -348,8 +348,8 @@ elif [ "$interactive" -eq 0 ]; then
 
     printf "\n"
 
-    # * download gemma-2-9b-it-Q5_K_M.gguf
-    ss_url="https://huggingface.co/second-state/gemma-2-9b-it-GGUF/resolve/main/gemma-2-9b-it-Q5_K_M.gguf"
+    # * download Llama-3.2-3B-Instruct-Q5_K_M.gguf
+    ss_url="https://huggingface.co/second-state/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q5_K_M.gguf"
     wfile=$(basename "$ss_url")
     if [ -f "$wfile" ]; then
         printf "[+] Using cached model %s \n" "$wfile"
@@ -378,7 +378,7 @@ elif [ "$interactive" -eq 0 ]; then
     printf "\n"
 
     # * start llama-api-server
-    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:gemma-2-9b-it-Q5_K_M.gguf llama-api-server.wasm -p gemma-instruct -c 4096 --model-name gemma-2-9b-it --socket-addr 0.0.0.0:${port}"
+    cmd="wasmedge --dir .:. --nn-preload default:GGML:AUTO:Llama-3.2-3B-Instruct-Q5_K_M.gguf llama-api-server.wasm -p llama-3-chat -c 32000 --model-name Llama-3.2-3b --socket-addr 0.0.0.0:${port}"
 
     printf "[+] Will run the following command to start the server:\n\n"
     printf "    %s\n\n" "$cmd"
@@ -433,7 +433,7 @@ elif [ "$interactive" -eq 1 ]; then
     if [[ "$reinstall_wasmedge" == "1" ]]; then
         # install WasmEdge + wasi-nn_ggml plugin
         if [ "$ggml_version" = "latest" ]; then
-            if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v 0.14.0; then
+            if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v 0.14.1; then
                 source $HOME/.wasmedge/env
                 wasmedge_path=$(which wasmedge)
                 printf "\n    The WasmEdge Runtime is installed in %s.\n\n" "$wasmedge_path"
@@ -442,7 +442,7 @@ elif [ "$interactive" -eq 1 ]; then
                 exit 1
             fi
         else
-            if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v 0.14.0 --ggmlbn=$ggml_version; then
+            if curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v 0.14.1 --ggmlbn=$ggml_version; then
                 source $HOME/.wasmedge/env
                 wasmedge_path=$(which wasmedge)
                 printf "\n    The WasmEdge Runtime is installed in %s.\n\n" "$wasmedge_path"

@@ -10,6 +10,7 @@ pub(crate) async fn handle_llama_request(req: Request<Body>) -> Response<Body> {
         "/v1/models" => ggml::models_handler().await,
         "/v1/embeddings" => ggml::embeddings_handler(req).await,
         "/v1/chunks" => ggml::chunks_handler(req).await,
+        "/v1/audio/speech" => ggml::audio_speech_handler(req).await,
         "/v1/info" => ggml::server_info_handler().await,
         path => {
             if path.starts_with("/v1/files") {
