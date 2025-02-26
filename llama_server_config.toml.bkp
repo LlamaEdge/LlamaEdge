@@ -1,5 +1,6 @@
 [server]
-socket_addr = "0.0.0.0:8080"     # Socket address to listen on. Default is "0.0.0.0:8080".
+socket_addr = "0.0.0.0:8080"     # Socket address to listen on.
+                                 # Default is "0.0.0.0:8080".
 
 
 [chat]
@@ -8,24 +9,44 @@ model_alias       = "default"   # Alias of the chat model. Default is "default".
 ctx_size          = 4096        # Context size. Default is 4096.
 batch_size        = 512         # Batch size. Default is 512.
 ubatch_size       = 512         # Physical maximum batch size. Default is 512.
-prompt_template   = "none"      # Required for running chat model. "none" means no prompt template, which should be replaced by the prompt template according to the model to use.
-reverse_prompt    = ""          # Halt generation at PROMPT, return control. Default is empty string.
-n_predict         = -1          # Number of tokens to predict. -1 = infinity, -2 = until context filled. Default is -1.
+prompt_template   = "none"      # Required for running chat model. "none" means no
+                                # prompt template, which should be replaced by the
+                                # prompt template according to the model to use.
+reverse_prompt    = ""          # Halt generation at PROMPT, return control.
+                                # Default is empty string.
+n_predict         = -1          # Number of tokens to predict. -1 = infinity,
+                                # -2 = until context filled. Default is -1.
 n_gpu_layers      = 100         # Number of layers to run on GPU. Default is 100.
-split_mode        = "layer"     # Split the model across multiple GPUs. Possible values: `none` (use one GPU only), `layer` (split layers and KV across GPUs, default), `row` (split rows across GPUs) [default: layer]
+split_mode        = "layer"     # Split the model across multiple GPUs.
+                                # Possible values:
+                                #   `none` (use one GPU only),
+                                #   `layer` (split layers and KV across GPUs, default),
+                                #   `row` (split rows across GPUs) [default: layer]
 main_gpu          = 0           # Main GPU to use. Default is 0.
-tensor_split      = "3:2"       # How split tensors should be distributed accross GPUs. If null the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1.
-threads           = 2           # Number of threads to use during computation. Default is 2.
-no_mmap           = true        # Disable memory mapping for file access of chat model. Default is true.
+tensor_split      = "3:2"       # How split tensors should be distributed accross GPUs.
+                                # If null the model is not split; otherwise, a
+                                # comma-separated list of non-negative values, e.g.,
+                                # "3,2" presents 60% of the data to GPU 0 and 40% to
+                                # GPU 1.
+threads           = 2           # Number of threads to use during computation.
+                                # Default is 2.
+no_mmap           = true        # Disable memory mapping for file access of chat model.
+                                # Default is true.
 temp              = 1.0         # Temperature. Default is 1.0.
 top_p             = 1.0         # Top-p. Default is 1.0.
 repeat_penalty    = 1.1         # Repeat penalty. Default is 1.1.
 presence_penalty  = 0.0         # Presence penalty. Default is 0.0.
 frequency_penalty = 0.0         # Frequency penalty. Default is 0.0.
-grammar           = ""          # BNF-like grammar to constrain generations. Default is empty string.
-json_schema       = ""          # JSON schema to constrain generations (<https://json-schema.org/>), e.g. `{}` for any JSON object. For schemas w/ external $refs, use --grammar + example/json_schema_to_grammar.py instead.
-llava_mmproj      = ""          # Path to the multimodal projector file. Default is empty string.
-include_usage     = false       # Whether to include token usage in the stream response. Defaults to false.
+grammar           = ""          # BNF-like grammar to constrain generations.
+                                # Default is empty string.
+json_schema       = ""          # JSON schema to constrain generations
+                                # (<https://json-schema.org/>), e.g. `{}` for any JSON
+                                # object. For schemas w/ external $refs, use --grammar
+                                # + example/json_schema_to_grammar.py instead.
+llava_mmproj      = ""          # Path to the multimodal projector file.
+                                # Default is empty string.
+include_usage     = false       # Whether to include token usage in the stream
+                                # response. Defaults to false.
 
 [embedding]
 model_name      = "default"     # Name of the embedding model. Default is "default".
@@ -33,16 +54,25 @@ model_alias     = "embedding"   # Alias of the embedding model. Default is "embe
 ctx_size        = 384           # Context size. Default is 384.
 batch_size      = 512           # Batch size. Default is 512.
 ubatch_size     = 512           # Physical maximum batch size. Default is 512.
-split_mode      = "layer"       # Split the model across multiple GPUs. Possible values: `none` (use one GPU only), `layer` (split layers and KV across GPUs, default), `row` (split rows across GPUs) [default: layer]
+split_mode      = "layer"       # Split the model across multiple GPUs.
+                                # Possible values:
+                                #   `none` (use one GPU only),
+                                #   `layer` (split layers and KV across GPUs, default),
+                                #   `row` (split rows across GPUs) [default: layer]
 main_gpu        = 0             # Main GPU to use. Default is 0.
-tensor_split    = "3:2"         # How split tensors should be distributed accross GPUs. If null the model is not split; otherwise, a comma-separated list of non-negative values, e.g., "3,2" presents 60% of the data to GPU 0 and 40% to GPU 1.
-threads         = 2             # Number of threads to use during computation. Default is 2.
+tensor_split    = "3:2"         # How split tensors should be distributed accross GPUs.
+                                # If null the model is not split; otherwise, a
+                                # comma-separated list of non-negative values, e.g.,
+                                # "3,2" presents 60% of the data to GPU 0 and 40% to
+                                # GPU 1.
+threads         = 2             # Number of threads to use during computation.
+                                # Default is 2.
 
 [tts]
 model_name   = "tts"            # Name of the TTS model. Default is "default".
 model_alias  = "tts"            # Alias of the TTS model. Default is "tts".
 codec_model  = ""               # Required. Path to the codec model file.
-speaker_file  = ""               # Path to an alternative speaker file.
+speaker_file  = ""               # Path to an alternative speaker file. Download from https://github.com/edwko/OuteTTS/tree/main/outetts/version/v1/default_speakers
 ctx_size     = 8192             # Context size. Default is 8192.
 batch_size   = 8192             # Batch size. Default is 8192.
 ubatch_size  = 8192             # Physical maximum batch size. Default is 8192.
