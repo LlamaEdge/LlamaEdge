@@ -27,7 +27,7 @@ use utils::LogLevel;
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 // server info
-pub(crate) static SERVER_INFO: OnceCell<ServerInfo> = OnceCell::new();
+pub(crate) static SERVER_INFO: OnceCell<ApiServer> = OnceCell::new();
 
 // API key
 pub(crate) static LLAMA_API_KEY: OnceCell<String> = OnceCell::new();
@@ -495,14 +495,11 @@ async fn main() -> Result<(), ServerError> {
                 }
 
                 // create server info
-                let server_info = ServerInfo {
-                    node,
-                    server: ApiServer {
-                        ty: "llama".to_string(),
-                        version: env!("CARGO_PKG_VERSION").to_string(),
-                        plugin_version,
-                        port,
-                    },
+                let server_info = ApiServer {
+                    ty: "llama".to_string(),
+                    version: env!("CARGO_PKG_VERSION").to_string(),
+                    plugin_version,
+                    port,
                     chat_model: chat_model_config,
                     embedding_model: embedding_model_config,
                     tts_model: tts_model_config,
@@ -935,14 +932,11 @@ async fn main() -> Result<(), ServerError> {
         }
 
         // create server info
-        let server_info = ServerInfo {
-            node,
-            server: ApiServer {
-                ty: "llama".to_string(),
-                version: env!("CARGO_PKG_VERSION").to_string(),
-                plugin_version,
-                port,
-            },
+        let server_info = ApiServer {
+            ty: "llama".to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            plugin_version,
+            port,
             chat_model: chat_model_config,
             embedding_model: embedding_model_config,
             tts_model: None,
@@ -1093,27 +1087,6 @@ fn static_response(path_str: &str, root: String) -> Response<Body> {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct AppState {
-    pub state_thing: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct ServerInfo {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename = "node_version")]
-    node: Option<String>,
-    #[serde(rename = "api_server")]
-    server: ApiServer,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    chat_model: Option<ModelConfig>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    embedding_model: Option<ModelConfig>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    tts_model: Option<ModelConfig>,
-    extras: HashMap<String, String>,
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct ApiServer {
     #[serde(rename = "type")]
@@ -1122,6 +1095,13 @@ pub(crate) struct ApiServer {
     #[serde(rename = "ggml_plugin_version")]
     plugin_version: String,
     port: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    chat_model: Option<ModelConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    embedding_model: Option<ModelConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tts_model: Option<ModelConfig>,
+    extras: HashMap<String, String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
