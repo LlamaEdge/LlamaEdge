@@ -923,14 +923,6 @@ async fn main() -> Result<(), ServerError> {
         };
         let port = addr.port().to_string();
 
-        // get the environment variable `NODE_VERSION`
-        // Note that this is for satisfying the requirement of `gaianet-node` project.
-        let node = std::env::var("NODE_VERSION").ok();
-        if node.is_some() {
-            // log node version
-            info!(target: "stdout", "gaianet_node_version: {}", node.as_ref().unwrap());
-        }
-
         // create server info
         let server_info = ApiServer {
             ty: "llama".to_string(),
