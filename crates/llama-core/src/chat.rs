@@ -3189,6 +3189,9 @@ fn compute_stream(
                                                         #[cfg(feature = "logging")]
                                                         error!(target: "stdout", "{}", &err_msg);
 
+                                                        #[cfg(feature = "logging")]
+                                                        error!(target: "stdout", "The cached buffer: {:?}", &cached_encodings[..]);
+
                                                         return Err(LlamaCoreError::Operation(
                                                             err_msg,
                                                         ));
@@ -3667,6 +3670,9 @@ fn compute_stream(
 
                                                                 #[cfg(feature = "logging")]
                                                                 error!(target: "stdout", "{}", &err_msg);
+
+                                                                #[cfg(feature = "logging")]
+                                                                error!(target: "stdout", "The cached buffer: {:?}", &cached_encodings[..]);
 
                                                                 return Err(
                                                                     LlamaCoreError::Operation(
@@ -4173,6 +4179,9 @@ fn compute_stream(
 
                                                         #[cfg(feature = "logging")]
                                                         error!(target: "stdout", "{}", &err_msg);
+
+                                                        #[cfg(feature = "logging")]
+                                                        error!(target: "stdout", "The cached buffer: {:?}", &cached_encodings[..]);
 
                                                         return Err(LlamaCoreError::Operation(
                                                             err_msg,
