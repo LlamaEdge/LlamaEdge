@@ -89,16 +89,7 @@ impl<M: BaseMetadata + serde::Serialize + Clone + Default> GraphBuilder<M> {
             LlamaCoreError::Operation(err_msg)
         })?;
 
-        let created = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_err(|e| {
-                let err_msg = e.to_string();
-
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
+        let created = std::time::SystemTime::now();
 
         Ok(Graph {
             created,
@@ -135,16 +126,7 @@ impl<M: BaseMetadata + serde::Serialize + Clone + Default> GraphBuilder<M> {
             LlamaCoreError::Operation(err_msg)
         })?;
 
-        let created = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_err(|e| {
-                let err_msg = e.to_string();
-
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
+        let created = std::time::SystemTime::now();
 
         Ok(Graph {
             created,
@@ -180,16 +162,7 @@ impl<M: BaseMetadata + serde::Serialize + Clone + Default> GraphBuilder<M> {
                     LlamaCoreError::Operation(err_msg)
                 })?;
 
-                let created = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map_err(|e| {
-                        let err_msg = e.to_string();
-
-                        #[cfg(feature = "logging")]
-                        error!(target: "stdout", "{}", &err_msg);
-
-                        LlamaCoreError::Operation(err_msg)
-                    })?;
+                let created = std::time::SystemTime::now();
 
                 Ok(Graph {
                     created,
@@ -215,7 +188,7 @@ impl<M: BaseMetadata + serde::Serialize + Clone + Default> GraphBuilder<M> {
 /// Wrapper of the `wasmedge_wasi_nn::Graph` struct
 #[derive(Debug)]
 pub struct Graph<M: BaseMetadata + serde::Serialize + Clone + Default> {
-    pub created: std::time::Duration,
+    pub created: std::time::SystemTime,
     pub metadata: M,
     graph: WasiNnGraph,
     context: GraphExecutionContext,
@@ -258,16 +231,7 @@ impl<M: BaseMetadata + serde::Serialize + Clone + Default> Graph<M> {
             LlamaCoreError::Operation(err_msg)
         })?;
 
-        let created = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_err(|e| {
-                let err_msg = e.to_string();
-
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
+        let created = std::time::SystemTime::now();
 
         Ok(Self {
             created,

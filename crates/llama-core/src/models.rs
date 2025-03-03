@@ -22,9 +22,14 @@ pub async fn models() -> Result<ListModelsResponse, LlamaCoreError> {
             })?;
 
             for (name, graph) in chat_graphs.iter() {
+                let created = graph
+                    .created
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs();
                 models.push(Model {
                     id: name.clone(),
-                    created: graph.created.as_secs(),
+                    created,
                     object: String::from("model"),
                     owned_by: String::from("Not specified"),
                 });
@@ -43,9 +48,14 @@ pub async fn models() -> Result<ListModelsResponse, LlamaCoreError> {
 
             if !embedding_graphs.is_empty() {
                 for (name, graph) in embedding_graphs.iter() {
+                    let created = graph
+                        .created
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs();
                     models.push(Model {
                         id: name.clone(),
-                        created: graph.created.as_secs(),
+                        created,
                         object: String::from("model"),
                         owned_by: String::from("Not specified"),
                     });
