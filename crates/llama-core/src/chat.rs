@@ -3176,7 +3176,7 @@ fn compute_stream(
 
                                             match String::from_utf8(cached_encodings.to_vec()) {
                                                 Ok(token) => {
-                                                    // clear encodings
+                                                    // clear CACHED_UTF8_ENCODINGS
                                                     cached_encodings.clear();
 
                                                     token
@@ -3192,9 +3192,15 @@ fn compute_stream(
                                                         #[cfg(feature = "logging")]
                                                         error!(target: "stdout", "The cached buffer: {:?}", &cached_encodings[..]);
 
-                                                        return Err(LlamaCoreError::Operation(
-                                                            err_msg,
-                                                        ));
+                                                        let token = String::from_utf8_lossy(
+                                                            &cached_encodings,
+                                                        )
+                                                        .to_string();
+
+                                                        // clear CACHED_UTF8_ENCODINGS
+                                                        cached_encodings.clear();
+
+                                                        token
                                                     } else {
                                                         let warn_msg = format!("Fail to convert a vector of bytes to string. {}", e);
 
@@ -3674,11 +3680,16 @@ fn compute_stream(
                                                                 #[cfg(feature = "logging")]
                                                                 error!(target: "stdout", "The cached buffer: {:?}", &cached_encodings[..]);
 
-                                                                return Err(
-                                                                    LlamaCoreError::Operation(
-                                                                        err_msg,
-                                                                    ),
-                                                                );
+                                                                let token =
+                                                                    String::from_utf8_lossy(
+                                                                        &cached_encodings,
+                                                                    )
+                                                                    .to_string();
+
+                                                                // clear CACHED_UTF8_ENCODINGS
+                                                                cached_encodings.clear();
+
+                                                                token
                                                             } else {
                                                                 let warn_msg = format!("Fail to convert a vector of bytes to string. {}", e);
 
@@ -4183,9 +4194,15 @@ fn compute_stream(
                                                         #[cfg(feature = "logging")]
                                                         error!(target: "stdout", "The cached buffer: {:?}", &cached_encodings[..]);
 
-                                                        return Err(LlamaCoreError::Operation(
-                                                            err_msg,
-                                                        ));
+                                                        let token = String::from_utf8_lossy(
+                                                            &cached_encodings,
+                                                        )
+                                                        .to_string();
+
+                                                        // clear CACHED_UTF8_ENCODINGS
+                                                        cached_encodings.clear();
+
+                                                        token
                                                     } else {
                                                         let warn_msg = format!("Fail to convert a vector of bytes to string. {}", e);
 
