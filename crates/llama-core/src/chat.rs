@@ -3192,22 +3192,22 @@ fn compute_stream(
                                                         #[cfg(feature = "logging")]
                                                         error!(target: "stdout", "The cached buffer: {:?}", &cached_encodings[..]);
 
-                                                        let token = String::from_utf8_lossy(
-                                                            &cached_encodings,
-                                                        )
-                                                        .to_string();
+                                                        // let token = String::from_utf8_lossy(
+                                                        //     &cached_encodings,
+                                                        // )
+                                                        // .to_string();
 
                                                         // clear CACHED_UTF8_ENCODINGS
                                                         cached_encodings.clear();
 
-                                                        token
+                                                        String::from("")
                                                     } else {
                                                         let warn_msg = format!("Fail to convert a vector of bytes to string. {}", e);
 
                                                         #[cfg(feature = "logging")]
                                                         warn!(target: "stdout", "{}", &warn_msg);
 
-                                                        String::from(" ")
+                                                        String::from("")
                                                     }
                                                 }
                                             }
@@ -3680,23 +3680,23 @@ fn compute_stream(
                                                                 #[cfg(feature = "logging")]
                                                                 error!(target: "stdout", "The cached buffer: {:?}", &cached_encodings[..]);
 
-                                                                let token =
-                                                                    String::from_utf8_lossy(
-                                                                        &cached_encodings,
-                                                                    )
-                                                                    .to_string();
+                                                                // let token =
+                                                                //     String::from_utf8_lossy(
+                                                                //         &cached_encodings,
+                                                                //     )
+                                                                //     .to_string();
 
                                                                 // clear CACHED_UTF8_ENCODINGS
                                                                 cached_encodings.clear();
 
-                                                                token
+                                                                String::from("")
                                                             } else {
                                                                 let warn_msg = format!("Fail to convert a vector of bytes to string. {}", e);
 
                                                                 #[cfg(feature = "logging")]
                                                                 warn!(target: "stdout", "{}", &warn_msg);
 
-                                                                String::from(" ")
+                                                                String::from("")
                                                             }
                                                         }
                                                     }
@@ -4194,22 +4194,22 @@ fn compute_stream(
                                                         #[cfg(feature = "logging")]
                                                         error!(target: "stdout", "The cached buffer: {:?}", &cached_encodings[..]);
 
-                                                        let token = String::from_utf8_lossy(
-                                                            &cached_encodings,
-                                                        )
-                                                        .to_string();
+                                                        // let token = String::from_utf8_lossy(
+                                                        //     &cached_encodings,
+                                                        // )
+                                                        // .to_string();
 
                                                         // clear CACHED_UTF8_ENCODINGS
                                                         cached_encodings.clear();
 
-                                                        token
+                                                        String::from("")
                                                     } else {
                                                         let warn_msg = format!("Fail to convert a vector of bytes to string. {}", e);
 
                                                         #[cfg(feature = "logging")]
                                                         warn!(target: "stdout", "{}", &warn_msg);
 
-                                                        String::from(" ")
+                                                        String::from("")
                                                     }
                                                 }
                                             }
