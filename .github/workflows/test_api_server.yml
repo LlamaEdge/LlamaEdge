@@ -36,7 +36,7 @@ jobs:
     strategy:
       matrix:
         wasmedge_version: [0.14.1]
-        ggml_version: [b4818]
+        ggml_version: [b4875]
     steps:
       - name: Clone project
         id: checkout
@@ -126,7 +126,7 @@ jobs:
     strategy:
       matrix:
         wasmedge_version: [0.14.1]
-        ggml_version: [b4818]
+        ggml_version: [b4875]
     steps:
       - name: Clone project
         id: checkout
@@ -222,7 +222,7 @@ jobs:
     strategy:
       matrix:
         wasmedge_version: [0.14.1]
-        ggml_version: [b4818]
+        ggml_version: [b4875]
     steps:
       - name: Clone project
         id: checkout
@@ -318,7 +318,7 @@ jobs:
     strategy:
       matrix:
         wasmedge_version: [0.14.1]
-        ggml_version: [b4818]
+        ggml_version: [b4875]
     steps:
       - name: Clone project
         id: checkout
