@@ -1,6 +1,6 @@
 [package]
 name    = "llama-simple"
-version = "0.16.9"
+version = "0.16.10"
 edition = "2021"
 
 [dependencies]

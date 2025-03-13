@@ -278,17 +278,7 @@ async fn transcribe_audio(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Decode the transcription data to plain text.");
 
-    let text = std::str::from_utf8(&output_buffer[..output_size]).map_err(|e| {
-        let err_msg = format!(
-            "Failed to decode the gerated buffer to a utf-8 string. {}",
-            e
-        );
-
-        #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", &err_msg);
-
-        LlamaCoreError::Operation(err_msg)
-    })?;
+    let text = String::from_utf8_lossy(&output_buffer[..output_size]);
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "raw transcription text:\n{}", &text);
@@ -585,17 +575,7 @@ async fn translate_audio(request: TranslationRequest) -> Result<TranslationObjec
     #[cfg(feature = "logging")]
     info!(target: "stdout", "decode the translation data to plain text.");
 
-    let text = std::str::from_utf8(&output_buffer[..output_size]).map_err(|e| {
-        let err_msg = format!(
-            "Failed to decode the gerated buffer to a utf-8 string. {}",
-            e
-        );
-
-        #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", &err_msg);
-
-        LlamaCoreError::Operation(err_msg)
-    })?;
+    let text = String::from_utf8_lossy(&output_buffer[..output_size]);
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "raw translation text:\n{}", &text);
