@@ -1,10 +1,14 @@
 # LlamaEdge
 
-The LlamaEdge project makes it easy for you to run LLM inference apps and create OpenAI-compatible API services for the Llama2 series of LLMs locally.
+The LlamaEdge project makes it easy for you to run LLM inference apps and create OpenAI-compatible API services for open-source LLMs locally.
 
 ⭐ Like our work? Give us a star!
 
-Checkout our [official docs](https://llamaedge.com/docs) and a [Manning ebook](https://www.manning.com/liveprojectseries/open-source-llms-on-your-own-computer) on how to customize open source models.
+📖 Checkout our [official docs](https://llamaedge.com/docs) and a [Manning ebook](https://www.manning.com/liveprojectseries/open-source-llms-on-your-own-computer) on how to customize open source models.
+
+🔥 Run multiple models with LlamaEdge!
+[LLM (Text Generation)](https://llamaedge.com/docs/category/llm) | [Speech to Text](https://llamaedge.com/docs/category/speech-to-text) | [Text to speech](https://llamaedge.com/docs/category/text-to-speech) | [Text to Image](https://llamaedge.com/docs/category/text-to-image) | [Multimodal](https://llamaedge.com/docs/category/multimodal)
+
 
 ## Quick start
 
@@ -34,7 +38,7 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:Llama-3.2-1B-Instruct-Q5_K_M.g
 
 Next steps:
 
-* [Use a web-based chatbot to interact with your local LLM](https://llamaedge.com/docs/user-guide/get-started-with-llamaedge#step-5-chat-with-the-chatbot-ui)
+* [Use a web-based chatbot to interact with your local LLM](https://llamaedge.com/docs/user-guide/llm/get-started-with-llamaedge)
 * [Start an API server for the LLMs](https://llamaedge.com/docs/user-guide/openai-api/intro)
 * [Start an LLM service with your own knowledge base](https://docs.gaianet.ai/node-guide/quick-start)
 
