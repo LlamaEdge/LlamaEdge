@@ -4,7 +4,11 @@ The LlamaEdge project makes it easy for you to run LLM inference apps and create
 
 ⭐ Like our work? Give us a star!
 
-Checkout our [official docs](https://llamaedge.com/docs) and a [Manning ebook](https://www.manning.com/liveprojectseries/open-source-llms-on-your-own-computer) on how to customize open source models.
+📖 Checkout our [official docs](https://llamaedge.com/docs) and a [Manning ebook](https://www.manning.com/liveprojectseries/open-source-llms-on-your-own-computer) on how to customize open source models.
+
+🔥 Run multiple models with LlamaEdge!
+[LLM (Text Generation)](https://llamaedge.com/docs/category/llm) | [Speech to Text](https://llamaedge.com/docs/category/speech-to-text) | [Text to speech](https://llamaedge.com/docs/category/text-to-speech) | [Text to Image](https://llamaedge.com/docs/category/text-to-image) | [Multimodal](https://llamaedge.com/docs/category/multimodal)
+
 
 ## Quick start
 
