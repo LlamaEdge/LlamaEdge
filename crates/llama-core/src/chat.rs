@@ -2107,7 +2107,9 @@ fn post_process(
         } else {
             output.as_ref().trim().to_owned()
         }
-    } else if *template_ty == PromptTemplateType::GemmaInstruct {
+    } else if *template_ty == PromptTemplateType::GemmaInstruct
+        || *template_ty == PromptTemplateType::Gemma3
+    {
         let s = output.as_ref().trim();
         if s.ends_with("<end_of_turn>") {
             s.trim_end_matches("<end_of_turn>").trim().to_owned()
