@@ -104,6 +104,7 @@ pub enum ChatPrompt {
     Phi3InstructPrompt,
     Phi4ChatPrompt,
     GemmaInstructPrompt,
+    Gemma3Prompt,
     OctopusPrompt,
     Glm4ChatPrompt,
     GroqLlama3ToolPrompt,
@@ -184,6 +185,7 @@ impl From<PromptTemplateType> for ChatPrompt {
             PromptTemplateType::GemmaInstruct => {
                 ChatPrompt::GemmaInstructPrompt(GemmaInstructPrompt)
             }
+            PromptTemplateType::Gemma3 => ChatPrompt::Gemma3Prompt(Gemma3Prompt),
             PromptTemplateType::Octopus => ChatPrompt::OctopusPrompt(OctopusPrompt),
             PromptTemplateType::Glm4Chat => ChatPrompt::Glm4ChatPrompt(Glm4ChatPrompt),
             PromptTemplateType::GroqLlama3Tool => {
