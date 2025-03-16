@@ -1,6 +1,6 @@
 [package]
 name    = "llama-chat"
-version = "0.16.10"
+version = "0.16.11"
 edition = "2021"
 
 [dependencies]
