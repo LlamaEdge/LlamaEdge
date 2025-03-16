@@ -224,9 +224,24 @@ The available prompt templates are listed below:
 
   - Example: [second-state/functionary-small-v3.2-GGUF](https://huggingface.co/second-state/functionary-small-v3.2-GGUF)
 
-- `gemma-instruct`
+- `gemma-3`
   - Prompt string
 
+    ```text
+    <bos><start_of_turn>user
+    {user_message_1}<end_of_turn>
+    <start_of_turn>model
+    {model_message_1}<end_of_turn>model
+    <start_of_turn>user
+    {system_prompt}
+    {user_message_2}<end_of_turn>
+    <start_of_turn>model
+    ```
+
+  - Example: [second-state/gemma-3-27b-it-GGUF](https://huggingface.co/second-state/gemma-3-27b-it-GGUF)
+
+- `gemma-instruct`
+  - Prompt string
     ```text
     <bos><start_of_turn>user
     {user_message}<end_of_turn>
