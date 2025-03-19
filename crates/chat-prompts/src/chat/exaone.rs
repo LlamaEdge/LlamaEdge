@@ -4,9 +4,8 @@ use endpoints::chat::{
     ChatCompletionAssistantMessage, ChatCompletionRequestMessage, ChatCompletionSystemMessage,
     ChatCompletionUserMessage, ChatCompletionUserMessageContent, ContentPart,
 };
-use regex::Regex;
 
-/// Generate prompts for the models using ChatML template.
+/// Generate prompts for the EXAONE Deep models.
 #[derive(Debug, Default, Clone)]
 pub struct ExaoneDeepChatPrompt;
 impl ExaoneDeepChatPrompt {
@@ -43,9 +42,6 @@ impl ExaoneDeepChatPrompt {
             }
         };
 
-        // remove the text between <thought> and </thought>
-        let content = remove_thought_tags(&content);
-
         match chat_history.as_ref().is_empty() {
             true => format!(
                 "{system_prompt}\n[|user|]{user_message}",
@@ -74,6 +70,9 @@ impl ExaoneDeepChatPrompt {
                 false => return Err(PromptError::NoAssistantMessage),
             },
         };
+
+        // remove the text between <thought> and </thought>
+        let content = remove_thought_tags(&content);
 
         Ok(format!(
             "{chat_history}\n[|assistant|]{assistant_message}[|endofturn|]",
@@ -115,6 +114,10 @@ impl BuildChatPrompt for ExaoneDeepChatPrompt {
 }
 
 fn remove_thought_tags(input: &str) -> String {
-    let re = Regex::new(r"<thought>.*?</thought>").unwrap();
-    re.replace_all(input, "").to_string()
+    let idx = input.rfind("</thought>");
+    if let Some(idx) = idx {
+        input[idx + "</thought>".len()..].trim().to_string()
+    } else {
+        input.to_string()
+    }
 }
