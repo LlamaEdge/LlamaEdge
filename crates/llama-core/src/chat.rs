@@ -2290,10 +2290,21 @@ fn post_process(
         } else {
             s.to_owned()
         }
+    } else if *template_ty == PromptTemplateType::ExaoneDeepChat {
+        let mut s = output.as_ref().trim();
+
+        if s.starts_with("</thought>") {
+            s = s.trim_start_matches("</thought>").trim();
+        };
+
+        if s.ends_with("[|endofturn|]") {
+            s = s.trim_end_matches("[|endofturn|]").trim();
+        }
+
+        s.to_owned()
     } else {
         output.as_ref().trim().to_owned()
     };
-
     Ok(output)
 }
 
