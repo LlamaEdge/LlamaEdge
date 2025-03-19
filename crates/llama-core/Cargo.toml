@@ -25,7 +25,7 @@ text-splitter              = { version = "^0.7", features = ["tiktoken-rs", "mar
 tiktoken-rs                = "^0.5"
 wasi-logger                = { workspace = true, optional = true }
 log                        = { workspace = true, optional = true }
-regex                      = "1"
+regex.workspace            = true
 either.workspace           = true
 wasmedge_stable_diffusion  = { version = "=0.3.2" }
 base64.workspace           = true
