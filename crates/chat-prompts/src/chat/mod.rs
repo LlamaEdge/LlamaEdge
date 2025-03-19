@@ -2,6 +2,7 @@ pub mod baichuan;
 pub mod belle;
 pub mod chatml;
 pub mod deepseek;
+pub mod exaone;
 pub mod falcon;
 pub mod functionary;
 pub mod gemma;
@@ -30,6 +31,7 @@ use belle::*;
 use chatml::*;
 use deepseek::*;
 use endpoints::chat::{ChatCompletionRequestMessage, Tool};
+use exaone::*;
 use falcon::*;
 use functionary::{FunctionaryV31ToolPrompt, FunctionaryV32ToolPrompt};
 use gemma::*;
@@ -118,6 +120,7 @@ pub enum ChatPrompt {
     FalconChatPrompt,
     MegrezPrompt,
     Qwen2vlPrompt,
+    ExaoneDeepChatPrompt,
 }
 impl From<PromptTemplateType> for ChatPrompt {
     fn from(ty: PromptTemplateType) -> Self {
@@ -207,6 +210,9 @@ impl From<PromptTemplateType> for ChatPrompt {
             PromptTemplateType::Falcon3 => ChatPrompt::FalconChatPrompt(FalconChatPrompt),
             PromptTemplateType::Megrez => ChatPrompt::MegrezPrompt(MegrezPrompt),
             PromptTemplateType::Qwen2vl => ChatPrompt::Qwen2vlPrompt(Qwen2vlPrompt),
+            PromptTemplateType::ExaoneDeepChat => {
+                ChatPrompt::ExaoneDeepChatPrompt(ExaoneDeepChatPrompt)
+            }
             PromptTemplateType::Embedding => {
                 panic!("Embedding prompt template is not used for building chat prompts")
             }
