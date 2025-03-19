@@ -19,3 +19,4 @@ clap.workspace       = true
 serde.workspace      = true
 serde_json.workspace = true
 tera                 = "1.12"
+regex.workspace      = true
