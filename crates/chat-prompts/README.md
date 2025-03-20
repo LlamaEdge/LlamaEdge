@@ -133,6 +133,19 @@ The available prompt templates are listed below:
 
   - Example: [second-state/E5-Mistral-7B-Instruct-Embedding-GGUF](https://huggingface.co/second-state/E5-Mistral-7B-Instruct-Embedding-GGUF)
 
+- `exaone-deep-chat`
+  - Prompt string
+
+    ```text
+    [|system|]{system_message}[|endofturn|]
+    [|user|]{user_message_1}
+    [|assistant|]{assistant_message_1}[|endofturn|]
+    [|user|]{user_message_2}
+    [|assistant|]<thought>
+    ```
+
+  - Example: [second-state/EXAONE-Deep-32B-GGUF](https://huggingface.co/second-state/EXAONE-Deep-32B-GGUF)
+
 - `falcon3`
   - Prompt string
 
