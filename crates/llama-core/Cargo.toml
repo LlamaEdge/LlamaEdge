@@ -1,6 +1,6 @@
 [package]
 name          = "llama-core"
-version       = "0.28.3"
+version       = "0.28.4"
 edition       = "2021"
 readme        = "README.md"
 repository    = "https://github.com/LlamaEdge/LlamaEdge"
@@ -25,7 +25,7 @@ text-splitter              = { version = "^0.7", features = ["tiktoken-rs", "mar
 tiktoken-rs                = "^0.5"
 wasi-logger                = { workspace = true, optional = true }
 log                        = { workspace = true, optional = true }
-regex.workspace            = true
+regex                      = "1"
 either.workspace           = true
 wasmedge_stable_diffusion  = { version = "=0.3.2" }
 base64.workspace           = true
