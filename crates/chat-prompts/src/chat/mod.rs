@@ -121,6 +121,7 @@ pub enum ChatPrompt {
     MegrezPrompt,
     Qwen2vlPrompt,
     ExaoneDeepChatPrompt,
+    ExaoneChatPrompt,
 }
 impl From<PromptTemplateType> for ChatPrompt {
     fn from(ty: PromptTemplateType) -> Self {
@@ -213,6 +214,7 @@ impl From<PromptTemplateType> for ChatPrompt {
             PromptTemplateType::ExaoneDeepChat => {
                 ChatPrompt::ExaoneDeepChatPrompt(ExaoneDeepChatPrompt)
             }
+            PromptTemplateType::ExaoneChat => ChatPrompt::ExaoneChatPrompt(ExaoneChatPrompt),
             PromptTemplateType::Embedding => {
                 panic!("Embedding prompt template is not used for building chat prompts")
             }
