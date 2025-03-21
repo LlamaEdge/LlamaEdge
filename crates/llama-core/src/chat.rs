@@ -2290,7 +2290,9 @@ fn post_process(
         } else {
             s.to_owned()
         }
-    } else if *template_ty == PromptTemplateType::ExaoneDeepChat {
+    } else if *template_ty == PromptTemplateType::ExaoneDeepChat
+        || *template_ty == PromptTemplateType::ExaoneChat
+    {
         let mut s = output.as_ref().trim();
 
         if s.ends_with("[|endofturn|]") {
