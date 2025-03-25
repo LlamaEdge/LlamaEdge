@@ -52,6 +52,20 @@ The available prompt templates are listed below:
 
   - Example: [second-state/Yi-34B-Chat-GGUF](https://huggingface.co/second-state/Yi-34B-Chat-GGUF)
 
+- `chatml-think`
+  - Prompt string
+
+    ```text
+    <|im_start|>system
+    {system_message}<|im_end|>
+    <|im_start|>user
+    {prompt}<|im_end|>
+    <|im_start|>assistant
+    <|im_start|>think
+    ```
+
+    - Example: [second-state/Hermes-2-Pro-Llama-3-8B-GGUF](https://huggingface.co/second-state/Hermes-2-Pro-Llama-3-8B-GGUF)
+
 - `chatml-tool`
   - Prompt string
 
