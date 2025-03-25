@@ -224,7 +224,7 @@ async fn main() -> Result<(), ServerError> {
                     return Err(ServerError::Operation(err_msg.to_string()));
                 }
 
-                info!(target: "stdout", "CONFIG FILE: {}", file.to_string_lossy().to_string());
+                info!(target: "stdout", "CONFIG FILE: {}", file.to_string_lossy());
                 let config = config::Config::load(&file)?;
 
                 // chat model
@@ -514,7 +514,7 @@ async fn main() -> Result<(), ServerError> {
 
                 let new_service = make_service_fn(move |conn: &AddrStream| {
                     // log socket address
-                    info!(target: "stdout", "remote_addr: {}, local_addr: {}", conn.remote_addr().to_string(), conn.local_addr().to_string());
+                    info!(target: "stdout", "remote_addr: {}, local_addr: {}", conn.remote_addr(), conn.local_addr());
 
                     // web ui
                     let web_ui = cli.server_args.web_ui.to_string_lossy().to_string();
@@ -544,7 +544,7 @@ async fn main() -> Result<(), ServerError> {
             "Invalid setting for model name. For running chat or embedding model, please specify a single model name. For running both chat and embedding models, please specify two model names: the first one for chat model, the other for embedding model.".to_owned(),
         ));
         }
-        info!(target: "stdout", "model_name: {}", cli.server_args.model_name.join(",").to_string());
+        info!(target: "stdout", "model_name: {}", cli.server_args.model_name.join(","));
 
         // log model alias
         let mut model_alias = String::new();
@@ -954,7 +954,7 @@ async fn main() -> Result<(), ServerError> {
 
         let new_service = make_service_fn(move |conn: &AddrStream| {
             // log socket address
-            info!(target: "stdout", "remote_addr: {}, local_addr: {}", conn.remote_addr().to_string(), conn.local_addr().to_string());
+            info!(target: "stdout", "remote_addr: {}, local_addr: {}", conn.remote_addr(), conn.local_addr());
 
             // web ui
             let web_ui = cli.server_args.web_ui.to_string_lossy().to_string();
