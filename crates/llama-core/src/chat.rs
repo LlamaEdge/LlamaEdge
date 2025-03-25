@@ -2126,6 +2126,10 @@ fn post_process(
             s = s.trim_end_matches("<|endoftext|>").trim();
         }
 
+        if s.starts_with(":") {
+            s = s.trim_start_matches(":").trim();
+        }
+
         if s.contains("<|im_start|>") && s.contains("<|im_end|>") {
             let idx_start = s.find("<|im_start|>").unwrap();
             let idx_end = s.find("<|im_end|>").unwrap();
@@ -2271,7 +2275,9 @@ fn post_process(
         } else {
             s.to_owned()
         }
-    } else if *template_ty == PromptTemplateType::Qwen2vl {
+    } else if *template_ty == PromptTemplateType::Qwen2vl
+        || *template_ty == PromptTemplateType::ChatMLThink
+    {
         let mut s = output.as_ref().trim();
 
         if s.starts_with(":") {
