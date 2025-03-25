@@ -202,7 +202,7 @@ pub async fn rag_retrieve_context(
         Ok(points) => points,
         Err(e) => {
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", e.to_string());
+            error!(target: "stdout", "{}", e);
 
             return Err(e);
         }
