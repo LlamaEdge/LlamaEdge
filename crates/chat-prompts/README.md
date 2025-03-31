@@ -64,7 +64,7 @@ The available prompt templates are listed below:
     <|im_start|>think
     ```
 
-    - Example: [second-state/Hermes-2-Pro-Llama-3-8B-GGUF](https://huggingface.co/second-state/Hermes-2-Pro-Llama-3-8B-GGUF)
+    - Example: [Tessa-T1](https://huggingface.co/collections/second-state/tessa-t1-gguf-models-67e2abc86de4bbf715fa5448)
 
 - `chatml-tool`
   - Prompt string
