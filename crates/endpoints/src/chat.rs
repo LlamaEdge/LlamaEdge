@@ -2443,7 +2443,7 @@ impl ChatCompletionAssistantMessage {
     ) -> Self {
         match tool_calls.is_some() {
             true => Self {
-                content: None,
+                content,
                 name,
                 tool_calls,
             },
