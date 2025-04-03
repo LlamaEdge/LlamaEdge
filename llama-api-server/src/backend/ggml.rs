@@ -452,6 +452,14 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
                 }
             }
             either::Right(chat_completion_object) => {
+                let mut requires_tool_call = false;
+                if !chat_completion_object.choices.is_empty() {
+                    let choice = &chat_completion_object.choices[0];
+                    if !choice.message.tool_calls.is_empty() {
+                        requires_tool_call = true;
+                    }
+                }
+
                 // serialize chat completion object
                 let s = match serde_json::to_string(&chat_completion_object) {
                     Ok(s) => s,
@@ -472,6 +480,7 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
                     .header("Access-Control-Allow-Headers", "*")
                     .header("Content-Type", "application/json")
                     .header("user", id)
+                    .header("requires-tool-call", requires_tool_call.to_string())
                     .body(Body::from(s));
 
                 match result {
