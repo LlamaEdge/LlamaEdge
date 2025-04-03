@@ -1289,19 +1289,18 @@ fn parse_tool_calls(
 
                         let arguments = match value.get("arguments") {
                             Some(arguments) => {
-                                // if arguments.is_string() {
-                                //     arguments.as_str().unwrap().to_string()
-                                // } else if arguments.is_object() {
-                                //     let map = arguments.as_object().unwrap();
+                                if arguments.is_string() {
+                                    arguments.as_str().unwrap().to_string()
+                                } else if arguments.is_object() {
+                                    let map = arguments.as_object().unwrap();
 
-                                //     #[cfg(feature = "logging")]
-                                //     info!(target: "stdout", "func arguments: {:?}", map);
+                                    #[cfg(feature = "logging")]
+                                    info!(target: "stdout", "func arguments: {:?}", map);
 
-                                //     serde_json::to_string(map).unwrap()
-                                // } else {
-                                //     arguments.to_string()
-                                // }
-                                serde_json::to_string(arguments).unwrap()
+                                    serde_json::to_string(map).unwrap()
+                                } else {
+                                    serde_json::to_string(arguments).unwrap()
+                                }
                             }
                             None => {
                                 let err_msg = format!(
@@ -1327,10 +1326,18 @@ fn parse_tool_calls(
                         tool_calls.push(tool_call);
                     }
 
-                    let parsed = ParseResult {
-                        raw: input.to_owned(),
-                        content: None,
-                        tool_calls,
+                    let parsed = if tool_calls.is_empty() {
+                        ParseResult {
+                            raw: input.to_owned(),
+                            content: Some(input.to_owned()),
+                            tool_calls: vec![],
+                        }
+                    } else {
+                        ParseResult {
+                            raw: input.to_owned(),
+                            content: None,
+                            tool_calls,
+                        }
                     };
 
                     #[cfg(feature = "logging")]
