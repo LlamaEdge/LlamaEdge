@@ -41,117 +41,6 @@
 //! }
 //! ```
 //!
-//! **Example 2** Create a chat completion request with available tools.
-//! ```
-//! #[cfg(not(feature = "index"))]
-//! {
-//!   use endpoints::chat::*;
-//!
-//!   let mut messages = Vec::new();
-//!
-//!   // create a system message
-//!   let system_message = ChatCompletionRequestMessage::System(
-//!       ChatCompletionSystemMessage::new("Hello, world!", None),
-//!   );
-//!   messages.push(system_message);
-//!
-//!   // create a user message
-//!   let user_message = ChatCompletionRequestMessage::User(ChatCompletionUserMessage::new(
-//!       ChatCompletionUserMessageContent::Text("Hello, world!".to_string()),
-//!       None,
-//!   ));
-//!   messages.push(user_message);
-//!   let assistant_message = ChatCompletionRequestMessage::Assistant(
-//!       ChatCompletionAssistantMessage::new(Some("Hello, world!".to_string()), None, None),
-//!   );
-//!   messages.push(assistant_message);
-//!
-//!   // create a tool
-//!   let params = ToolFunctionParameters {
-//!       schema_type: JSONSchemaType::Object,
-//!       properties: Some(
-//!           vec![
-//!               (
-//!                   "location".to_string(),
-//!                   Box::new(JSONSchemaDefine {
-//!                       schema_type: Some(JSONSchemaType::String),
-//!                       description: Some(
-//!                           "The city and state, e.g. San Francisco, CA".to_string(),
-//!                       ),
-//!                       enum_values: None,
-//!                       properties: None,
-//!                       required: None,
-//!                       items: None,
-//!                       default: None,
-//!                       maximum: None,
-//!                       minimum: None,
-//!                       title: None,
-//!                       examples: None,
-//!                   }),
-//!               ),
-//!               (
-//!                   "unit".to_string(),
-//!                   Box::new(JSONSchemaDefine {
-//!                       schema_type: Some(JSONSchemaType::String),
-//!                       description: None,
-//!                       enum_values: Some(vec![
-//!                           "celsius".to_string(),
-//!                           "fahrenheit".to_string(),
-//!                       ]),
-//!                       properties: None,
-//!                       required: None,
-//!                       items: None,
-//!                       default: None,
-//!                       maximum: None,
-//!                       minimum: None,
-//!                       title: None,
-//!                       examples: None,
-//!                   }),
-//!               ),
-//!           ]
-//!           .into_iter()
-//!           .collect(),
-//!       ),
-//!       required: Some(vec!["location".to_string()]),
-//!   };
-//!   let tool = Tool {
-//!       ty: "function".to_string(),
-//!       function: ToolFunction {
-//!           name: "my_function".to_string(),
-//!           description: None,
-//!           parameters: Some(params),
-//!       },
-//!   };
-//!
-//!   // create a chat completion request
-//!   let request = ChatCompletionRequestBuilder::new(&messages)
-//!       .with_model("model-id")
-//!       .with_sampling(ChatCompletionRequestSampling::Temperature(0.8))
-//!       .with_n_choices(3)
-//!       .enable_stream(true)
-//!       .include_usage()
-//!       .with_stop(vec!["stop1".to_string(), "stop2".to_string()])
-//!       .with_max_completion_tokens(100)
-//!       .with_presence_penalty(0.5)
-//!       .with_frequency_penalty(0.5)
-//!       .with_reponse_format(ChatResponseFormat::default())
-//!       .with_tools(vec![tool])
-//!       .with_tool_choice(ToolChoice::Tool(ToolChoiceTool {
-//!           ty: "function".to_string(),
-//!           function: ToolChoiceToolFunction {
-//!               name: "my_function".to_string(),
-//!           },
-//!       }))
-//!       .build();
-//!
-//!   // serialize the request to JSON string
-//!   let json = serde_json::to_string(&request).unwrap();
-//!   assert_eq!(
-//!       json,
-//!       r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#
-//!   );
-//! }
-//! ```
 
 use crate::common::{FinishReason, Usage};
 use indexmap::IndexMap;
@@ -931,60 +820,53 @@ fn test_chat_serialize_chat_request() {
         );
         messages.push(assistant_message);
 
-        let params = ToolFunctionParameters {
-            schema_type: JSONSchemaType::Object,
-            properties: Some(
-                vec![
-                    (
-                        "location".to_string(),
-                        Box::new(JSONSchemaDefine {
-                            schema_type: Some(JSONSchemaType::String),
-                            description: Some(
-                                "The city and state, e.g. San Francisco, CA".to_string(),
-                            ),
-                            enum_values: None,
-                            properties: None,
-                            required: None,
-                            items: None,
-                            default: None,
-                            maximum: None,
-                            minimum: None,
-                            title: None,
-                            examples: None,
-                        }),
-                    ),
-                    (
-                        "unit".to_string(),
-                        Box::new(JSONSchemaDefine {
-                            schema_type: Some(JSONSchemaType::String),
-                            description: None,
-                            enum_values: Some(vec![
-                                "celsius".to_string(),
-                                "fahrenheit".to_string(),
-                            ]),
-                            properties: None,
-                            required: None,
-                            items: None,
-                            default: None,
-                            maximum: None,
-                            minimum: None,
-                            title: None,
-                            examples: None,
-                        }),
-                    ),
-                ]
-                .into_iter()
-                .collect(),
-            ),
-            required: Some(vec!["location".to_string()]),
-        };
+        let json_str = r###"{
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "definitions": {
+                        "TemperatureUnit": {
+                            "enum": [
+                                "celsius",
+                                "fahrenheit"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    "properties": {
+                        "api_key": {
+                            "description": "the OpenWeatherMap API key to use. If not provided, the server will use the OPENWEATHERMAP_API_KEY environment variable.",
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "location": {
+                            "description": "the city to get the weather for, e.g., 'Beijing', 'New York', 'Tokyo'",
+                            "type": "string"
+                        },
+                        "unit": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/TemperatureUnit"
+                                }
+                            ],
+                            "description": "the unit to use for the temperature, e.g., 'celsius', 'fahrenheit'"
+                        }
+                    },
+                    "required": [
+                        "location",
+                        "unit"
+                    ],
+                    "title": "GetWeatherRequest",
+                    "type": "object"
+                }"###;
+        let json_schema: JsonObject = serde_json::from_str(json_str).unwrap();
 
         let tool = Tool {
             ty: "function".to_string(),
             function: ToolFunction {
                 name: "my_function".to_string(),
                 description: None,
-                parameters: Some(params),
+                parameters: Some(json_schema),
             },
         };
 
@@ -1010,7 +892,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#
+            r###"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"TemperatureUnit":{"enum":["celsius","fahrenheit"],"type":"string"}},"properties":{"api_key":{"description":"the OpenWeatherMap API key to use. If not provided, the server will use the OPENWEATHERMAP_API_KEY environment variable.","type":["string","null"]},"location":{"description":"the city to get the weather for, e.g., 'Beijing', 'New York', 'Tokyo'","type":"string"},"unit":{"allOf":[{"$ref":"#/definitions/TemperatureUnit"}],"description":"the unit to use for the temperature, e.g., 'celsius', 'fahrenheit'"}},"required":["location","unit"],"title":"GetWeatherRequest","type":"object"}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"###
         );
     }
 
@@ -1031,60 +913,12 @@ fn test_chat_serialize_chat_request() {
         );
         messages.push(assistant_message);
 
-        let params = ToolFunctionParameters {
-            schema_type: JSONSchemaType::Object,
-            properties: Some(
-                vec![
-                    (
-                        "location".to_string(),
-                        Box::new(JSONSchemaDefine {
-                            schema_type: Some(JSONSchemaType::String),
-                            description: Some(
-                                "The city and state, e.g. San Francisco, CA".to_string(),
-                            ),
-                            enum_values: None,
-                            properties: None,
-                            required: None,
-                            items: None,
-                            default: None,
-                            maximum: None,
-                            minimum: None,
-                            title: None,
-                            examples: None,
-                        }),
-                    ),
-                    (
-                        "unit".to_string(),
-                        Box::new(JSONSchemaDefine {
-                            schema_type: Some(JSONSchemaType::String),
-                            description: None,
-                            enum_values: Some(vec![
-                                "celsius".to_string(),
-                                "fahrenheit".to_string(),
-                            ]),
-                            properties: None,
-                            required: None,
-                            items: None,
-                            default: None,
-                            maximum: None,
-                            minimum: None,
-                            title: None,
-                            examples: None,
-                        }),
-                    ),
-                ]
-                .into_iter()
-                .collect(),
-            ),
-            required: Some(vec!["location".to_string()]),
-        };
-
         let tool = Tool {
             ty: "function".to_string(),
             function: ToolFunction {
                 name: "my_function".to_string(),
                 description: None,
-                parameters: Some(params),
+                parameters: None,
             },
         };
 
@@ -1105,7 +939,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto"}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function"}}],"tool_choice":"auto"}"#
         );
     }
 
@@ -1126,53 +960,28 @@ fn test_chat_serialize_chat_request() {
         );
         messages.push(assistant_message);
 
-        let params = ToolFunctionParameters {
-            schema_type: JSONSchemaType::Object,
-            properties: Some(
-                vec![
-                    (
-                        "location".to_string(),
-                        Box::new(JSONSchemaDefine {
-                            schema_type: Some(JSONSchemaType::String),
-                            description: Some(
-                                "The city and state, e.g. San Francisco, CA".to_string(),
-                            ),
-                            enum_values: None,
-                            properties: None,
-                            required: None,
-                            items: None,
-                            default: None,
-                            maximum: None,
-                            minimum: None,
-                            title: None,
-                            examples: None,
-                        }),
-                    ),
-                    (
-                        "unit".to_string(),
-                        Box::new(JSONSchemaDefine {
-                            schema_type: Some(JSONSchemaType::String),
-                            description: None,
-                            enum_values: Some(vec![
-                                "celsius".to_string(),
-                                "fahrenheit".to_string(),
-                            ]),
-                            properties: None,
-                            required: None,
-                            items: None,
-                            default: None,
-                            maximum: None,
-                            minimum: None,
-                            title: None,
-                            examples: None,
-                        }),
-                    ),
-                ]
-                .into_iter()
-                .collect(),
-            ),
-            required: Some(vec!["location".to_string()]),
-        };
+        let params_json = r###"{
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "properties": {
+                        "a": {
+                            "description": "the left hand side number",
+                            "format": "int32",
+                            "type": "integer"
+                        },
+                        "b": {
+                            "description": "the right hand side number",
+                            "format": "int32",
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "a",
+                        "b"
+                    ],
+                    "title": "SumRequest",
+                    "type": "object"
+                }"###;
+        let params: JsonObject = serde_json::from_str(params_json).unwrap();
 
         let tool = Tool {
             ty: "function".to_string(),
@@ -1208,7 +1017,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6]}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","properties":{"a":{"description":"the left hand side number","format":"int32","type":"integer"},"b":{"description":"the right hand side number","format":"int32","type":"integer"}},"required":["a","b"],"title":"SumRequest","type":"object"}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6]}"#
         );
     }
 
@@ -1229,53 +1038,28 @@ fn test_chat_serialize_chat_request() {
         );
         messages.push(assistant_message);
 
-        let params = ToolFunctionParameters {
-            schema_type: JSONSchemaType::Object,
-            properties: Some(
-                vec![
-                    (
-                        "location".to_string(),
-                        Box::new(JSONSchemaDefine {
-                            schema_type: Some(JSONSchemaType::String),
-                            description: Some(
-                                "The city and state, e.g. San Francisco, CA".to_string(),
-                            ),
-                            enum_values: None,
-                            properties: None,
-                            required: None,
-                            items: None,
-                            default: None,
-                            maximum: None,
-                            minimum: None,
-                            title: None,
-                            examples: None,
-                        }),
-                    ),
-                    (
-                        "unit".to_string(),
-                        Box::new(JSONSchemaDefine {
-                            schema_type: Some(JSONSchemaType::String),
-                            description: None,
-                            enum_values: Some(vec![
-                                "celsius".to_string(),
-                                "fahrenheit".to_string(),
-                            ]),
-                            properties: None,
-                            required: None,
-                            items: None,
-                            default: None,
-                            maximum: None,
-                            minimum: None,
-                            title: None,
-                            examples: None,
-                        }),
-                    ),
-                ]
-                .into_iter()
-                .collect(),
-            ),
-            required: Some(vec!["location".to_string()]),
-        };
+        let params_json = r###"{
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "properties": {
+                        "a": {
+                            "description": "the left hand side number",
+                            "format": "int32",
+                            "type": "integer"
+                        },
+                        "b": {
+                            "description": "the right hand side number",
+                            "format": "int32",
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "a",
+                        "b"
+                    ],
+                    "title": "SumRequest",
+                    "type": "object"
+                }"###;
+        let params: JsonObject = serde_json::from_str(params_json).unwrap();
 
         let tool = Tool {
             ty: "function".to_string(),
@@ -1314,7 +1098,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_search_url":"http://localhost:9069","kw_index_name":"index-name","kw_top_k":5}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","properties":{"a":{"description":"the left hand side number","format":"int32","type":"integer"},"b":{"description":"the right hand side number","format":"int32","type":"integer"}},"required":["a","b"],"title":"SumRequest","type":"object"}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_search_url":"http://localhost:9069","kw_index_name":"index-name","kw_top_k":5}"#
         );
     }
 }
@@ -1409,39 +1193,6 @@ fn test_chat_deserialize_chat_request() {
     }
 
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stop":["stop1","stop2"],"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"#;
-
-        let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
-        let tools = request.tools.unwrap();
-        let tool = &tools[0];
-        assert_eq!(tool.ty, "function");
-        assert_eq!(tool.function.name, "my_function");
-        assert!(tool.function.description.is_none());
-        assert!(tool.function.parameters.is_some());
-        let params = tool.function.parameters.as_ref().unwrap();
-        assert_eq!(params.schema_type, JSONSchemaType::Object);
-        let properties = params.properties.as_ref().unwrap();
-        assert_eq!(properties.len(), 2);
-        assert!(properties.contains_key("unit"));
-        assert!(properties.contains_key("location"));
-        let unit = properties.get("unit").unwrap();
-        assert_eq!(unit.schema_type, Some(JSONSchemaType::String));
-        assert_eq!(
-            unit.enum_values,
-            Some(vec!["celsius".to_string(), "fahrenheit".to_string()])
-        );
-        let location = properties.get("location").unwrap();
-        assert_eq!(location.schema_type, Some(JSONSchemaType::String));
-        assert_eq!(
-            location.description,
-            Some("The city and state, e.g. San Francisco, CA".to_string())
-        );
-        let required = params.required.as_ref().unwrap();
-        assert_eq!(required.len(), 1);
-        assert_eq!(required[0], "location");
-    }
-
-    {
         let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}]}"#;
 
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
@@ -1458,30 +1209,85 @@ fn test_chat_deserialize_chat_request() {
     }
 
     {
-        let json = r#"{"messages":[{"content":"Send an email to John Doe with the subject 'Hello' and the body 'Hello, John!'. His email is jhon@example.com","role":"user"}],"model":"llama","tool_choice":"auto","tools":[{"function":{"description":"Action to fetch all emails from Gmail.","name":"GMAIL_FETCH_EMAILS","parameters":{"properties":{"include_spam_trash":{"default":false,"description":"Include messages from SPAM and TRASH in the results.","title":"Include Spam Trash","type":"boolean"},"label_ids":{"default":null,"description":"Filter messages by their label IDs. Labels identify the status or category of messages. Some of the in-built labels include 'INBOX', 'SPAM', 'TRASH', 'UNREAD', 'STARRED', 'IMPORTANT', 'CATEGORY_PERSONAL', 'CATEGORY_SOCIAL', 'CATEGORY_PROMOTIONS', 'CATEGORY_UPDATES', and 'CATEGORY_FORUMS'. The 'label_ids' for custom labels can be found in the response of the 'listLabels' action. Note: The label_ids is a list of label IDs to filter the messages by.","items":{"type":"string"},"title":"Label Ids","type":"array"},"max_results":{"default":10,"description":"Maximum number of messages to return.","maximum":500,"minimum":1,"title":"Max Results","type":"integer"},"page_token":{"default":null,"description":"Page token to retrieve a specific page of results in the list. The page token is returned in the response of this action if there are more results to be fetched. If not provided, the first page of results is returned.","title":"Page Token","type":"string"},"query":{"default":null,"description":"Only return messages matching the specified query.","title":"Query","type":"string"},"user_id":{"default":"me","description":"The user's email address or 'me' for the authenticated user.","title":"User Id","type":"string"}},"title":"FetchEmailsRequest","type":"object"}},"type":"function"}]}"#;
+        let json_str = r###"{
+    "model": "Llama-3-Groq-8B",
+    "messages": [
+        {
+            "role": "user",
+            "content": "How is the weather of Beijing, China? In Celsius."
+        }
+    ],
+    "tools": [
+        {
+            "type": "function",
+            "function": {
+                "name": "sum",
+                "description": "Calculate the sum of two numbers",
+                "parameters": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "properties": {
+                        "a": {
+                            "description": "the left hand side number",
+                            "format": "int32",
+                            "type": "integer"
+                        },
+                        "b": {
+                            "description": "the right hand side number",
+                            "format": "int32",
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "a",
+                        "b"
+                    ],
+                    "title": "SumRequest",
+                    "type": "object"
+                }
+            }
+        }
+    ],
+    "tool_choice": "required",
+    "stream": false
+}"###;
 
-        let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
+        let request: ChatCompletionRequest = serde_json::from_str(json_str).unwrap();
         assert!(request.model.is_some());
         let tools = request.tools.unwrap();
         assert!(tools.len() == 1);
         let tool = &tools[0];
         assert_eq!(tool.ty, "function");
-        assert_eq!(tool.function.name, "GMAIL_FETCH_EMAILS");
+        assert_eq!(tool.function.name, "sum");
         assert!(tool.function.parameters.is_some());
         let params = tool.function.parameters.as_ref().unwrap();
-        assert!(params.properties.is_some());
-        let properties = params.properties.as_ref().unwrap();
-        assert!(properties.len() == 6);
-        assert!(properties.contains_key("max_results"));
-        let max_results = properties.get("max_results").unwrap();
-        assert!(max_results.description.is_some());
+        assert!(params.contains_key("properties"));
+        let properties = params.get("properties").unwrap();
+        let properties = properties.as_object().unwrap();
+        assert!(properties.len() == 2);
+        assert!(properties.contains_key("a"));
+        assert!(properties.contains_key("b"));
+        let a = properties.get("a").unwrap();
+        let a = a.as_object().unwrap();
+        assert!(a.contains_key("description"));
         assert_eq!(
-            max_results.description.as_ref().unwrap(),
-            "Maximum number of messages to return."
+            a.get("description").unwrap().as_str().unwrap(),
+            "the left hand side number"
         );
-        assert!(max_results.schema_type.is_some());
-        assert_eq!(max_results.schema_type, Some(JSONSchemaType::Integer));
-        println!("{:?}", max_results);
+        assert!(a.contains_key("format"));
+        assert_eq!(a.get("format").unwrap().as_str().unwrap(), "int32");
+        assert!(a.contains_key("type"));
+        assert_eq!(a.get("type").unwrap().as_str().unwrap(), "integer");
+        let b = properties.get("b").unwrap();
+        let b = b.as_object().unwrap();
+        assert!(b.contains_key("description"));
+        assert_eq!(
+            b.get("description").unwrap().as_str().unwrap(),
+            "the right hand side number"
+        );
+        assert!(b.contains_key("format"));
+        assert_eq!(b.get("format").unwrap().as_str().unwrap(), "int32");
+        assert!(b.contains_key("type"));
+        assert_eq!(b.get("type").unwrap().as_str().unwrap(), "integer");
     }
 
     #[cfg(feature = "rag")]
@@ -1680,174 +1486,239 @@ fn test_chat_serialize_tool() {
     }
 
     {
-        let params = ToolFunctionParameters {
-            schema_type: JSONSchemaType::Object,
-            properties: Some(
-                vec![
-                    (
-                        "location".to_string(),
-                        Box::new(JSONSchemaDefine {
-                            schema_type: Some(JSONSchemaType::String),
-                            description: Some(
-                                "The city and state, e.g. San Francisco, CA".to_string(),
-                            ),
-                            enum_values: None,
-                            properties: None,
-                            required: None,
-                            items: None,
-                            default: None,
-                            maximum: None,
-                            minimum: None,
-                            title: None,
-                            examples: None,
-                        }),
-                    ),
-                    (
-                        "unit".to_string(),
-                        Box::new(JSONSchemaDefine {
-                            schema_type: Some(JSONSchemaType::String),
-                            description: None,
-                            enum_values: Some(vec![
-                                "celsius".to_string(),
-                                "fahrenheit".to_string(),
-                            ]),
-                            properties: None,
-                            required: None,
-                            items: None,
-                            default: None,
-                            maximum: None,
-                            minimum: None,
-                            title: None,
-                            examples: None,
-                        }),
-                    ),
-                ]
-                .into_iter()
-                .collect(),
-            ),
-            required: Some(vec!["location".to_string()]),
-        };
+        let input_schema_str = r###"{
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "properties": {
+                        "a": {
+                            "description": "the left hand side number",
+                            "format": "int32",
+                            "type": "integer"
+                        },
+                        "b": {
+                            "description": "the right hand side number",
+                            "format": "int32",
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "a",
+                        "b"
+                    ],
+                    "title": "SumRequest",
+                    "type": "object"
+                }"###;
+        let input_schema: JsonObject = serde_json::from_str(input_schema_str).unwrap();
 
         let tool = Tool {
             ty: "function".to_string(),
             function: ToolFunction {
-                name: "my_function".to_string(),
-                description: None,
-                parameters: Some(params),
+                name: "sum".to_string(),
+                description: Some("Calculate the sum of two numbers".to_string()),
+                parameters: Some(input_schema),
             },
         };
         let json = serde_json::to_string(&tool).unwrap();
         assert_eq!(
             json,
-            r#"{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}"#
+            r###"{"type":"function","function":{"name":"sum","description":"Calculate the sum of two numbers","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","properties":{"a":{"description":"the left hand side number","format":"int32","type":"integer"},"b":{"description":"the right hand side number","format":"int32","type":"integer"}},"required":["a","b"],"title":"SumRequest","type":"object"}}}"###
         );
     }
 
     {
-        let tool_1 = Tool {
-            ty: "function".to_string(),
-            function: ToolFunction {
-                name: "my_function_1".to_string(),
-                description: None,
-                parameters: None,
-            },
-        };
+        let tool1_json_str = r###"{
+            "type": "function",
+            "function": {
+                "name": "get_current_weather",
+                "description": "Get the current weather in a given location",
+                "parameters": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "definitions": {
+                        "TemperatureUnit": {
+                            "enum": [
+                                "celsius",
+                                "fahrenheit"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    "properties": {
+                        "api_key": {
+                            "description": "the OpenWeatherMap API key to use. If not provided, the server will use the OPENWEATHERMAP_API_KEY environment variable.",
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "location": {
+                            "description": "the city to get the weather for, e.g., 'Beijing', 'New York', 'Tokyo'",
+                            "type": "string"
+                        },
+                        "unit": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/TemperatureUnit"
+                                }
+                            ],
+                            "description": "the unit to use for the temperature, e.g., 'celsius', 'fahrenheit'"
+                        }
+                    },
+                    "required": [
+                        "location",
+                        "unit"
+                    ],
+                    "title": "GetWeatherRequest",
+                    "type": "object"
+                }
+            }
+        }"###;
+        let tool_1: Tool = serde_json::from_str(tool1_json_str).unwrap();
 
-        let params = ToolFunctionParameters {
-            schema_type: JSONSchemaType::Object,
-            properties: Some(
-                vec![
-                    (
-                        "location".to_string(),
-                        Box::new(JSONSchemaDefine {
-                            schema_type: Some(JSONSchemaType::String),
-                            description: Some(
-                                "The city and state, e.g. San Francisco, CA".to_string(),
-                            ),
-                            enum_values: None,
-                            properties: None,
-                            required: None,
-                            items: None,
-                            default: None,
-                            maximum: None,
-                            minimum: None,
-                            title: None,
-                            examples: None,
-                        }),
-                    ),
-                    (
-                        "unit".to_string(),
-                        Box::new(JSONSchemaDefine {
-                            schema_type: Some(JSONSchemaType::String),
-                            description: None,
-                            enum_values: Some(vec![
-                                "celsius".to_string(),
-                                "fahrenheit".to_string(),
-                            ]),
-                            properties: None,
-                            required: None,
-                            items: None,
-                            default: None,
-                            maximum: None,
-                            minimum: None,
-                            title: None,
-                            examples: None,
-                        }),
-                    ),
-                ]
-                .into_iter()
-                .collect(),
-            ),
-            required: Some(vec!["location".to_string()]),
-        };
-
-        let tool_2 = Tool {
-            ty: "function".to_string(),
-            function: ToolFunction {
-                name: "my_function_2".to_string(),
-                description: None,
-                parameters: Some(params),
-            },
-        };
+        let tool2_json_str = r###"{
+            "type": "function",
+            "function": {
+                "name": "sum",
+                "description": "Calculate the sum of two numbers",
+                "parameters": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "properties": {
+                        "a": {
+                            "description": "the left hand side number",
+                            "format": "int32",
+                            "type": "integer"
+                        },
+                        "b": {
+                            "description": "the right hand side number",
+                            "format": "int32",
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "a",
+                        "b"
+                    ],
+                    "title": "SumRequest",
+                    "type": "object"
+                }
+            }
+        }"###;
+        let tool_2: Tool = serde_json::from_str(tool2_json_str).unwrap();
 
         let tools = vec![tool_1, tool_2];
-        let json = serde_json::to_string(&tools).unwrap();
+        let json_str = serde_json::to_string(&tools).unwrap();
         assert_eq!(
-            json,
-            r#"[{"type":"function","function":{"name":"my_function_1"}},{"type":"function","function":{"name":"my_function_2","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}]"#
+            json_str,
+            r###"[{"type":"function","function":{"name":"get_current_weather","description":"Get the current weather in a given location","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"TemperatureUnit":{"enum":["celsius","fahrenheit"],"type":"string"}},"properties":{"api_key":{"description":"the OpenWeatherMap API key to use. If not provided, the server will use the OPENWEATHERMAP_API_KEY environment variable.","type":["string","null"]},"location":{"description":"the city to get the weather for, e.g., 'Beijing', 'New York', 'Tokyo'","type":"string"},"unit":{"allOf":[{"$ref":"#/definitions/TemperatureUnit"}],"description":"the unit to use for the temperature, e.g., 'celsius', 'fahrenheit'"}},"required":["location","unit"],"title":"GetWeatherRequest","type":"object"}}},{"type":"function","function":{"name":"sum","description":"Calculate the sum of two numbers","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","properties":{"a":{"description":"the left hand side number","format":"int32","type":"integer"},"b":{"description":"the right hand side number","format":"int32","type":"integer"}},"required":["a","b"],"title":"SumRequest","type":"object"}}}]"###
         );
     }
 }
 
 #[test]
 fn test_chat_deserialize_tool() {
-    let json = r#"{"type":"function","function":{"name":"my_function","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}}"#;
+    use std::any::{Any, TypeId};
+
+    let json = r###"{
+    "type": "function",
+    "function": {
+        "name": "get_current_weather",
+        "description": "Get the current weather in a given location",
+        "parameters": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "definitions": {
+                "TemperatureUnit": {
+                    "enum": [
+                        "celsius",
+                        "fahrenheit"
+                    ],
+                    "type": "string"
+                }
+            },
+            "properties": {
+                "api_key": {
+                    "description": "the OpenWeatherMap API key to use. If not provided, the server will use the OPENWEATHERMAP_API_KEY environment variable.",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "location": {
+                    "description": "the city to get the weather for, e.g., 'Beijing', 'New York', 'Tokyo'",
+                    "type": "string"
+                },
+                "unit": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/TemperatureUnit"
+                        }
+                    ],
+                    "description": "the unit to use for the temperature, e.g., 'celsius', 'fahrenheit'"
+                }
+            },
+            "required": [
+                "location",
+                "unit"
+            ],
+            "title": "GetWeatherRequest",
+            "type": "object"
+        }
+    }
+}"###;
     let tool: Tool = serde_json::from_str(json).unwrap();
     assert_eq!(tool.ty, "function");
-    assert_eq!(tool.function.name, "my_function");
-    assert!(tool.function.description.is_none());
+    assert_eq!(tool.function.name, "get_current_weather");
+    assert!(tool.function.description.is_some());
     assert!(tool.function.parameters.is_some());
     let params = tool.function.parameters.as_ref().unwrap();
-    assert_eq!(params.schema_type, JSONSchemaType::Object);
-    let properties = params.properties.as_ref().unwrap();
-    assert_eq!(properties.len(), 2);
+    assert_eq!(params.type_id(), TypeId::of::<JsonObject>());
+    assert!(params.contains_key("$schema"));
+    assert!(params.contains_key("definitions"));
+    let definitions = params.get("definitions").unwrap();
+    let definitions = definitions.as_object().unwrap();
+    assert_eq!(definitions.len(), 1);
+    assert!(definitions.contains_key("TemperatureUnit"));
+    let temperature_unit = definitions.get("TemperatureUnit").unwrap();
+    let temperature_unit = temperature_unit.as_object().unwrap();
+    assert_eq!(temperature_unit.len(), 2);
+    assert!(temperature_unit.contains_key("enum"));
+    let enum_values = temperature_unit.get("enum").unwrap();
+    let enum_values = enum_values.as_array().unwrap();
+    assert_eq!(enum_values.len(), 2);
+    assert_eq!(enum_values[0].as_str().unwrap(), "celsius");
+    assert_eq!(enum_values[1].as_str().unwrap(), "fahrenheit");
+    assert!(params.contains_key("properties"));
+    let properties = params.get("properties").unwrap();
+    let properties = properties.as_object().unwrap();
+    assert_eq!(properties.len(), 3);
     assert!(properties.contains_key("unit"));
     assert!(properties.contains_key("location"));
+    assert!(properties.contains_key("api_key"));
     let unit = properties.get("unit").unwrap();
-    assert_eq!(unit.schema_type, Some(JSONSchemaType::String));
+    let unit = unit.as_object().unwrap();
+    assert!(unit.contains_key("allOf"));
+    let all_of = unit.get("allOf").unwrap();
+    let all_of = all_of.as_array().unwrap();
+    assert_eq!(all_of.len(), 1);
+    let all_of_0 = all_of[0].as_object().unwrap();
+    assert!(all_of_0.contains_key("$ref"));
     assert_eq!(
-        unit.enum_values,
-        Some(vec!["celsius".to_string(), "fahrenheit".to_string()])
+        all_of_0.get("$ref").unwrap().as_str().unwrap(),
+        "#/definitions/TemperatureUnit"
     );
     let location = properties.get("location").unwrap();
-    assert_eq!(location.schema_type, Some(JSONSchemaType::String));
+    let location = location.as_object().unwrap();
+    assert_eq!(location.len(), 2);
+    assert!(location.contains_key("description"));
     assert_eq!(
-        location.description,
-        Some("The city and state, e.g. San Francisco, CA".to_string())
+        location.get("description").unwrap().as_str().unwrap(),
+        "the city to get the weather for, e.g., 'Beijing', 'New York', 'Tokyo'"
     );
-    let required = params.required.as_ref().unwrap();
-    assert_eq!(required.len(), 1);
-    assert_eq!(required[0], "location");
+    assert!(location.contains_key("type"));
+    assert_eq!(location.get("type").unwrap().as_str().unwrap(), "string");
+    assert!(params.contains_key("required"));
+    let required = params.get("required").unwrap();
+    let required = required.as_array().unwrap();
+    assert_eq!(required.len(), 2);
+    assert_eq!(required[0].as_str().unwrap(), "location");
+    assert_eq!(required[1].as_str().unwrap(), "unit");
 }
 
 /// Function the model may generate JSON inputs for.
@@ -1858,66 +1729,66 @@ pub struct ToolFunction {
     /// A description of what the function does, used by the model to choose when and how to call the function.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    // The parameters the functions accepts, described as a JSON Schema object.
+    /// The parameters the functions accepts, described as a JSON Schema object.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub parameters: Option<ToolFunctionParameters>,
+    pub parameters: Option<JsonObject>,
 }
+
+pub type JsonObject<F = Value> = serde_json::Map<String, F>;
 
 #[test]
 fn test_chat_serialize_tool_function() {
-    let params = ToolFunctionParameters {
-        schema_type: JSONSchemaType::Object,
-        properties: Some(
-            vec![
-                (
-                    "location".to_string(),
-                    Box::new(JSONSchemaDefine {
-                        schema_type: Some(JSONSchemaType::String),
-                        description: Some("The city and state, e.g. San Francisco, CA".to_string()),
-                        enum_values: None,
-                        properties: None,
-                        required: None,
-                        items: None,
-                        default: None,
-                        maximum: None,
-                        minimum: None,
-                        title: None,
-                        examples: None,
-                    }),
-                ),
-                (
-                    "unit".to_string(),
-                    Box::new(JSONSchemaDefine {
-                        schema_type: Some(JSONSchemaType::String),
-                        description: None,
-                        enum_values: Some(vec!["celsius".to_string(), "fahrenheit".to_string()]),
-                        properties: None,
-                        required: None,
-                        items: None,
-                        default: None,
-                        maximum: None,
-                        minimum: None,
-                        title: None,
-                        examples: None,
-                    }),
-                ),
+    let parameters_str = r###"{
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "TemperatureUnit": {
+            "enum": [
+              "celsius",
+              "fahrenheit"
+            ],
+            "type": "string"
+          }
+        },
+        "properties": {
+          "api_key": {
+            "description": "the OpenWeatherMap API key to use. If not provided, the server will use the OPENWEATHERMAP_API_KEY environment variable.",
+            "type": [
+              "string",
+              "null"
             ]
-            .into_iter()
-            .collect(),
-        ),
-        required: Some(vec!["location".to_string()]),
-    };
+          },
+          "location": {
+            "description": "the city to get the weather for, e.g., 'Beijing', 'New York', 'Tokyo'",
+            "type": "string"
+          },
+          "unit": {
+            "allOf": [
+              {
+                "$ref": "#/definitions/TemperatureUnit"
+              }
+            ],
+            "description": "the unit to use for the temperature, e.g., 'celsius', 'fahrenheit'"
+          }
+        },
+        "required": [
+          "location",
+          "unit"
+        ],
+        "title": "GetWeatherRequest",
+        "type": "object"
+      }"###;
+    let parameters: JsonObject = serde_json::from_str(parameters_str).unwrap();
 
     let func = ToolFunction {
-        name: "my_function".to_string(),
+        name: "get_current_weather".to_string(),
         description: Some("Get the current weather in a given location".to_string()),
-        parameters: Some(params),
+        parameters: Some(parameters),
     };
 
-    let json = serde_json::to_string(&func).unwrap();
+    let json_str = serde_json::to_string(&func).unwrap();
     assert_eq!(
-        json,
-        r#"{"name":"my_function","description":"Get the current weather in a given location","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"},"unit":{"type":"string","enum":["celsius","fahrenheit"]}},"required":["location"]}}"#
+        json_str,
+        r###"{"name":"get_current_weather","description":"Get the current weather in a given location","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"TemperatureUnit":{"enum":["celsius","fahrenheit"],"type":"string"}},"properties":{"api_key":{"description":"the OpenWeatherMap API key to use. If not provided, the server will use the OPENWEATHERMAP_API_KEY environment variable.","type":["string","null"]},"location":{"description":"the city to get the weather for, e.g., 'Beijing', 'New York', 'Tokyo'","type":"string"},"unit":{"allOf":[{"$ref":"#/definitions/TemperatureUnit"}],"description":"the unit to use for the temperature, e.g., 'celsius', 'fahrenheit'"}},"required":["location","unit"],"title":"GetWeatherRequest","type":"object"}}"###
     );
 }
 
