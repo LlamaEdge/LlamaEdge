@@ -41,7 +41,10 @@ use std::{
 pub async fn chat(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<
-    Either<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, ChatCompletionObject>,
+    Either<
+        impl Unpin + futures::TryStream<Ok = String, Error = LlamaCoreError>,
+        ChatCompletionObject,
+    >,
     LlamaCoreError,
 > {
     #[cfg(feature = "logging")]
