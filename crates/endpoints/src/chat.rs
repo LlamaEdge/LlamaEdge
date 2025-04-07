@@ -2414,6 +2414,18 @@ pub struct ToolCall {
     /// The function that the model called.
     pub function: Function,
 }
+impl From<ToolCallForChunk> for ToolCall {
+    fn from(value: ToolCallForChunk) -> Self {
+        Self {
+            id: value.id,
+            ty: value.ty,
+            function: Function {
+                name: value.function.name,
+                arguments: value.function.arguments,
+            },
+        }
+    }
+}
 
 #[test]
 fn test_deserialize_tool_call() {
@@ -3170,6 +3182,17 @@ fn test_deserialize_chat_completion_chunk() {
         assert_eq!(chunk.model, "default");
         assert_eq!(chunk.system_fingerprint, "fp_44709d6fcb");
         assert_eq!(chunk.object, "chat.completion.chunk");
+    }
+
+    {
+        let json_str = r#"{"id":"chatcmpl-5b20a5a9-80e0-4cc4-9d33-7ab504dac9ca","choices":[{"index":0,"delta":{"content":null,"tool_calls":[{"index":0,"id":"call_abc123","type":"function","function":{"name":"get_current_weather","arguments":"{\"location\":\"Beijing\",\"unit\":\"celsius\"}"}}],"role":"assistant"},"logprobs":null,"finish_reason":null}],"created":1744028716,"model":"Llama-3-Groq-8B","system_fingerprint":"fp_44709d6fcb","object":"chat.completion.chunk"}"#;
+
+        let chunk: ChatCompletionChunk = serde_json::from_str(json_str).unwrap();
+        assert_eq!(chunk.id, "chatcmpl-5b20a5a9-80e0-4cc4-9d33-7ab504dac9ca");
+        assert_eq!(chunk.choices.len(), 1);
+        assert_eq!(chunk.choices[0].index, 0);
+        assert_eq!(chunk.choices[0].delta.content, None);
+        assert_eq!(chunk.choices[0].delta.tool_calls.len(), 1);
     }
 }
 
