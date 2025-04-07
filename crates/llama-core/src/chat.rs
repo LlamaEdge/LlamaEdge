@@ -50,7 +50,10 @@ static CHAT_STREAM_ACTIVE: AtomicBool = AtomicBool::new(false);
 pub async fn chat(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<
-    Either<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, ChatCompletionObject>,
+    (
+        Either<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, ChatCompletionObject>,
+        bool,
+    ),
     LlamaCoreError,
 > {
     #[cfg(feature = "logging")]
@@ -64,11 +67,13 @@ pub async fn chat(
 
     let result = match chat_request.stream {
         Some(true) => match chat_stream(chat_request).await {
-            Ok(stream) => Ok(Left(stream)),
+            Ok((stream, include_tool_calls)) => Ok((Left(stream), include_tool_calls)),
             Err(e) => Err(e),
         },
         Some(false) | None => match chat_once(chat_request).await {
-            Ok(chat_completion_object) => Ok(Right(chat_completion_object)),
+            Ok((chat_completion_object, include_tool_calls)) => {
+                Ok((Right(chat_completion_object), include_tool_calls))
+            }
             Err(e) => Err(e),
         },
     };
@@ -82,25 +87,31 @@ pub async fn chat(
     result
 }
 
-/// Processes a chat-completion request and returns ChatCompletionChunk instances in stream.
-#[deprecated(since = "0.10.0", note = "Please use the `chat` function.")]
-pub async fn chat_completions_stream(
-    chat_request: &mut ChatCompletionRequest,
-) -> Result<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, LlamaCoreError> {
-    chat_stream(chat_request).await
-}
+// /// Processes a chat-completion request and returns ChatCompletionChunk instances in stream.
+// #[deprecated(since = "0.10.0", note = "Please use the `chat` function.")]
+// pub async fn chat_completions_stream(
+//     chat_request: &mut ChatCompletionRequest,
+// ) -> Result<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, LlamaCoreError> {
+//     chat_stream(chat_request).await
+// }
 
-/// Processes a chat-completion request and returns a ChatCompletionObject instance.
-#[deprecated(since = "0.10.0", note = "Please use the `chat` function.")]
-pub async fn chat_completions(
-    chat_request: &mut ChatCompletionRequest,
-) -> Result<ChatCompletionObject, LlamaCoreError> {
-    chat_once(chat_request).await
-}
+// /// Processes a chat-completion request and returns a ChatCompletionObject instance.
+// #[deprecated(since = "0.10.0", note = "Please use the `chat` function.")]
+// pub async fn chat_completions(
+//     chat_request: &mut ChatCompletionRequest,
+// ) -> Result<ChatCompletionObject, LlamaCoreError> {
+//     chat_once(chat_request).await
+// }
 
 async fn chat_stream(
     chat_request: &mut ChatCompletionRequest,
-) -> Result<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, LlamaCoreError> {
+) -> Result<
+    (
+        impl futures::TryStream<Ok = String, Error = LlamaCoreError>,
+        bool,
+    ),
+    LlamaCoreError,
+> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Process chat completion request in the stream mode");
 
@@ -163,7 +174,7 @@ async fn chat_stream(
     set_prompt(chat_request.model.as_ref(), &prompt)?;
 
     let stream = match tool_use {
-        false => ChatStream::new(model_name, id, include_usage, None),
+        false => (ChatStream::new(model_name, id, include_usage, None), false),
         true => {
             let chat_graphs = match CHAT_GRAPHS.get() {
                 Some(chat_graphs) => chat_graphs,
@@ -190,10 +201,10 @@ async fn chat_stream(
                 Some(model_name) => match chat_graphs.contains_key(&model_name) {
                     true => {
                         let graph = chat_graphs.get_mut(&model_name).unwrap();
-                        chat_stream_by_graph(graph, id, include_usage)?
+                        chat_stream_for_tool(graph, id, include_usage)?
                     }
                     false => match chat_graphs.iter_mut().next() {
-                        Some((_, graph)) => chat_stream_by_graph(graph, id, include_usage)?,
+                        Some((_, graph)) => chat_stream_for_tool(graph, id, include_usage)?,
                         None => {
                             let err_msg = "There is no model available in the chat graphs.";
 
@@ -205,7 +216,7 @@ async fn chat_stream(
                     },
                 },
                 None => match chat_graphs.iter_mut().next() {
-                    Some((_, graph)) => chat_stream_by_graph(graph, id, include_usage)?,
+                    Some((_, graph)) => chat_stream_for_tool(graph, id, include_usage)?,
                     None => {
                         let err_msg = "There is no model available in the chat graphs.";
 
@@ -225,11 +236,11 @@ async fn chat_stream(
     Ok(stream)
 }
 
-fn chat_stream_by_graph(
+fn chat_stream_for_tool(
     graph: &mut Graph<GgmlMetadata>,
     id: impl Into<String>,
     include_usage: bool,
-) -> Result<ChatStream, LlamaCoreError> {
+) -> Result<(ChatStream, bool), LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Handle chat request with available tools by the model named {}.", graph.name());
 
@@ -307,17 +318,23 @@ fn chat_stream_by_graph(
 
             let content = parsed_result.content.clone();
 
-            let tool_calls: Vec<ToolCallForChunk> = parsed_result
-                .tool_calls
-                .into_iter()
-                .enumerate()
-                .map(|(index, tool_call)| ToolCallForChunk {
-                    index,
-                    id: tool_call.id,
-                    ty: tool_call.ty,
-                    function: tool_call.function,
-                })
-                .collect();
+            let (tool_calls, include_tool_calls) = match parsed_result.tool_calls.is_empty() {
+                false => {
+                    let tool_calls: Vec<ToolCallForChunk> = parsed_result
+                        .tool_calls
+                        .into_iter()
+                        .enumerate()
+                        .map(|(index, tool_call)| ToolCallForChunk {
+                            index,
+                            id: tool_call.id,
+                            ty: tool_call.ty,
+                            function: tool_call.function,
+                        })
+                        .collect();
+                    (tool_calls, true)
+                }
+                true => (vec![], false),
+            };
 
             // tool_calls chunk
             let tool_call_chunk = {
@@ -381,12 +398,14 @@ fn chat_stream_by_graph(
 
             let chunks = vec![tool_call_chunk, usage_chunk, ending_chunk];
 
-            Ok(ChatStream::new(
+            let stream = ChatStream::new(
                 Some(graph.name().to_owned()),
                 id,
                 include_usage,
                 Some(chunks),
-            ))
+            );
+
+            Ok((stream, include_tool_calls))
         }
         Err(wasmedge_wasi_nn::Error::BackendError(wasmedge_wasi_nn::BackendError::ContextFull)) => {
             // Retrieve the output.
@@ -502,12 +521,14 @@ fn chat_stream_by_graph(
 
             let chunks = vec![context_full_chunk, usage_chunk, ending_chunk];
 
-            Ok(ChatStream::new(
+            let stream = ChatStream::new(
                 Some(graph.name().to_owned()),
                 id,
                 include_usage,
                 Some(chunks),
-            ))
+            );
+
+            Ok((stream, false))
         }
         Err(wasmedge_wasi_nn::Error::BackendError(
             wasmedge_wasi_nn::BackendError::PromptTooLong,
@@ -628,12 +649,14 @@ fn chat_stream_by_graph(
 
             let chunks = vec![prompt_too_long_chunk, usage_chunk, ending_chunk];
 
-            Ok(ChatStream::new(
+            let stream = ChatStream::new(
                 Some(graph.name().to_owned()),
                 id,
                 include_usage,
                 Some(chunks),
-            ))
+            );
+
+            Ok((stream, false))
         }
         Err(e) => {
             let err_msg = format!("Failed to compute the chat completion. Reason: {}", e);
@@ -648,7 +671,7 @@ fn chat_stream_by_graph(
 
 async fn chat_once(
     chat_request: &mut ChatCompletionRequest,
-) -> Result<ChatCompletionObject, LlamaCoreError> {
+) -> Result<(ChatCompletionObject, bool), LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Processing chat completion request in non-stream mode");
 
@@ -719,7 +742,7 @@ fn compute(
     model_name: Option<&String>,
     id: impl Into<String>,
     tool_use: bool,
-) -> Result<ChatCompletionObject, LlamaCoreError> {
+) -> Result<(ChatCompletionObject, bool), LlamaCoreError> {
     let chat_graphs = match CHAT_GRAPHS.get() {
         Some(chat_graphs) => chat_graphs,
         None => {
@@ -777,7 +800,7 @@ fn compute_by_graph(
     graph: &mut Graph<GgmlMetadata>,
     id: impl Into<String>,
     tool_use: bool,
-) -> Result<ChatCompletionObject, LlamaCoreError> {
+) -> Result<(ChatCompletionObject, bool), LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Compute chat completion by the model named {}.", graph.name());
 
@@ -847,16 +870,16 @@ fn compute_by_graph(
 
                     let parsed_result = parse_tool_calls(&message, graph.metadata.prompt_template)?;
 
-                    let finish_reason = if parsed_result.tool_calls.is_empty() {
-                        FinishReason::stop
+                    let (finish_reason, include_tool_calls) = if parsed_result.tool_calls.is_empty()
+                    {
+                        (FinishReason::stop, false)
                     } else {
-                        FinishReason::tool_calls
+                        (FinishReason::tool_calls, true)
                     };
 
                     let content = parsed_result.content.clone();
 
-                    // create ChatCompletionResponse
-                    Ok(ChatCompletionObject {
+                    let res = ChatCompletionObject {
                         id: id.into(),
                         object: String::from("chat.completion"),
                         created: created.as_secs(),
@@ -877,11 +900,14 @@ fn compute_by_graph(
                             completion_tokens: token_info.completion_tokens,
                             total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
                         },
-                    })
+                    };
+
+                    // create ChatCompletionResponse
+                    Ok((res, include_tool_calls))
                 }
                 false => {
                     // create ChatCompletionResponse
-                    Ok(ChatCompletionObject {
+                    let res = ChatCompletionObject {
                         id: id.into(),
                         object: String::from("chat.completion"),
                         created: created.as_secs(),
@@ -902,7 +928,9 @@ fn compute_by_graph(
                             completion_tokens: token_info.completion_tokens,
                             total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
                         },
-                    })
+                    };
+
+                    Ok((res, false))
                 }
             }
         }
@@ -949,7 +977,7 @@ fn compute_by_graph(
                 })?;
 
             // create ChatCompletionResponse
-            Ok(ChatCompletionObject {
+            let res = ChatCompletionObject {
                 id: id.into(),
                 object: String::from("chat.completion"),
                 created: created.as_secs(),
@@ -970,7 +998,9 @@ fn compute_by_graph(
                     completion_tokens: token_info.completion_tokens,
                     total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
                 },
-            })
+            };
+
+            Ok((res, false))
         }
         Err(wasmedge_wasi_nn::Error::BackendError(
             wasmedge_wasi_nn::BackendError::PromptTooLong,
@@ -1026,7 +1056,7 @@ fn compute_by_graph(
                 })?;
 
             // create ChatCompletionResponse
-            Ok(ChatCompletionObject {
+            let res = ChatCompletionObject {
                 id: id.into(),
                 object: String::from("chat.completion"),
                 created: created.as_secs(),
@@ -1043,7 +1073,9 @@ fn compute_by_graph(
                     logprobs: None,
                 }],
                 usage,
-            })
+            };
+
+            Ok((res, false))
         }
         Err(e) => {
             let err_msg = format!("Failed to compute the chat completion. Reason: {}", e);
