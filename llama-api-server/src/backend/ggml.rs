@@ -419,7 +419,7 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
     debug!(target: "stdout", "request: {}", serde_json::to_string(&chat_request).unwrap());
 
     let res = match llama_core::chat::chat(&mut chat_request).await {
-        Ok(result) => match result {
+        Ok((result, include_tool_calls)) => match result {
             either::Left(stream) => {
                 let stream = stream.map_err(|e| e.to_string());
 
@@ -431,6 +431,7 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
                     .header("Cache-Control", "no-cache")
                     .header("Connection", "keep-alive")
                     .header("user", id)
+                    .header("requires-tool-call", include_tool_calls.to_string())
                     .body(Body::wrap_stream(stream));
 
                 match result {
@@ -452,14 +453,6 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
                 }
             }
             either::Right(chat_completion_object) => {
-                let mut requires_tool_call = false;
-                if !chat_completion_object.choices.is_empty() {
-                    let choice = &chat_completion_object.choices[0];
-                    if !choice.message.tool_calls.is_empty() {
-                        requires_tool_call = true;
-                    }
-                }
-
                 // serialize chat completion object
                 let s = match serde_json::to_string(&chat_completion_object) {
                     Ok(s) => s,
@@ -480,7 +473,7 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
                     .header("Access-Control-Allow-Headers", "*")
                     .header("Content-Type", "application/json")
                     .header("user", id)
-                    .header("requires-tool-call", requires_tool_call.to_string())
+                    .header("requires-tool-call", include_tool_calls.to_string())
                     .body(Body::from(s));
 
                 match result {
