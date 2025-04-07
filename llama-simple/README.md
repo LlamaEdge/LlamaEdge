@@ -13,7 +13,7 @@ curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/insta
 Download the wasm file:
 
 ```bash
-curl -LO https://github.com/LlamaEdge/LlmaEdge/releases/latest/download/llama-simple.wasm
+curl -LO https://github.com/LlamaEdge/LlamaEdge/releases/latest/download/llama-simple.wasm
 ```
 
 ## Get Model
