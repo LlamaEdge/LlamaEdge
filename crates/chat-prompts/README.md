@@ -368,6 +368,24 @@ The available prompt templates are listed below:
     Question: {user_message}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
     ```
 
+- `llama-4-chat`
+  - Prompt string
+
+    ```text
+    <|begin_of_text|><|header_start|>system<|header_end|>
+
+    {system_prompt}<|eot|><|header_start|>user<|header_end|>
+
+    {user_message_1}<|eot|><|header_start|>assistant<|header_end|>
+
+    {assistant_message_1}<|eot|><|header_start|>user<|header_end|>
+
+    {user_message_2}<|eot|>
+    <|header_start|>assistant<|header_end|>
+    ```
+
+  - Example: [second-state/Llama-4-Scout-17B-16E-Instruct-GGUF](https://huggingface.co/second-state/Llama-4-Scout-17B-16E-Instruct-GGUF)
+
 - `mediatek-breeze`
   - Prompt string
 

@@ -73,6 +73,7 @@ pub enum ChatPrompt {
     Llama2ChatPrompt,
     Llama3ChatPrompt,
     Llama3ToolPrompt,
+    Llama4ChatPrompt,
     MistralInstructPrompt,
     MistralToolPrompt,
     MistralLitePrompt,
@@ -130,6 +131,7 @@ impl From<PromptTemplateType> for ChatPrompt {
             PromptTemplateType::Llama2Chat => ChatPrompt::Llama2ChatPrompt(Llama2ChatPrompt),
             PromptTemplateType::Llama3Chat => ChatPrompt::Llama3ChatPrompt(Llama3ChatPrompt),
             PromptTemplateType::Llama3Tool => ChatPrompt::Llama3ToolPrompt(Llama3ToolPrompt),
+            PromptTemplateType::Llama4Chat => ChatPrompt::Llama4ChatPrompt(Llama4ChatPrompt),
             PromptTemplateType::MistralInstruct => {
                 ChatPrompt::MistralInstructPrompt(MistralInstructPrompt)
             }
