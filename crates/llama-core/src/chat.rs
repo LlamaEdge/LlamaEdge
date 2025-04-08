@@ -32,10 +32,19 @@ use std::{
     fs::{self, File},
     path::Path,
     pin::Pin,
-    sync::Mutex,
-    task::{Context, Poll},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex, OnceLock,
+    },
+    task::{Context, Poll, Waker},
     time::SystemTime,
 };
+
+// Define a global waker queue for storing waiting ChatStreams
+static CHAT_STREAM_WAKER_QUEUE: OnceLock<Mutex<VecDeque<Waker>>> = OnceLock::new();
+
+// Define a global atomic boolean indicating whether there is an active ChatStream
+static CHAT_STREAM_ACTIVE: AtomicBool = AtomicBool::new(false);
 
 /// Processes a chat-completion request and returns either a stream of ChatCompletionChunk instances or a ChatCompletionObject instance.
 pub async fn chat(
@@ -1002,6 +1011,12 @@ fn compute_by_graph(
             #[cfg(feature = "logging")]
             info!(target: "stdout", "prompt tokens: {}, completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
 
+            let usage = Usage {
+                prompt_tokens: token_info.prompt_tokens,
+                completion_tokens: token_info.completion_tokens,
+                total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
+            };
+
             let created = SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|e| {
@@ -1030,11 +1045,7 @@ fn compute_by_graph(
                     finish_reason: FinishReason::length,
                     logprobs: None,
                 }],
-                usage: Usage {
-                    prompt_tokens: token_info.prompt_tokens,
-                    completion_tokens: token_info.completion_tokens,
-                    total_tokens: token_info.completion_tokens + token_info.completion_tokens,
-                },
+                usage,
             })
         }
         Err(e) => {
@@ -2098,6 +2109,7 @@ async fn update_n_predict(
     Ok(())
 }
 
+/// Build post-processing for output based on template type
 fn post_process(
     output: impl AsRef<str>,
     template_ty: &PromptTemplateType,
@@ -2328,6 +2340,7 @@ fn post_process(
     } else {
         output.as_ref().trim().to_owned()
     };
+
     Ok(output)
 }
 
@@ -2888,7 +2901,19 @@ struct ChatStream {
     prompt_too_long_state: PromptTooLongState,
     stream_state: StreamState,
     cache: Option<VecDeque<String>>,
+    is_waiting: bool,
+    has_lock: bool,
 }
+
+/// Helper function to get or initialize the waker queue for waiting ChatStreams
+fn get_chat_stream_waker_queue() -> &'static Mutex<VecDeque<Waker>> {
+    CHAT_STREAM_WAKER_QUEUE.get_or_init(|| {
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Initializing ChatStream waker queue");
+        Mutex::new(VecDeque::new())
+    })
+}
+
 impl ChatStream {
     fn new(
         model: Option<String>,
@@ -2896,11 +2921,15 @@ impl ChatStream {
         include_usage: bool,
         cache: Option<Vec<String>>,
     ) -> Self {
-        let stream_state = if include_usage {
-            StreamState::Usage
-        } else {
-            StreamState::NoUsage
-        };
+        // Try to acquire lock
+        let has_lock = CHAT_STREAM_ACTIVE
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok();
+
+        #[cfg(feature = "logging")]
+        if !has_lock {
+            info!(target: "stdout", "Lock acquisition failed in ChatStream::new, creating with waiting status");
+        }
 
         ChatStream {
             id,
@@ -2908,16 +2937,97 @@ impl ChatStream {
             include_usage,
             context_full_state: ContextFullState::Message,
             prompt_too_long_state: PromptTooLongState::Message,
-            stream_state,
+            stream_state: if include_usage {
+                StreamState::Usage
+            } else {
+                StreamState::NoUsage
+            },
             cache: cache.map(VecDeque::from),
+            is_waiting: !has_lock,
+            has_lock,
+        }
+    }
+
+    // Try to acquire lock, returns whether successful
+    fn try_acquire_lock(&mut self) -> bool {
+        if self.has_lock {
+            return true;
+        }
+
+        let acquired = CHAT_STREAM_ACTIVE
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok();
+
+        if acquired {
+            self.has_lock = true;
+            self.is_waiting = false;
+        }
+
+        acquired
+    }
+
+    // Add a method to wait for the lock asynchronously
+    //
+    // Provide an explicit asynchronous mechanism to wait for the lock:
+    // * It creates a oneshot channel
+    // * Wraps the sender in a LockWaiter and adds it to the waker queue
+    // * Asynchronously waits for the receiver to get a message (typically occurs when another ChatStream is dropped)
+    // * Tries to acquire the lock after receiving the message
+    async fn _wait_for_lock(&mut self) -> bool {
+        if self.has_lock {
+            return true; // Already have the lock
+        }
+
+        // First try to acquire the lock directly
+        if self.try_acquire_lock() {
+            return true;
+        }
+
+        // Set up a future that completes when the lock is acquired
+        let (sender, receiver) = futures::channel::oneshot::channel();
+
+        // Register our sender in a queue
+        if let Ok(mut queue) = get_chat_stream_waker_queue().lock() {
+            let waker = futures::task::waker(Arc::new(LockWaiter {
+                sender: Mutex::new(Some(sender)),
+                id: self.id.clone(),
+            }));
+            queue.push_back(waker);
+        }
+
+        // Wait for notification that the lock is available
+        if receiver.await.is_ok() {
+            self.try_acquire_lock()
+        } else {
+            false
         }
     }
 }
+
+// Create a custom waker for async lock waiting
+struct LockWaiter {
+    sender: Mutex<Option<futures::channel::oneshot::Sender<()>>>,
+    id: String,
+}
+
+impl futures::task::ArcWake for LockWaiter {
+    fn wake_by_ref(arc_self: &Arc<Self>) {
+        let mut sender = arc_self.sender.lock().unwrap();
+        if let Some(s) = sender.take() {
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "Waking waiting ChatStream {}", &arc_self.id);
+
+            let _ = s.send(()); // Notify the waiting future
+        }
+    }
+}
+
 impl Drop for ChatStream {
     fn drop(&mut self) {
-        if self.cache.is_none() {
+        // Clean up is only needed if we have the lock or if stream was actually used
+        if self.has_lock || (self.cache.is_none() && !self.is_waiting) {
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "Clean up the context of the stream work environment.");
+            info!(target: "stdout", "Cleaning up context for ChatStream {}", &self.id);
 
             match &self.model {
                 Some(model_name) => {
@@ -3071,14 +3181,71 @@ impl Drop for ChatStream {
             #[cfg(feature = "logging")]
             info!(target: "stdout", "Cleanup done!");
         }
+
+        // When dropping a ChatStream that held the lock, check if there are waiting streams
+        if self.has_lock {
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "Releasing lock from ChatStream {}", &self.id);
+
+            // Reset the atomic flag
+            CHAT_STREAM_ACTIVE.store(false, Ordering::SeqCst);
+
+            // Wake up waiting streams
+            if let Ok(mut queue) = get_chat_stream_waker_queue().lock() {
+                if let Some(waker) = queue.pop_front() {
+                    #[cfg(feature = "logging")]
+                    info!(target: "stdout", "Waking up a waiting ChatStream");
+
+                    waker.wake();
+                }
+            }
+        }
     }
 }
+
 impl futures::Stream for ChatStream {
     type Item = Result<String, LlamaCoreError>;
 
-    fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        if self.cache.is_none() {
-            let this = self.get_mut();
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.get_mut();
+
+        // If this is a waiting stream, try to acquire the lock
+        if this.is_waiting {
+            if !this.try_acquire_lock() {
+                // Store the waker to be notified when the lock becomes available
+                if let Ok(mut queue) = get_chat_stream_waker_queue().lock() {
+                    // Remove any previous instance of this waker
+                    queue.retain(|w| !w.will_wake(cx.waker()));
+                    // Add this waker to the queue
+                    queue.push_back(cx.waker().clone());
+
+                    #[cfg(feature = "logging")]
+                    debug!(target: "stdout", "ChatStream {} is waiting for lock, added waker to queue", &this.id);
+                }
+
+                return Poll::Pending;
+            }
+
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "ChatStream {} acquired lock and is now active", &this.id);
+            // If we got here, we successfully acquired the lock and can proceed
+        }
+
+        // Ensure we still have the lock
+        if !this.has_lock && !this.try_acquire_lock() {
+            // Lost the lock, need to wait
+            this.is_waiting = true;
+
+            // Register waker to be notified when lock is available
+            if let Ok(mut queue) = get_chat_stream_waker_queue().lock() {
+                queue.retain(|w| !w.will_wake(cx.waker()));
+                queue.push_back(cx.waker().clone());
+            }
+
+            return Poll::Pending;
+        }
+
+        if this.cache.is_none() {
             let res = compute_stream(
                 this.model.clone(),
                 this.id.clone(),
@@ -3091,7 +3258,7 @@ impl futures::Stream for ChatStream {
             match res {
                 Ok(x) => {
                     #[cfg(feature = "logging")]
-                    info!(target: "stdout", "next item: {}", &x);
+                    info!(target: "stdout", "next item for ChatStream {}: {}", &this.id, &x);
 
                     if x != "[GGML] End of sequence" && !x.is_empty() {
                         Poll::Ready(Some(Ok(x)))
@@ -3103,12 +3270,10 @@ impl futures::Stream for ChatStream {
                 Err(e) => Poll::Ready(Some(Err(e))),
             }
         } else {
-            let this = self.get_mut();
-
             let x = this.cache.as_mut().unwrap().pop_front();
 
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "Get the next item from the cache: {:?}", &x);
+            info!(target: "stdout", "Get the next item from the cache for ChatStream {}: {:?}", &this.id, &x);
 
             match x {
                 Some(x) => Poll::Ready(Some(Ok(x))),
@@ -3127,7 +3292,7 @@ fn compute_stream(
     stream_state: &mut StreamState,
 ) -> Result<String, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "Compute the chat stream chunk.");
+    info!(target: "stdout", "Computing stream chunk for ChatStream {}", &id);
 
     #[cfg(feature = "logging")]
     debug!(target: "stdout", "prompt_too_long_state: {:?}", *prompt_too_long_state);
@@ -3158,6 +3323,7 @@ fn compute_stream(
         }
     };
 
+    // We're already holding the ChatStream lock, so we know we have exclusive access to the graph
     let mut chat_graphs = chat_graphs.lock().map_err(|e| {
         let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
@@ -3167,7 +3333,7 @@ fn compute_stream(
         LlamaCoreError::Operation(err_msg)
     })?;
 
-    // get graph
+    // Get the graph based on model name
     let res = match &model_name {
         Some(model_name) => {
             match chat_graphs.contains_key(model_name) {
@@ -3179,6 +3345,7 @@ fn compute_stream(
                             #[cfg(feature = "logging")]
                             debug!(target: "stdout", "Compute the chat stream chunk successfully.");
 
+                            // Process according to state
                             match stream_state {
                                 StreamState::Usage | StreamState::NoUsage => {
                                     // Retrieve the output
