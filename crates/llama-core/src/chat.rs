@@ -34,7 +34,7 @@ use std::{
     pin::Pin,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Mutex, OnceLock,
+        Mutex, OnceLock,
     },
     task::{Context, Poll, Waker},
     time::SystemTime,
@@ -2904,16 +2904,6 @@ struct ChatStream {
     is_waiting: bool,
     has_lock: bool,
 }
-
-/// Helper function to get or initialize the waker queue for waiting ChatStreams
-fn get_chat_stream_waker_queue() -> &'static Mutex<VecDeque<Waker>> {
-    CHAT_STREAM_WAKER_QUEUE.get_or_init(|| {
-        #[cfg(feature = "logging")]
-        info!(target: "stdout", "Initializing ChatStream waker queue");
-        Mutex::new(VecDeque::new())
-    })
-}
-
 impl ChatStream {
     fn new(
         model: Option<String>,
@@ -2965,63 +2955,7 @@ impl ChatStream {
 
         acquired
     }
-
-    // Add a method to wait for the lock asynchronously
-    //
-    // Provide an explicit asynchronous mechanism to wait for the lock:
-    // * It creates a oneshot channel
-    // * Wraps the sender in a LockWaiter and adds it to the waker queue
-    // * Asynchronously waits for the receiver to get a message (typically occurs when another ChatStream is dropped)
-    // * Tries to acquire the lock after receiving the message
-    async fn _wait_for_lock(&mut self) -> bool {
-        if self.has_lock {
-            return true; // Already have the lock
-        }
-
-        // First try to acquire the lock directly
-        if self.try_acquire_lock() {
-            return true;
-        }
-
-        // Set up a future that completes when the lock is acquired
-        let (sender, receiver) = futures::channel::oneshot::channel();
-
-        // Register our sender in a queue
-        if let Ok(mut queue) = get_chat_stream_waker_queue().lock() {
-            let waker = futures::task::waker(Arc::new(LockWaiter {
-                sender: Mutex::new(Some(sender)),
-                id: self.id.clone(),
-            }));
-            queue.push_back(waker);
-        }
-
-        // Wait for notification that the lock is available
-        if receiver.await.is_ok() {
-            self.try_acquire_lock()
-        } else {
-            false
-        }
-    }
 }
-
-// Create a custom waker for async lock waiting
-struct LockWaiter {
-    sender: Mutex<Option<futures::channel::oneshot::Sender<()>>>,
-    id: String,
-}
-
-impl futures::task::ArcWake for LockWaiter {
-    fn wake_by_ref(arc_self: &Arc<Self>) {
-        let mut sender = arc_self.sender.lock().unwrap();
-        if let Some(s) = sender.take() {
-            #[cfg(feature = "logging")]
-            info!(target: "stdout", "Waking waiting ChatStream {}", &arc_self.id);
-
-            let _ = s.send(()); // Notify the waiting future
-        }
-    }
-}
-
 impl Drop for ChatStream {
     fn drop(&mut self) {
         // Clean up is only needed if we have the lock or if stream was actually used
@@ -3202,7 +3136,6 @@ impl Drop for ChatStream {
         }
     }
 }
-
 impl futures::Stream for ChatStream {
     type Item = Result<String, LlamaCoreError>;
 
@@ -3281,6 +3214,15 @@ impl futures::Stream for ChatStream {
             }
         }
     }
+}
+
+/// Helper function to get or initialize the waker queue for waiting ChatStreams
+fn get_chat_stream_waker_queue() -> &'static Mutex<VecDeque<Waker>> {
+    CHAT_STREAM_WAKER_QUEUE.get_or_init(|| {
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Initializing ChatStream waker queue");
+        Mutex::new(VecDeque::new())
+    })
 }
 
 fn compute_stream(
