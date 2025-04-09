@@ -126,7 +126,7 @@ async fn chat_stream(
     info!(target: "stdout", "Check model metadata");
 
     // update metadata
-    let mut metadata = check_model_metadata(chat_request).await?;
+    let mut metadata = check_model_metadata(chat_request)?;
 
     // parse the `include_usage` option
     let include_usage = match chat_request.stream_options {
@@ -154,7 +154,7 @@ async fn chat_stream(
     info!(target: "stdout", "Update the n_predict");
 
     // update metadata n_predict
-    update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
+    update_n_predict(chat_request, &mut metadata, avaible_completion_tokens)?;
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Feed the prompt to the model");
@@ -675,7 +675,7 @@ async fn chat_once(
     info!(target: "stdout", "Check model metadata");
 
     // update metadata
-    let mut metadata = check_model_metadata(chat_request).await?;
+    let mut metadata = check_model_metadata(chat_request)?;
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Build the chat prompt");
@@ -695,7 +695,7 @@ async fn chat_once(
     info!(target: "stdout", "Update n_predict");
 
     // update metadata n_predict
-    update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
+    update_n_predict(chat_request, &mut metadata, avaible_completion_tokens)?;
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Feed the prompt to the model");
@@ -1921,7 +1921,7 @@ fn parse_tool_calls(
     }
 }
 
-async fn check_model_metadata(
+fn check_model_metadata(
     chat_request: &ChatCompletionRequest,
 ) -> Result<GgmlMetadata, LlamaCoreError> {
     let mut should_update = false;
@@ -1941,7 +1941,7 @@ async fn check_model_metadata(
                             info!(target: "stdout", "The image is provided in URL format.");
 
                             // download the image
-                            let img_path_str = download_image(&image.url).await?;
+                            let img_path_str = download_image(&image.url)?;
 
                             #[cfg(feature = "logging")]
                             info!(target: "stdout", "The image is saved to {}", img_path_str);
@@ -2038,7 +2038,7 @@ async fn check_model_metadata(
     Ok(metadata)
 }
 
-async fn update_n_predict(
+fn update_n_predict(
     chat_request: &ChatCompletionRequest,
     metadata: &mut GgmlMetadata,
     available_completion_tokens: u64,
@@ -2578,7 +2578,7 @@ fn build_prompt(
 }
 
 /// Downloads an image from the given URL and returns the file name.
-async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> {
+fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> {
     let image_url = image_url.as_ref();
     let url = reqwest::Url::parse(image_url).map_err(|e| {
         let err_msg = format!("Fail to parse the image URL: {}. Reason: {}", image_url, e);
@@ -2589,57 +2589,12 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
         LlamaCoreError::Operation(err_msg)
     })?;
 
-    let response = reqwest::get(url).await.map_err(|e| {
-        let err_msg = format!(
-            "Fail to download the image from the URL: {}. Reason: {}",
-            image_url, e
-        );
-
-        #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", &err_msg);
-
-        LlamaCoreError::Operation(err_msg)
-    })?;
-
-    let fname = response
-        .url()
-        .path_segments()
-        .and_then(|mut segments| segments.next_back())
-        .and_then(|name| if name.is_empty() { None } else { Some(name) })
-        .ok_or(LlamaCoreError::Operation(format!(
-            "Fail to get the file name: {}",
-            image_url
-        )))?
-        .to_string();
-
-    // create a unique file id
-    let id = format!("file_{}", uuid::Uuid::new_v4());
-    // save the file
-    let path = Path::new("archives");
-    if !path.exists() {
-        fs::create_dir(path).unwrap();
-    }
-    let file_path = path.join(&id);
-    if !file_path.exists() {
-        fs::create_dir(&file_path).unwrap();
-    }
-    let img_path = file_path.join(&fname);
-    let mut dest: File = File::create(&img_path).map_err(|e| {
-        let err_msg = format!("Failed to create archive document {}. {}", &fname, e);
-
-        // log
-        #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", &err_msg);
-
-        LlamaCoreError::Operation(err_msg)
-    })?;
-
-    let mut content = response.bytes_stream();
-    while let Some(Ok(item)) = content.next().await {
-        std::io::copy(&mut item.as_ref(), &mut dest).map_err(|e| {
+    let curr_rt_handle = tokio::runtime::Handle::current();
+    let res = curr_rt_handle.block_on(async {
+        let response = reqwest::get(url).await.map_err(|e| {
             let err_msg = format!(
-                "Fail to write the image content to the file: {}. Reason: {}",
-                &fname, e
+                "Fail to download the image from the URL: {}. Reason: {}",
+                image_url, e
             );
 
             #[cfg(feature = "logging")]
@@ -2647,9 +2602,61 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
 
             LlamaCoreError::Operation(err_msg)
         })?;
-    }
 
-    Ok(img_path.as_path().to_string_lossy().to_string())
+        let fname = response
+            .url()
+            .path_segments()
+            .and_then(|mut segments| segments.next_back())
+            .and_then(|name| if name.is_empty() { None } else { Some(name) })
+            .ok_or(LlamaCoreError::Operation(format!(
+                "Fail to get the file name: {}",
+                image_url
+            )))?
+            .to_string();
+
+        // create a unique file id
+        let id = format!("file_{}", uuid::Uuid::new_v4());
+        // save the file
+        let path = Path::new("archives");
+        if !path.exists() {
+            fs::create_dir(path).unwrap();
+        }
+        let file_path = path.join(&id);
+        if !file_path.exists() {
+            fs::create_dir(&file_path).unwrap();
+        }
+        let img_path = file_path.join(&fname);
+        let mut dest: File = File::create(&img_path).map_err(|e| {
+            let err_msg = format!("Failed to create archive document {}. {}", &fname, e);
+
+            // log
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            LlamaCoreError::Operation(err_msg)
+        })?;
+
+        let mut content = response.bytes_stream();
+        while let Some(Ok(item)) = content.next().await {
+            std::io::copy(&mut item.as_ref(), &mut dest).map_err(|e| {
+                let err_msg = format!(
+                    "Fail to write the image content to the file: {}. Reason: {}",
+                    &fname, e
+                );
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
+            })?;
+        }
+
+        Ok(img_path.as_path().to_string_lossy().to_string())
+    });
+
+    res
+
+    // Ok(img_path.as_path().to_string_lossy().to_string())
 }
 
 fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<(), LlamaCoreError> {
