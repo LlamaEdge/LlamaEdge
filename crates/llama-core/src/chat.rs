@@ -50,10 +50,7 @@ static CHAT_STREAM_ACTIVE: AtomicBool = AtomicBool::new(false);
 pub async fn chat(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<
-    Either<
-        impl Unpin + futures::TryStream<Ok = String, Error = LlamaCoreError>,
-        ChatCompletionObject,
-    >,
+    Either<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, ChatCompletionObject>,
     LlamaCoreError,
 > {
     #[cfg(feature = "logging")]
