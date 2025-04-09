@@ -334,28 +334,6 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
     res
 }
 
-struct ChatStream<S> {
-    stream: S,
-    #[allow(unused)]
-    permit: tokio::sync::SemaphorePermit<'static>,
-}
-
-impl<S: Unpin + futures_util::Stream<Item = Result<String, String>>> futures_util::Stream
-    for ChatStream<S>
-{
-    type Item = Result<String, String>;
-
-    fn poll_next(
-        mut self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Option<Self::Item>> {
-        let pinned = std::pin::Pin::new(&mut self.stream);
-        pinned.poll_next(cx)
-    }
-}
-
-static STREAM_PERMIT: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(1);
-
 /// Process a chat-completion request and returns a chat-completion response with the answer from the model.
 pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response<Body> {
     info!(target: "stdout", "Handling the coming chat completion request");
@@ -440,21 +418,10 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
 
     debug!(target: "stdout", "request: {}", serde_json::to_string(&chat_request).unwrap());
 
-    debug!(target: "stdout", "Acquire the semaphore permit");
-    let permit = STREAM_PERMIT
-        .acquire()
-        .await
-        .expect("Failed to acquire semaphore permit");
-    debug!(target: "stdout", "Acquire the semaphore permit successfully");
-
     let res = match llama_core::chat::chat(&mut chat_request).await {
         Ok(result) => match result {
             either::Left(stream) => {
                 let stream = stream.map_err(|e| e.to_string());
-                let stream = ChatStream {
-                    stream: Box::pin(stream),
-                    permit,
-                };
 
                 let result = Response::builder()
                     .header("Access-Control-Allow-Origin", "*")
@@ -485,7 +452,6 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
                 }
             }
             either::Right(chat_completion_object) => {
-                drop(permit);
                 // serialize chat completion object
                 let s = match serde_json::to_string(&chat_completion_object) {
                     Ok(s) => s,
