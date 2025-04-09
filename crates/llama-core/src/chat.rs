@@ -41,7 +41,10 @@ use std::{
 pub async fn chat(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<
-    Either<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, ChatCompletionObject>,
+    Either<
+        impl Unpin + futures::TryStream<Ok = String, Error = LlamaCoreError>,
+        ChatCompletionObject,
+    >,
     LlamaCoreError,
 > {
     #[cfg(feature = "logging")]
@@ -296,10 +299,7 @@ fn chat_stream_by_graph(
 
             let parsed_result = parse_tool_calls(&message, graph.metadata.prompt_template)?;
 
-            let content = match parsed_result.content {
-                Some(content) => Some(content),
-                None => Some(parsed_result.raw),
-            };
+            let content = parsed_result.content.clone();
 
             let tool_calls: Vec<ToolCallForChunk> = parsed_result
                 .tool_calls
@@ -847,10 +847,7 @@ fn compute_by_graph(
                         FinishReason::tool_calls
                     };
 
-                    let content = match parsed_result.content {
-                        Some(content) => Some(content),
-                        None => Some(parsed_result.raw),
-                    };
+                    let content = parsed_result.content.clone();
 
                     // create ChatCompletionResponse
                     Ok(ChatCompletionObject {
@@ -1281,7 +1278,21 @@ fn parse_tool_calls(
                         };
 
                         let arguments = match value.get("arguments") {
-                            Some(arguments) => arguments.to_string(),
+                            Some(arguments) => {
+                                // if arguments.is_string() {
+                                //     arguments.as_str().unwrap().to_string()
+                                // } else if arguments.is_object() {
+                                //     let map = arguments.as_object().unwrap();
+
+                                //     #[cfg(feature = "logging")]
+                                //     info!(target: "stdout", "func arguments: {:?}", map);
+
+                                //     serde_json::to_string(map).unwrap()
+                                // } else {
+                                //     arguments.to_string()
+                                // }
+                                serde_json::to_string(arguments).unwrap()
+                            }
                             None => {
                                 let err_msg = format!(
                                     "Failed to get the arguments of the function. Tool call: {:?}",
@@ -2303,6 +2314,14 @@ fn post_process(
 
         if s.ends_with("[|endofturn|]") {
             s = s.trim_end_matches("[|endofturn|]").trim();
+        }
+
+        s.to_owned()
+    } else if *template_ty == PromptTemplateType::Llama4Chat {
+        let mut s = output.as_ref().trim();
+
+        if s.ends_with("<|eot|>") {
+            s = s.trim_end_matches("<|eot|>").trim();
         }
 
         s.to_owned()
