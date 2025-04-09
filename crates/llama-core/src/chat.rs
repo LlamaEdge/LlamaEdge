@@ -2314,6 +2314,14 @@ fn post_process(
         }
 
         s.to_owned()
+    } else if *template_ty == PromptTemplateType::Llama4Chat {
+        let mut s = output.as_ref().trim();
+
+        if s.ends_with("<|eot|>") {
+            s = s.trim_end_matches("<|eot|>").trim();
+        }
+
+        s.to_owned()
     } else {
         output.as_ref().trim().to_owned()
     };
