@@ -1859,7 +1859,60 @@ fn parse_tool_calls(
             #[cfg(feature = "logging")]
             info!(target: "stdout", "raw input: {}", input);
 
-            unimplemented!()
+            match regex::Regex::new(r#"<function=(\w+?)>\s*(\{.*?\})\s*</function>"#) {
+                Ok(re) => {
+                    let mut tool_calls: Vec<ToolCall> = vec![];
+                    if let Some(caps) = re.captures(input) {
+                        let func_name = caps[1].trim();
+                        let json_str = caps[2].trim();
+
+                        match serde_json::from_str::<serde_json::Value>(json_str) {
+                            Ok(json_value) => {
+                                let function = Function {
+                                    name: func_name.to_string(),
+                                    arguments: json_value.to_string(),
+                                };
+
+                                tool_calls.push(ToolCall {
+                                    id: "call_abc123".to_string(),
+                                    ty: "function".to_string(),
+                                    function,
+                                });
+                            }
+                            Err(e) => {
+                                let err_msg = format!(
+                                    "Failed to deserialize generated tool calls. Reason: {}",
+                                    e
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "stdout", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            }
+                        }
+                    }
+
+                    let parsed = ParseResult {
+                        raw: input.to_owned(),
+                        content: None,
+                        tool_calls,
+                    };
+
+                    #[cfg(feature = "logging")]
+                    info!(target: "stdout", "parsed result: {:?}", parsed);
+
+                    Ok(parsed)
+                }
+                Err(e) => {
+                    let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "stdout", "{}", &err_msg);
+
+                    Err(LlamaCoreError::Operation(err_msg))
+                }
+            }
         }
         _ => {
             let err_msg = format!(
