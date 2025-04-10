@@ -289,8 +289,9 @@ fn chat_stream_by_graph(
                 && graph.metadata.prompt_template != PromptTemplateType::FunctionaryV32
                 && graph.metadata.prompt_template != PromptTemplateType::FunctionaryV31
                 && graph.metadata.prompt_template != PromptTemplateType::MistralSmallTool
+                && graph.metadata.prompt_template != PromptTemplateType::Llama4Chat
             {
-                let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', and 'mistral-small-tool' prompt templates.", graph.metadata.prompt_template);
+                let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', 'mistral-small-tool', and 'llama-4-chat' prompt templates.", graph.metadata.prompt_template);
 
                 #[cfg(feature = "logging")]
                 error!(target: "stdout", "{}", &err_msg);
@@ -834,8 +835,9 @@ fn compute_by_graph(
                         && graph.metadata.prompt_template != PromptTemplateType::FunctionaryV32
                         && graph.metadata.prompt_template != PromptTemplateType::FunctionaryV31
                         && graph.metadata.prompt_template != PromptTemplateType::MistralSmallTool
+                        && graph.metadata.prompt_template != PromptTemplateType::Llama4Chat
                     {
-                        let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', and 'mistral-small-tool' prompt templates.", graph.metadata.prompt_template);
+                        let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', 'mistral-small-tool', and 'llama-4-chat' prompt templates.", graph.metadata.prompt_template);
 
                         #[cfg(feature = "logging")]
                         error!(target: "stdout", "{}", &err_msg);
@@ -1830,51 +1832,6 @@ fn parse_tool_calls(
                                 tool_calls.push(tool_call);
                             }
                         }
-
-                        // match value.get("function") {
-                        //     Some(func) => {
-                        //         let name = match func.get("name") {
-                        //             Some(name) => name.as_str().unwrap().to_string(),
-                        //             None => String::new(),
-                        //         };
-
-                        //         let arguments = match func.get("arguments") {
-                        //             Some(arguments) => arguments.to_string(),
-                        //             None => String::new(),
-                        //         };
-
-                        //         let function = Function { name, arguments };
-
-                        //         let tool_call = ToolCall {
-                        //             id: "call_abc123".to_string(),
-                        //             ty: "function".to_string(),
-                        //             function,
-                        //         };
-
-                        //         tool_calls.push(tool_call);
-                        //     }
-                        //     None => {
-                        //         let name = match value.get("name") {
-                        //             Some(name) => name.as_str().unwrap().to_string(),
-                        //             None => String::new(),
-                        //         };
-
-                        //         let arguments = match value.get("arguments") {
-                        //             Some(arguments) => arguments.to_string(),
-                        //             None => String::new(),
-                        //         };
-
-                        //         let function = Function { name, arguments };
-
-                        //         let tool_call = ToolCall {
-                        //             id: "call_abc123".to_string(),
-                        //             ty: "function".to_string(),
-                        //             function,
-                        //         };
-
-                        //         tool_calls.push(tool_call);
-                        //     }
-                        // }
                     }
 
                     let parsed = ParseResult {
@@ -1897,6 +1854,12 @@ fn parse_tool_calls(
                     Err(LlamaCoreError::Operation(err_msg))
                 }
             }
+        }
+        PromptTemplateType::Llama4Chat => {
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "raw input: {}", input);
+
+            unimplemented!()
         }
         _ => {
             let err_msg = format!(
