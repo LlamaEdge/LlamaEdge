@@ -689,6 +689,20 @@ impl Llama4ChatPrompt {
         }
     }
 
+    /// Create a system prompt for tool use.
+    fn create_system_prompt_tool(
+        &self,
+        message: &ChatCompletionSystemMessage,
+        tools: &[Tool],
+    ) -> String {
+        let content = message.content();
+        format!(
+            "<|begin_of_text|><|header_start|>system<|header_end|>\n\n{system_prompt}\n\nYou are given a question and a set of possible functions. Based on the question, you will need to make one or more function/tool calls to achieve the purpose.\nIf none of the function can be used, point it out. If the given question lacks the parameters required by the function, also point it out. You should only return the function call in tools call sections.\n\nIf you decide to invoke any of the function(s), you MUST put it in the following format with no prefix or suffix:\n\n<function=example_function_name>{{\"example_name\": \"example_value\"}}</function>\nReminder:\n- Function calls MUST follow the specified format, start with <function= and end with </function>\n- Required parameters MUST be specified\n- Only call one function at a time\n- Put the entire function call reply on one line\n- SHOULD NOT include any other text in the response\n\nHere is a list of functions in JSON format that you can invoke:\n\n{available_tools}\n\n<|eot|>",
+            system_prompt = content,
+            available_tools = serde_json::to_string_pretty(tools).unwrap()
+        )
+    }
+
     /// Create a user prompt from a chat completion request message.
     fn append_user_message(
         &self,
@@ -745,6 +759,19 @@ impl Llama4ChatPrompt {
             assistant_message = content.trim(),
         ))
     }
+
+    /// Create a tool prompt.
+    fn append_tool_message(
+        &self,
+        chat_history: impl AsRef<str>,
+        message: &ChatCompletionToolMessage,
+    ) -> String {
+        format!(
+            "{chat_history}<|header_start|>ipython<|header_end|>\n\n{tool_result}<|eot|>",
+            chat_history = chat_history.as_ref().trim(),
+            tool_result = message.content().trim()
+        )
+    }
 }
 impl BuildChatPrompt for Llama4ChatPrompt {
     fn build(&self, messages: &mut Vec<ChatCompletionRequestMessage>) -> Result<String> {
@@ -769,6 +796,51 @@ impl BuildChatPrompt for Llama4ChatPrompt {
                 }
                 ChatCompletionRequestMessage::Assistant(message) => {
                     prompt = self.append_assistant_message(&prompt, message)?;
+                }
+                _ => continue,
+            }
+        }
+
+        prompt.push_str("<|header_start|>assistant<|header_end|>");
+
+        Ok(prompt)
+    }
+
+    fn build_with_tools(
+        &self,
+        messages: &mut Vec<ChatCompletionRequestMessage>,
+        tools: Option<&[endpoints::chat::Tool]>,
+    ) -> Result<String> {
+        if messages.is_empty() {
+            return Err(crate::error::PromptError::NoMessages);
+        }
+
+        // system prompt
+        let system_prompt = match messages[0] {
+            ChatCompletionRequestMessage::System(ref message) => {
+                match tools {
+                    Some(available_tools) if !available_tools.is_empty() => self.create_system_prompt_tool(message, available_tools),
+                    _ => self.create_system_prompt(message)
+                }
+            }
+            _ => match tools {
+                Some(available_tools) if !available_tools.is_empty() => format!("<|begin_of_text|><|header_start|>system<|header_end|>\n\nYou are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe.\n\nYou are given a question and a set of possible functions. Based on the question, you will need to make one or more function/tool calls to achieve the purpose.\nIf none of the function can be used, point it out. If the given question lacks the parameters required by the function, also point it out. You should only return the function call in tools call sections.\n\nIf you decide to invoke any of the function(s), you MUST put it in the following format with no prefix or suffix:\n\n<function=example_function_name>{{\"example_name\": \"example_value\"}}</function>\nReminder:\n- Function calls MUST follow the specified format, start with <function= and end with </function>\n- Required parameters MUST be specified\n- Only call one function at a time\n- Put the entire function call reply on one line\n- SHOULD NOT include any other text in the response\n\nHere is a list of functions in JSON format that you can invoke:\n\n{available_tools}\n\n", available_tools = serde_json::to_string_pretty(available_tools).unwrap()),
+                _ => String::from("<|begin_of_text|><|header_start|>system<|header_end|>\n\nYou are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe.<|eot|>"),
+            }
+        };
+
+        // append user/assistant/tool messages
+        let mut prompt = String::new();
+        for message in messages {
+            match message {
+                ChatCompletionRequestMessage::User(message) => {
+                    prompt = self.append_user_message(&prompt, &system_prompt, message);
+                }
+                ChatCompletionRequestMessage::Assistant(message) => {
+                    prompt = self.append_assistant_message(&prompt, message)?;
+                }
+                ChatCompletionRequestMessage::Tool(message) => {
+                    prompt = self.append_tool_message(&prompt, message);
                 }
                 _ => continue,
             }
