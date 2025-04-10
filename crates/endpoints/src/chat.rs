@@ -735,6 +735,39 @@ impl Default for ChatCompletionRequest {
         }
     }
 }
+impl ChatCompletionRequest {
+    /// Return the reference to the latest user message from the chat history.
+    pub fn latest_user_message(&self) -> Option<&ChatCompletionUserMessage> {
+        self.messages
+            .iter()
+            .rev()
+            .find_map(|message| match message {
+                ChatCompletionRequestMessage::User(user_message) => Some(user_message),
+                _ => None,
+            })
+    }
+
+    /// Return the mutable reference to the latest user message from the chat history.
+    pub fn latest_user_message_mut(&mut self) -> Option<&mut ChatCompletionUserMessage> {
+        self.messages
+            .iter_mut()
+            .rev()
+            .find_map(|message| match message {
+                ChatCompletionRequestMessage::User(user_message) => Some(user_message),
+                _ => None,
+            })
+    }
+
+    /// Return the type of the latest message from the chat history.
+    pub fn latest_message_type(&self) -> Option<String> {
+        self.messages.last().map(|message| match message {
+            ChatCompletionRequestMessage::User(_) => "user".to_string(),
+            ChatCompletionRequestMessage::Assistant(_) => "assistant".to_string(),
+            ChatCompletionRequestMessage::System(_) => "system".to_string(),
+            ChatCompletionRequestMessage::Tool(_) => "tool".to_string(),
+        })
+    }
+}
 
 #[test]
 fn test_chat_serialize_chat_request() {
@@ -1465,6 +1498,14 @@ pub struct Tool {
     pub ty: String,
     /// Function the model may generate JSON inputs for.
     pub function: ToolFunction,
+}
+impl Tool {
+    pub fn new(function: ToolFunction) -> Self {
+        Self {
+            ty: "function".to_string(),
+            function,
+        }
+    }
 }
 
 #[test]
