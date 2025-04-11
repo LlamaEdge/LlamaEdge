@@ -301,7 +301,11 @@ fn chat_stream_by_graph(
 
             let parsed_result = parse_tool_calls(&message, graph.metadata.prompt_template)?;
 
-            let content = parsed_result.content.clone();
+            let content = if parsed_result.tool_calls.is_empty() {
+                Some(parsed_result.raw.clone())
+            } else {
+                parsed_result.content.clone()
+            };
 
             let tool_calls: Vec<ToolCallForChunk> = parsed_result
                 .tool_calls
@@ -348,7 +352,7 @@ fn chat_stream_by_graph(
                 format!("data: {}\n\n", chunk_str)
             };
 
-            // uage chunk
+            // token uage chunk
             let usage_chunk = {
                 let chat_completion_chunk = ChatCompletionChunk {
                     id: id.clone(),
@@ -847,13 +851,11 @@ fn compute_by_graph(
 
                     let parsed_result = parse_tool_calls(&message, graph.metadata.prompt_template)?;
 
-                    let finish_reason = if parsed_result.tool_calls.is_empty() {
-                        FinishReason::stop
+                    let (finish_reason, content) = if parsed_result.tool_calls.is_empty() {
+                        (FinishReason::stop, Some(parsed_result.raw.clone()))
                     } else {
-                        FinishReason::tool_calls
+                        (FinishReason::tool_calls, parsed_result.content.clone())
                     };
-
-                    let content = parsed_result.content.clone();
 
                     // create ChatCompletionResponse
                     Ok(ChatCompletionObject {
@@ -1857,62 +1859,76 @@ fn parse_tool_calls(
         }
         PromptTemplateType::Llama4Chat => {
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "raw input: {}", input);
+            info!(target: "stdout", "raw input: {:?}", input);
 
-            match regex::Regex::new(r#"<function=(\w+?)>\s*(\{.*?\})\s*</function>"#) {
-                Ok(re) => {
-                    let mut tool_calls: Vec<ToolCall> = vec![];
-                    if let Some(caps) = re.captures(input) {
-                        let func_name = caps[1].trim();
-                        let json_str = caps[2].trim();
+            let mut tool_calls: Vec<ToolCall> = vec![];
+            if let Ok(value) = serde_json::from_str::<serde_json::Value>(input) {
+                match value.as_object() {
+                    Some(object_map) => {
+                        #[cfg(feature = "logging")]
+                        debug!(target: "stdout", "object_map: {:?}", object_map);
 
-                        match serde_json::from_str::<serde_json::Value>(json_str) {
-                            Ok(json_value) => {
-                                let function = Function {
-                                    name: func_name.to_string(),
-                                    arguments: json_value.to_string(),
-                                };
+                        // parse function name
+                        if object_map.contains_key("name") {
+                            let name = object_map.get("name").unwrap().as_str().unwrap();
 
-                                tool_calls.push(ToolCall {
-                                    id: "call_abc123".to_string(),
-                                    ty: "function".to_string(),
-                                    function,
-                                });
-                            }
-                            Err(e) => {
-                                let err_msg = format!(
-                                    "Failed to deserialize generated tool calls. Reason: {}",
-                                    e
-                                );
+                            #[cfg(feature = "logging")]
+                            debug!(target: "stdout", "name: {:?}", name);
+
+                            let mut function = Function {
+                                name: name.to_string(),
+                                arguments: String::new(),
+                            };
+
+                            // parse function arguments
+                            if object_map.contains_key("parameters") {
+                                let args = object_map.get("parameters").unwrap();
+                                let arguments = args.to_string();
 
                                 #[cfg(feature = "logging")]
-                                error!(target: "stdout", "{}", &err_msg);
+                                debug!(target: "stdout", "arguments: {:?}", &arguments);
 
-                                return Err(LlamaCoreError::Operation(err_msg));
+                                function.arguments = arguments;
                             }
+
+                            tool_calls.push(ToolCall {
+                                id: "call_abc123".to_string(),
+                                ty: "function".to_string(),
+                                function,
+                            });
+                        } else {
+                            let err_msg = format!(
+                                "Failed to get the name of the function. raw input: {:?}",
+                                input
+                            );
+
+                            #[cfg(feature = "logging")]
+                            error!(target: "stdout", "{}", &err_msg);
+
+                            return Err(LlamaCoreError::Operation(err_msg));
                         }
                     }
+                    None => {
+                        let err_msg = format!("Failed to parse the JSON string. JSON: {}", input);
 
-                    let parsed = ParseResult {
-                        raw: input.to_owned(),
-                        content: None,
-                        tool_calls,
-                    };
+                        #[cfg(feature = "logging")]
+                        error!(target: "stdout", "{}", &err_msg);
 
-                    #[cfg(feature = "logging")]
-                    info!(target: "stdout", "parsed result: {:?}", parsed);
-
-                    Ok(parsed)
-                }
-                Err(e) => {
-                    let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
-
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", &err_msg);
-
-                    Err(LlamaCoreError::Operation(err_msg))
+                        return Err(LlamaCoreError::Operation(err_msg));
+                    }
                 }
             }
+
+            let parsed = ParseResult {
+                raw: input.to_owned(),
+                content: None,
+                tool_calls,
+            };
+
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "parsed result: {:?}", parsed);
+
+            Ok(parsed)
         }
         _ => {
             let err_msg = format!(
