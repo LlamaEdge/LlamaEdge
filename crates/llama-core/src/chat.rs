@@ -2990,33 +2990,6 @@ impl Drop for ChatStream {
                                                 &err_msg
                                             );
                                         }
-
-                                        // reset metadata
-                                        let metadata = graph.metadata.clone();
-                                        match serde_json::to_string(&metadata) {
-                                            Ok(config) => {
-                                                if let Err(e) =
-                                                    set_tensor_data_u8(graph, 1, config.as_bytes())
-                                                {
-                                                    let err_msg = format!("Fail to reset metadata to the graph. Reason: {}", e);
-
-                                                    #[cfg(feature = "logging")]
-                                                    error!(target: "stdout", "{}", &err_msg);
-
-                                                    #[cfg(not(feature = "logging"))]
-                                                    println!("[ERROR][llama_core] {}", &err_msg);
-                                                }
-                                            }
-                                            Err(e) => {
-                                                let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
-
-                                                #[cfg(feature = "logging")]
-                                                error!(target: "stdout", "{}", &err_msg);
-
-                                                #[cfg(not(feature = "logging"))]
-                                                println!("[ERROR][llama_core] {}", &err_msg);
-                                            }
-                                        };
                                     }
                                     false => match chat_graphs.iter_mut().next() {
                                         Some((_, graph)) => {
@@ -3036,38 +3009,6 @@ impl Drop for ChatStream {
                                                     &err_msg
                                                 );
                                             }
-
-                                            // reset metadata
-                                            let metadata = graph.metadata.clone();
-                                            match serde_json::to_string(&metadata) {
-                                                Ok(config) => {
-                                                    if let Err(e) = set_tensor_data_u8(
-                                                        graph,
-                                                        1,
-                                                        config.as_bytes(),
-                                                    ) {
-                                                        let err_msg = format!("Fail to reset metadata to the graph. Reason: {}", e);
-
-                                                        #[cfg(feature = "logging")]
-                                                        error!(target: "stdout", "{}", &err_msg);
-
-                                                        #[cfg(not(feature = "logging"))]
-                                                        println!(
-                                                            "[ERROR][llama_core] {}",
-                                                            &err_msg
-                                                        );
-                                                    }
-                                                }
-                                                Err(e) => {
-                                                    let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
-
-                                                    #[cfg(feature = "logging")]
-                                                    error!(target: "stdout", "{}", &err_msg);
-
-                                                    #[cfg(not(feature = "logging"))]
-                                                    println!("[ERROR][llama_core] {}", &err_msg);
-                                                }
-                                            };
                                         }
                                         None => {
                                             let err_msg =
@@ -3135,33 +3076,6 @@ impl Drop for ChatStream {
                                                 &err_msg
                                             );
                                         }
-
-                                        // reset metadata
-                                        let metadata = graph.metadata.clone();
-                                        match serde_json::to_string(&metadata) {
-                                            Ok(config) => {
-                                                if let Err(e) =
-                                                    set_tensor_data_u8(graph, 1, config.as_bytes())
-                                                {
-                                                    let err_msg = format!("Fail to reset metadata to the graph. Reason: {}", e);
-
-                                                    #[cfg(feature = "logging")]
-                                                    error!(target: "stdout", "{}", &err_msg);
-
-                                                    #[cfg(not(feature = "logging"))]
-                                                    println!("[ERROR][llama_core] {}", &err_msg);
-                                                }
-                                            }
-                                            Err(e) => {
-                                                let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
-
-                                                #[cfg(feature = "logging")]
-                                                error!(target: "stdout", "{}", &err_msg);
-
-                                                #[cfg(not(feature = "logging"))]
-                                                println!("[ERROR][llama_core] {}", &err_msg);
-                                            }
-                                        };
                                     }
                                     None => {
                                         let err_msg =
@@ -3210,6 +3124,17 @@ impl Drop for ChatStream {
 
             #[cfg(feature = "logging")]
             info!(target: "stdout", "Cleanup done!");
+        }
+
+        // reset the model metadata
+        if let Err(e) = reset_model_metadata(self.model.as_ref()) {
+            let err_msg = format!("Fail to reset model metadata. Reason: {}", e);
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            #[cfg(not(feature = "logging"))]
+            println!("[ERROR][llama_core] {}", &err_msg);
         }
 
         // When dropping a ChatStream that held the lock, check if there are waiting streams
