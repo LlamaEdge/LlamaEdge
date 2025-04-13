@@ -60,8 +60,6 @@ pub async fn chat(
         debug!(target: "stdout", "stream mode: {:?}", chat_request.stream);
     }
 
-    let model_name = chat_request.model.clone();
-
     let result = match chat_request.stream {
         Some(true) => match chat_stream(chat_request).await {
             Ok(stream) => Ok(Left(stream)),
@@ -75,9 +73,6 @@ pub async fn chat(
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Reset the model metadata");
-
-    // reset the model metadata
-    reset_model_metadata(model_name.as_ref())?;
 
     result
 }
@@ -711,6 +706,9 @@ async fn chat_once(
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "End of the chat completion");
+
+    // reset the model metadata
+    reset_model_metadata(model_name.as_ref())?;
 
     res
 }
@@ -2970,29 +2968,13 @@ impl Drop for ChatStream {
             match &self.model {
                 Some(model_name) => {
                     match CHAT_GRAPHS.get() {
-                        Some(chat_graphs) => match chat_graphs.lock() {
-                            Ok(mut chat_graphs) => match chat_graphs.contains_key(model_name) {
-                                true => {
-                                    let graph = chat_graphs.get_mut(model_name).unwrap();
+                        Some(chat_graphs) => {
+                            match chat_graphs.lock() {
+                                Ok(mut chat_graphs) => match chat_graphs.contains_key(model_name) {
+                                    true => {
+                                        let graph = chat_graphs.get_mut(model_name).unwrap();
 
-                                    if let Err(e) = graph.finish_single() {
-                                        let err_msg = format!(
-                                            "Failed to clean up the context. Reason: {}",
-                                            e
-                                        );
-
-                                        #[cfg(feature = "logging")]
-                                        error!(target: "stdout", "{}", &err_msg);
-
-                                        #[cfg(not(feature = "logging"))]
-                                        println!(
-                                            "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                                            &err_msg
-                                        );
-                                    }
-                                }
-                                false => match chat_graphs.iter_mut().next() {
-                                    Some((_, graph)) => {
+                                        // clean up the context
                                         if let Err(e) = graph.finish_single() {
                                             let err_msg = format!(
                                                 "Failed to clean up the context. Reason: {}",
@@ -3008,36 +2990,115 @@ impl Drop for ChatStream {
                                                 &err_msg
                                             );
                                         }
-                                    }
-                                    None => {
-                                        let err_msg =
-                                            "There is no model available in the chat graphs.";
 
-                                        #[cfg(feature = "logging")]
-                                        error!(target: "stdout", "{}", &err_msg);
+                                        // reset metadata
+                                        let metadata = graph.metadata.clone();
+                                        match serde_json::to_string(&metadata) {
+                                            Ok(config) => {
+                                                if let Err(e) =
+                                                    set_tensor_data_u8(graph, 1, config.as_bytes())
+                                                {
+                                                    let err_msg = format!("Fail to reset metadata to the graph. Reason: {}", e);
 
-                                        #[cfg(not(feature = "logging"))]
-                                        println!(
-                                            "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                                            &err_msg
-                                        );
+                                                    #[cfg(feature = "logging")]
+                                                    error!(target: "stdout", "{}", &err_msg);
+
+                                                    #[cfg(not(feature = "logging"))]
+                                                    println!("[ERROR][llama_core] {}", &err_msg);
+                                                }
+                                            }
+                                            Err(e) => {
+                                                let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
+
+                                                #[cfg(feature = "logging")]
+                                                error!(target: "stdout", "{}", &err_msg);
+
+                                                #[cfg(not(feature = "logging"))]
+                                                println!("[ERROR][llama_core] {}", &err_msg);
+                                            }
+                                        };
                                     }
+                                    false => match chat_graphs.iter_mut().next() {
+                                        Some((_, graph)) => {
+                                            // clean up the context
+                                            if let Err(e) = graph.finish_single() {
+                                                let err_msg = format!(
+                                                    "Failed to clean up the context. Reason: {}",
+                                                    e
+                                                );
+
+                                                #[cfg(feature = "logging")]
+                                                error!(target: "stdout", "{}", &err_msg);
+
+                                                #[cfg(not(feature = "logging"))]
+                                                println!(
+                                                    "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
+                                                    &err_msg
+                                                );
+                                            }
+
+                                            // reset metadata
+                                            let metadata = graph.metadata.clone();
+                                            match serde_json::to_string(&metadata) {
+                                                Ok(config) => {
+                                                    if let Err(e) = set_tensor_data_u8(
+                                                        graph,
+                                                        1,
+                                                        config.as_bytes(),
+                                                    ) {
+                                                        let err_msg = format!("Fail to reset metadata to the graph. Reason: {}", e);
+
+                                                        #[cfg(feature = "logging")]
+                                                        error!(target: "stdout", "{}", &err_msg);
+
+                                                        #[cfg(not(feature = "logging"))]
+                                                        println!(
+                                                            "[ERROR][llama_core] {}",
+                                                            &err_msg
+                                                        );
+                                                    }
+                                                }
+                                                Err(e) => {
+                                                    let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
+
+                                                    #[cfg(feature = "logging")]
+                                                    error!(target: "stdout", "{}", &err_msg);
+
+                                                    #[cfg(not(feature = "logging"))]
+                                                    println!("[ERROR][llama_core] {}", &err_msg);
+                                                }
+                                            };
+                                        }
+                                        None => {
+                                            let err_msg =
+                                                "There is no model available in the chat graphs.";
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "stdout", "{}", &err_msg);
+
+                                            #[cfg(not(feature = "logging"))]
+                                            println!(
+                                                "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
+                                                &err_msg
+                                            );
+                                        }
+                                    },
                                 },
-                            },
-                            Err(e) => {
-                                let err_msg =
-                                    format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+                                Err(e) => {
+                                    let err_msg =
+                                        format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
-                                #[cfg(feature = "logging")]
-                                error!(target: "stdout", "{}", &err_msg);
+                                    #[cfg(feature = "logging")]
+                                    error!(target: "stdout", "{}", &err_msg);
 
-                                #[cfg(not(feature = "logging"))]
-                                println!(
-                                "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                                &err_msg
-                            );
+                                    #[cfg(not(feature = "logging"))]
+                                    println!(
+                                        "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
+                                        &err_msg
+                                    );
+                                }
                             }
-                        },
+                        }
                         None => {
                             let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
@@ -3054,52 +3115,83 @@ impl Drop for ChatStream {
                 }
                 None => {
                     match CHAT_GRAPHS.get() {
-                        Some(chat_graphs) => match chat_graphs.lock() {
-                            Ok(mut chat_graphs) => match chat_graphs.iter_mut().next() {
-                                Some((_, graph)) => {
-                                    if let Err(e) = graph.finish_single() {
-                                        let err_msg = format!(
-                                            "Failed to clean up the context. Reason: {}",
-                                            e
-                                        );
+                        Some(chat_graphs) => {
+                            match chat_graphs.lock() {
+                                Ok(mut chat_graphs) => match chat_graphs.iter_mut().next() {
+                                    Some((_, graph)) => {
+                                        // clean up the context
+                                        if let Err(e) = graph.finish_single() {
+                                            let err_msg = format!(
+                                                "Failed to clean up the context. Reason: {}",
+                                                e
+                                            );
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "stdout", "{}", &err_msg);
+
+                                            #[cfg(not(feature = "logging"))]
+                                            println!(
+                                                "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
+                                                &err_msg
+                                            );
+                                        }
+
+                                        // reset metadata
+                                        let metadata = graph.metadata.clone();
+                                        match serde_json::to_string(&metadata) {
+                                            Ok(config) => {
+                                                if let Err(e) =
+                                                    set_tensor_data_u8(graph, 1, config.as_bytes())
+                                                {
+                                                    let err_msg = format!("Fail to reset metadata to the graph. Reason: {}", e);
+
+                                                    #[cfg(feature = "logging")]
+                                                    error!(target: "stdout", "{}", &err_msg);
+
+                                                    #[cfg(not(feature = "logging"))]
+                                                    println!("[ERROR][llama_core] {}", &err_msg);
+                                                }
+                                            }
+                                            Err(e) => {
+                                                let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
+
+                                                #[cfg(feature = "logging")]
+                                                error!(target: "stdout", "{}", &err_msg);
+
+                                                #[cfg(not(feature = "logging"))]
+                                                println!("[ERROR][llama_core] {}", &err_msg);
+                                            }
+                                        };
+                                    }
+                                    None => {
+                                        let err_msg =
+                                            "There is no model available in the chat graphs.";
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "stdout", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", err_msg);
 
                                         #[cfg(not(feature = "logging"))]
                                         println!(
-                                        "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                                        &err_msg
-                                    );
+                                            "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
+                                            err_msg
+                                        );
                                     }
-                                }
-                                None => {
-                                    let err_msg = "There is no model available in the chat graphs.";
+                                },
+                                Err(e) => {
+                                    let err_msg =
+                                        format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
                                     #[cfg(feature = "logging")]
-                                    error!(target: "stdout", "{}", err_msg);
+                                    error!(target: "stdout", "{}", &err_msg);
 
                                     #[cfg(not(feature = "logging"))]
                                     println!(
-                                    "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                                    err_msg
-                                );
+                                        "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
+                                        &err_msg
+                                    );
                                 }
-                            },
-                            Err(e) => {
-                                let err_msg =
-                                    format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
-
-                                #[cfg(feature = "logging")]
-                                error!(target: "stdout", "{}", &err_msg);
-
-                                #[cfg(not(feature = "logging"))]
-                                println!(
-                                "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                                &err_msg
-                            );
                             }
-                        },
+                        }
                         None => {
                             let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
