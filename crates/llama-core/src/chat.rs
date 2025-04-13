@@ -3123,7 +3123,7 @@ impl Drop for ChatStream {
             }
 
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "Cleanup done!");
+            info!(target: "stdout", "Model context cleanup done!");
         }
 
         // reset the model metadata
@@ -3136,14 +3136,16 @@ impl Drop for ChatStream {
             #[cfg(not(feature = "logging"))]
             println!("[ERROR][llama_core] {}", &err_msg);
         }
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Model metadata reset done!");
 
         // When dropping a ChatStream that held the lock, check if there are waiting streams
         if self.has_lock {
-            #[cfg(feature = "logging")]
-            info!(target: "stdout", "Releasing lock from ChatStream {}", &self.id);
-
             // Reset the atomic flag
             CHAT_STREAM_ACTIVE.store(false, Ordering::SeqCst);
+
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "Lock from ChatStream {} released", &self.id);
 
             // Wake up waiting streams
             if let Ok(mut queue) = get_chat_stream_waker_queue().lock() {
