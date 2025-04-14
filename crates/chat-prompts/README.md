@@ -371,18 +371,144 @@ The available prompt templates are listed below:
 - `llama-4-chat`
   - Prompt string
 
-    ```text
-    <|begin_of_text|><|header_start|>system<|header_end|>
+    - Chat
 
-    {system_prompt}<|eot|><|header_start|>user<|header_end|>
+      ```text
+      <|begin_of_text|><|header_start|>system<|header_end|>
 
-    {user_message_1}<|eot|><|header_start|>assistant<|header_end|>
+      {system_message}<|eot|>
+      <|header_start|>user<|header_end|>
 
-    {assistant_message_1}<|eot|><|header_start|>user<|header_end|>
+      {user_message_1}<|eot|>
+      <|header_start|>assistant<|header_end|>
 
-    {user_message_2}<|eot|>
-    <|header_start|>assistant<|header_end|>
-    ```
+      {assistant_message_1}<|eot|>
+      <|header_start|>user<|header_end|>
+
+      {user_message_2}<|eot|><|header_start|>assistant<|header_end|>
+      ```
+
+    - Tool use
+
+      - Prompt with user question and tool info
+
+        <details> <summary> Expand to see the example </summary>
+
+        ```text
+        <|begin_of_text|><|header_start|>system<|header_end|>
+
+        You are a helpful assistant.<|eot|>
+        <|header_start|>user<|header_end|>
+
+        Given the following functions, please respond with a JSON for a function call with its proper arguments that best answers the given prompt.
+
+        Respond in the format {"name": function name, "parameters": dictionary of argument name and its value}.
+        Do not use variables.
+
+        [
+          {
+            "type": "function",
+            "function": {
+              "name": "get_current_weather",
+              "description": "Get the current weather in a given location",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "location": {
+                    "type": "string",
+                    "description": "The city and state, e.g. San Francisco, CA"
+                  },
+                  "unit": {
+                    "type": "string",
+                    "description": "The temperature unit to use. Infer this from the users location.",
+                    "enum": [
+                      "celsius",
+                      "fahrenheit"
+                    ]
+                  }
+                },
+                "required": [
+                  "location",
+                  "unit"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "predict_weather",
+              "description": "Predict the weather in 24 hours",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "location": {
+                    "type": "string",
+                    "description": "The city and state, e.g. San Francisco, CA"
+                  },
+                  "unit": {
+                    "type": "string",
+                    "description": "The temperature unit to use. Infer this from the users location.",
+                    "enum": [
+                      "celsius",
+                      "fahrenheit"
+                    ]
+                  }
+                },
+                "required": [
+                  "location",
+                  "unit"
+                ]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "sum",
+              "description": "Calculate the sum of two numbers",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "a": {
+                    "type": "integer",
+                    "description": "the left hand side number"
+                  },
+                  "b": {
+                    "type": "integer",
+                    "description": "the right hand side number"
+                  }
+                },
+                "required": [
+                  "a",
+                  "b"
+                ]
+              }
+            }
+          }
+        ]
+
+        Question: How is the weather of Beijing, China in celsius?<|eot|><|header_start|>assistant<|header_end|>
+        ```
+
+        </details>
+
+      - Prompt with tool results
+
+        ```text
+        <|begin_of_text|><|header_start|>system<|header_end|>
+
+        You are a helpful assistant.<|eot|>
+        <|header_start|>user<|header_end|>
+
+        How is the weather of Beijing, China in celsius?<|eot|>
+        <|header_start|>assistant<|header_end|>
+
+        {"name":"get_current_weather","arguments":"{\"location\":\"Beijing, China\",\"unit\":\"celsius\"}"}<|eot|>
+        <|header_start|>ipython<|header_end|>
+
+        {"temperature":"30","unit":"celsius"}<|eot|><|header_start|>assistant<|header_end|>
+        ```
 
   - Example: [second-state/Llama-4-Scout-17B-16E-Instruct-GGUF](https://huggingface.co/second-state/Llama-4-Scout-17B-16E-Instruct-GGUF)
 
