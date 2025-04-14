@@ -61,7 +61,7 @@ impl BuildChatPrompt for WizardCoderPrompt {
 
         let message = messages.last().unwrap();
         let mut prompt = match message {
-            ChatCompletionRequestMessage::User(ref message) => {
+            ChatCompletionRequestMessage::User(message) => {
                 self.append_user_message(system_prompt, message)
             }
             _ => return Err(crate::error::PromptError::NoUserMessage),
