@@ -21,7 +21,7 @@ log              = { version = "0.4.21", features = ["std", "kv", "kv_serde"] }
 wasi-logger      = { version = "0.1.2", features = ["kv"] }
 either           = "1.12.0"
 base64           = "=0.22.1"
-llama-core       = { path = "crates/llama-core", features = ["logging"], version = "^0.29" }
+llama-core       = { path = "crates/llama-core", features = ["logging"], version = "^0.30" }
 tokio            = { version = "^1.36", features = ["sync", "macros", "io-util", "fs", "net", "rt", "time"] }
 anyhow           = "1"
 once_cell        = "1.18"

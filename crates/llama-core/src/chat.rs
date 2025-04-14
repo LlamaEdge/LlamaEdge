@@ -32,19 +32,25 @@ use std::{
     fs::{self, File},
     path::Path,
     pin::Pin,
-    sync::Mutex,
-    task::{Context, Poll},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Mutex, OnceLock,
+    },
+    task::{Context, Poll, Waker},
     time::SystemTime,
 };
+
+// Define a global waker queue for storing waiting ChatStreams
+static CHAT_STREAM_WAKER_QUEUE: OnceLock<Mutex<VecDeque<Waker>>> = OnceLock::new();
+
+// Define a global atomic boolean indicating whether there is an active ChatStream
+static CHAT_STREAM_ACTIVE: AtomicBool = AtomicBool::new(false);
 
 /// Processes a chat-completion request and returns either a stream of ChatCompletionChunk instances or a ChatCompletionObject instance.
 pub async fn chat(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<
-    Either<
-        impl Unpin + futures::TryStream<Ok = String, Error = LlamaCoreError>,
-        ChatCompletionObject,
-    >,
+    Either<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, ChatCompletionObject>,
     LlamaCoreError,
 > {
     #[cfg(feature = "logging")]
@@ -53,8 +59,6 @@ pub async fn chat(
         debug!(target: "stdout", "tools: {:?}", chat_request.tools.as_ref());
         debug!(target: "stdout", "stream mode: {:?}", chat_request.stream);
     }
-
-    let model_name = chat_request.model.clone();
 
     let result = match chat_request.stream {
         Some(true) => match chat_stream(chat_request).await {
@@ -69,9 +73,6 @@ pub async fn chat(
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Reset the model metadata");
-
-    // reset the model metadata
-    reset_model_metadata(model_name.as_ref())?;
 
     result
 }
@@ -120,7 +121,7 @@ async fn chat_stream(
     info!(target: "stdout", "Check model metadata");
 
     // update metadata
-    let mut metadata = check_model_metadata(chat_request).await?;
+    let mut metadata = check_model_metadata(chat_request)?;
 
     // parse the `include_usage` option
     let include_usage = match chat_request.stream_options {
@@ -148,7 +149,7 @@ async fn chat_stream(
     info!(target: "stdout", "Update the n_predict");
 
     // update metadata n_predict
-    update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
+    update_n_predict(chat_request, &mut metadata, avaible_completion_tokens)?;
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Feed the prompt to the model");
@@ -288,8 +289,9 @@ fn chat_stream_by_graph(
                 && graph.metadata.prompt_template != PromptTemplateType::FunctionaryV32
                 && graph.metadata.prompt_template != PromptTemplateType::FunctionaryV31
                 && graph.metadata.prompt_template != PromptTemplateType::MistralSmallTool
+                && graph.metadata.prompt_template != PromptTemplateType::Llama4Chat
             {
-                let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', and 'mistral-small-tool' prompt templates.", graph.metadata.prompt_template);
+                let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', 'mistral-small-tool', and 'llama-4-chat' prompt templates.", graph.metadata.prompt_template);
 
                 #[cfg(feature = "logging")]
                 error!(target: "stdout", "{}", &err_msg);
@@ -299,7 +301,11 @@ fn chat_stream_by_graph(
 
             let parsed_result = parse_tool_calls(&message, graph.metadata.prompt_template)?;
 
-            let content = parsed_result.content.clone();
+            let content = if parsed_result.tool_calls.is_empty() {
+                Some(parsed_result.raw.clone())
+            } else {
+                parsed_result.content.clone()
+            };
 
             let tool_calls: Vec<ToolCallForChunk> = parsed_result
                 .tool_calls
@@ -346,7 +352,7 @@ fn chat_stream_by_graph(
                 format!("data: {}\n\n", chunk_str)
             };
 
-            // uage chunk
+            // token uage chunk
             let usage_chunk = {
                 let chat_completion_chunk = ChatCompletionChunk {
                     id: id.clone(),
@@ -669,7 +675,7 @@ async fn chat_once(
     info!(target: "stdout", "Check model metadata");
 
     // update metadata
-    let mut metadata = check_model_metadata(chat_request).await?;
+    let mut metadata = check_model_metadata(chat_request)?;
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Build the chat prompt");
@@ -689,7 +695,7 @@ async fn chat_once(
     info!(target: "stdout", "Update n_predict");
 
     // update metadata n_predict
-    update_n_predict(chat_request, &mut metadata, avaible_completion_tokens).await?;
+    update_n_predict(chat_request, &mut metadata, avaible_completion_tokens)?;
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Feed the prompt to the model");
@@ -705,6 +711,9 @@ async fn chat_once(
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "End of the chat completion");
+
+    // reset the model metadata
+    reset_model_metadata(model_name.as_ref())?;
 
     res
 }
@@ -830,8 +839,9 @@ fn compute_by_graph(
                         && graph.metadata.prompt_template != PromptTemplateType::FunctionaryV32
                         && graph.metadata.prompt_template != PromptTemplateType::FunctionaryV31
                         && graph.metadata.prompt_template != PromptTemplateType::MistralSmallTool
+                        && graph.metadata.prompt_template != PromptTemplateType::Llama4Chat
                     {
-                        let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', and 'mistral-small-tool' prompt templates.", graph.metadata.prompt_template);
+                        let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', 'mistral-small-tool', and 'llama-4-chat' prompt templates.", graph.metadata.prompt_template);
 
                         #[cfg(feature = "logging")]
                         error!(target: "stdout", "{}", &err_msg);
@@ -841,13 +851,11 @@ fn compute_by_graph(
 
                     let parsed_result = parse_tool_calls(&message, graph.metadata.prompt_template)?;
 
-                    let finish_reason = if parsed_result.tool_calls.is_empty() {
-                        FinishReason::stop
+                    let (finish_reason, content) = if parsed_result.tool_calls.is_empty() {
+                        (FinishReason::stop, Some(parsed_result.raw.clone()))
                     } else {
-                        FinishReason::tool_calls
+                        (FinishReason::tool_calls, parsed_result.content.clone())
                     };
-
-                    let content = parsed_result.content.clone();
 
                     // create ChatCompletionResponse
                     Ok(ChatCompletionObject {
@@ -1002,6 +1010,12 @@ fn compute_by_graph(
             #[cfg(feature = "logging")]
             info!(target: "stdout", "prompt tokens: {}, completion tokens: {}", token_info.prompt_tokens, token_info.completion_tokens);
 
+            let usage = Usage {
+                prompt_tokens: token_info.prompt_tokens,
+                completion_tokens: token_info.completion_tokens,
+                total_tokens: token_info.prompt_tokens + token_info.completion_tokens,
+            };
+
             let created = SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|e| {
@@ -1030,11 +1044,7 @@ fn compute_by_graph(
                     finish_reason: FinishReason::length,
                     logprobs: None,
                 }],
-                usage: Usage {
-                    prompt_tokens: token_info.prompt_tokens,
-                    completion_tokens: token_info.completion_tokens,
-                    total_tokens: token_info.completion_tokens + token_info.completion_tokens,
-                },
+                usage,
             })
         }
         Err(e) => {
@@ -1824,51 +1834,6 @@ fn parse_tool_calls(
                                 tool_calls.push(tool_call);
                             }
                         }
-
-                        // match value.get("function") {
-                        //     Some(func) => {
-                        //         let name = match func.get("name") {
-                        //             Some(name) => name.as_str().unwrap().to_string(),
-                        //             None => String::new(),
-                        //         };
-
-                        //         let arguments = match func.get("arguments") {
-                        //             Some(arguments) => arguments.to_string(),
-                        //             None => String::new(),
-                        //         };
-
-                        //         let function = Function { name, arguments };
-
-                        //         let tool_call = ToolCall {
-                        //             id: "call_abc123".to_string(),
-                        //             ty: "function".to_string(),
-                        //             function,
-                        //         };
-
-                        //         tool_calls.push(tool_call);
-                        //     }
-                        //     None => {
-                        //         let name = match value.get("name") {
-                        //             Some(name) => name.as_str().unwrap().to_string(),
-                        //             None => String::new(),
-                        //         };
-
-                        //         let arguments = match value.get("arguments") {
-                        //             Some(arguments) => arguments.to_string(),
-                        //             None => String::new(),
-                        //         };
-
-                        //         let function = Function { name, arguments };
-
-                        //         let tool_call = ToolCall {
-                        //             id: "call_abc123".to_string(),
-                        //             ty: "function".to_string(),
-                        //             function,
-                        //         };
-
-                        //         tool_calls.push(tool_call);
-                        //     }
-                        // }
                     }
 
                     let parsed = ParseResult {
@@ -1892,6 +1857,79 @@ fn parse_tool_calls(
                 }
             }
         }
+        PromptTemplateType::Llama4Chat => {
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "raw input: {:?}", input);
+
+            let mut tool_calls: Vec<ToolCall> = vec![];
+            if let Ok(value) = serde_json::from_str::<serde_json::Value>(input) {
+                match value.as_object() {
+                    Some(object_map) => {
+                        #[cfg(feature = "logging")]
+                        debug!(target: "stdout", "object_map: {:?}", object_map);
+
+                        // parse function name
+                        if object_map.contains_key("name") {
+                            let name = object_map.get("name").unwrap().as_str().unwrap();
+
+                            #[cfg(feature = "logging")]
+                            debug!(target: "stdout", "name: {:?}", name);
+
+                            let mut function = Function {
+                                name: name.to_string(),
+                                arguments: String::new(),
+                            };
+
+                            // parse function arguments
+                            if object_map.contains_key("parameters") {
+                                let args = object_map.get("parameters").unwrap();
+                                let arguments = args.to_string();
+
+                                #[cfg(feature = "logging")]
+                                debug!(target: "stdout", "arguments: {:?}", &arguments);
+
+                                function.arguments = arguments;
+                            }
+
+                            tool_calls.push(ToolCall {
+                                id: "call_abc123".to_string(),
+                                ty: "function".to_string(),
+                                function,
+                            });
+                        } else {
+                            let err_msg = format!(
+                                "Failed to get the name of the function. raw input: {:?}",
+                                input
+                            );
+
+                            #[cfg(feature = "logging")]
+                            error!(target: "stdout", "{}", &err_msg);
+
+                            return Err(LlamaCoreError::Operation(err_msg));
+                        }
+                    }
+                    None => {
+                        let err_msg = format!("Failed to parse the JSON string. JSON: {}", input);
+
+                        #[cfg(feature = "logging")]
+                        error!(target: "stdout", "{}", &err_msg);
+
+                        return Err(LlamaCoreError::Operation(err_msg));
+                    }
+                }
+            }
+
+            let parsed = ParseResult {
+                raw: input.to_owned(),
+                content: None,
+                tool_calls,
+            };
+
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "parsed result: {:?}", parsed);
+
+            Ok(parsed)
+        }
         _ => {
             let err_msg = format!(
                 "The tool use is only supported for prompt templates: {}, {}, {}, {}, {}, {}, {}, and {}.",
@@ -1913,7 +1951,7 @@ fn parse_tool_calls(
     }
 }
 
-async fn check_model_metadata(
+fn check_model_metadata(
     chat_request: &ChatCompletionRequest,
 ) -> Result<GgmlMetadata, LlamaCoreError> {
     let mut should_update = false;
@@ -1933,7 +1971,7 @@ async fn check_model_metadata(
                             info!(target: "stdout", "The image is provided in URL format.");
 
                             // download the image
-                            let img_path_str = download_image(&image.url).await?;
+                            let img_path_str = download_image(&image.url)?;
 
                             #[cfg(feature = "logging")]
                             info!(target: "stdout", "The image is saved to {}", img_path_str);
@@ -2030,7 +2068,7 @@ async fn check_model_metadata(
     Ok(metadata)
 }
 
-async fn update_n_predict(
+fn update_n_predict(
     chat_request: &ChatCompletionRequest,
     metadata: &mut GgmlMetadata,
     available_completion_tokens: u64,
@@ -2098,6 +2136,7 @@ async fn update_n_predict(
     Ok(())
 }
 
+/// Build post-processing for output based on template type
 fn post_process(
     output: impl AsRef<str>,
     template_ty: &PromptTemplateType,
@@ -2328,6 +2367,7 @@ fn post_process(
     } else {
         output.as_ref().trim().to_owned()
     };
+
     Ok(output)
 }
 
@@ -2568,7 +2608,7 @@ fn build_prompt(
 }
 
 /// Downloads an image from the given URL and returns the file name.
-async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> {
+fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> {
     let image_url = image_url.as_ref();
     let url = reqwest::Url::parse(image_url).map_err(|e| {
         let err_msg = format!("Fail to parse the image URL: {}. Reason: {}", image_url, e);
@@ -2579,57 +2619,12 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
         LlamaCoreError::Operation(err_msg)
     })?;
 
-    let response = reqwest::get(url).await.map_err(|e| {
-        let err_msg = format!(
-            "Fail to download the image from the URL: {}. Reason: {}",
-            image_url, e
-        );
-
-        #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", &err_msg);
-
-        LlamaCoreError::Operation(err_msg)
-    })?;
-
-    let fname = response
-        .url()
-        .path_segments()
-        .and_then(|mut segments| segments.next_back())
-        .and_then(|name| if name.is_empty() { None } else { Some(name) })
-        .ok_or(LlamaCoreError::Operation(format!(
-            "Fail to get the file name: {}",
-            image_url
-        )))?
-        .to_string();
-
-    // create a unique file id
-    let id = format!("file_{}", uuid::Uuid::new_v4());
-    // save the file
-    let path = Path::new("archives");
-    if !path.exists() {
-        fs::create_dir(path).unwrap();
-    }
-    let file_path = path.join(&id);
-    if !file_path.exists() {
-        fs::create_dir(&file_path).unwrap();
-    }
-    let img_path = file_path.join(&fname);
-    let mut dest: File = File::create(&img_path).map_err(|e| {
-        let err_msg = format!("Failed to create archive document {}. {}", &fname, e);
-
-        // log
-        #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", &err_msg);
-
-        LlamaCoreError::Operation(err_msg)
-    })?;
-
-    let mut content = response.bytes_stream();
-    while let Some(Ok(item)) = content.next().await {
-        std::io::copy(&mut item.as_ref(), &mut dest).map_err(|e| {
+    let curr_rt_handle = tokio::runtime::Handle::current();
+    let res = curr_rt_handle.block_on(async {
+        let response = reqwest::get(url).await.map_err(|e| {
             let err_msg = format!(
-                "Fail to write the image content to the file: {}. Reason: {}",
-                &fname, e
+                "Fail to download the image from the URL: {}. Reason: {}",
+                image_url, e
             );
 
             #[cfg(feature = "logging")]
@@ -2637,9 +2632,61 @@ async fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreE
 
             LlamaCoreError::Operation(err_msg)
         })?;
-    }
 
-    Ok(img_path.as_path().to_string_lossy().to_string())
+        let fname = response
+            .url()
+            .path_segments()
+            .and_then(|mut segments| segments.next_back())
+            .and_then(|name| if name.is_empty() { None } else { Some(name) })
+            .ok_or(LlamaCoreError::Operation(format!(
+                "Fail to get the file name: {}",
+                image_url
+            )))?
+            .to_string();
+
+        // create a unique file id
+        let id = format!("file_{}", uuid::Uuid::new_v4());
+        // save the file
+        let path = Path::new("archives");
+        if !path.exists() {
+            fs::create_dir(path).unwrap();
+        }
+        let file_path = path.join(&id);
+        if !file_path.exists() {
+            fs::create_dir(&file_path).unwrap();
+        }
+        let img_path = file_path.join(&fname);
+        let mut dest: File = File::create(&img_path).map_err(|e| {
+            let err_msg = format!("Failed to create archive document {}. {}", &fname, e);
+
+            // log
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            LlamaCoreError::Operation(err_msg)
+        })?;
+
+        let mut content = response.bytes_stream();
+        while let Some(Ok(item)) = content.next().await {
+            std::io::copy(&mut item.as_ref(), &mut dest).map_err(|e| {
+                let err_msg = format!(
+                    "Fail to write the image content to the file: {}. Reason: {}",
+                    &fname, e
+                );
+
+                #[cfg(feature = "logging")]
+                error!(target: "stdout", "{}", &err_msg);
+
+                LlamaCoreError::Operation(err_msg)
+            })?;
+        }
+
+        Ok(img_path.as_path().to_string_lossy().to_string())
+    });
+
+    res
+
+    // Ok(img_path.as_path().to_string_lossy().to_string())
 }
 
 fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<(), LlamaCoreError> {
@@ -2888,6 +2935,8 @@ struct ChatStream {
     prompt_too_long_state: PromptTooLongState,
     stream_state: StreamState,
     cache: Option<VecDeque<String>>,
+    is_waiting: bool,
+    has_lock: bool,
 }
 impl ChatStream {
     fn new(
@@ -2896,11 +2945,15 @@ impl ChatStream {
         include_usage: bool,
         cache: Option<Vec<String>>,
     ) -> Self {
-        let stream_state = if include_usage {
-            StreamState::Usage
-        } else {
-            StreamState::NoUsage
-        };
+        // Try to acquire lock
+        let has_lock = CHAT_STREAM_ACTIVE
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok();
+
+        #[cfg(feature = "logging")]
+        if !has_lock {
+            info!(target: "stdout", "Lock acquisition failed in ChatStream::new, creating with waiting status");
+        }
 
         ChatStream {
             id,
@@ -2908,43 +2961,138 @@ impl ChatStream {
             include_usage,
             context_full_state: ContextFullState::Message,
             prompt_too_long_state: PromptTooLongState::Message,
-            stream_state,
+            stream_state: if include_usage {
+                StreamState::Usage
+            } else {
+                StreamState::NoUsage
+            },
             cache: cache.map(VecDeque::from),
+            is_waiting: !has_lock,
+            has_lock,
         }
+    }
+
+    // Try to acquire lock, returns whether successful
+    fn try_acquire_lock(&mut self) -> bool {
+        if self.has_lock {
+            return true;
+        }
+
+        let acquired = CHAT_STREAM_ACTIVE
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok();
+
+        if acquired {
+            self.has_lock = true;
+            self.is_waiting = false;
+        }
+
+        acquired
     }
 }
 impl Drop for ChatStream {
     fn drop(&mut self) {
-        if self.cache.is_none() {
+        // Clean up is only needed if we have the lock or if stream was actually used
+        if self.has_lock || (self.cache.is_none() && !self.is_waiting) {
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "Clean up the context of the stream work environment.");
+            info!(target: "stdout", "Cleaning up context for ChatStream {}", &self.id);
 
             match &self.model {
                 Some(model_name) => {
                     match CHAT_GRAPHS.get() {
-                        Some(chat_graphs) => match chat_graphs.lock() {
-                            Ok(mut chat_graphs) => match chat_graphs.contains_key(model_name) {
-                                true => {
-                                    let graph = chat_graphs.get_mut(model_name).unwrap();
+                        Some(chat_graphs) => {
+                            match chat_graphs.lock() {
+                                Ok(mut chat_graphs) => match chat_graphs.contains_key(model_name) {
+                                    true => {
+                                        let graph = chat_graphs.get_mut(model_name).unwrap();
 
-                                    if let Err(e) = graph.finish_single() {
-                                        let err_msg = format!(
-                                            "Failed to clean up the context. Reason: {}",
-                                            e
-                                        );
+                                        // clean up the context
+                                        if let Err(e) = graph.finish_single() {
+                                            let err_msg = format!(
+                                                "Failed to clean up the context. Reason: {}",
+                                                e
+                                            );
 
-                                        #[cfg(feature = "logging")]
-                                        error!(target: "stdout", "{}", &err_msg);
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "stdout", "{}", &err_msg);
 
-                                        #[cfg(not(feature = "logging"))]
-                                        println!(
-                                            "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                                            &err_msg
-                                        );
+                                            #[cfg(not(feature = "logging"))]
+                                            println!(
+                                                "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
+                                                &err_msg
+                                            );
+                                        }
                                     }
+                                    false => match chat_graphs.iter_mut().next() {
+                                        Some((_, graph)) => {
+                                            // clean up the context
+                                            if let Err(e) = graph.finish_single() {
+                                                let err_msg = format!(
+                                                    "Failed to clean up the context. Reason: {}",
+                                                    e
+                                                );
+
+                                                #[cfg(feature = "logging")]
+                                                error!(target: "stdout", "{}", &err_msg);
+
+                                                #[cfg(not(feature = "logging"))]
+                                                println!(
+                                                    "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
+                                                    &err_msg
+                                                );
+                                            }
+                                        }
+                                        None => {
+                                            let err_msg =
+                                                "There is no model available in the chat graphs.";
+
+                                            #[cfg(feature = "logging")]
+                                            error!(target: "stdout", "{}", &err_msg);
+
+                                            #[cfg(not(feature = "logging"))]
+                                            println!(
+                                                "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
+                                                &err_msg
+                                            );
+                                        }
+                                    },
+                                },
+                                Err(e) => {
+                                    let err_msg =
+                                        format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+
+                                    #[cfg(feature = "logging")]
+                                    error!(target: "stdout", "{}", &err_msg);
+
+                                    #[cfg(not(feature = "logging"))]
+                                    println!(
+                                        "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
+                                        &err_msg
+                                    );
                                 }
-                                false => match chat_graphs.iter_mut().next() {
+                            }
+                        }
+                        None => {
+                            let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
+
+                            #[cfg(feature = "logging")]
+                            error!(target: "stdout", "{}", &err_msg);
+
+                            #[cfg(not(feature = "logging"))]
+                            println!(
+                                "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
+                                &err_msg
+                            );
+                        }
+                    };
+                }
+                None => {
+                    match CHAT_GRAPHS.get() {
+                        Some(chat_graphs) => {
+                            match chat_graphs.lock() {
+                                Ok(mut chat_graphs) => match chat_graphs.iter_mut().next() {
                                     Some((_, graph)) => {
+                                        // clean up the context
                                         if let Err(e) = graph.finish_single() {
                                             let err_msg = format!(
                                                 "Failed to clean up the context. Reason: {}",
@@ -2966,92 +3114,30 @@ impl Drop for ChatStream {
                                             "There is no model available in the chat graphs.";
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "stdout", "{}", &err_msg);
+                                        error!(target: "stdout", "{}", err_msg);
 
                                         #[cfg(not(feature = "logging"))]
                                         println!(
                                             "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                                            &err_msg
+                                            err_msg
                                         );
                                     }
                                 },
-                            },
-                            Err(e) => {
-                                let err_msg =
-                                    format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
-
-                                #[cfg(feature = "logging")]
-                                error!(target: "stdout", "{}", &err_msg);
-
-                                #[cfg(not(feature = "logging"))]
-                                println!(
-                                "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                                &err_msg
-                            );
-                            }
-                        },
-                        None => {
-                            let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
-
-                            #[cfg(feature = "logging")]
-                            error!(target: "stdout", "{}", &err_msg);
-
-                            #[cfg(not(feature = "logging"))]
-                            println!(
-                                "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                                &err_msg
-                            );
-                        }
-                    };
-                }
-                None => {
-                    match CHAT_GRAPHS.get() {
-                        Some(chat_graphs) => match chat_graphs.lock() {
-                            Ok(mut chat_graphs) => match chat_graphs.iter_mut().next() {
-                                Some((_, graph)) => {
-                                    if let Err(e) = graph.finish_single() {
-                                        let err_msg = format!(
-                                            "Failed to clean up the context. Reason: {}",
-                                            e
-                                        );
-
-                                        #[cfg(feature = "logging")]
-                                        error!(target: "stdout", "{}", &err_msg);
-
-                                        #[cfg(not(feature = "logging"))]
-                                        println!(
-                                        "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                                        &err_msg
-                                    );
-                                    }
-                                }
-                                None => {
-                                    let err_msg = "There is no model available in the chat graphs.";
+                                Err(e) => {
+                                    let err_msg =
+                                        format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
                                     #[cfg(feature = "logging")]
-                                    error!(target: "stdout", "{}", err_msg);
+                                    error!(target: "stdout", "{}", &err_msg);
 
                                     #[cfg(not(feature = "logging"))]
                                     println!(
-                                    "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                                    err_msg
-                                );
+                                        "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
+                                        &err_msg
+                                    );
                                 }
-                            },
-                            Err(e) => {
-                                let err_msg =
-                                    format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
-
-                                #[cfg(feature = "logging")]
-                                error!(target: "stdout", "{}", &err_msg);
-
-                                #[cfg(not(feature = "logging"))]
-                                println!(
-                                "[ERROR][llama_core] Failed to clean up the context. Reason: {}",
-                                &err_msg
-                            );
                             }
-                        },
+                        }
                         None => {
                             let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
@@ -3069,16 +3155,85 @@ impl Drop for ChatStream {
             }
 
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "Cleanup done!");
+            info!(target: "stdout", "Model context cleanup done!");
+        }
+
+        // reset the model metadata
+        if let Err(e) = reset_model_metadata(self.model.as_ref()) {
+            let err_msg = format!("Fail to reset model metadata. Reason: {}", e);
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            #[cfg(not(feature = "logging"))]
+            println!("[ERROR][llama_core] {}", &err_msg);
+        }
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Model metadata reset done!");
+
+        // When dropping a ChatStream that held the lock, check if there are waiting streams
+        if self.has_lock {
+            // Reset the atomic flag
+            CHAT_STREAM_ACTIVE.store(false, Ordering::SeqCst);
+
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "Lock from ChatStream {} released", &self.id);
+
+            // Wake up waiting streams
+            if let Ok(mut queue) = get_chat_stream_waker_queue().lock() {
+                if let Some(waker) = queue.pop_front() {
+                    #[cfg(feature = "logging")]
+                    info!(target: "stdout", "Waking up a waiting ChatStream");
+
+                    waker.wake();
+                }
+            }
         }
     }
 }
 impl futures::Stream for ChatStream {
     type Item = Result<String, LlamaCoreError>;
 
-    fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        if self.cache.is_none() {
-            let this = self.get_mut();
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.get_mut();
+
+        // If this is a waiting stream, try to acquire the lock
+        if this.is_waiting {
+            if !this.try_acquire_lock() {
+                // Store the waker to be notified when the lock becomes available
+                if let Ok(mut queue) = get_chat_stream_waker_queue().lock() {
+                    // Remove any previous instance of this waker
+                    queue.retain(|w| !w.will_wake(cx.waker()));
+                    // Add this waker to the queue
+                    queue.push_back(cx.waker().clone());
+
+                    #[cfg(feature = "logging")]
+                    debug!(target: "stdout", "ChatStream {} is waiting for lock, added waker to queue", &this.id);
+                }
+
+                return Poll::Pending;
+            }
+
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "ChatStream {} acquired lock and is now active", &this.id);
+            // If we got here, we successfully acquired the lock and can proceed
+        }
+
+        // Ensure we still have the lock
+        if !this.has_lock && !this.try_acquire_lock() {
+            // Lost the lock, need to wait
+            this.is_waiting = true;
+
+            // Register waker to be notified when lock is available
+            if let Ok(mut queue) = get_chat_stream_waker_queue().lock() {
+                queue.retain(|w| !w.will_wake(cx.waker()));
+                queue.push_back(cx.waker().clone());
+            }
+
+            return Poll::Pending;
+        }
+
+        if this.cache.is_none() {
             let res = compute_stream(
                 this.model.clone(),
                 this.id.clone(),
@@ -3091,7 +3246,7 @@ impl futures::Stream for ChatStream {
             match res {
                 Ok(x) => {
                     #[cfg(feature = "logging")]
-                    info!(target: "stdout", "next item: {}", &x);
+                    info!(target: "stdout", "next item for ChatStream {}: {}", &this.id, &x);
 
                     if x != "[GGML] End of sequence" && !x.is_empty() {
                         Poll::Ready(Some(Ok(x)))
@@ -3103,12 +3258,10 @@ impl futures::Stream for ChatStream {
                 Err(e) => Poll::Ready(Some(Err(e))),
             }
         } else {
-            let this = self.get_mut();
-
             let x = this.cache.as_mut().unwrap().pop_front();
 
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "Get the next item from the cache: {:?}", &x);
+            info!(target: "stdout", "Get the next item from the cache for ChatStream {}: {:?}", &this.id, &x);
 
             match x {
                 Some(x) => Poll::Ready(Some(Ok(x))),
@@ -3116,6 +3269,15 @@ impl futures::Stream for ChatStream {
             }
         }
     }
+}
+
+/// Helper function to get or initialize the waker queue for waiting ChatStreams
+fn get_chat_stream_waker_queue() -> &'static Mutex<VecDeque<Waker>> {
+    CHAT_STREAM_WAKER_QUEUE.get_or_init(|| {
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Initializing ChatStream waker queue");
+        Mutex::new(VecDeque::new())
+    })
 }
 
 fn compute_stream(
@@ -3127,7 +3289,7 @@ fn compute_stream(
     stream_state: &mut StreamState,
 ) -> Result<String, LlamaCoreError> {
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "Compute the chat stream chunk.");
+    info!(target: "stdout", "Computing stream chunk for ChatStream {}", &id);
 
     #[cfg(feature = "logging")]
     debug!(target: "stdout", "prompt_too_long_state: {:?}", *prompt_too_long_state);
@@ -3158,6 +3320,7 @@ fn compute_stream(
         }
     };
 
+    // We're already holding the ChatStream lock, so we know we have exclusive access to the graph
     let mut chat_graphs = chat_graphs.lock().map_err(|e| {
         let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
 
@@ -3167,7 +3330,7 @@ fn compute_stream(
         LlamaCoreError::Operation(err_msg)
     })?;
 
-    // get graph
+    // Get the graph based on model name
     let res = match &model_name {
         Some(model_name) => {
             match chat_graphs.contains_key(model_name) {
@@ -3179,6 +3342,7 @@ fn compute_stream(
                             #[cfg(feature = "logging")]
                             debug!(target: "stdout", "Compute the chat stream chunk successfully.");
 
+                            // Process according to state
                             match stream_state {
                                 StreamState::Usage | StreamState::NoUsage => {
                                     // Retrieve the output

@@ -1,6 +1,6 @@
 [package]
 name          = "llama-core"
-version       = "0.29.0"
+version       = "0.30.0"
 edition       = "2021"
 readme        = "README.md"
 repository    = "https://github.com/LlamaEdge/LlamaEdge"
@@ -31,6 +31,7 @@ wasmedge_stable_diffusion  = { version = "=0.3.2" }
 base64.workspace           = true
 walkdir                    = "2.5.0"
 bitflags                   = "2.0"
+tokio.workspace            = true
 
 [package.metadata.cargo-machete]
 ignored = ["wasi-logger"]
