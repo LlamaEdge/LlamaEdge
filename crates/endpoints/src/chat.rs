@@ -303,6 +303,17 @@ impl ChatCompletionRequestBuilder {
         self
     }
 
+    /// Sets the weighted alpha for the keyword search results (alpha) and the embedding search results (1-alpha).
+    ///
+    /// # Arguments
+    ///
+    /// * `weighted_alpha` - The weighted alpha for the keyword search results (alpha) and the embedding search results (1-alpha).
+    #[cfg(all(feature = "rag", feature = "index"))]
+    pub fn with_weighted_alpha(mut self, weighted_alpha: f32) -> Self {
+        self.req.weighted_alpha = Some(weighted_alpha);
+        self
+    }
+
     /// Builds the chat completion request.
     pub fn build(self) -> ChatCompletionRequest {
         self.req
@@ -444,6 +455,10 @@ pub struct ChatCompletionRequest {
     #[cfg(all(feature = "rag", feature = "index"))]
     #[serde(rename = "kw_top_k", skip_serializing_if = "Option::is_none")]
     pub kw_top_k: Option<u64>,
+    /// The weighted alpha for the keyword search results (alpha) and the embedding search results (1-alpha). Defaults to 0.5.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    #[serde(rename = "weighted_alpha", skip_serializing_if = "Option::is_none")]
+    pub weighted_alpha: Option<f32>,
 }
 #[allow(deprecated)]
 impl<'de> Deserialize<'de> for ChatCompletionRequest {
@@ -502,6 +517,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 let mut kw_index_name: Option<String> = None;
                 #[cfg(all(feature = "rag", feature = "index"))]
                 let mut kw_top_k: Option<u64> = None;
+                #[cfg(all(feature = "rag", feature = "index"))]
+                let mut weighted_alpha: Option<f32> = None;
 
                 while let Some(key) = map.next_key::<String>()? {
                     #[cfg(feature = "logging")]
@@ -545,6 +562,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                         "kw_index_name" => kw_index_name = map.next_value()?,
                         #[cfg(all(feature = "rag", feature = "index"))]
                         "kw_top_k" => kw_top_k = map.next_value()?,
+                        #[cfg(all(feature = "rag", feature = "index"))]
+                        "weighted_alpha" => weighted_alpha = map.next_value()?,
                         _ => {
                             // Ignore unknown fields
                             let _ = map.next_value::<IgnoredAny>()?;
@@ -602,6 +621,11 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     kw_top_k = Some(5);
                 }
 
+                #[cfg(all(feature = "rag", feature = "index"))]
+                if weighted_alpha.is_none() {
+                    weighted_alpha = Some(0.5);
+                }
+
                 // Construct ChatCompletionRequest with all fields
                 Ok(ChatCompletionRequest {
                     model,
@@ -641,6 +665,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     kw_index_name,
                     #[cfg(all(feature = "rag", feature = "index"))]
                     kw_top_k,
+                    #[cfg(all(feature = "rag", feature = "index"))]
+                    weighted_alpha,
                 })
             }
         }
@@ -732,6 +758,8 @@ impl Default for ChatCompletionRequest {
             kw_index_name: None,
             #[cfg(all(feature = "rag", feature = "index"))]
             kw_top_k: Some(5),
+            #[cfg(all(feature = "rag", feature = "index"))]
+            weighted_alpha: Some(0.5),
         }
     }
 }
@@ -1131,7 +1159,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","properties":{"a":{"description":"the left hand side number","format":"int32","type":"integer"},"b":{"description":"the right hand side number","format":"int32","type":"integer"}},"required":["a","b"],"title":"SumRequest","type":"object"}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_search_url":"http://localhost:9069","kw_index_name":"index-name","kw_top_k":5}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","properties":{"a":{"description":"the left hand side number","format":"int32","type":"integer"},"b":{"description":"the right hand side number","format":"int32","type":"integer"}},"required":["a","b"],"title":"SumRequest","type":"object"}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_search_url":"http://localhost:9069","kw_index_name":"index-name","kw_top_k":5,"weighted_alpha":0.5}"#
         );
     }
 }
