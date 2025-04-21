@@ -20,8 +20,10 @@ pub struct DocumentInput {
 // Document processing result
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DocumentResult {
-    pub filename: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filename: Option<String>,
     pub status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
 
