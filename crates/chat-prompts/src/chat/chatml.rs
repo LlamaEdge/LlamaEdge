@@ -15,10 +15,7 @@ impl ChatMLPrompt {
         let content = message.content();
         match content.is_empty() {
             true => String::from("<|im_start|>system\nAnswer as concisely as possible.<|im_end|>"),
-            false => format!(
-                "<|im_start|>system\n{system_prompt}<|im_end|>",
-                system_prompt = content
-            ),
+            false => format!("<|im_start|>system\n{content}<|im_end|>"),
         }
     }
 
@@ -148,10 +145,7 @@ impl ChatMLToolPrompt {
         let content = message.content();
         match content.is_empty() {
             true => String::from("<|im_start|>system\nAnswer as concisely as possible.<|im_end|>"),
-            false => format!(
-                "<|im_start|>system\n{system_prompt}<|im_end|>",
-                system_prompt = content
-            ),
+            false => format!("<|im_start|>system\n{content}<|im_end|>",),
         }
     }
 
@@ -165,13 +159,13 @@ impl ChatMLToolPrompt {
             true => match tools {
                 Some(tools) => {
                     let available_tools = serde_json::to_string(tools).unwrap();
-                    let tools = format!("<tools> {} </tools>", available_tools);
+                    let tools = format!("<tools> {available_tools} </tools>");
 
                     let begin = r#"<|im_start|>system\nYou are a function calling AI model. You are provided with function signatures within <tools></tools> XML tags. You may call one or more functions to assist with the user query. Don't make assumptions about what values to plug into functions. Here are the available tools:"#;
 
                     let end = r#"Use the following pydantic model json schema for each tool call you will make: {"properties": {"arguments": {"title": "Arguments", "type": "object"}, "name": {"title": "Name", "type": "string"}}, "required": ["arguments", "name"], "title": "FunctionCall", "type": "object"} For each function call return a json object with function name and arguments within <tool_call></tool_call> XML tags as follows:\n<tool_call>\n{"arguments": <args-dict>, "name": <function-name>}\n</tool_call><|im_end|>"#;
 
-                    format!("{} {} {}", begin, tools, end)
+                    format!("{begin} {tools} {end}")
                 }
                 None => {
                     String::from("<|im_start|>system\nAnswer as concisely as possible.<|im_end|>")
@@ -180,22 +174,18 @@ impl ChatMLToolPrompt {
             false => match tools {
                 Some(tools) => {
                     let available_tools = serde_json::to_string(tools).unwrap();
-                    let tools = format!("<tools> {} </tools>", available_tools);
+                    let tools = format!("<tools> {available_tools} </tools>");
 
                     let begin = format!(
-                            "<|im_start|>system\n{system_prompt}\nYou are provided with function signatures within <tools></tools> XML tags. You may call one or more functions to assist with the user query. Don't make assumptions about what values to plug into functions. Here are the available tools:",
-                            system_prompt = content
+                            "<|im_start|>system\n{content}\nYou are provided with function signatures within <tools></tools> XML tags. You may call one or more functions to assist with the user query. Don't make assumptions about what values to plug into functions. Here are the available tools:",
                         );
 
                     let end = r#"Use the following pydantic model json schema for each tool call you will make: {"properties": {"arguments": {"title": "Arguments", "type": "object"}, "name": {"title": "Name", "type": "string"}}, "required": ["arguments", "name"], "title": "FunctionCall", "type": "object"} For each function call return a json object with function name and arguments within <tool_call></tool_call> XML tags as follows:\n<tool_call>\n{"arguments": <args-dict>, "name": <function-name>}\n</tool_call><|im_end|>"#;
 
-                    format!("{} {} {}", begin, tools, end)
+                    format!("{begin} {tools} {end}")
                 }
                 None => {
-                    format!(
-                        "<|im_start|>system\n{system_prompt}<|im_end|>",
-                        system_prompt = content
-                    )
+                    format!("<|im_start|>system\n{content}<|im_end|>")
                 }
             },
         }
@@ -332,13 +322,13 @@ impl BuildChatPrompt for ChatMLToolPrompt {
             _ => match tools {
                 Some(tools) => {
                     let available_tools = serde_json::to_string(tools).unwrap();
-                    let tools = format!("<tools> {} </tools>", available_tools);
+                    let tools = format!("<tools> {available_tools} </tools>");
 
                     let begin = r#"<|im_start|>system\nYou are a function calling AI model. You are provided with function signatures within <tools></tools> XML tags. You may call one or more functions to assist with the user query. Don't make assumptions about what values to plug into functions. Here are the available tools:"#;
 
                     let end = r#"Use the following pydantic model json schema for each tool call you will make: {"properties": {"arguments": {"title": "Arguments", "type": "object"}, "name": {"title": "Name", "type": "string"}}, "required": ["arguments", "name"], "title": "FunctionCall", "type": "object"} For each function call return a json object with function name and arguments within <tool_call></tool_call> XML tags as follows:\n<tool_call>\n{"arguments": <args-dict>, "name": <function-name>}\n</tool_call><|im_end|>"#;
 
-                    format!("{} {} {}", begin, tools, end)
+                    format!("{begin} {tools} {end}")
                 }
                 None => {
                     String::from("<|im_start|>system\nAnswer as concisely as possible.<|im_end|>")
@@ -377,10 +367,7 @@ impl InternLM2ToolPrompt {
         let content = message.content();
         match content.is_empty() {
             true => String::from("<|im_start|>system\nAnswer as concisely as possible.<|im_end|>"),
-            false => format!(
-                "<|im_start|>system\n{system_prompt}<|im_end|>",
-                system_prompt = content
-            ),
+            false => format!("<|im_start|>system\n{content}<|im_end|>"),
         }
     }
 
@@ -396,9 +383,9 @@ impl InternLM2ToolPrompt {
                     let begin = "<|im_start|>system\nYou are InternLM2-Chat, a harmless AI assistant.<|im_end|>";
 
                     let available_tools = serde_json::to_string_pretty(tools).unwrap();
-                    let tools = format!("<|im_start|>system name=<|plugin|>\n{}\n<|im_end|>", available_tools);
+                    let tools = format!("<|im_start|>system name=<|plugin|>\n{available_tools}\n<|im_end|>");
 
-                    format!("{}\n{}", begin, tools)
+                    format!("{begin}\n{tools}")
                 }
                 None => {
                     String::from("<|im_start|>system\nYou are InternLM2-Chat, a harmless AI assistant.<|im_end|>")
@@ -406,15 +393,15 @@ impl InternLM2ToolPrompt {
             },
             false => match tools {
                 Some(tools) => {
-                    let begin = format!("<|im_start|>system\n{}<|im_end|>", content);
+                    let begin = format!("<|im_start|>system\n{content}<|im_end|>");
 
                     let available_tools = serde_json::to_string_pretty(tools).unwrap();
-                    let tools = format!("<|im_start|>system name=<|plugin|>\n{}\n<|im_end|>", available_tools);
+                    let tools = format!("<|im_start|>system name=<|plugin|>\n{available_tools}\n<|im_end|>");
 
-                    format!("{}\n{}", begin, tools)
+                    format!("{begin}\n{tools}")
                 }
                 None => {
-                    format!("<|im_start|>system\n{}<|im_end|>", content)
+                    format!("<|im_start|>system\n{content}<|im_end|>")
                 }
             },
         }
@@ -553,9 +540,9 @@ impl BuildChatPrompt for InternLM2ToolPrompt {
                     let begin = "<|im_start|>system\nYou are InternLM2-Chat, a harmless AI assistant.<|im_end|>";
 
                     let available_tools = serde_json::to_string_pretty(tools).unwrap();
-                    let tools = format!("<|im_start|>system name=<|plugin|>\n{}\n<|im_end|>", available_tools);
+                    let tools = format!("<|im_start|>system name=<|plugin|>\n{available_tools}\n<|im_end|>");
 
-                    format!("{}\n{}", begin, tools)
+                    format!("{begin}\n{tools}")
                 }
                 None => {
                     String::from("<|im_start|>system\nYou are InternLM2-Chat, a harmless AI assistant.<|im_end|>")
@@ -595,10 +582,7 @@ impl ChatMLThinkPrompt {
         let content = message.content();
         match content.is_empty() {
             true => String::from("<|im_start|>system\nAnswer as concisely as possible.<|im_end|>"),
-            false => format!(
-                "<|im_start|>system\n{system_prompt}<|im_end|>",
-                system_prompt = content
-            ),
+            false => format!("<|im_start|>system\n{content}<|im_end|>"),
         }
     }
 

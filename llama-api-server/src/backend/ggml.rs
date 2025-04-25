@@ -26,7 +26,7 @@ pub(crate) async fn models_handler() -> Response<Body> {
     let list_models_response = match llama_core::models::models().await {
         Ok(list_models_response) => list_models_response,
         Err(e) => {
-            let err_msg = format!("Failed to get model list. Reason: {}", e);
+            let err_msg = format!("Failed to get model list. Reason: {e}");
 
             // log
             error!(target: "stdout", "{}", &err_msg);
@@ -39,7 +39,7 @@ pub(crate) async fn models_handler() -> Response<Body> {
     let s = match serde_json::to_string(&list_models_response) {
         Ok(s) => s,
         Err(e) => {
-            let err_msg = format!("Failed to serialize the model list result. Reason: {}", e);
+            let err_msg = format!("Failed to serialize the model list result. Reason: {e}");
 
             // log
             error!(target: "stdout", "{}", &err_msg);
@@ -58,7 +58,7 @@ pub(crate) async fn models_handler() -> Response<Body> {
     let res = match result {
         Ok(response) => response,
         Err(e) => {
-            let err_msg = format!("Failed to get model list. Reason: {}", e);
+            let err_msg = format!("Failed to get model list. Reason: {e}");
 
             // log
             error!(target: "stdout", "{}", &err_msg);
@@ -81,9 +81,9 @@ pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body>
     let running_mode = match llama_core::running_mode() {
         Ok(mode) => mode,
         Err(e) => {
-            let err_msg = format!("Failed to get running mode: {}", e);
+            let err_msg = format!("Failed to get running mode: {e}");
 
-            error!(target: "stdout", "{}", e);
+            error!(target: "stdout", "{e}");
 
             return error::internal_server_error(err_msg);
         }
@@ -92,7 +92,7 @@ pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body>
     {
         let err_msg = "Embeddings tasks are only supported in the chat or embeddingsmode.";
 
-        error!(target: "stdout", "{}", err_msg);
+        error!(target: "stdout", "{err_msg}");
 
         return error::internal_server_error(err_msg);
     }
@@ -122,7 +122,7 @@ pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body>
     let body_bytes = match to_bytes(req.body_mut()).await {
         Ok(body_bytes) => body_bytes,
         Err(e) => {
-            let err_msg = format!("Fail to read buffer from request body. {}", e);
+            let err_msg = format!("Fail to read buffer from request body. {e}");
 
             // log
             error!(target: "stdout", "{}", &err_msg);
@@ -133,10 +133,10 @@ pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body>
     let mut embedding_request: EmbeddingRequest = match serde_json::from_slice(&body_bytes) {
         Ok(embedding_request) => embedding_request,
         Err(e) => {
-            let mut err_msg = format!("Fail to deserialize embedding request: {}.", e);
+            let mut err_msg = format!("Fail to deserialize embedding request: {e}.");
 
             if let Ok(json_value) = serde_json::from_slice::<serde_json::Value>(&body_bytes) {
-                err_msg = format!("{}\njson_value: {}", err_msg, json_value);
+                err_msg = format!("{err_msg}\njson_value: {json_value}");
             }
 
             // log
@@ -180,7 +180,7 @@ pub(crate) async fn embeddings_handler(mut req: Request<Body>) -> Response<Body>
                     }
                 }
                 Err(e) => {
-                    let err_msg = format!("Fail to serialize embedding object. {}", e);
+                    let err_msg = format!("Fail to serialize embedding object. {e}");
 
                     // log
                     error!(target: "stdout", "{}", &err_msg);
@@ -212,9 +212,9 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
     let running_mode = match llama_core::running_mode() {
         Ok(mode) => mode,
         Err(e) => {
-            let err_msg = format!("Failed to get running mode: {}", e);
+            let err_msg = format!("Failed to get running mode: {e}");
 
-            error!(target: "stdout", "{}", e);
+            error!(target: "stdout", "{e}");
 
             return error::internal_server_error(err_msg);
         }
@@ -222,7 +222,7 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
     if !running_mode.contains(RunningMode::CHAT) {
         let err_msg = "Completions tasks are only supported in the chat mode.";
 
-        error!(target: "stdout", "{}", err_msg);
+        error!(target: "stdout", "{err_msg}");
 
         return error::internal_server_error(err_msg);
     }
@@ -252,7 +252,7 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
     let body_bytes = match to_bytes(req.body_mut()).await {
         Ok(body_bytes) => body_bytes,
         Err(e) => {
-            let err_msg = format!("Fail to read buffer from request body. {}", e);
+            let err_msg = format!("Fail to read buffer from request body. {e}");
 
             // log
             error!(target: "stdout", "{}", &err_msg);
@@ -263,10 +263,10 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
     let mut completion_request: CompletionRequest = match serde_json::from_slice(&body_bytes) {
         Ok(completion_request) => completion_request,
         Err(e) => {
-            let mut err_msg = format!("Fail to deserialize completions request: {}.", e);
+            let mut err_msg = format!("Fail to deserialize completions request: {e}.");
 
             if let Ok(json_value) = serde_json::from_slice::<serde_json::Value>(&body_bytes) {
-                err_msg = format!("{}\njson_value: {}", err_msg, json_value);
+                err_msg = format!("{err_msg}\njson_value: {json_value}");
             }
 
             // log
@@ -290,7 +290,7 @@ pub(crate) async fn completions_handler(mut req: Request<Body>) -> Response<Body
             let s = match serde_json::to_string(&completion_object) {
                 Ok(s) => s,
                 Err(e) => {
-                    let err_msg = format!("Fail to serialize completion object. {}", e);
+                    let err_msg = format!("Fail to serialize completion object. {e}");
 
                     // log
                     error!(target: "stdout", "{}", &err_msg);
@@ -341,9 +341,9 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
     let running_mode = match llama_core::running_mode() {
         Ok(mode) => mode,
         Err(e) => {
-            let err_msg = format!("Failed to get running mode: {}", e);
+            let err_msg = format!("Failed to get running mode: {e}");
 
-            error!(target: "stdout", "{}", e);
+            error!(target: "stdout", "{e}");
 
             return error::internal_server_error(err_msg);
         }
@@ -351,7 +351,7 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
     if !running_mode.contains(RunningMode::CHAT) {
         let err_msg = "Chat completion tasks are only supported in the chat mode.";
 
-        error!(target: "stdout", "{}", err_msg);
+        error!(target: "stdout", "{err_msg}");
 
         return error::internal_server_error(err_msg);
     }
@@ -383,7 +383,7 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
     let body_bytes = match to_bytes(req.body_mut()).await {
         Ok(body_bytes) => body_bytes,
         Err(e) => {
-            let err_msg = format!("Fail to read buffer from request body. {}", e);
+            let err_msg = format!("Fail to read buffer from request body. {e}");
 
             // log
             error!(target: "stdout", "{}", &err_msg);
@@ -394,10 +394,10 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
     let mut chat_request: ChatCompletionRequest = match serde_json::from_slice(&body_bytes) {
         Ok(chat_request) => chat_request,
         Err(e) => {
-            let mut err_msg = format!("Fail to deserialize chat completion request: {}.", e);
+            let mut err_msg = format!("Fail to deserialize chat completion request: {e}.");
 
             if let Ok(json_value) = serde_json::from_slice::<serde_json::Value>(&body_bytes) {
-                err_msg = format!("{}\njson_value: {}", err_msg, json_value);
+                err_msg = format!("{err_msg}\njson_value: {json_value}");
             }
 
             // log
@@ -443,7 +443,7 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
                     }
                     Err(e) => {
                         let err_msg =
-                            format!("Failed chat completions in stream mode. Reason: {}", e);
+                            format!("Failed chat completions in stream mode. Reason: {e}");
 
                         // log
                         error!(target: "stdout", "{}", &err_msg);
@@ -457,7 +457,7 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
                 let s = match serde_json::to_string(&chat_completion_object) {
                     Ok(s) => s,
                     Err(e) => {
-                        let err_msg = format!("Failed to serialize chat completion object. {}", e);
+                        let err_msg = format!("Failed to serialize chat completion object. {e}");
 
                         // log
                         error!(target: "stdout", "{}", &err_msg);
@@ -485,7 +485,7 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
                     }
                     Err(e) => {
                         let err_msg =
-                            format!("Failed chat completions in non-stream mode. Reason: {}", e);
+                            format!("Failed chat completions in non-stream mode. Reason: {e}");
 
                         // log
                         error!(target: "stdout", "{}", &err_msg);
@@ -496,7 +496,7 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
             }
         },
         Err(e) => {
-            let err_msg = format!("Failed to get chat completions. Reason: {}", e);
+            let err_msg = format!("Failed to get chat completions. Reason: {e}");
 
             // log
             error!(target: "stdout", "{}", &err_msg);
@@ -537,7 +537,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
         let body_bytes = match to_bytes(req_body).await {
             Ok(body_bytes) => body_bytes,
             Err(e) => {
-                let err_msg = format!("Fail to read buffer from request body. {}", e);
+                let err_msg = format!("Fail to read buffer from request body. {e}");
 
                 // log
                 error!(target: "stdout", "{}", &err_msg);
@@ -586,7 +586,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
                 let size_in_bytes = match field.data.read_to_end(&mut buffer) {
                     Ok(size_in_bytes) => size_in_bytes,
                     Err(e) => {
-                        let err_msg = format!("Failed to read the target file. {}", e);
+                        let err_msg = format!("Failed to read the target file. {e}");
 
                         // log
                         error!(target: "stdout", "{}", &err_msg);
@@ -656,7 +656,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
                 let s = match serde_json::to_string(&fo) {
                     Ok(s) => s,
                     Err(e) => {
-                        let err_msg = format!("Failed to serialize file object. {}", e);
+                        let err_msg = format!("Failed to serialize file object. {e}");
 
                         // log
                         error!(target: "stdout", "{}", &err_msg);
@@ -704,7 +704,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
             ["", "v1", "files"] => list_files(),
             ["", "v1", "files", file_id, "content"] => {
                 if !file_id.starts_with("file_") {
-                    let err_msg = format!("unsupported uri path: {}", uri_path);
+                    let err_msg = format!("unsupported uri path: {uri_path}");
 
                     // log
                     error!(target: "stdout", "{}", &err_msg);
@@ -716,7 +716,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
             }
             ["", "v1", "files", file_id] => {
                 if !file_id.starts_with("file_") {
-                    let err_msg = format!("unsupported uri path: {}", uri_path);
+                    let err_msg = format!("unsupported uri path: {uri_path}");
 
                     // log
                     error!(target: "stdout", "{}", &err_msg);
@@ -728,7 +728,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
             }
             ["", "v1", "files", "download", file_id] => download_file(file_id),
             _ => {
-                let err_msg = format!("unsupported uri path: {}", uri_path);
+                let err_msg = format!("unsupported uri path: {uri_path}");
 
                 // log
                 error!(target: "stdout", "{}", &err_msg);
@@ -741,7 +741,7 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
         let status = match llama_core::files::remove_file(id) {
             Ok(status) => status,
             Err(e) => {
-                let err_msg = format!("Failed to delete the target file with id {}. {}", id, e);
+                let err_msg = format!("Failed to delete the target file with id {id}. {e}");
 
                 // log
                 error!(target: "stdout", "{}", &err_msg);
@@ -758,10 +758,8 @@ pub(crate) async fn files_handler(req: Request<Body>) -> Response<Body> {
         let s = match serde_json::to_string(&status) {
             Ok(s) => s,
             Err(e) => {
-                let err_msg = format!(
-                    "Failed to serialize the status of the file deletion operation. {}",
-                    e
-                );
+                let err_msg =
+                    format!("Failed to serialize the status of the file deletion operation. {e}");
 
                 // log
                 error!(target: "stdout", "{}", &err_msg);
@@ -829,7 +827,7 @@ fn list_files() -> Response<Body> {
             let s = match serde_json::to_string(&file_objects) {
                 Ok(s) => s,
                 Err(e) => {
-                    let err_msg = format!("Failed to serialize file list. {}", e);
+                    let err_msg = format!("Failed to serialize file list. {e}");
 
                     // log
                     error!(target: "stdout", "{}", &err_msg);
@@ -859,7 +857,7 @@ fn list_files() -> Response<Body> {
             }
         }
         Err(e) => {
-            let err_msg = format!("Failed to list all files. {}", e);
+            let err_msg = format!("Failed to list all files. {e}");
 
             // log
             error!(target: "stdout", "{}", &err_msg);
@@ -876,7 +874,7 @@ fn retrieve_file(id: impl AsRef<str>) -> Response<Body> {
             let s = match serde_json::to_string(&fo) {
                 Ok(s) => s,
                 Err(e) => {
-                    let err_msg = format!("Failed to serialize file object. {}", e);
+                    let err_msg = format!("Failed to serialize file object. {e}");
 
                     // log
                     error!(target: "stdout", "{}", &err_msg);
@@ -906,7 +904,7 @@ fn retrieve_file(id: impl AsRef<str>) -> Response<Body> {
             }
         }
         Err(e) => {
-            let err_msg = format!("{}", e);
+            let err_msg = format!("{e}");
 
             // log
             error!(target: "stdout", "{}", &err_msg);
@@ -923,7 +921,7 @@ fn retrieve_file_content(id: impl AsRef<str>) -> Response<Body> {
             let s = match serde_json::to_string(&content) {
                 Ok(s) => s,
                 Err(e) => {
-                    let err_msg = format!("Failed to serialize file content. {}", e);
+                    let err_msg = format!("Failed to serialize file content. {e}");
 
                     // log
                     error!(target: "stdout", "{}", &err_msg);
@@ -953,7 +951,7 @@ fn retrieve_file_content(id: impl AsRef<str>) -> Response<Body> {
             }
         }
         Err(e) => {
-            let err_msg = format!("{}", e);
+            let err_msg = format!("{e}");
 
             // log
             error!(target: "stdout", "{}", &err_msg);
@@ -981,7 +979,7 @@ fn download_file(id: impl AsRef<str>) -> Response<Body> {
                 "mp4" => "video/mp4",
                 "md" => "text/markdown",
                 _ => {
-                    let err_msg = format!("Unsupported file extension: {}", extension);
+                    let err_msg = format!("Unsupported file extension: {extension}");
 
                     // log
                     error!(target: "stdout", "{}", &err_msg);
@@ -989,7 +987,7 @@ fn download_file(id: impl AsRef<str>) -> Response<Body> {
                     return error::internal_server_error(err_msg);
                 }
             };
-            let content_disposition = format!("attachment; filename={}", filename);
+            let content_disposition = format!("attachment; filename={filename}");
 
             // return response
             let result = Response::builder()
@@ -1013,7 +1011,7 @@ fn download_file(id: impl AsRef<str>) -> Response<Body> {
             }
         }
         Err(e) => {
-            let err_msg = format!("{}", e);
+            let err_msg = format!("{e}");
 
             // log
             error!(target: "stdout", "{}", &err_msg);
@@ -1053,7 +1051,7 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
     let body_bytes = match to_bytes(req.body_mut()).await {
         Ok(body_bytes) => body_bytes,
         Err(e) => {
-            let err_msg = format!("Fail to read buffer from request body. {}", e);
+            let err_msg = format!("Fail to read buffer from request body. {e}");
 
             // log
             error!(target: "stdout", "{}", &err_msg);
@@ -1065,10 +1063,10 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
     let chunks_request: ChunksRequest = match serde_json::from_slice(&body_bytes) {
         Ok(chunks_request) => chunks_request,
         Err(e) => {
-            let mut err_msg = format!("Fail to deserialize chunks request: {}.", e);
+            let mut err_msg = format!("Fail to deserialize chunks request: {e}.");
 
             if let Ok(json_value) = serde_json::from_slice::<serde_json::Value>(&body_bytes) {
-                err_msg = format!("{}\njson_value: {}", err_msg, json_value);
+                err_msg = format!("{err_msg}\njson_value: {json_value}");
             }
 
             // log
@@ -1192,7 +1190,7 @@ pub(crate) async fn chunks_handler(mut req: Request<Body>) -> Response<Body> {
                     }
                 }
                 Err(e) => {
-                    let err_msg = format!("Fail to serialize chunks response. {}", e);
+                    let err_msg = format!("Fail to serialize chunks response. {e}");
 
                     // log
                     error!(target: "stdout", "{}", &err_msg);
@@ -1238,7 +1236,7 @@ pub(crate) async fn server_info_handler() -> Response<Body> {
     let s = match serde_json::to_string(&server_info) {
         Ok(s) => s,
         Err(e) => {
-            let err_msg = format!("Fail to serialize server info. {}", e);
+            let err_msg = format!("Fail to serialize server info. {e}");
 
             // log
             error!(target: "stdout", "{}", &err_msg);
@@ -1279,9 +1277,9 @@ pub(crate) async fn audio_speech_handler(req: Request<Body>) -> Response<Body> {
     let running_mode = match llama_core::running_mode() {
         Ok(mode) => mode,
         Err(e) => {
-            let err_msg = format!("Failed to get running mode: {}", e);
+            let err_msg = format!("Failed to get running mode: {e}");
 
-            error!(target: "stdout", "{}", e);
+            error!(target: "stdout", "{e}");
 
             return error::internal_server_error(err_msg);
         }
@@ -1289,7 +1287,7 @@ pub(crate) async fn audio_speech_handler(req: Request<Body>) -> Response<Body> {
     if !running_mode.contains(RunningMode::TTS) {
         let err_msg = "Audio speech tasks are only supported in the tts mode.";
 
-        error!(target: "stdout", "{}", err_msg);
+        error!(target: "stdout", "{err_msg}");
 
         return error::internal_server_error(err_msg);
     }
@@ -1321,7 +1319,7 @@ pub(crate) async fn audio_speech_handler(req: Request<Body>) -> Response<Body> {
     let body_bytes = match to_bytes(req.into_body()).await {
         Ok(body_bytes) => body_bytes,
         Err(e) => {
-            let err_msg = format!("Fail to read buffer from request body. {}", e);
+            let err_msg = format!("Fail to read buffer from request body. {e}");
 
             // log
             error!(target: "stdout", "{}", &err_msg);
@@ -1332,7 +1330,7 @@ pub(crate) async fn audio_speech_handler(req: Request<Body>) -> Response<Body> {
     let speech_request: SpeechRequest = match serde_json::from_slice(&body_bytes) {
         Ok(speech_request) => speech_request,
         Err(e) => {
-            let err_msg = format!("Fail to deserialize speech request: {msg}", msg = e);
+            let err_msg = format!("Fail to deserialize speech request: {e}");
 
             // log
             error!(target: "stdout", "{}", &err_msg);
@@ -1344,7 +1342,7 @@ pub(crate) async fn audio_speech_handler(req: Request<Body>) -> Response<Body> {
     let audio_buffer = match llama_core::tts::create_speech(speech_request).await {
         Ok(buffer) => buffer,
         Err(e) => {
-            let err_msg = format!("Failed to transcribe the audio. {}", e);
+            let err_msg = format!("Failed to transcribe the audio. {e}");
 
             // log
             error!(target: "stdout", "{}", &err_msg);

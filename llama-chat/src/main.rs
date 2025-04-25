@@ -116,11 +116,11 @@ async fn main() -> anyhow::Result<()> {
     log(format!("[INFO] Context size: {}", &cli.ctx_size));
     // reverse prompt
     if let Some(reverse_prompt) = &cli.reverse_prompt {
-        log(format!("[INFO] reverse prompt: {}", reverse_prompt));
+        log(format!("[INFO] reverse prompt: {reverse_prompt}"));
     }
     // system prompt
     if let Some(system_prompt) = &cli.system_prompt {
-        log(format!("[INFO] system prompt: {}", system_prompt));
+        log(format!("[INFO] system prompt: {system_prompt}"));
     }
     // n_predict
     log(format!(
@@ -134,11 +134,11 @@ async fn main() -> anyhow::Result<()> {
     ));
     // main_gpu
     if let Some(main_gpu) = &cli.main_gpu {
-        log(format!("[INFO] Main GPU to use: {}", main_gpu));
+        log(format!("[INFO] Main GPU to use: {main_gpu}"));
     }
     // tensor_split
     if let Some(tensor_split) = &cli.tensor_split {
-        log(format!("[INFO] Tensor split: {}", tensor_split));
+        log(format!("[INFO] Tensor split: {tensor_split}"));
     }
     log(format!("[INFO] Threads: {}", &cli.threads));
     // no_mmap
@@ -156,11 +156,11 @@ async fn main() -> anyhow::Result<()> {
     // temp and top_p
     if cli.temp.is_none() && cli.top_p.is_none() {
         let temp = 1.0;
-        log(format!("[INFO] Temperature for sampling: {}", temp));
+        log(format!("[INFO] Temperature for sampling: {temp}"));
     } else if let Some(temp) = cli.temp {
-        log(format!("[INFO] Temperature for sampling: {}", temp));
+        log(format!("[INFO] Temperature for sampling: {temp}"));
     } else if let Some(top_p) = cli.top_p {
-        log(format!("[INFO] Top-p sampling (1.0 = disabled): {}", top_p));
+        log(format!("[INFO] Top-p sampling (1.0 = disabled): {top_p}"));
     }
     // repeat penalty
     log(format!(
@@ -181,7 +181,7 @@ async fn main() -> anyhow::Result<()> {
     log(format!("[INFO] BNF-like grammar: {}", &cli.grammar));
     // json schema
     if let Some(json_schema) = &cli.json_schema {
-        log(format!("[INFO] JSON schema: {}", json_schema));
+        log(format!("[INFO] JSON schema: {json_schema}"));
     }
     // log prompts
     log(format!("[INFO] Enable prompt log: {}", &cli.log_prompts));
@@ -210,17 +210,17 @@ async fn main() -> anyhow::Result<()> {
     // temp and top_p
     let builder = if cli.temp.is_none() && cli.top_p.is_none() {
         let temp = 1.0;
-        log(format!("[INFO] Temperature for sampling: {}", temp));
+        log(format!("[INFO] Temperature for sampling: {temp}"));
         builder.with_temperature(temp)
     } else if let Some(temp) = cli.temp {
-        log(format!("[INFO] Temperature for sampling: {}", temp));
+        log(format!("[INFO] Temperature for sampling: {temp}"));
         builder.with_temperature(temp)
     } else if let Some(top_p) = cli.top_p {
-        log(format!("[INFO] Top-p sampling (1.0 = disabled): {}", top_p));
+        log(format!("[INFO] Top-p sampling (1.0 = disabled): {top_p}"));
         builder.with_top_p(top_p)
     } else {
         let temp = cli.temp.unwrap();
-        log(format!("[INFO] Temperature for sampling: {}", temp));
+        log(format!("[INFO] Temperature for sampling: {temp}"));
         builder.with_temperature(temp)
     };
     // create a Metadata instance
@@ -305,7 +305,7 @@ async fn main() -> anyhow::Result<()> {
                                 }
                                 if assistant_answer.is_empty() {
                                     let content = content.trim_start();
-                                    print!("{}", content);
+                                    print!("{content}");
                                     assistant_answer.push_str(content);
                                 } else {
                                     print!("{content}");
@@ -394,7 +394,7 @@ fn print_log_begin_separator(
     separator.push_str(&title);
     separator.push_str(ch.repeat(separator_len).as_str());
     separator.push('\n');
-    println!("{}", separator);
+    println!("{separator}");
     total_len
 }
 
@@ -403,7 +403,7 @@ fn print_log_end_separator(ch: Option<&str>, len: Option<usize>) {
     let mut separator = "\n\n".to_string();
     separator.push_str(ch.repeat(len.unwrap_or(100)).as_str());
     separator.push('\n');
-    println!("{}", separator);
+    println!("{separator}");
 }
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
@@ -454,7 +454,7 @@ pub struct Metadata {
 }
 
 fn log(msg: impl std::fmt::Display) {
-    println!("{}", msg);
+    println!("{msg}");
 }
 
 fn parse_sse_event(s: &str) -> Option<ChatCompletionChunk> {
@@ -478,9 +478,7 @@ fn parse_sse_event(s: &str) -> Option<ChatCompletionChunk> {
                 Ok(chunk) => Some(chunk),
                 Err(e) => {
                     log(format!(
-                        "[ERROR] Fail to parse SSE data. Reason: {msg}. Data: {data}",
-                        msg = e,
-                        data = s
+                        "[ERROR] Fail to parse SSE data. Reason: {e}. Data: {s}"
                     ));
                     None
                 }

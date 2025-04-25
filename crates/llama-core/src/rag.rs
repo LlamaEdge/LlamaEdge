@@ -26,10 +26,8 @@ pub async fn rag_doc_chunks_to_embeddings(
 
     let running_mode = running_mode()?;
     if running_mode != RunningMode::RAG {
-        let err_msg = format!(
-            "Creating knowledge base is not supported in the {} mode.",
-            running_mode
-        );
+        let err_msg =
+            format!("Creating knowledge base is not supported in the {running_mode} mode.");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -65,7 +63,7 @@ pub async fn rag_doc_chunks_to_embeddings(
 
     #[cfg(feature = "logging")]
     if let Ok(request_str) = serde_json::to_string(&embedding_request) {
-        debug!(target: "stdout", "Embedding request: {}", request_str);
+        debug!(target: "stdout", "Embedding request: {request_str}");
     }
 
     // compute embeddings for the document
@@ -165,10 +163,7 @@ pub async fn rag_retrieve_context(
 
     let running_mode = running_mode()?;
     if running_mode != RunningMode::RAG {
-        let err_msg = format!(
-            "The context retrieval is not supported in the {} mode.",
-            running_mode
-        );
+        let err_msg = format!("The context retrieval is not supported in the {running_mode} mode.");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -202,7 +197,7 @@ pub async fn rag_retrieve_context(
         Ok(points) => points,
         Err(e) => {
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", e);
+            error!(target: "stdout", "{e}");
 
             return Err(e);
         }
@@ -251,7 +246,7 @@ pub async fn rag_retrieve_context(
                     // For debugging purpose, log the optional search field if it exists
                     #[cfg(feature = "logging")]
                     if let Some(search) = payload.get("search").and_then(Value::as_str) {
-                        info!(target: "stdout", "search: {}", search);
+                        info!(target: "stdout", "search: {search}");
                     }
                 }
             }
@@ -326,7 +321,7 @@ async fn qdrant_persist_embeddings(
         .upsert_points(collection_name.as_ref(), points)
         .await
     {
-        let err_msg = format!("{}", e);
+        let err_msg = format!("{e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);

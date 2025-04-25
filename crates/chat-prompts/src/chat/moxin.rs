@@ -16,7 +16,7 @@ impl MoxinChatPrompt {
             true => String::from(
                 "<s> [INST] You are an AI assistant. Answer questions as concisely and accurately as possible.",
             ),
-            false => format!("<s> [INST] {system_prompt}", system_prompt = content),
+            false => format!("<s> [INST] {content}"),
         }
     }
 

@@ -173,7 +173,7 @@ impl<'de> Deserialize<'de> for TranslationRequest {
                             let _ = map.next_value::<IgnoredAny>()?;
 
                             #[cfg(feature = "logging")]
-                            warn!(target: "stdout", "Not supported field: {}", key);
+                            warn!(target: "stdout", "Not supported field: {key}");
                         }
                     }
                 }
@@ -262,7 +262,7 @@ impl<'de> Deserialize<'de> for TranslationRequest {
 #[test]
 fn test_deserialize_translation_request() {
     let json = r#"{"file":{"id":"file-abc123","bytes":1000,"created_at":1717027200,"filename":"audio.mp3","object":"file","purpose":"assistants"},"model":"whisper-1","language":"en","prompt":"","response_format":"json","temperature":0.0,"detect_language":true,"offset_time":0,"duration":0,"max_context":-1,"max_len":0,"split_on_word":false}"#;
-    let obj: TranslationRequest = serde_json::from_str(&json).unwrap();
+    let obj: TranslationRequest = serde_json::from_str(json).unwrap();
     assert_eq!(obj.detect_language, Some(true));
     assert_eq!(obj.language, Some("auto".to_string()));
     assert!(obj.prompt.is_none());

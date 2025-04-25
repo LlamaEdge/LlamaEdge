@@ -100,20 +100,17 @@ fn main() -> Result<(), String> {
     CTX_SIZE
         .set(*ctx_size as usize * 6)
         .expect("Fail to parse prompt context size");
-    println!("[INFO] prompt context size: {size}", size = ctx_size);
+    println!("[INFO] prompt context size: {ctx_size}");
     options.ctx_size = *ctx_size as u64;
 
     // number of tokens to predict
     let n_predict = matches.get_one::<u32>("n_predict").unwrap();
-    println!("[INFO] Number of tokens to predict: {n}", n = n_predict);
+    println!("[INFO] Number of tokens to predict: {n_predict}");
     options.n_predict = *n_predict as u64;
 
     // n_gpu_layers
     let n_gpu_layers = matches.get_one::<u32>("n_gpu_layers").unwrap();
-    println!(
-        "[INFO] Number of layers to run on the GPU: {n}",
-        n = n_gpu_layers
-    );
+    println!("[INFO] Number of layers to run on the GPU: {n_gpu_layers}",);
     options.n_gpu_layers = *n_gpu_layers as u64;
 
     // no_mmap
@@ -123,10 +120,7 @@ fn main() -> Result<(), String> {
 
     // batch size
     let batch_size = matches.get_one::<u32>("batch_size").unwrap();
-    println!(
-        "[INFO] Batch size for prompt processing: {size}",
-        size = batch_size
-    );
+    println!("[INFO] Batch size for prompt processing: {batch_size}");
     options.batch_size = *batch_size as u64;
 
     // reverse_prompt
@@ -137,7 +131,7 @@ fn main() -> Result<(), String> {
 
     // log
     let log_enable = matches.get_flag("log_enable");
-    println!("[INFO] Log enable: {enable}", enable = log_enable);
+    println!("[INFO] Log enable: {log_enable}");
     options.log_enable = log_enable;
 
     // load the model into wasi-nn
@@ -181,7 +175,7 @@ fn main() -> Result<(), String> {
     output_size = std::cmp::min(*CTX_SIZE.get().unwrap(), output_size);
     let output = String::from_utf8_lossy(&output_buffer[..output_size]).to_string();
 
-    println!("\n[Answer]:\n\n{}", output);
+    println!("\n[Answer]:\n\n{output}");
 
     Ok(())
 }

@@ -115,7 +115,7 @@ async fn chat_stream(
         let err_msg = "The chat completion is only supported in the chat or rag mode.";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", err_msg);
+        error!(target: "stdout", "{err_msg}");
 
         return Err(LlamaCoreError::Operation(err_msg.to_string()));
     }
@@ -140,7 +140,7 @@ async fn chat_stream(
         None => metadata.include_usage,
     };
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "include_usage: {}", include_usage);
+    info!(target: "stdout", "include_usage: {include_usage}");
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Build the chat prompt");
@@ -152,8 +152,8 @@ async fn chat_stream(
     #[cfg(feature = "logging")]
     {
         info!(target: "stdout", "prompt:\n{}", &prompt);
-        info!(target: "stdout", "available_completion_tokens: {}", avaible_completion_tokens);
-        info!(target: "stdout", "tool_use: {}", tool_use);
+        info!(target: "stdout", "available_completion_tokens: {avaible_completion_tokens}");
+        info!(target: "stdout", "tool_use: {tool_use}");
     }
 
     #[cfg(feature = "logging")]
@@ -184,7 +184,7 @@ async fn chat_stream(
             };
 
             let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {e}");
 
                 #[cfg(feature = "logging")]
                 error!(target: "stdout", "{}", &err_msg);
@@ -247,8 +247,7 @@ fn chat_stream_for_tool(
             let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
             let output = std::str::from_utf8(&output_buffer[..]).map_err(|e| {
                 let err_msg = format!(
-                    "Failed to decode the buffer of the inference result to a utf-8 string. {}",
-                    e
+                    "Failed to decode the buffer of the inference result to a utf-8 string. {e}"
                 );
 
                 #[cfg(feature = "logging")]
@@ -258,11 +257,11 @@ fn chat_stream_for_tool(
             })?;
 
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "raw generation:\n{}", output);
+            info!(target: "stdout", "raw generation:\n{output}");
 
             // post-process
             let message = post_process(output, &graph.metadata.prompt_template).map_err(|e| {
-                LlamaCoreError::Operation(format!("Failed to post-process the output. {}", e))
+                LlamaCoreError::Operation(format!("Failed to post-process the output. {e}"))
             })?;
 
             #[cfg(feature = "logging")]
@@ -283,7 +282,7 @@ fn chat_stream_for_tool(
             let created = SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|e| {
-                    let err_msg = format!("Failed to get the current time. Reason: {}", e);
+                    let err_msg = format!("Failed to get the current time. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -357,8 +356,7 @@ fn chat_stream_for_tool(
                     usage: None,
                 };
                 let chunk_str = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                    let err_msg =
-                        format!("Failed to serialize chat completion chunk. Reason: {}", e);
+                    let err_msg = format!("Failed to serialize chat completion chunk. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -366,7 +364,7 @@ fn chat_stream_for_tool(
                     LlamaCoreError::Operation(err_msg)
                 })?;
 
-                format!("data: {}\n\n", chunk_str)
+                format!("data: {chunk_str}\n\n")
             };
 
             // token uage chunk
@@ -381,8 +379,7 @@ fn chat_stream_for_tool(
                     usage,
                 };
                 let chunk_str = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                    let err_msg =
-                        format!("Failed to serialize chat completion chunk. Reason: {}", e);
+                    let err_msg = format!("Failed to serialize chat completion chunk. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -390,7 +387,7 @@ fn chat_stream_for_tool(
                     LlamaCoreError::Operation(err_msg)
                 })?;
 
-                format!("data: {}\n\n", chunk_str)
+                format!("data: {chunk_str}\n\n")
             };
 
             // ending chunk
@@ -412,8 +409,7 @@ fn chat_stream_for_tool(
             let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
             let output = std::str::from_utf8(&output_buffer[..]).map_err(|e| {
                 let err_msg = format!(
-                    "Failed to decode the buffer of the inference result to a utf-8 string. {}",
-                    e
+                    "Failed to decode the buffer of the inference result to a utf-8 string. {e}"
                 );
 
                 #[cfg(feature = "logging")]
@@ -424,7 +420,7 @@ fn chat_stream_for_tool(
 
             // post-process
             let message = post_process(output, &graph.metadata.prompt_template).map_err(|e| {
-                let err_msg = format!("Failed to post-process the output. {}", e);
+                let err_msg = format!("Failed to post-process the output. {e}");
 
                 #[cfg(feature = "logging")]
                 error!(target: "stdout", "{}", &err_msg);
@@ -447,7 +443,7 @@ fn chat_stream_for_tool(
             let created = SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|e| {
-                    let err_msg = format!("Failed to get the current time. Reason: {}", e);
+                    let err_msg = format!("Failed to get the current time. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -478,8 +474,7 @@ fn chat_stream_for_tool(
 
                 // serialize chat completion chunk
                 let chunk_str = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                    let err_msg =
-                        format!("Failed to serialize chat completion chunk. Reason: {}", e);
+                    let err_msg = format!("Failed to serialize chat completion chunk. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -487,7 +482,7 @@ fn chat_stream_for_tool(
                     LlamaCoreError::Operation(err_msg)
                 })?;
 
-                format!("data: {}\n\n", chunk_str)
+                format!("data: {chunk_str}\n\n")
             };
 
             // usage chunk
@@ -504,8 +499,7 @@ fn chat_stream_for_tool(
 
                 // serialize chat completion chunk
                 let chunk_str = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                    let err_msg =
-                        format!("Failed to serialize chat completion chunk. Reason: {}", e);
+                    let err_msg = format!("Failed to serialize chat completion chunk. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -513,7 +507,7 @@ fn chat_stream_for_tool(
                     LlamaCoreError::Operation(err_msg)
                 })?;
 
-                format!("data: {}\n\n", chunk_str)
+                format!("data: {chunk_str}\n\n")
             };
 
             // ending chunk
@@ -540,8 +534,7 @@ fn chat_stream_for_tool(
             let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
             let output = std::str::from_utf8(&output_buffer[..]).map_err(|e| {
                 let err_msg = format!(
-                    "Failed to decode the buffer of the inference result to a utf-8 string. {}",
-                    e
+                    "Failed to decode the buffer of the inference result to a utf-8 string. {e}"
                 );
 
                 #[cfg(feature = "logging")]
@@ -552,7 +545,7 @@ fn chat_stream_for_tool(
 
             // post-process
             let message = post_process(output, &graph.metadata.prompt_template).map_err(|e| {
-                let err_msg = format!("Failed to post-process the output. {}", e);
+                let err_msg = format!("Failed to post-process the output. {e}");
 
                 #[cfg(feature = "logging")]
                 error!(target: "stdout", "{}", &err_msg);
@@ -575,7 +568,7 @@ fn chat_stream_for_tool(
             let created = SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|e| {
-                    let err_msg = format!("Failed to get the current time. Reason: {}", e);
+                    let err_msg = format!("Failed to get the current time. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -606,8 +599,7 @@ fn chat_stream_for_tool(
 
                 // serialize chat completion chunk
                 let chunk_str = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                    let err_msg =
-                        format!("Failed to serialize chat completion chunk. Reason: {}", e);
+                    let err_msg = format!("Failed to serialize chat completion chunk. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -615,7 +607,7 @@ fn chat_stream_for_tool(
                     LlamaCoreError::Operation(err_msg)
                 })?;
 
-                format!("data: {}\n\n", chunk_str)
+                format!("data: {chunk_str}\n\n")
             };
 
             // usage chunk
@@ -632,8 +624,7 @@ fn chat_stream_for_tool(
 
                 // serialize chat completion chunk
                 let chunk_str = serde_json::to_string(&chat_completion_chunk).map_err(|e| {
-                    let err_msg =
-                        format!("Failed to serialize chat completion chunk. Reason: {}", e);
+                    let err_msg = format!("Failed to serialize chat completion chunk. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -641,7 +632,7 @@ fn chat_stream_for_tool(
                     LlamaCoreError::Operation(err_msg)
                 })?;
 
-                format!("data: {}\n\n", chunk_str)
+                format!("data: {chunk_str}\n\n")
             };
 
             // ending chunk
@@ -659,7 +650,7 @@ fn chat_stream_for_tool(
             Ok((stream, false))
         }
         Err(e) => {
-            let err_msg = format!("Failed to compute the chat completion. Reason: {}", e);
+            let err_msg = format!("Failed to compute the chat completion. Reason: {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -680,7 +671,7 @@ async fn chat_once(
         let err_msg = "The chat completion is only supported in the chat or rag mode.";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", err_msg);
+        error!(target: "stdout", "{err_msg}");
 
         return Err(LlamaCoreError::Operation(err_msg.to_string()));
     }
@@ -710,8 +701,8 @@ async fn chat_once(
     #[cfg(feature = "logging")]
     {
         info!(target: "stdout", "prompt:\n{}", &prompt);
-        info!(target: "stdout", "available_completion_tokens: {}", avaible_completion_tokens);
-        info!(target: "stdout", "tool_use: {}", tool_use);
+        info!(target: "stdout", "available_completion_tokens: {avaible_completion_tokens}");
+        info!(target: "stdout", "tool_use: {tool_use}");
     }
 
     #[cfg(feature = "logging")]
@@ -759,7 +750,7 @@ fn compute(
     };
 
     let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -813,8 +804,7 @@ fn compute_by_graph(
             let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
             let output = std::str::from_utf8(&output_buffer[..]).map_err(|e| {
                 let err_msg = format!(
-                    "Failed to decode the buffer of the inference result to a utf-8 string. {}",
-                    e
+                    "Failed to decode the buffer of the inference result to a utf-8 string. {e}"
                 );
 
                 #[cfg(feature = "logging")]
@@ -824,11 +814,11 @@ fn compute_by_graph(
             })?;
 
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "raw generation: {}", output);
+            info!(target: "stdout", "raw generation: {output}");
 
             // post-process
             let message = post_process(output, &graph.metadata.prompt_template).map_err(|e| {
-                LlamaCoreError::Operation(format!("Failed to post-process the output. {}", e))
+                LlamaCoreError::Operation(format!("Failed to post-process the output. {e}"))
             })?;
 
             #[cfg(feature = "logging")]
@@ -843,7 +833,7 @@ fn compute_by_graph(
             let created = SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|e| {
-                    let err_msg = format!("Failed to get the current time. Reason: {}", e);
+                    let err_msg = format!("Failed to get the current time. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -945,8 +935,7 @@ fn compute_by_graph(
             let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
             let output = std::str::from_utf8(&output_buffer[..]).map_err(|e| {
                 let err_msg = format!(
-                    "Failed to decode the buffer of the inference result to a utf-8 string. {}",
-                    e
+                    "Failed to decode the buffer of the inference result to a utf-8 string. {e}"
                 );
 
                 #[cfg(feature = "logging")]
@@ -957,7 +946,7 @@ fn compute_by_graph(
 
             // post-process
             let message = post_process(output, &graph.metadata.prompt_template).map_err(|e| {
-                let err_msg = format!("Failed to post-process the output. {}", e);
+                let err_msg = format!("Failed to post-process the output. {e}");
 
                 #[cfg(feature = "logging")]
                 error!(target: "stdout", "{}", &err_msg);
@@ -974,7 +963,7 @@ fn compute_by_graph(
             let created = SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|e| {
-                    let err_msg = format!("Failed to get the current time. Reason: {}", e);
+                    let err_msg = format!("Failed to get the current time. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -1018,8 +1007,7 @@ fn compute_by_graph(
             let output_buffer = get_output_buffer(graph, OUTPUT_TENSOR)?;
             let output = std::str::from_utf8(&output_buffer[..]).map_err(|e| {
                 let err_msg = format!(
-                    "Failed to decode the buffer of the inference result to a utf-8 string. {}",
-                    e
+                    "Failed to decode the buffer of the inference result to a utf-8 string. {e}"
                 );
 
                 #[cfg(feature = "logging")]
@@ -1030,7 +1018,7 @@ fn compute_by_graph(
 
             // post-process
             let message = post_process(output, &graph.metadata.prompt_template).map_err(|e| {
-                let err_msg = format!("Failed to post-process the output. {}", e);
+                let err_msg = format!("Failed to post-process the output. {e}");
 
                 #[cfg(feature = "logging")]
                 error!(target: "stdout", "{}", &err_msg);
@@ -1053,7 +1041,7 @@ fn compute_by_graph(
             let created = SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|e| {
-                    let err_msg = format!("Failed to get the current time. Reason: {}", e);
+                    let err_msg = format!("Failed to get the current time. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -1084,7 +1072,7 @@ fn compute_by_graph(
             Ok((res, false))
         }
         Err(e) => {
-            let err_msg = format!("Failed to compute the chat completion. Reason: {}", e);
+            let err_msg = format!("Failed to compute the chat completion. Reason: {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -1106,15 +1094,13 @@ fn parse_tool_calls(
                     let matched = &cap[0];
 
                     #[cfg(feature = "logging")]
-                    info!(target: "stdout", "captured: {}", matched);
+                    info!(target: "stdout", "captured: {matched}");
 
                     match serde_json::from_str::<Vec<serde_json::Value>>(matched) {
                         Ok(group) => values.extend(group),
                         Err(e) => {
-                            let err_msg = format!(
-                                "Failed to deserialize generated tool calls. Reason: {}",
-                                e
-                            );
+                            let err_msg =
+                                format!("Failed to deserialize generated tool calls. Reason: {e}");
 
                             #[cfg(feature = "logging")]
                             error!(target: "stdout", "{}", &err_msg);
@@ -1130,8 +1116,7 @@ fn parse_tool_calls(
                         Some(name) => name.to_string().replace("\"", ""),
                         None => {
                             let err_msg = format!(
-                                "Failed to get the name of the function. Tool call: {:?}",
-                                value
+                                "Failed to get the name of the function. Tool call: {value:?}"
                             );
 
                             #[cfg(feature = "logging")]
@@ -1145,8 +1130,7 @@ fn parse_tool_calls(
                         Some(arguments) => arguments.to_string(),
                         None => {
                             let err_msg = format!(
-                                "Failed to get the arguments of the function. Tool call: {:?}",
-                                value
+                                "Failed to get the arguments of the function. Tool call: {value:?}"
                             );
 
                             #[cfg(feature = "logging")]
@@ -1174,12 +1158,12 @@ fn parse_tool_calls(
                 };
 
                 #[cfg(feature = "logging")]
-                info!(target: "stdout", "parsed result: {:?}", parsed);
+                info!(target: "stdout", "parsed result: {parsed:?}");
 
                 Ok(parsed)
             }
             Err(e) => {
-                let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
+                let err_msg = format!("Failed to create a regex pattern. Reason: {e}");
 
                 #[cfg(feature = "logging")]
                 error!(target: "stdout", "{}", &err_msg);
@@ -1201,8 +1185,7 @@ fn parse_tool_calls(
                             Ok(value) => values.push(value),
                             Err(e) => {
                                 let err_msg = format!(
-                                    "Failed to deserialize generated tool calls. Reason: {}",
-                                    e
+                                    "Failed to deserialize generated tool calls. Reason: {e}"
                                 );
 
                                 #[cfg(feature = "logging")]
@@ -1219,8 +1202,7 @@ fn parse_tool_calls(
                             Some(name) => name.to_string().replace("\"", ""),
                             None => {
                                 let err_msg = format!(
-                                    "Failed to get the name of the function. Tool call: {:?}",
-                                    value
+                                    "Failed to get the name of the function. Tool call: {value:?}"
                                 );
 
                                 #[cfg(feature = "logging")]
@@ -1234,8 +1216,7 @@ fn parse_tool_calls(
                             Some(arguments) => arguments.to_string(),
                             None => {
                                 let err_msg = format!(
-                                    "Failed to get the arguments of the function. Tool call: {:?}",
-                                    value
+                                    "Failed to get the arguments of the function. Tool call: {value:?}"
                                 );
 
                                 #[cfg(feature = "logging")]
@@ -1263,12 +1244,12 @@ fn parse_tool_calls(
                     };
 
                     #[cfg(feature = "logging")]
-                    info!(target: "stdout", "parsed result: {:?}", parsed);
+                    info!(target: "stdout", "parsed result: {parsed:?}");
 
                     Ok(parsed)
                 }
                 Err(e) => {
-                    let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
+                    let err_msg = format!("Failed to create a regex pattern. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -1279,7 +1260,7 @@ fn parse_tool_calls(
         }
         PromptTemplateType::GroqLlama3Tool => {
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "raw input: {}", input);
+            info!(target: "stdout", "raw input: {input}");
 
             match regex::Regex::new(r"(?s)<tool_call>((.|\r|\n)*?)</tool_call>") {
                 Ok(re) => {
@@ -1288,14 +1269,13 @@ fn parse_tool_calls(
                         let matched = cap[1].trim();
 
                         #[cfg(feature = "logging")]
-                        info!(target: "stdout", "captured: {}", matched);
+                        info!(target: "stdout", "captured: {matched}");
 
                         match serde_json::from_str::<serde_json::Value>(matched) {
                             Ok(value) => values.push(value),
                             Err(e) => {
                                 let err_msg = format!(
-                                    "Failed to deserialize generated tool calls. Reason: {}",
-                                    e
+                                    "Failed to deserialize generated tool calls. Reason: {e}"
                                 );
 
                                 #[cfg(feature = "logging")]
@@ -1312,8 +1292,7 @@ fn parse_tool_calls(
                             Some(name) => name.to_string().replace("\"", ""),
                             None => {
                                 let err_msg = format!(
-                                    "Failed to get the name of the function. Tool call: {:?}",
-                                    value
+                                    "Failed to get the name of the function. Tool call: {value:?}"
                                 );
 
                                 #[cfg(feature = "logging")]
@@ -1331,7 +1310,7 @@ fn parse_tool_calls(
                                     let map = arguments.as_object().unwrap();
 
                                     #[cfg(feature = "logging")]
-                                    info!(target: "stdout", "func arguments: {:?}", map);
+                                    info!(target: "stdout", "func arguments: {map:?}");
 
                                     serde_json::to_string(map).unwrap()
                                 } else {
@@ -1340,8 +1319,7 @@ fn parse_tool_calls(
                             }
                             None => {
                                 let err_msg = format!(
-                                    "Failed to get the arguments of the function. Tool call: {:?}",
-                                    value
+                                    "Failed to get the arguments of the function. Tool call: {value:?}"
                                 );
 
                                 #[cfg(feature = "logging")]
@@ -1377,12 +1355,12 @@ fn parse_tool_calls(
                     };
 
                     #[cfg(feature = "logging")]
-                    info!(target: "stdout", "parsed result: {:?}", parsed);
+                    info!(target: "stdout", "parsed result: {parsed:?}");
 
                     Ok(parsed)
                 }
                 Err(e) => {
-                    let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
+                    let err_msg = format!("Failed to create a regex pattern. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -1393,12 +1371,12 @@ fn parse_tool_calls(
         }
         PromptTemplateType::Llama3Tool => {
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "raw input: {}", input);
+            info!(target: "stdout", "raw input: {input}");
 
             let re = match regex::Regex::new(r"^\{(.|\r|\n)*\}$") {
                 Ok(re) => re,
                 Err(e) => {
-                    let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
+                    let err_msg = format!("Failed to create a regex pattern. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -1418,8 +1396,7 @@ fn parse_tool_calls(
                                 Some(name) => name.to_string().replace("\"", ""),
                                 None => {
                                     let err_msg = format!(
-                                        "Failed to get the name of the function. Tool call: {:?}",
-                                        value
+                                        "Failed to get the name of the function. Tool call: {value:?}"
                                     );
 
                                     #[cfg(feature = "logging")]
@@ -1433,8 +1410,7 @@ fn parse_tool_calls(
                                 Some(arguments) => arguments.to_string(),
                                 None => {
                                     let err_msg = format!(
-                                        "Failed to get the arguments of the function. Tool call: {:?}",
-                                        value
+                                        "Failed to get the arguments of the function. Tool call: {value:?}"
                                     );
 
                                     #[cfg(feature = "logging")]
@@ -1462,13 +1438,13 @@ fn parse_tool_calls(
                         };
 
                         #[cfg(feature = "logging")]
-                        info!(target: "stdout", "parsed result: {:?}", parsed);
+                        info!(target: "stdout", "parsed result: {parsed:?}");
 
                         Ok(parsed)
                     }
                     Err(e) => {
                         let err_msg =
-                            format!("Failed to deserialize generated tool calls. Reason: {}", e);
+                            format!("Failed to deserialize generated tool calls. Reason: {e}");
 
                         #[cfg(feature = "logging")]
                         error!(target: "stdout", "{}", &err_msg);
@@ -1484,19 +1460,19 @@ fn parse_tool_calls(
                 };
 
                 #[cfg(feature = "logging")]
-                info!(target: "stdout", "parsed result: {:?}", parsed);
+                info!(target: "stdout", "parsed result: {parsed:?}");
 
                 Ok(parsed)
             }
         }
         PromptTemplateType::InternLM2Tool => {
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "raw input: {}", input);
+            info!(target: "stdout", "raw input: {input}");
 
             let blocks: Vec<&str> = input.trim().split("<|action_start|><|plugin|>").collect();
 
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "blocks: {:?}", blocks);
+            info!(target: "stdout", "blocks: {blocks:?}");
 
             let mut tool_calls: Vec<ToolCall> = vec![];
             let mut content = String::new();
@@ -1507,7 +1483,7 @@ fn parse_tool_calls(
                         let value = block.trim().trim_end_matches("<|action_end|>");
 
                         #[cfg(feature = "logging")]
-                        info!(target: "stdout", "tool call: {}", value);
+                        info!(target: "stdout", "tool call: {value}");
 
                         match serde_json::from_str::<serde_json::Value>(value) {
                             Ok(value) => {
@@ -1515,8 +1491,7 @@ fn parse_tool_calls(
                                     Some(name) => name.to_string().replace("\"", ""),
                                     None => {
                                         let err_msg = format!(
-                                            "Failed to get the name of the function. Tool call: {:?}",
-                                            value
+                                            "Failed to get the name of the function. Tool call: {value:?}"
                                         );
 
                                         #[cfg(feature = "logging")]
@@ -1530,8 +1505,7 @@ fn parse_tool_calls(
                                     Some(arguments) => arguments.to_string(),
                                     None => {
                                         let err_msg = format!(
-                                            "Failed to get the arguments of the function. Tool call: {:?}",
-                                            value
+                                            "Failed to get the arguments of the function. Tool call: {value:?}"
                                         );
 
                                         #[cfg(feature = "logging")]
@@ -1553,8 +1527,7 @@ fn parse_tool_calls(
                             }
                             Err(e) => {
                                 let err_msg = format!(
-                                    "Failed to deserialize generated tool calls. Reason: {}",
-                                    e
+                                    "Failed to deserialize generated tool calls. Reason: {e}"
                                 );
 
                                 #[cfg(feature = "logging")]
@@ -1584,13 +1557,13 @@ fn parse_tool_calls(
             };
 
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "parsed result: {:?}", parsed);
+            info!(target: "stdout", "parsed result: {parsed:?}");
 
             Ok(parsed)
         }
         PromptTemplateType::NemotronTool => {
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "raw input: {}", input);
+            info!(target: "stdout", "raw input: {input}");
 
             match regex::Regex::new(r"(?s)<toolcall>\s*(.*?)\s*</toolcall>") {
                 Ok(re) => {
@@ -1605,14 +1578,13 @@ fn parse_tool_calls(
                         let matched = cap[1].trim();
 
                         #[cfg(feature = "logging")]
-                        info!(target: "stdout", "captured: {}", matched);
+                        info!(target: "stdout", "captured: {matched}");
 
                         match serde_json::from_str::<serde_json::Value>(matched) {
                             Ok(value) => values.push(value),
                             Err(e) => {
                                 let err_msg = format!(
-                                    "Failed to deserialize generated tool calls. Reason: {}",
-                                    e
+                                    "Failed to deserialize generated tool calls. Reason: {e}"
                                 );
 
                                 #[cfg(feature = "logging")]
@@ -1629,8 +1601,7 @@ fn parse_tool_calls(
                             Some(name) => name.to_string().replace("\"", ""),
                             None => {
                                 let err_msg = format!(
-                                    "Failed to get the name of the function. Tool call: {:?}",
-                                    value
+                                    "Failed to get the name of the function. Tool call: {value:?}"
                                 );
 
                                 #[cfg(feature = "logging")]
@@ -1644,8 +1615,7 @@ fn parse_tool_calls(
                             Some(arguments) => arguments.to_string(),
                             None => {
                                 let err_msg = format!(
-                                    "Failed to get the arguments of the function. Tool call: {:?}",
-                                    value
+                                    "Failed to get the arguments of the function. Tool call: {value:?}"
                                 );
 
                                 #[cfg(feature = "logging")]
@@ -1673,12 +1643,12 @@ fn parse_tool_calls(
                     };
 
                     #[cfg(feature = "logging")]
-                    info!(target: "stdout", "parsed result: {:?}", parsed);
+                    info!(target: "stdout", "parsed result: {parsed:?}");
 
                     Ok(parsed)
                 }
                 Err(e) => {
-                    let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
+                    let err_msg = format!("Failed to create a regex pattern. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -1689,7 +1659,7 @@ fn parse_tool_calls(
         }
         PromptTemplateType::FunctionaryV32 => {
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "raw input: {}", input);
+            info!(target: "stdout", "raw input: {input}");
 
             match regex::Regex::new(r">>>\s*(\w+)\s*\{(.*)\}<\|eot_id\|>") {
                 Ok(re) => {
@@ -1720,12 +1690,12 @@ fn parse_tool_calls(
                     };
 
                     #[cfg(feature = "logging")]
-                    info!(target: "stdout", "parsed result: {:?}", parsed);
+                    info!(target: "stdout", "parsed result: {parsed:?}");
 
                     Ok(parsed)
                 }
                 Err(e) => {
-                    let warn_msg = format!("Failed to create a regex pattern. Reason: {}", e);
+                    let warn_msg = format!("Failed to create a regex pattern. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     warn!(target: "stdout", "{}", &warn_msg);
@@ -1740,7 +1710,7 @@ fn parse_tool_calls(
         }
         PromptTemplateType::FunctionaryV31 => {
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "raw input: {}", input);
+            info!(target: "stdout", "raw input: {input}");
 
             match regex::Regex::new(r"<function=(\w+)>\s*(\{.*?\})</function>") {
                 Ok(re) => {
@@ -1771,12 +1741,12 @@ fn parse_tool_calls(
                     };
 
                     #[cfg(feature = "logging")]
-                    info!(target: "stdout", "parsed result: {:?}", parsed);
+                    info!(target: "stdout", "parsed result: {parsed:?}");
 
                     Ok(parsed)
                 }
                 Err(e) => {
-                    let warn_msg = format!("Failed to create a regex pattern. Reason: {}", e);
+                    let warn_msg = format!("Failed to create a regex pattern. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     warn!(target: "stdout", "{}", &warn_msg);
@@ -1791,7 +1761,7 @@ fn parse_tool_calls(
         }
         PromptTemplateType::MistralSmallTool => {
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "raw input: {}", input);
+            info!(target: "stdout", "raw input: {input}");
 
             match regex::Regex::new(r"\[TOOL_CALLS\]\s*(\[(.*?)\])") {
                 Ok(re) => {
@@ -1800,14 +1770,13 @@ fn parse_tool_calls(
                         let matched = cap[1].trim();
 
                         #[cfg(feature = "logging")]
-                        info!(target: "stdout", "captured: {}", matched);
+                        info!(target: "stdout", "captured: {matched}");
 
                         match serde_json::from_str::<Vec<serde_json::Value>>(matched) {
                             Ok(vals) => values = vals,
                             Err(e) => {
                                 let err_msg = format!(
-                                    "Failed to deserialize generated tool calls. Reason: {}",
-                                    e
+                                    "Failed to deserialize generated tool calls. Reason: {e}"
                                 );
 
                                 #[cfg(feature = "logging")]
@@ -1831,14 +1800,14 @@ fn parse_tool_calls(
                                 let func_map = value.as_object().unwrap();
                                 if func_map.contains_key("name") {
                                     let func_name = func_map.get("name").unwrap().as_str().unwrap();
-                                    println!("Function name: {:?}", func_name);
+                                    println!("Function name: {func_name:?}");
 
                                     function.name = func_name.to_string();
                                 }
                                 if func_map.contains_key("arguments") {
                                     let args = func_map.get("arguments").unwrap();
                                     let arguments = args.to_string();
-                                    println!("Arguments: {:?}", arguments);
+                                    println!("Arguments: {arguments:?}");
 
                                     function.arguments = arguments;
                                 }
@@ -1857,13 +1826,13 @@ fn parse_tool_calls(
                                 };
 
                                 let name = object_map.get("name").unwrap().as_str().unwrap();
-                                println!("name: {:?}", name);
+                                println!("name: {name:?}");
                                 function.name = name.to_string();
 
                                 if object_map.contains_key("arguments") {
                                     let args = object_map.get("arguments").unwrap();
                                     let arguments = args.to_string();
-                                    println!("Arguments: {:?}", arguments);
+                                    println!("Arguments: {arguments:?}");
 
                                     function.arguments = arguments;
                                 }
@@ -1886,12 +1855,12 @@ fn parse_tool_calls(
                     };
 
                     #[cfg(feature = "logging")]
-                    info!(target: "stdout", "parsed result: {:?}", parsed);
+                    info!(target: "stdout", "parsed result: {parsed:?}");
 
                     Ok(parsed)
                 }
                 Err(e) => {
-                    let err_msg = format!("Failed to create a regex pattern. Reason: {}", e);
+                    let err_msg = format!("Failed to create a regex pattern. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -1902,21 +1871,21 @@ fn parse_tool_calls(
         }
         PromptTemplateType::Llama4Chat => {
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "raw input: {:?}", input);
+            info!(target: "stdout", "raw input: {input:?}");
 
             let mut tool_calls: Vec<ToolCall> = vec![];
             if let Ok(value) = serde_json::from_str::<serde_json::Value>(input) {
                 match value.as_object() {
                     Some(object_map) => {
                         #[cfg(feature = "logging")]
-                        debug!(target: "stdout", "object_map: {:?}", object_map);
+                        debug!(target: "stdout", "object_map: {object_map:?}");
 
                         // parse function name
                         if object_map.contains_key("name") {
                             let name = object_map.get("name").unwrap().as_str().unwrap();
 
                             #[cfg(feature = "logging")]
-                            debug!(target: "stdout", "name: {:?}", name);
+                            debug!(target: "stdout", "name: {name:?}");
 
                             let mut function = Function {
                                 name: name.to_string(),
@@ -1941,8 +1910,7 @@ fn parse_tool_calls(
                             });
                         } else {
                             let err_msg = format!(
-                                "Failed to get the name of the function. raw input: {:?}",
-                                input
+                                "Failed to get the name of the function. raw input: {input:?}"
                             );
 
                             #[cfg(feature = "logging")]
@@ -1952,7 +1920,7 @@ fn parse_tool_calls(
                         }
                     }
                     None => {
-                        let err_msg = format!("Failed to parse the JSON string. JSON: {}", input);
+                        let err_msg = format!("Failed to parse the JSON string. JSON: {input}");
 
                         #[cfg(feature = "logging")]
                         error!(target: "stdout", "{}", &err_msg);
@@ -1969,7 +1937,7 @@ fn parse_tool_calls(
             };
 
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "parsed result: {:?}", parsed);
+            info!(target: "stdout", "parsed result: {parsed:?}");
 
             Ok(parsed)
         }
@@ -2017,7 +1985,7 @@ fn check_model_metadata(
                             let img_path_str = download_image(&image.url)?;
 
                             #[cfg(feature = "logging")]
-                            info!(target: "stdout", "The image is saved to {}", img_path_str);
+                            info!(target: "stdout", "The image is saved to {img_path_str}");
 
                             // update metadata image
                             metadata.image = Some(img_path_str);
@@ -2457,7 +2425,7 @@ fn build_prompt(
             let err_msg = "The messages in the chat request are empty.";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             return Err(LlamaCoreError::Operation(err_msg.to_owned()));
         }
@@ -2472,7 +2440,7 @@ fn build_prompt(
                     role_chain.push_str(&format!("{} -> ", message.role()));
                 }
             }
-            info!(target: "stdout", "Role chain: {}", role_chain);
+            info!(target: "stdout", "Role chain: {role_chain}");
         }
 
         let (prompt, tool_use) = match chat_request.tool_choice.as_ref() {
@@ -2481,7 +2449,7 @@ fn build_prompt(
                     match chat_prompt.build_with_tools(&mut chat_request.messages, Some(&[])) {
                         Ok(prompt) => (prompt, false),
                         Err(e) => {
-                            let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
+                            let err_msg = format!("Fail to build chat prompts. Reason: {e}");
 
                             #[cfg(feature = "logging")]
                             error!(target: "stdout", "{}", &err_msg);
@@ -2496,7 +2464,7 @@ fn build_prompt(
                     {
                         Ok(prompt) => (prompt, true),
                         Err(e) => {
-                            let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
+                            let err_msg = format!("Fail to build chat prompts. Reason: {e}");
 
                             #[cfg(feature = "logging")]
                             error!(target: "stdout", "{}", &err_msg);
@@ -2511,7 +2479,7 @@ fn build_prompt(
                         match chat_prompt.build_with_tools(&mut chat_request.messages, None) {
                             Ok(prompt) => (prompt, false),
                             Err(e) => {
-                                let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
+                                let err_msg = format!("Fail to build chat prompts. Reason: {e}");
 
                                 #[cfg(feature = "logging")]
                                 error!(target: "stdout", "{}", &err_msg);
@@ -2525,7 +2493,7 @@ fn build_prompt(
             None => match chat_prompt.build_with_tools(&mut chat_request.messages, None) {
                 Ok(prompt) => (prompt, false),
                 Err(e) => {
-                    let err_msg = format!("Fail to build chat prompts. Reason: {}", e);
+                    let err_msg = format!("Fail to build chat prompts. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -2535,7 +2503,7 @@ fn build_prompt(
             },
         };
         #[cfg(feature = "logging")]
-        info!(target: "stdout", "Try to set prompt: {}", prompt);
+        info!(target: "stdout", "Try to set prompt: {prompt}");
 
         // set prompt
         set_prompt(model_name, &prompt)?;
@@ -2557,7 +2525,7 @@ fn build_prompt(
                                 let user_message = chat_request.messages.remove(1);
 
                                 #[cfg(feature = "logging")]
-                                info!(target: "stdout", "Remove a user message from the chat history: {:?}", user_message);
+                                info!(target: "stdout", "Remove a user message from the chat history: {user_message:?}");
                             }
 
                             // remove all messages until the message is of `user`
@@ -2572,7 +2540,7 @@ fn build_prompt(
                                     let err_msg = format!("The last message in the chat history should be a user message, but found a {} message.", message.role());
 
                                     #[cfg(feature = "logging")]
-                                    error!(target: "stdout", "{}", err_msg);
+                                    error!(target: "stdout", "{err_msg}");
 
                                     return Err(LlamaCoreError::Operation(err_msg));
                                 }
@@ -2601,7 +2569,7 @@ fn build_prompt(
                                 let user_message = chat_request.messages.remove(0);
 
                                 #[cfg(feature = "logging")]
-                                info!(target: "stdout", "Remove a user message from the chat history: {:?}", user_message);
+                                info!(target: "stdout", "Remove a user message from the chat history: {user_message:?}");
                             }
 
                             // remove all messages until the message is of `user`
@@ -2616,7 +2584,7 @@ fn build_prompt(
                                     let err_msg = format!("The last message in the chat history should be a user message, but found a {} message.", message.role());
 
                                     #[cfg(feature = "logging")]
-                                    error!(target: "stdout", "{}", err_msg);
+                                    error!(target: "stdout", "{err_msg}");
 
                                     return Err(LlamaCoreError::Operation(err_msg));
                                 }
@@ -2654,7 +2622,7 @@ fn build_prompt(
 fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> {
     let image_url = image_url.as_ref();
     let url = reqwest::Url::parse(image_url).map_err(|e| {
-        let err_msg = format!("Fail to parse the image URL: {}. Reason: {}", image_url, e);
+        let err_msg = format!("Fail to parse the image URL: {image_url}. Reason: {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -2665,10 +2633,8 @@ fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> 
     let curr_rt_handle = tokio::runtime::Handle::current();
     let res = curr_rt_handle.block_on(async {
         let response = reqwest::get(url).await.map_err(|e| {
-            let err_msg = format!(
-                "Fail to download the image from the URL: {}. Reason: {}",
-                image_url, e
-            );
+            let err_msg =
+                format!("Fail to download the image from the URL: {image_url}. Reason: {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -2682,8 +2648,7 @@ fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> 
             .and_then(|mut segments| segments.next_back())
             .and_then(|name| if name.is_empty() { None } else { Some(name) })
             .ok_or(LlamaCoreError::Operation(format!(
-                "Fail to get the file name: {}",
-                image_url
+                "Fail to get the file name: {image_url}"
             )))?
             .to_string();
 
@@ -2746,7 +2711,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
     };
 
     let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -2757,7 +2722,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
     match model_name {
         Some(model_name) => {
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "Set prompt to the chat model named {}", model_name);
+            info!(target: "stdout", "Set prompt to the chat model named {model_name}");
 
             match chat_graphs.contains_key(model_name) {
                 true => {
@@ -2794,7 +2759,7 @@ fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<()
                     let err_msg = "There is no model available in the chat graphs while trying to set prompt to the default model.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
+                    error!(target: "stdout", "{err_msg}");
 
                     Err(LlamaCoreError::Operation(err_msg.into()))
                 }
@@ -2811,14 +2776,14 @@ fn get_model_metadata(model_name: Option<&String>) -> Result<GgmlMetadata, Llama
             let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
     };
 
     let chat_graphs = chat_graphs.lock().map_err(|e| {
-        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -2850,7 +2815,7 @@ fn get_model_metadata(model_name: Option<&String>) -> Result<GgmlMetadata, Llama
                 let err_msg = "There is no model available in the chat graphs.";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 Err(LlamaCoreError::Operation(err_msg.into()))
             }
@@ -2865,7 +2830,7 @@ fn update_model_metadata(
     let config = match serde_json::to_string(metadata) {
         Ok(config) => config,
         Err(e) => {
-            let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
+            let err_msg = format!("Fail to serialize metadata to a JSON string. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -2880,14 +2845,14 @@ fn update_model_metadata(
             let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
     };
 
     let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. Reason: {}", e);
+        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. Reason: {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -2929,7 +2894,7 @@ fn update_model_metadata(
                     let err_msg = "There is no model available in the chat graphs.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
+                    error!(target: "stdout", "{err_msg}");
 
                     Err(LlamaCoreError::Operation(err_msg.into()))
                 }
@@ -3052,8 +3017,7 @@ impl Drop for ChatStream {
                                         // clean up the context
                                         if let Err(e) = graph.finish_single() {
                                             let err_msg = format!(
-                                                "Failed to clean up the context. Reason: {}",
-                                                e
+                                                "Failed to clean up the context. Reason: {e}"
                                             );
 
                                             #[cfg(feature = "logging")]
@@ -3071,8 +3035,7 @@ impl Drop for ChatStream {
                                             // clean up the context
                                             if let Err(e) = graph.finish_single() {
                                                 let err_msg = format!(
-                                                    "Failed to clean up the context. Reason: {}",
-                                                    e
+                                                    "Failed to clean up the context. Reason: {e}"
                                                 );
 
                                                 #[cfg(feature = "logging")]
@@ -3102,7 +3065,7 @@ impl Drop for ChatStream {
                                 },
                                 Err(e) => {
                                     let err_msg =
-                                        format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+                                        format!("Fail to acquire the lock of `CHAT_GRAPHS`. {e}");
 
                                     #[cfg(feature = "logging")]
                                     error!(target: "stdout", "{}", &err_msg);
@@ -3138,8 +3101,7 @@ impl Drop for ChatStream {
                                         // clean up the context
                                         if let Err(e) = graph.finish_single() {
                                             let err_msg = format!(
-                                                "Failed to clean up the context. Reason: {}",
-                                                e
+                                                "Failed to clean up the context. Reason: {e}"
                                             );
 
                                             #[cfg(feature = "logging")]
@@ -3157,7 +3119,7 @@ impl Drop for ChatStream {
                                             "There is no model available in the chat graphs.";
 
                                         #[cfg(feature = "logging")]
-                                        error!(target: "stdout", "{}", err_msg);
+                                        error!(target: "stdout", "{err_msg}");
 
                                         #[cfg(not(feature = "logging"))]
                                         println!(
@@ -3168,7 +3130,7 @@ impl Drop for ChatStream {
                                 },
                                 Err(e) => {
                                     let err_msg =
-                                        format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+                                        format!("Fail to acquire the lock of `CHAT_GRAPHS`. {e}");
 
                                     #[cfg(feature = "logging")]
                                     error!(target: "stdout", "{}", &err_msg);
@@ -3203,7 +3165,7 @@ impl Drop for ChatStream {
 
         // reset the model metadata
         if let Err(e) = reset_model_metadata(self.model.as_ref()) {
-            let err_msg = format!("Fail to reset model metadata. Reason: {}", e);
+            let err_msg = format!("Fail to reset model metadata. Reason: {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -3365,7 +3327,7 @@ fn compute_stream(
 
     // We're already holding the ChatStream lock, so we know we have exclusive access to the graph
     let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -3403,8 +3365,7 @@ fn compute_stream(
                                                 .get_or_init(|| Mutex::new(Vec::new()));
                                             let mut cached_encodings = mutex.lock().map_err(|e| {
                                             let err_msg = format!(
-                                                "Fail to acquire the lock of `UTF8_ENCODINGS`. Reason: {}",
-                                                e
+                                                "Fail to acquire the lock of `UTF8_ENCODINGS`. Reason: {e}"
                                             );
 
                                             #[cfg(feature = "logging")]
@@ -3427,7 +3388,7 @@ fn compute_stream(
                                                 Err(e) => {
                                                     // TODO This is a temp check. In case, infinite cached encodings happen.
                                                     if cached_encodings.len() > 4 {
-                                                        let err_msg = format!("Fail to convert a vector of bytes to string. The length of the utf8 bytes exceeds 4. {}", e);
+                                                        let err_msg = format!("Fail to convert a vector of bytes to string. The length of the utf8 bytes exceeds 4. {e}");
 
                                                         #[cfg(feature = "logging")]
                                                         error!(target: "stdout", "{}", &err_msg);
@@ -3445,7 +3406,7 @@ fn compute_stream(
 
                                                         String::from("")
                                                     } else {
-                                                        let warn_msg = format!("Fail to convert a vector of bytes to string. {}", e);
+                                                        let warn_msg = format!("Fail to convert a vector of bytes to string. {e}");
 
                                                         #[cfg(feature = "logging")]
                                                         warn!(target: "stdout", "{}", &warn_msg);
@@ -3464,8 +3425,7 @@ fn compute_stream(
                                         .duration_since(std::time::UNIX_EPOCH)
                                         .map_err(|e| {
                                             let err_msg = format!(
-                                                "Failed to get the current time. Reason: {}",
-                                                e
+                                                "Failed to get the current time. Reason: {e}"
                                             );
 
                                             #[cfg(feature = "logging")]
@@ -3500,8 +3460,7 @@ fn compute_stream(
                                     let chunk_str = serde_json::to_string(&chat_completion_chunk)
                                         .map_err(|e| {
                                         let err_msg = format!(
-                                            "Failed to serialize chat completion chunk. Reason: {}",
-                                            e
+                                            "Failed to serialize chat completion chunk. Reason: {e}"
                                         );
 
                                         #[cfg(feature = "logging")]
@@ -3510,7 +3469,7 @@ fn compute_stream(
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
 
-                                    Ok(format!("data: {}\n\n", chunk_str))
+                                    Ok(format!("data: {chunk_str}\n\n"))
                                 }
                                 StreamState::Done => {
                                     *stream_state = StreamState::EndOfSequence;
@@ -3549,8 +3508,7 @@ fn compute_stream(
                                         .duration_since(std::time::UNIX_EPOCH)
                                         .map_err(|e| {
                                             let err_msg = format!(
-                                                "Failed to get the current time. Reason: {}",
-                                                e
+                                                "Failed to get the current time. Reason: {e}"
                                             );
 
                                             #[cfg(feature = "logging")]
@@ -3573,8 +3531,7 @@ fn compute_stream(
                                     let chunk_str = serde_json::to_string(&chat_completion_chunk)
                                         .map_err(|e| {
                                         let err_msg = format!(
-                                            "Failed to serialize chat completion chunk. Reason: {}",
-                                            e
+                                            "Failed to serialize chat completion chunk. Reason: {e}"
                                         );
 
                                         #[cfg(feature = "logging")]
@@ -3583,7 +3540,7 @@ fn compute_stream(
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
 
-                                    Ok(format!("data: {}\n\n", chunk_str))
+                                    Ok(format!("data: {chunk_str}\n\n"))
                                 }
                                 StreamState::Done | StreamState::NoUsage => {
                                     *stream_state = StreamState::EndOfSequence;
@@ -3612,8 +3569,7 @@ fn compute_stream(
                                         .duration_since(std::time::UNIX_EPOCH)
                                         .map_err(|e| {
                                             let err_msg = format!(
-                                                "Failed to get the current time. Reason: {}",
-                                                e
+                                                "Failed to get the current time. Reason: {e}"
                                             );
 
                                             #[cfg(feature = "logging")]
@@ -3647,8 +3603,7 @@ fn compute_stream(
                                     let chunk_str = serde_json::to_string(&chat_completion_chunk)
                                         .map_err(|e| {
                                         let err_msg = format!(
-                                            "Failed to serialize chat completion chunk. Reason: {}",
-                                            e
+                                            "Failed to serialize chat completion chunk. Reason: {e}"
                                         );
 
                                         #[cfg(feature = "logging")]
@@ -3657,7 +3612,7 @@ fn compute_stream(
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
 
-                                    Ok(format!("data: {}\n\n", chunk_str))
+                                    Ok(format!("data: {chunk_str}\n\n"))
                                 }
                                 ContextFullState::Usage => {
                                     *context_full_state = ContextFullState::Done;
@@ -3676,8 +3631,7 @@ fn compute_stream(
                                         .duration_since(std::time::UNIX_EPOCH)
                                         .map_err(|e| {
                                             let err_msg = format!(
-                                                "Failed to get the current time. Reason: {}",
-                                                e
+                                                "Failed to get the current time. Reason: {e}"
                                             );
 
                                             #[cfg(feature = "logging")]
@@ -3700,8 +3654,7 @@ fn compute_stream(
                                     let chunk_str = serde_json::to_string(&chat_completion_chunk)
                                         .map_err(|e| {
                                         let err_msg = format!(
-                                            "Failed to serialize chat completion chunk. Reason: {}",
-                                            e
+                                            "Failed to serialize chat completion chunk. Reason: {e}"
                                         );
 
                                         #[cfg(feature = "logging")]
@@ -3710,7 +3663,7 @@ fn compute_stream(
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
 
-                                    Ok(format!("data: {}\n\n", chunk_str))
+                                    Ok(format!("data: {chunk_str}\n\n"))
                                 }
                                 ContextFullState::Done => {
                                     *context_full_state = ContextFullState::EndOfSequence;
@@ -3739,8 +3692,7 @@ fn compute_stream(
                                         .duration_since(std::time::UNIX_EPOCH)
                                         .map_err(|e| {
                                             let err_msg = format!(
-                                                "Failed to get the current time. Reason: {}",
-                                                e
+                                                "Failed to get the current time. Reason: {e}"
                                             );
 
                                             #[cfg(feature = "logging")]
@@ -3772,8 +3724,7 @@ fn compute_stream(
                                     let chunk_str = serde_json::to_string(&chat_completion_chunk)
                                         .map_err(|e| {
                                         let err_msg = format!(
-                                            "Failed to serialize chat completion chunk. Reason: {}",
-                                            e
+                                            "Failed to serialize chat completion chunk. Reason: {e}"
                                         );
 
                                         #[cfg(feature = "logging")]
@@ -3782,7 +3733,7 @@ fn compute_stream(
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
 
-                                    Ok(format!("data: {}\n\n", chunk_str))
+                                    Ok(format!("data: {chunk_str}\n\n"))
                                 }
                                 PromptTooLongState::Usage => {
                                     *prompt_too_long_state = PromptTooLongState::Done;
@@ -3801,8 +3752,7 @@ fn compute_stream(
                                         .duration_since(std::time::UNIX_EPOCH)
                                         .map_err(|e| {
                                             let err_msg = format!(
-                                                "Failed to get the current time. Reason: {}",
-                                                e
+                                                "Failed to get the current time. Reason: {e}"
                                             );
 
                                             #[cfg(feature = "logging")]
@@ -3825,8 +3775,7 @@ fn compute_stream(
                                     let chunk_str = serde_json::to_string(&chat_completion_chunk)
                                         .map_err(|e| {
                                         let err_msg = format!(
-                                            "Failed to serialize chat completion chunk. Reason: {}",
-                                            e
+                                            "Failed to serialize chat completion chunk. Reason: {e}"
                                         );
 
                                         #[cfg(feature = "logging")]
@@ -3835,7 +3784,7 @@ fn compute_stream(
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
 
-                                    Ok(format!("data: {}\n\n", chunk_str))
+                                    Ok(format!("data: {chunk_str}\n\n"))
                                 }
                                 PromptTooLongState::Done => {
                                     *prompt_too_long_state = PromptTooLongState::EndOfSequence;
@@ -3849,7 +3798,7 @@ fn compute_stream(
                         }
                         Err(e) => {
                             let err_msg =
-                                format!("Failed to compute the chat completion. Reason: {}", e);
+                                format!("Failed to compute the chat completion. Reason: {e}");
 
                             #[cfg(feature = "logging")]
                             error!(target: "stdout", "{}", &err_msg);
@@ -3888,8 +3837,7 @@ fn compute_stream(
                                                         .get_or_init(|| Mutex::new(Vec::new()));
                                                     let mut cached_encodings = mutex.lock().map_err(|e| {
                                             let err_msg = format!(
-                                                "Fail to acquire the lock of `UTF8_ENCODINGS`. Reason: {}",
-                                                e
+                                                "Fail to acquire the lock of `UTF8_ENCODINGS`. Reason: {e}"
                                             );
 
                                             #[cfg(feature = "logging")]
@@ -3915,7 +3863,7 @@ fn compute_stream(
                                                         Err(e) => {
                                                             // TODO This is a temp check. In case, infinite cached encodings happen.
                                                             if cached_encodings.len() > 4 {
-                                                                let err_msg = format!("Fail to convert a vector of bytes to string. The length of the utf8 bytes exceeds 4. {}", e);
+                                                                let err_msg = format!("Fail to convert a vector of bytes to string. The length of the utf8 bytes exceeds 4. {e}");
 
                                                                 #[cfg(feature = "logging")]
                                                                 error!(target: "stdout", "{}", &err_msg);
@@ -3934,7 +3882,7 @@ fn compute_stream(
 
                                                                 String::from("")
                                                             } else {
-                                                                let warn_msg = format!("Fail to convert a vector of bytes to string. {}", e);
+                                                                let warn_msg = format!("Fail to convert a vector of bytes to string. {e}");
 
                                                                 #[cfg(feature = "logging")]
                                                                 warn!(target: "stdout", "{}", &warn_msg);
@@ -3953,8 +3901,7 @@ fn compute_stream(
                                                 .duration_since(std::time::UNIX_EPOCH)
                                                 .map_err(|e| {
                                                     let err_msg = format!(
-                                                "Failed to get the current time. Reason: {}",
-                                                e
+                                                "Failed to get the current time. Reason: {e}"
                                             );
 
                                                     #[cfg(feature = "logging")]
@@ -3990,8 +3937,7 @@ fn compute_stream(
                                                 serde_json::to_string(&chat_completion_chunk)
                                                     .map_err(|e| {
                                                         let err_msg = format!(
-                                            "Failed to serialize chat completion chunk. Reason: {}",
-                                            e
+                                            "Failed to serialize chat completion chunk. Reason: {e}"
                                         );
 
                                                         #[cfg(feature = "logging")]
@@ -4000,7 +3946,7 @@ fn compute_stream(
                                                         LlamaCoreError::Operation(err_msg)
                                                     })?;
 
-                                            Ok(format!("data: {}\n\n", chunk_str))
+                                            Ok(format!("data: {chunk_str}\n\n"))
                                         }
                                         StreamState::Done => {
                                             *stream_state = StreamState::EndOfSequence;
@@ -4039,8 +3985,7 @@ fn compute_stream(
                                                 .duration_since(std::time::UNIX_EPOCH)
                                                 .map_err(|e| {
                                                     let err_msg = format!(
-                                                "Failed to get the current time. Reason: {}",
-                                                e
+                                                "Failed to get the current time. Reason: {e}"
                                             );
 
                                                     #[cfg(feature = "logging")]
@@ -4064,8 +4009,7 @@ fn compute_stream(
                                                 serde_json::to_string(&chat_completion_chunk)
                                                     .map_err(|e| {
                                                         let err_msg = format!(
-                                            "Failed to serialize chat completion chunk. Reason: {}",
-                                            e
+                                            "Failed to serialize chat completion chunk. Reason: {e}"
                                         );
 
                                                         #[cfg(feature = "logging")]
@@ -4074,7 +4018,7 @@ fn compute_stream(
                                                         LlamaCoreError::Operation(err_msg)
                                                     })?;
 
-                                            Ok(format!("data: {}\n\n", chunk_str))
+                                            Ok(format!("data: {chunk_str}\n\n"))
                                         }
                                         StreamState::Done | StreamState::NoUsage => {
                                             *stream_state = StreamState::EndOfSequence;
@@ -4107,8 +4051,7 @@ fn compute_stream(
                                                 .duration_since(std::time::UNIX_EPOCH)
                                                 .map_err(|e| {
                                                     let err_msg = format!(
-                                                "Failed to get the current time. Reason: {}",
-                                                e
+                                                "Failed to get the current time. Reason: {e}"
                                             );
 
                                                     #[cfg(feature = "logging")]
@@ -4144,8 +4087,7 @@ fn compute_stream(
                                                 serde_json::to_string(&chat_completion_chunk)
                                                     .map_err(|e| {
                                                         let err_msg = format!(
-                                            "Failed to serialize chat completion chunk. Reason: {}",
-                                            e
+                                            "Failed to serialize chat completion chunk. Reason: {e}"
                                         );
 
                                                         #[cfg(feature = "logging")]
@@ -4154,7 +4096,7 @@ fn compute_stream(
                                                         LlamaCoreError::Operation(err_msg)
                                                     })?;
 
-                                            Ok(format!("data: {}\n\n", chunk_str))
+                                            Ok(format!("data: {chunk_str}\n\n"))
                                         }
                                         ContextFullState::Usage => {
                                             *context_full_state = ContextFullState::Done;
@@ -4173,8 +4115,7 @@ fn compute_stream(
                                                 .duration_since(std::time::UNIX_EPOCH)
                                                 .map_err(|e| {
                                                     let err_msg = format!(
-                                                "Failed to get the current time. Reason: {}",
-                                                e
+                                                "Failed to get the current time. Reason: {e}"
                                             );
 
                                                     #[cfg(feature = "logging")]
@@ -4198,8 +4139,7 @@ fn compute_stream(
                                                 serde_json::to_string(&chat_completion_chunk)
                                                     .map_err(|e| {
                                                         let err_msg = format!(
-                                            "Failed to serialize chat completion chunk. Reason: {}",
-                                            e
+                                            "Failed to serialize chat completion chunk. Reason: {e}"
                                         );
 
                                                         #[cfg(feature = "logging")]
@@ -4208,7 +4148,7 @@ fn compute_stream(
                                                         LlamaCoreError::Operation(err_msg)
                                                     })?;
 
-                                            Ok(format!("data: {}\n\n", chunk_str))
+                                            Ok(format!("data: {chunk_str}\n\n"))
                                         }
                                         ContextFullState::Done => {
                                             *context_full_state = ContextFullState::EndOfSequence;
@@ -4243,8 +4183,7 @@ fn compute_stream(
                                                 .duration_since(std::time::UNIX_EPOCH)
                                                 .map_err(|e| {
                                                     let err_msg = format!(
-                                                "Failed to get the current time. Reason: {}",
-                                                e
+                                                "Failed to get the current time. Reason: {e}"
                                             );
 
                                                     #[cfg(feature = "logging")]
@@ -4277,8 +4216,7 @@ fn compute_stream(
                                                 serde_json::to_string(&chat_completion_chunk)
                                                     .map_err(|e| {
                                                         let err_msg = format!(
-                                            "Failed to serialize chat completion chunk. Reason: {}",
-                                            e
+                                            "Failed to serialize chat completion chunk. Reason: {e}"
                                         );
 
                                                         #[cfg(feature = "logging")]
@@ -4287,7 +4225,7 @@ fn compute_stream(
                                                         LlamaCoreError::Operation(err_msg)
                                                     })?;
 
-                                            Ok(format!("data: {}\n\n", chunk_str))
+                                            Ok(format!("data: {chunk_str}\n\n"))
                                         }
                                         PromptTooLongState::Usage => {
                                             *prompt_too_long_state = PromptTooLongState::Done;
@@ -4306,8 +4244,7 @@ fn compute_stream(
                                                 .duration_since(std::time::UNIX_EPOCH)
                                                 .map_err(|e| {
                                                     let err_msg = format!(
-                                                "Failed to get the current time. Reason: {}",
-                                                e
+                                                "Failed to get the current time. Reason: {e}"
                                             );
 
                                                     #[cfg(feature = "logging")]
@@ -4331,8 +4268,7 @@ fn compute_stream(
                                                 serde_json::to_string(&chat_completion_chunk)
                                                     .map_err(|e| {
                                                         let err_msg = format!(
-                                            "Failed to serialize chat completion chunk. Reason: {}",
-                                            e
+                                            "Failed to serialize chat completion chunk. Reason: {e}"
                                         );
 
                                                         #[cfg(feature = "logging")]
@@ -4341,7 +4277,7 @@ fn compute_stream(
                                                         LlamaCoreError::Operation(err_msg)
                                                     })?;
 
-                                            Ok(format!("data: {}\n\n", chunk_str))
+                                            Ok(format!("data: {chunk_str}\n\n"))
                                         }
                                         PromptTooLongState::Done => {
                                             *prompt_too_long_state =
@@ -4356,8 +4292,7 @@ fn compute_stream(
                                 }
                                 Err(e) => {
                                     let err_msg = format!(
-                                        "Failed to compute the chat completion. Reason: {}",
-                                        e
+                                        "Failed to compute the chat completion. Reason: {e}"
                                     );
 
                                     #[cfg(feature = "logging")]
@@ -4407,8 +4342,7 @@ fn compute_stream(
                                                 .get_or_init(|| Mutex::new(Vec::new()));
                                             let mut cached_encodings = mutex.lock().map_err(|e| {
                                             let err_msg = format!(
-                                                "Fail to acquire the lock of `UTF8_ENCODINGS`. Reason: {}",
-                                                e
+                                                "Fail to acquire the lock of `UTF8_ENCODINGS`. Reason: {e}"
                                             );
 
                                             #[cfg(feature = "logging")]
@@ -4429,7 +4363,7 @@ fn compute_stream(
                                                 Err(e) => {
                                                     // TODO This is a temp check. In case, infinite cached encodings happen.
                                                     if cached_encodings.len() > 4 {
-                                                        let err_msg = format!("Fail to convert a vector of bytes to string. The length of the utf8 bytes exceeds 4. {}", e);
+                                                        let err_msg = format!("Fail to convert a vector of bytes to string. The length of the utf8 bytes exceeds 4. {e}");
 
                                                         #[cfg(feature = "logging")]
                                                         error!(target: "stdout", "{}", &err_msg);
@@ -4447,7 +4381,7 @@ fn compute_stream(
 
                                                         String::from("")
                                                     } else {
-                                                        let warn_msg = format!("Fail to convert a vector of bytes to string. {}", e);
+                                                        let warn_msg = format!("Fail to convert a vector of bytes to string. {e}");
 
                                                         #[cfg(feature = "logging")]
                                                         warn!(target: "stdout", "{}", &warn_msg);
@@ -4466,8 +4400,7 @@ fn compute_stream(
                                         .duration_since(std::time::UNIX_EPOCH)
                                         .map_err(|e| {
                                             let err_msg = format!(
-                                                "Failed to get the current time. Reason: {}",
-                                                e
+                                                "Failed to get the current time. Reason: {e}"
                                             );
 
                                             #[cfg(feature = "logging")]
@@ -4502,8 +4435,7 @@ fn compute_stream(
                                     let chunk_str = serde_json::to_string(&chat_completion_chunk)
                                         .map_err(|e| {
                                         let err_msg = format!(
-                                            "Failed to serialize chat completion chunk. Reason: {}",
-                                            e
+                                            "Failed to serialize chat completion chunk. Reason: {e}"
                                         );
 
                                         #[cfg(feature = "logging")]
@@ -4512,7 +4444,7 @@ fn compute_stream(
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
 
-                                    Ok(format!("data: {}\n\n", chunk_str))
+                                    Ok(format!("data: {chunk_str}\n\n"))
                                 }
                                 StreamState::Done => {
                                     *stream_state = StreamState::EndOfSequence;
@@ -4551,8 +4483,7 @@ fn compute_stream(
                                         .duration_since(std::time::UNIX_EPOCH)
                                         .map_err(|e| {
                                             let err_msg = format!(
-                                                "Failed to get the current time. Reason: {}",
-                                                e
+                                                "Failed to get the current time. Reason: {e}"
                                             );
 
                                             #[cfg(feature = "logging")]
@@ -4575,8 +4506,7 @@ fn compute_stream(
                                     let chunk_str = serde_json::to_string(&chat_completion_chunk)
                                         .map_err(|e| {
                                         let err_msg = format!(
-                                            "Failed to serialize chat completion chunk. Reason: {}",
-                                            e
+                                            "Failed to serialize chat completion chunk. Reason: {e}"
                                         );
 
                                         #[cfg(feature = "logging")]
@@ -4585,7 +4515,7 @@ fn compute_stream(
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
 
-                                    Ok(format!("data: {}\n\n", chunk_str))
+                                    Ok(format!("data: {chunk_str}\n\n"))
                                 }
                                 StreamState::Done | StreamState::NoUsage => {
                                     *stream_state = StreamState::EndOfSequence;
@@ -4614,8 +4544,7 @@ fn compute_stream(
                                         .duration_since(std::time::UNIX_EPOCH)
                                         .map_err(|e| {
                                             let err_msg = format!(
-                                                "Failed to get the current time. Reason: {}",
-                                                e
+                                                "Failed to get the current time. Reason: {e}"
                                             );
 
                                             #[cfg(feature = "logging")]
@@ -4649,8 +4578,7 @@ fn compute_stream(
                                     let chunk_str = serde_json::to_string(&chat_completion_chunk)
                                         .map_err(|e| {
                                         let err_msg = format!(
-                                            "Failed to serialize chat completion chunk. Reason: {}",
-                                            e
+                                            "Failed to serialize chat completion chunk. Reason: {e}"
                                         );
 
                                         #[cfg(feature = "logging")]
@@ -4659,7 +4587,7 @@ fn compute_stream(
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
 
-                                    Ok(format!("data: {}\n\n", chunk_str))
+                                    Ok(format!("data: {chunk_str}\n\n"))
                                 }
                                 ContextFullState::Usage => {
                                     *context_full_state = ContextFullState::Done;
@@ -4678,8 +4606,7 @@ fn compute_stream(
                                         .duration_since(std::time::UNIX_EPOCH)
                                         .map_err(|e| {
                                             let err_msg = format!(
-                                                "Failed to get the current time. Reason: {}",
-                                                e
+                                                "Failed to get the current time. Reason: {e}"
                                             );
 
                                             #[cfg(feature = "logging")]
@@ -4702,8 +4629,7 @@ fn compute_stream(
                                     let chunk_str = serde_json::to_string(&chat_completion_chunk)
                                         .map_err(|e| {
                                         let err_msg = format!(
-                                            "Failed to serialize chat completion chunk. Reason: {}",
-                                            e
+                                            "Failed to serialize chat completion chunk. Reason: {e}"
                                         );
 
                                         #[cfg(feature = "logging")]
@@ -4712,7 +4638,7 @@ fn compute_stream(
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
 
-                                    Ok(format!("data: {}\n\n", chunk_str))
+                                    Ok(format!("data: {chunk_str}\n\n"))
                                 }
                                 ContextFullState::Done => {
                                     *context_full_state = ContextFullState::EndOfSequence;
@@ -4741,8 +4667,7 @@ fn compute_stream(
                                         .duration_since(std::time::UNIX_EPOCH)
                                         .map_err(|e| {
                                             let err_msg = format!(
-                                                "Failed to get the current time. Reason: {}",
-                                                e
+                                                "Failed to get the current time. Reason: {e}"
                                             );
 
                                             #[cfg(feature = "logging")]
@@ -4774,8 +4699,7 @@ fn compute_stream(
                                     let chunk_str = serde_json::to_string(&chat_completion_chunk)
                                         .map_err(|e| {
                                         let err_msg = format!(
-                                            "Failed to serialize chat completion chunk. Reason: {}",
-                                            e
+                                            "Failed to serialize chat completion chunk. Reason: {e}"
                                         );
 
                                         #[cfg(feature = "logging")]
@@ -4784,7 +4708,7 @@ fn compute_stream(
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
 
-                                    Ok(format!("data: {}\n\n", chunk_str))
+                                    Ok(format!("data: {chunk_str}\n\n"))
                                 }
                                 PromptTooLongState::Usage => {
                                     *prompt_too_long_state = PromptTooLongState::Done;
@@ -4803,8 +4727,7 @@ fn compute_stream(
                                         .duration_since(std::time::UNIX_EPOCH)
                                         .map_err(|e| {
                                             let err_msg = format!(
-                                                "Failed to get the current time. Reason: {}",
-                                                e
+                                                "Failed to get the current time. Reason: {e}"
                                             );
 
                                             #[cfg(feature = "logging")]
@@ -4827,8 +4750,7 @@ fn compute_stream(
                                     let chunk_str = serde_json::to_string(&chat_completion_chunk)
                                         .map_err(|e| {
                                         let err_msg = format!(
-                                            "Failed to serialize chat completion chunk. Reason: {}",
-                                            e
+                                            "Failed to serialize chat completion chunk. Reason: {e}"
                                         );
 
                                         #[cfg(feature = "logging")]
@@ -4837,7 +4759,7 @@ fn compute_stream(
                                         LlamaCoreError::Operation(err_msg)
                                     })?;
 
-                                    Ok(format!("data: {}\n\n", chunk_str))
+                                    Ok(format!("data: {chunk_str}\n\n"))
                                 }
                                 PromptTooLongState::Done => {
                                     *prompt_too_long_state = PromptTooLongState::EndOfSequence;
@@ -4851,7 +4773,7 @@ fn compute_stream(
                         }
                         Err(e) => {
                             let err_msg =
-                                format!("Failed to compute the chat completion. Reason: {}", e);
+                                format!("Failed to compute the chat completion. Reason: {e}");
 
                             #[cfg(feature = "logging")]
                             error!(target: "stdout", "{}", &err_msg);

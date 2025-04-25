@@ -82,7 +82,7 @@ pub fn init_ggml_chat_context(metadata_for_chats: &[GgmlMetadata]) -> Result<(),
         let err_msg = "The metadata for chat models is empty";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", err_msg);
+        error!(target: "stdout", "{err_msg}");
 
         return Err(LlamaCoreError::InitContext(err_msg.into()));
     }
@@ -97,7 +97,7 @@ pub fn init_ggml_chat_context(metadata_for_chats: &[GgmlMetadata]) -> Result<(),
             let err_msg = "Failed to initialize the core context. Reason: The `CHAT_GRAPHS` has already been initialized";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             LlamaCoreError::InitContext(err_msg.into())
         })?;
@@ -114,7 +114,7 @@ pub fn init_ggml_chat_context(metadata_for_chats: &[GgmlMetadata]) -> Result<(),
                 let err_msg = "Failed to initialize the chat context. Reason: The `RUNNING_MODE` has already been initialized";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg.into())
             })?;
@@ -135,7 +135,7 @@ pub fn init_ggml_embeddings_context(
         let err_msg = "The metadata for chat models is empty";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", err_msg);
+        error!(target: "stdout", "{err_msg}");
 
         return Err(LlamaCoreError::InitContext(err_msg.into()));
     }
@@ -152,7 +152,7 @@ pub fn init_ggml_embeddings_context(
                 let err_msg = "Failed to initialize the core context. Reason: The `EMBEDDING_GRAPHS` has already been initialized";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg.into())
             })?;
@@ -169,7 +169,7 @@ pub fn init_ggml_embeddings_context(
                 let err_msg = "Failed to initialize the embeddings context. Reason: The `RUNNING_MODE` has already been initialized";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg.into())
             })?;
@@ -193,7 +193,7 @@ pub fn init_ggml_rag_context(
         let err_msg = "The metadata for chat models is empty";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", err_msg);
+        error!(target: "stdout", "{err_msg}");
 
         return Err(LlamaCoreError::InitContext(err_msg.into()));
     }
@@ -207,7 +207,7 @@ pub fn init_ggml_rag_context(
         let err_msg = "Failed to initialize the core context. Reason: The `CHAT_GRAPHS` has already been initialized";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", err_msg);
+        error!(target: "stdout", "{err_msg}");
 
         LlamaCoreError::InitContext(err_msg.into())
     })?;
@@ -217,7 +217,7 @@ pub fn init_ggml_rag_context(
         let err_msg = "The metadata for embeddings is empty";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", err_msg);
+        error!(target: "stdout", "{err_msg}");
 
         return Err(LlamaCoreError::InitContext(err_msg.into()));
     }
@@ -233,7 +233,7 @@ pub fn init_ggml_rag_context(
             let err_msg = "Failed to initialize the core context. Reason: The `EMBEDDING_GRAPHS` has already been initialized";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             LlamaCoreError::InitContext(err_msg.into())
         })?;
@@ -250,7 +250,7 @@ pub fn init_ggml_rag_context(
                     let err_msg = "Failed to initialize the rag context. Reason: The `RUNNING_MODE` has already been initialized";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
+                    error!(target: "stdout", "{err_msg}");
 
                     LlamaCoreError::InitContext(err_msg.into())
                 })?;
@@ -269,7 +269,7 @@ pub fn init_ggml_tts_context(metadata_for_tts: &[GgmlTtsMetadata]) -> Result<(),
         let err_msg = "The metadata for tts models is empty";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", err_msg);
+        error!(target: "stdout", "{err_msg}");
 
         return Err(LlamaCoreError::InitContext(err_msg.into()));
     }
@@ -284,7 +284,7 @@ pub fn init_ggml_tts_context(metadata_for_tts: &[GgmlTtsMetadata]) -> Result<(),
         let err_msg = "Failed to initialize the core context. Reason: The `TTS_GRAPHS` has already been initialized";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", err_msg);
+        error!(target: "stdout", "{err_msg}");
 
         LlamaCoreError::InitContext(err_msg.into())
     })?;
@@ -301,7 +301,7 @@ pub fn init_ggml_tts_context(metadata_for_tts: &[GgmlTtsMetadata]) -> Result<(),
                 let err_msg = "Failed to initialize the embeddings context. Reason: The `RUNNING_MODE` has already been initialized";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg.into())
             })?;
@@ -327,14 +327,14 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
                 let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 return Err(LlamaCoreError::Operation(err_msg.into()));
             }
         };
 
         let chat_graphs = chat_graphs.lock().map_err(|e| {
-            let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+            let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -348,7 +348,7 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
                 let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 return Err(LlamaCoreError::Operation(err_msg.into()));
             }
@@ -362,14 +362,14 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
                 let err_msg = "Fail to get the underlying value of `EMBEDDING_GRAPHS`.";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 return Err(LlamaCoreError::Operation(err_msg.into()));
             }
         };
 
         let embedding_graphs = embedding_graphs.lock().map_err(|e| {
-            let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}", e);
+            let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -383,7 +383,7 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
                 let err_msg = "Fail to get the underlying value of `EMBEDDING_GRAPHS`.";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 return Err(LlamaCoreError::Operation(err_msg.into()));
             }
@@ -397,14 +397,14 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
                 let err_msg = "Fail to get the underlying value of `TTS_GRAPHS`.";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 return Err(LlamaCoreError::Operation(err_msg.into()));
             }
         };
 
         let tts_graphs = tts_graphs.lock().map_err(|e| {
-            let err_msg = format!("Fail to acquire the lock of `TTS_GRAPHS`. {}", e);
+            let err_msg = format!("Fail to acquire the lock of `TTS_GRAPHS`. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -418,7 +418,7 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
                 let err_msg = "Fail to get the underlying value of `TTS_GRAPHS`.";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 return Err(LlamaCoreError::Operation(err_msg.into()));
             }
@@ -429,7 +429,7 @@ pub fn get_plugin_info() -> Result<PluginInfo, LlamaCoreError> {
         let err_msg = "RUNNING_MODE is not set";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", err_msg);
+        error!(target: "stdout", "{err_msg}");
 
         Err(LlamaCoreError::Operation(err_msg.into()))
     }
@@ -444,7 +444,7 @@ fn get_plugin_info_by_graph<M: BaseMetadata + serde::Serialize + Clone + Default
     // get the plugin metadata
     let output_buffer = get_output_buffer(graph, PLUGIN_VERSION)?;
     let metadata: serde_json::Value = serde_json::from_slice(&output_buffer[..]).map_err(|e| {
-        let err_msg = format!("Fail to deserialize the plugin metadata. {}", e);
+        let err_msg = format!("Fail to deserialize the plugin metadata. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -460,7 +460,7 @@ fn get_plugin_info_by_graph<M: BaseMetadata + serde::Serialize + Clone + Default
                 let err_msg = "Failed to convert the build number of the plugin to u64";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 return Err(LlamaCoreError::Operation(err_msg.into()));
             }
@@ -469,7 +469,7 @@ fn get_plugin_info_by_graph<M: BaseMetadata + serde::Serialize + Clone + Default
             let err_msg = "Metadata does not have the field `llama_build_number`.";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
@@ -483,7 +483,7 @@ fn get_plugin_info_by_graph<M: BaseMetadata + serde::Serialize + Clone + Default
                 let err_msg = "Failed to convert the commit id of the plugin to string";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 return Err(LlamaCoreError::Operation(err_msg.into()));
             }
@@ -492,14 +492,14 @@ fn get_plugin_info_by_graph<M: BaseMetadata + serde::Serialize + Clone + Default
             let err_msg = "Metadata does not have the field `llama_commit`.";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
     };
 
     #[cfg(feature = "logging")]
-    debug!(target: "stdout", "Plugin info: b{}(commit {})", plugin_build_number, plugin_commit);
+    debug!(target: "stdout", "Plugin info: b{plugin_build_number}(commit {plugin_commit})");
 
     Ok(PluginInfo {
         build_number: plugin_build_number,
@@ -532,10 +532,10 @@ pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
         Some(mode) => match mode.read() {
             Ok(mode) => Ok(*mode),
             Err(e) => {
-                let err_msg = format!("Fail to get the underlying value of `RUNNING_MODE`. {}", e);
+                let err_msg = format!("Fail to get the underlying value of `RUNNING_MODE`. {e}");
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 Err(LlamaCoreError::Operation(err_msg))
             }
@@ -544,7 +544,7 @@ pub fn running_mode() -> Result<RunningMode, LlamaCoreError> {
             let err_msg = "Fail to get the underlying value of `RUNNING_MODE`.";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             Err(LlamaCoreError::Operation(err_msg.into()))
         }
@@ -593,37 +593,31 @@ pub fn init_sd_context_with_full_model(
     if task == StableDiffusionTask::Full || task == StableDiffusionTask::TextToImage {
         let sd = SDBuidler::new(Task::TextToImage, model_file.as_ref())
             .map_err(|e| {
-                let err_msg = format!(
-                    "Failed to initialize the stable diffusion context. Reason: {}",
-                    e
-                );
+                let err_msg =
+                    format!("Failed to initialize the stable diffusion context. Reason: {e}");
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg)
             })?
             .with_lora_model_dir(lora_model_dir.unwrap_or_default())
             .map_err(|e| {
-                let err_msg = format!(
-                    "Failed to initialize the stable diffusion context. Reason: {}",
-                    e
-                );
+                let err_msg =
+                    format!("Failed to initialize the stable diffusion context. Reason: {e}");
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg)
             })?
             .use_control_net(controlnet_path.unwrap_or_default(), control_net_on_cpu)
             .map_err(|e| {
-                let err_msg = format!(
-                    "Failed to initialize the stable diffusion context. Reason: {}",
-                    e
-                );
+                let err_msg =
+                    format!("Failed to initialize the stable diffusion context. Reason: {e}");
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg)
             })?
@@ -636,7 +630,7 @@ pub fn init_sd_context_with_full_model(
         info!(target: "stdout", "sd: {:?}", &sd);
 
         let ctx = sd.create_context().map_err(|e| {
-            let err_msg = format!("Fail to create the context. {}", e);
+            let err_msg = format!("Fail to create the context. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -650,7 +644,7 @@ pub fn init_sd_context_with_full_model(
                 let err_msg = "Fail to get the context for the text-to-image task";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 return Err(LlamaCoreError::InitContext(err_msg.into()));
             }
@@ -663,7 +657,7 @@ pub fn init_sd_context_with_full_model(
         let err_msg = "Failed to initialize the stable diffusion context. Reason: The `SD_TEXT_TO_IMAGE` has already been initialized";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", err_msg);
+        error!(target: "stdout", "{err_msg}");
 
         LlamaCoreError::InitContext(err_msg.into())
     })?;
@@ -676,37 +670,31 @@ pub fn init_sd_context_with_full_model(
     if task == StableDiffusionTask::Full || task == StableDiffusionTask::ImageToImage {
         let sd = SDBuidler::new(Task::ImageToImage, model_file.as_ref())
             .map_err(|e| {
-                let err_msg = format!(
-                    "Failed to initialize the stable diffusion context. Reason: {}",
-                    e
-                );
+                let err_msg =
+                    format!("Failed to initialize the stable diffusion context. Reason: {e}");
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg)
             })?
             .with_lora_model_dir(lora_model_dir.unwrap_or_default())
             .map_err(|e| {
-                let err_msg = format!(
-                    "Failed to initialize the stable diffusion context. Reason: {}",
-                    e
-                );
+                let err_msg =
+                    format!("Failed to initialize the stable diffusion context. Reason: {e}");
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg)
             })?
             .use_control_net(controlnet_path.unwrap_or_default(), control_net_on_cpu)
             .map_err(|e| {
-                let err_msg = format!(
-                    "Failed to initialize the stable diffusion context. Reason: {}",
-                    e
-                );
+                let err_msg =
+                    format!("Failed to initialize the stable diffusion context. Reason: {e}");
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg)
             })?
@@ -719,7 +707,7 @@ pub fn init_sd_context_with_full_model(
         info!(target: "stdout", "sd: {:?}", &sd);
 
         let ctx = sd.create_context().map_err(|e| {
-            let err_msg = format!("Fail to create the context. {}", e);
+            let err_msg = format!("Fail to create the context. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -733,7 +721,7 @@ pub fn init_sd_context_with_full_model(
                 let err_msg = "Fail to get the context for the image-to-image task";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 return Err(LlamaCoreError::InitContext(err_msg.into()));
             }
@@ -746,7 +734,7 @@ pub fn init_sd_context_with_full_model(
             let err_msg = "Failed to initialize the stable diffusion context. Reason: The `SD_IMAGE_TO_IMAGE` has already been initialized";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             LlamaCoreError::InitContext(err_msg.into())
         })?;
@@ -809,73 +797,61 @@ pub fn init_sd_context_with_standalone_model(
     if task == StableDiffusionTask::Full || task == StableDiffusionTask::TextToImage {
         let sd = SDBuidler::new_with_standalone_model(Task::TextToImage, model_file.as_ref())
             .map_err(|e| {
-                let err_msg = format!(
-                    "Failed to initialize the stable diffusion context. Reason: {}",
-                    e
-                );
+                let err_msg =
+                    format!("Failed to initialize the stable diffusion context. Reason: {e}");
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg)
             })?
             .with_vae_path(vae.as_ref())
             .map_err(|e| {
-                let err_msg = format!(
-                    "Failed to initialize the stable diffusion context. Reason: {}",
-                    e
-                );
+                let err_msg =
+                    format!("Failed to initialize the stable diffusion context. Reason: {e}");
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg)
             })?
             .with_clip_l_path(clip_l.as_ref())
             .map_err(|e| {
-                let err_msg = format!(
-                    "Failed to initialize the stable diffusion context. Reason: {}",
-                    e
-                );
+                let err_msg =
+                    format!("Failed to initialize the stable diffusion context. Reason: {e}");
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg)
             })?
             .with_t5xxl_path(t5xxl.as_ref())
             .map_err(|e| {
-                let err_msg = format!(
-                    "Failed to initialize the stable diffusion context. Reason: {}",
-                    e
-                );
+                let err_msg =
+                    format!("Failed to initialize the stable diffusion context. Reason: {e}");
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg)
             })?
             .with_lora_model_dir(lora_model_dir.unwrap_or_default())
             .map_err(|e| {
-                let err_msg = format!(
-                    "Failed to initialize the stable diffusion context. Reason: {}",
-                    e
-                );
+                let err_msg =
+                    format!("Failed to initialize the stable diffusion context. Reason: {e}");
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg)
             })?
             .use_control_net(controlnet_path.unwrap_or_default(), control_net_on_cpu)
             .map_err(|e| {
-                let err_msg = format!(
-                    "Failed to initialize the stable diffusion context. Reason: {}",
-                    e
-                );
+                let err_msg =
+                    format!("Failed to initialize the stable diffusion context. Reason: {e}");
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg)
             })?
@@ -888,7 +864,7 @@ pub fn init_sd_context_with_standalone_model(
         info!(target: "stdout", "sd: {:?}", &sd);
 
         let ctx = sd.create_context().map_err(|e| {
-            let err_msg = format!("Fail to create the context. {}", e);
+            let err_msg = format!("Fail to create the context. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -902,7 +878,7 @@ pub fn init_sd_context_with_standalone_model(
                 let err_msg = "Fail to get the context for the text-to-image task";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 return Err(LlamaCoreError::InitContext(err_msg.into()));
             }
@@ -915,7 +891,7 @@ pub fn init_sd_context_with_standalone_model(
             let err_msg = "Failed to initialize the stable diffusion context. Reason: The `SD_TEXT_TO_IMAGE` has already been initialized";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             LlamaCoreError::InitContext(err_msg.into())
         })?;
@@ -928,73 +904,61 @@ pub fn init_sd_context_with_standalone_model(
     if task == StableDiffusionTask::Full || task == StableDiffusionTask::ImageToImage {
         let sd = SDBuidler::new_with_standalone_model(Task::ImageToImage, model_file.as_ref())
             .map_err(|e| {
-                let err_msg = format!(
-                    "Failed to initialize the stable diffusion context. Reason: {}",
-                    e
-                );
+                let err_msg =
+                    format!("Failed to initialize the stable diffusion context. Reason: {e}");
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg)
             })?
             .with_vae_path(vae.as_ref())
             .map_err(|e| {
-                let err_msg = format!(
-                    "Failed to initialize the stable diffusion context. Reason: {}",
-                    e
-                );
+                let err_msg =
+                    format!("Failed to initialize the stable diffusion context. Reason: {e}");
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg)
             })?
             .with_clip_l_path(clip_l.as_ref())
             .map_err(|e| {
-                let err_msg = format!(
-                    "Failed to initialize the stable diffusion context. Reason: {}",
-                    e
-                );
+                let err_msg =
+                    format!("Failed to initialize the stable diffusion context. Reason: {e}");
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg)
             })?
             .with_t5xxl_path(t5xxl.as_ref())
             .map_err(|e| {
-                let err_msg = format!(
-                    "Failed to initialize the stable diffusion context. Reason: {}",
-                    e
-                );
+                let err_msg =
+                    format!("Failed to initialize the stable diffusion context. Reason: {e}");
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg)
             })?
             .with_lora_model_dir(lora_model_dir.unwrap_or_default())
             .map_err(|e| {
-                let err_msg = format!(
-                    "Failed to initialize the stable diffusion context. Reason: {}",
-                    e
-                );
+                let err_msg =
+                    format!("Failed to initialize the stable diffusion context. Reason: {e}");
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg)
             })?
             .use_control_net(controlnet_path.unwrap_or_default(), control_net_on_cpu)
             .map_err(|e| {
-                let err_msg = format!(
-                    "Failed to initialize the stable diffusion context. Reason: {}",
-                    e
-                );
+                let err_msg =
+                    format!("Failed to initialize the stable diffusion context. Reason: {e}");
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg)
             })?
@@ -1007,7 +971,7 @@ pub fn init_sd_context_with_standalone_model(
         info!(target: "stdout", "sd: {:?}", &sd);
 
         let ctx = sd.create_context().map_err(|e| {
-            let err_msg = format!("Fail to create the context. {}", e);
+            let err_msg = format!("Fail to create the context. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -1021,7 +985,7 @@ pub fn init_sd_context_with_standalone_model(
                 let err_msg = "Fail to get the context for the image-to-image task";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 return Err(LlamaCoreError::InitContext(err_msg.into()));
             }
@@ -1034,7 +998,7 @@ pub fn init_sd_context_with_standalone_model(
         let err_msg = "Failed to initialize the stable diffusion context. Reason: The `SD_IMAGE_TO_IMAGE` has already been initialized";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", err_msg);
+        error!(target: "stdout", "{err_msg}");
 
         LlamaCoreError::InitContext(err_msg.into())
     })?;
@@ -1074,10 +1038,10 @@ pub fn init_whisper_context(whisper_metadata: &WhisperMetadata) -> Result<(), Ll
             match mutex_graph.lock() {
                 Ok(mut locked_graph) => *locked_graph = graph,
                 Err(e) => {
-                    let err_msg = format!("Failed to lock the graph. Reason: {}", e);
+                    let err_msg = format!("Failed to lock the graph. Reason: {e}");
 
                     #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
+                    error!(target: "stdout", "{err_msg}");
 
                     return Err(LlamaCoreError::InitContext(err_msg));
                 }
@@ -1091,7 +1055,7 @@ pub fn init_whisper_context(whisper_metadata: &WhisperMetadata) -> Result<(), Ll
                 let err_msg = "Failed to initialize the audio context. Reason: The `AUDIO_GRAPH` has already been initialized";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 LlamaCoreError::InitContext(err_msg.into())
             })?;
@@ -1139,7 +1103,7 @@ pub fn init_piper_context(
             let err_msg = "Failed to initialize the piper context. Reason: The `PIPER_GRAPH` has already been initialized";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             LlamaCoreError::InitContext(err_msg.into())
         })?;
