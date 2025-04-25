@@ -205,7 +205,7 @@ jobs:
           curl -LO https://huggingface.co/second-state/OuteTTS-0.2-500M-GGUF/resolve/main/OuteTTS-0.2-500M-Q5_K_M.gguf
           curl -LO https://huggingface.co/second-state/OuteTTS-0.2-500M-GGUF/resolve/main/wavtokenizer-large-75-ggml-f16.gguf
           nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:Llama-3.2-1B-Instruct-Q5_K_M.gguf --nn-preload embedding:GGML:AUTO:nomic-embed-text-v1.5-f16.gguf --nn-preload tts:GGML:AUTO:OuteTTS-0.2-500M-Q5_K_M.gguf llama-api-server.wasm config --file llama_server_config.toml --chat --embedding --tts > ./start-llamaedge.log 2>&1 &
-          sleep 15
+          sleep 20
           cat start-llamaedge.log
 
       - name: Run test_config.hurl
@@ -294,23 +294,23 @@ jobs:
         run: |
           pkill -f wasmedge
 
-      # - name: Start llama-api-server with config file
-      #   run: |
-      #     cp ./tests/assets/llama_server_config.toml ./llama_server_config.toml
-      #     curl -LO https://huggingface.co/second-state/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q5_K_M.gguf
-      #     curl -LO https://huggingface.co/second-state/OuteTTS-0.2-500M-GGUF/resolve/main/OuteTTS-0.2-500M-Q5_K_M.gguf
-      #     curl -LO https://huggingface.co/second-state/OuteTTS-0.2-500M-GGUF/resolve/main/wavtokenizer-large-75-ggml-f16.gguf
-      #     nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:Llama-3.2-1B-Instruct-Q5_K_M.gguf --nn-preload embedding:GGML:AUTO:nomic-embed-text-v1.5-f16.gguf --nn-preload tts:GGML:AUTO:OuteTTS-0.2-500M-Q5_K_M.gguf llama-api-server.wasm config --file llama_server_config.toml --chat --embedding --tts > ./start-llamaedge.log 2>&1 &
-      #     sleep 15
-      #     cat start-llamaedge.log
+      - name: Start llama-api-server with config file
+        run: |
+          cp ./tests/assets/llama_server_config.toml ./llama_server_config.toml
+          curl -LO https://huggingface.co/second-state/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q5_K_M.gguf
+          curl -LO https://huggingface.co/second-state/OuteTTS-0.2-500M-GGUF/resolve/main/OuteTTS-0.2-500M-Q5_K_M.gguf
+          curl -LO https://huggingface.co/second-state/OuteTTS-0.2-500M-GGUF/resolve/main/wavtokenizer-large-75-ggml-f16.gguf
+          nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:Llama-3.2-1B-Instruct-Q5_K_M.gguf --nn-preload embedding:GGML:AUTO:nomic-embed-text-v1.5-f16.gguf --nn-preload tts:GGML:AUTO:OuteTTS-0.2-500M-Q5_K_M.gguf llama-api-server.wasm config --file llama_server_config.toml --chat --embedding --tts > ./start-llamaedge.log 2>&1 &
+          sleep 20
+          cat start-llamaedge.log
 
-      # - name: Run test_config.hurl
-      #   run: |
-      #     hurl --test --jobs 1 ./tests/test_config.hurl
+      - name: Run test_config.hurl
+        run: |
+          hurl --test --jobs 1 ./tests/test_config.hurl
 
-      # - name: Stop llama-api-server for testing config
-      #   run: |
-      #     pkill -f wasmedge
+      - name: Stop llama-api-server for testing config
+        run: |
+          pkill -f wasmedge
 
   test-api-server-macos-15:
     runs-on: macos-15
@@ -390,20 +390,20 @@ jobs:
         run: |
           pkill -f wasmedge
 
-      # - name: Start llama-api-server with config file
-      #   run: |
-      #     cp ./tests/assets/llama_server_config.toml ./llama_server_config.toml
-      #     curl -LO https://huggingface.co/second-state/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q5_K_M.gguf
-      #     curl -LO https://huggingface.co/second-state/OuteTTS-0.2-500M-GGUF/resolve/main/OuteTTS-0.2-500M-Q5_K_M.gguf
-      #     curl -LO https://huggingface.co/second-state/OuteTTS-0.2-500M-GGUF/resolve/main/wavtokenizer-large-75-ggml-f16.gguf
-      #     nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:Llama-3.2-1B-Instruct-Q5_K_M.gguf --nn-preload embedding:GGML:AUTO:nomic-embed-text-v1.5-f16.gguf --nn-preload tts:GGML:AUTO:OuteTTS-0.2-500M-Q5_K_M.gguf llama-api-server.wasm config --file llama_server_config.toml --chat --embedding --tts > ./start-llamaedge.log 2>&1 &
-      #     sleep 15
-      #     cat start-llamaedge.log
+      - name: Start llama-api-server with config file
+        run: |
+          cp ./tests/assets/llama_server_config.toml ./llama_server_config.toml
+          curl -LO https://huggingface.co/second-state/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q5_K_M.gguf
+          curl -LO https://huggingface.co/second-state/OuteTTS-0.2-500M-GGUF/resolve/main/OuteTTS-0.2-500M-Q5_K_M.gguf
+          curl -LO https://huggingface.co/second-state/OuteTTS-0.2-500M-GGUF/resolve/main/wavtokenizer-large-75-ggml-f16.gguf
+          nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:Llama-3.2-1B-Instruct-Q5_K_M.gguf --nn-preload embedding:GGML:AUTO:nomic-embed-text-v1.5-f16.gguf --nn-preload tts:GGML:AUTO:OuteTTS-0.2-500M-Q5_K_M.gguf llama-api-server.wasm config --file llama_server_config.toml --chat --embedding --tts > ./start-llamaedge.log 2>&1 &
+          sleep 20
+          cat start-llamaedge.log
 
-      # - name: Run test_config.hurl
-      #   run: |
-      #     hurl --test --jobs 1 ./tests/test_config.hurl
+      - name: Run test_config.hurl
+        run: |
+          hurl --test --jobs 1 ./tests/test_config.hurl
 
-      # - name: Stop llama-api-server for testing config
-      #   run: |
-      #     pkill -f wasmedge
+      - name: Stop llama-api-server for testing config
+        run: |
+          pkill -f wasmedge
