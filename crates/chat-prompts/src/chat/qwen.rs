@@ -14,13 +14,10 @@ pub struct Qwen2vlPrompt;
 impl Qwen2vlPrompt {
     /// Create a system prompt from a chat completion request message.
     fn create_system_prompt(&self, message: &ChatCompletionSystemMessage) -> String {
-        let content = message.content();
-        match content.is_empty() {
+        let system_prompt = message.content();
+        match system_prompt.is_empty() {
             true => String::from("<|im_start|>system\nAnswer as concisely as possible.<|im_end|>"),
-            false => format!(
-                "<|im_start|>system\n{system_prompt}<|im_end|>",
-                system_prompt = content
-            ),
+            false => format!("<|im_start|>system\n{system_prompt}<|im_end|>"),
         }
     }
 
@@ -72,8 +69,7 @@ impl Qwen2vlPrompt {
                                     let base64_str = part.image().url.as_str();
                                     let format = get_image_format(base64_str)?;
                                     format!(
-                                        r#"<img src="data:image/{};base64,{}">"#,
-                                        format, base64_str
+                                        r#"<img src="data:image/{format};base64,{base64_str}">"#
                                     )
                                 }
                             };

@@ -49,7 +49,7 @@ async fn transcribe_audio(
     let mut graph = match graph.lock() {
         Ok(graph) => graph,
         Err(e) => {
-            let err_msg = format!("Failed to lock the graph. {}", e);
+            let err_msg = format!("Failed to lock the graph. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -215,7 +215,7 @@ async fn transcribe_audio(
                     info!(target: "stdout", "metadata updated");
                 }
                 Err(e) => {
-                    let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
+                    let err_msg = format!("Fail to serialize metadata to a JSON string. {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -248,7 +248,7 @@ async fn transcribe_audio(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Transcribe audio to text.");
     if let Err(e) = graph.compute() {
-        let err_msg = format!("Failed to compute the graph. {}", e);
+        let err_msg = format!("Failed to compute the graph. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -263,7 +263,7 @@ async fn transcribe_audio(
     // Retrieve the output.
     let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
     let output_size = graph.get_output(0, &mut output_buffer).map_err(|e| {
-        let err_msg = format!("Failed to get the output tensor. {}", e);
+        let err_msg = format!("Failed to get the output tensor. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -272,7 +272,7 @@ async fn transcribe_audio(
     })?;
 
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "Output buffer size: {}", output_size);
+    info!(target: "stdout", "Output buffer size: {output_size}");
 
     // decode the output buffer
     #[cfg(feature = "logging")]
@@ -297,7 +297,7 @@ async fn transcribe_audio(
 fn load_audio_waveform(filename: impl AsRef<std::path::Path>) -> Result<Vec<u8>, LlamaCoreError> {
     std::fs::read(filename)
         .map_err(|e| {
-            let err_msg = format!("Failed to read the input tensor. {}", e);
+            let err_msg = format!("Failed to read the input tensor. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -357,7 +357,7 @@ async fn translate_audio(request: TranslationRequest) -> Result<TranslationObjec
     let mut graph = match graph.lock() {
         Ok(graph) => graph,
         Err(e) => {
-            let err_msg = format!("Failed to lock the graph. {}", e);
+            let err_msg = format!("Failed to lock the graph. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -512,7 +512,7 @@ async fn translate_audio(request: TranslationRequest) -> Result<TranslationObjec
                     set_tensor_data(&mut graph, 1, config.as_bytes(), [1])?;
                 }
                 Err(e) => {
-                    let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
+                    let err_msg = format!("Fail to serialize metadata to a JSON string. {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -545,7 +545,7 @@ async fn translate_audio(request: TranslationRequest) -> Result<TranslationObjec
     #[cfg(feature = "logging")]
     info!(target: "stdout", "translate audio to text.");
     if let Err(e) = graph.compute() {
-        let err_msg = format!("Failed to compute the graph. {}", e);
+        let err_msg = format!("Failed to compute the graph. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -560,7 +560,7 @@ async fn translate_audio(request: TranslationRequest) -> Result<TranslationObjec
     // Retrieve the output.
     let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
     let output_size = graph.get_output(0, &mut output_buffer).map_err(|e| {
-        let err_msg = format!("Failed to get the output tensor. {}", e);
+        let err_msg = format!("Failed to get the output tensor. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -569,7 +569,7 @@ async fn translate_audio(request: TranslationRequest) -> Result<TranslationObjec
     })?;
 
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "output buffer size: {}", output_size);
+    info!(target: "stdout", "output buffer size: {output_size}");
 
     // decode the output buffer
     #[cfg(feature = "logging")]
@@ -615,7 +615,7 @@ pub async fn create_speech(request: SpeechRequest) -> Result<Vec<u8>, LlamaCoreE
     let mut graph = match graph.lock() {
         Ok(graph) => graph,
         Err(e) => {
-            let err_msg = format!("Failed to lock the graph. {}", e);
+            let err_msg = format!("Failed to lock the graph. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -633,7 +633,7 @@ pub async fn create_speech(request: SpeechRequest) -> Result<Vec<u8>, LlamaCoreE
     #[cfg(feature = "logging")]
     info!(target: "stdout", "create audio.");
     if let Err(e) = graph.compute() {
-        let err_msg = format!("Failed to compute the graph. {}", e);
+        let err_msg = format!("Failed to compute the graph. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -647,7 +647,7 @@ pub async fn create_speech(request: SpeechRequest) -> Result<Vec<u8>, LlamaCoreE
 
     let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
     let output_size = graph.get_output(0, &mut output_buffer).map_err(|e| {
-        let err_msg = format!("Failed to get the output tensor. {}", e);
+        let err_msg = format!("Failed to get the output tensor. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -656,7 +656,7 @@ pub async fn create_speech(request: SpeechRequest) -> Result<Vec<u8>, LlamaCoreE
     })?;
 
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "Output buffer size: {}", output_size);
+    info!(target: "stdout", "Output buffer size: {output_size}");
 
     Ok(output_buffer)
 }
@@ -688,14 +688,14 @@ fn get_model_metadata() -> Result<WhisperMetadata, LlamaCoreError> {
             let err_msg = "Fail to get the underlying value of `AUDIO_GRAPH`.";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
     };
 
     let audio_graph = audio_graph.lock().map_err(|e| {
-        let err_msg = format!("Fail to acquire the lock of `AUDIO_GRAPH`. {}", e);
+        let err_msg = format!("Fail to acquire the lock of `AUDIO_GRAPH`. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -711,7 +711,7 @@ fn update_model_metadata(metadata: &WhisperMetadata) -> Result<(), LlamaCoreErro
     let config = match serde_json::to_string(metadata) {
         Ok(config) => config,
         Err(e) => {
-            let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
+            let err_msg = format!("Fail to serialize metadata to a JSON string. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -726,14 +726,14 @@ fn update_model_metadata(metadata: &WhisperMetadata) -> Result<(), LlamaCoreErro
             let err_msg = "Fail to get the underlying value of `AUDIO_GRAPH`.";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
     };
 
     let mut audio_graph = audio_graph.lock().map_err(|e| {
-        let err_msg = format!("Fail to acquire the lock of `AUDIO_GRAPH`. Reason: {}", e);
+        let err_msg = format!("Fail to acquire the lock of `AUDIO_GRAPH`. Reason: {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);

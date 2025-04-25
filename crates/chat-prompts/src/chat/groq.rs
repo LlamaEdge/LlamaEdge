@@ -25,17 +25,15 @@ impl GroqLlama3ToolPrompt {
                     }
                 }
 
-                let tools = format!(
-                    "Here are the available tools:\n<tools> {} </tools>",
-                    available_tools
-                );
+                let tools =
+                    format!("Here are the available tools:\n<tools> {available_tools} </tools>",);
 
                 let format = r#"{"name": <function-name>,"arguments": <args-dict>}"#;
-                let begin = format!("<|start_header_id|>system<|end_header_id|>\n\nYou are a function calling AI model. You are provided with function signatures within <tools></tools> XML tags. You may call one or more functions to assist with the user query. Don't make assumptions about what values to plug into functions. For each function call return a json object with function name and arguments within <tool_call></tool_call> XML tags as follows:\n<tool_call>\n{}\n</tool_call>", format);
+                let begin = format!("<|start_header_id|>system<|end_header_id|>\n\nYou are a function calling AI model. You are provided with function signatures within <tools></tools> XML tags. You may call one or more functions to assist with the user query. Don't make assumptions about what values to plug into functions. For each function call return a json object with function name and arguments within <tool_call></tool_call> XML tags as follows:\n<tool_call>\n{format}\n</tool_call>");
 
                 let end = r#"<|eot_id|>"#;
 
-                Ok(format!("{}\n\n{}{}", begin, tools, end))
+                Ok(format!("{begin}\n\n{tools}{end}"))
             }
             None => Err(PromptError::NoAvailableTools),
         }

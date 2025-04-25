@@ -260,7 +260,7 @@ impl<M: BaseMetadata + serde::Serialize + Clone + Default> Graph<M> {
         let config = match serde_json::to_string(&self.metadata) {
             Ok(config) => config,
             Err(e) => {
-                let err_msg = format!("Failed to update metadta. Reason: Fail to serialize metadata to a JSON string. {}", e);
+                let err_msg = format!("Failed to update metadta. Reason: Fail to serialize metadata to a JSON string. {e}");
 
                 #[cfg(feature = "logging")]
                 error!(target: "stdout", "{}", &err_msg);
@@ -331,10 +331,10 @@ impl<M: BaseMetadata + serde::Serialize + Clone + Default> Drop for Graph<M> {
     fn drop(&mut self) {
         // unload the wasi-nn graph
         if let Err(e) = self.graph.unload() {
-            let err_msg = format!("Failed to unload the wasi-nn graph. Reason: {}", e);
+            let err_msg = format!("Failed to unload the wasi-nn graph. Reason: {e}");
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             #[cfg(not(feature = "logging"))]
             eprintln!("{}", err_msg);

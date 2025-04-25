@@ -244,8 +244,7 @@ impl VicunaLlavaPrompt {
                                     let base64_str = part.image().url.as_str();
                                     let format = get_image_format(base64_str)?;
                                     format!(
-                                        r#"<img src="data:image/{};base64,{}">"#,
-                                        format, base64_str
+                                        r#"<img src="data:image/{format};base64,{base64_str}">"#
                                     )
                                 }
                             };

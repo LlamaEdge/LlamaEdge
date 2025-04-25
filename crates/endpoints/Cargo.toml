@@ -1,6 +1,6 @@
 [package]
 name          = "endpoints"
-version       = "0.25.1"
+version       = "0.26.0"
 edition       = "2021"
 readme        = "README.md"
 repository    = "https://github.com/LlamaEdge/LlamaEdge"

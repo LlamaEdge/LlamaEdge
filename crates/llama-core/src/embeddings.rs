@@ -35,7 +35,7 @@ pub async fn embeddings(
         let err_msg = "Computing embeddings is only supported in the embeddings and rag modes.";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", err_msg);
+        error!(target: "stdout", "{err_msg}");
 
         return Err(LlamaCoreError::Operation(err_msg.into()));
     }
@@ -53,7 +53,7 @@ pub async fn embeddings(
                     let err_msg = "No embedding model is available.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
+                    error!(target: "stdout", "{err_msg}");
 
                     return Err(LlamaCoreError::Operation(err_msg.into()));
                 }
@@ -61,7 +61,7 @@ pub async fn embeddings(
         };
 
         let mut embedding_graphs = embedding_graphs.lock().map_err(|e| {
-            let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}", e);
+            let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -167,8 +167,7 @@ fn compute_embeddings(
                 // convert inference result to string
                 let output = std::str::from_utf8(&output_buffer[..]).map_err(|e| {
                     let err_msg = format!(
-                        "Failed to decode the buffer of the inference result to a utf-8 string. Reason: {}",
-                        e
+                        "Failed to decode the buffer of the inference result to a utf-8 string. Reason: {e}"
                     );
 
                     #[cfg(feature = "logging")]
@@ -179,8 +178,7 @@ fn compute_embeddings(
 
                 // deserialize the embedding data
                 let embedding = serde_json::from_str::<Embedding>(output).map_err(|e| {
-                    let err_msg =
-                        format!("Failed to deserialize the embedding data. Reason: {}", e);
+                    let err_msg = format!("Failed to deserialize the embedding data. Reason: {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -204,7 +202,7 @@ fn compute_embeddings(
                 usage.total_tokens = usage.prompt_tokens + usage.completion_tokens;
             }
             Err(e) => {
-                let err_msg = format!("Failed to compute embeddings. Reason: {}", e);
+                let err_msg = format!("Failed to compute embeddings. Reason: {e}");
 
                 #[cfg(feature = "logging")]
                 error!(target: "stdout", "{}", &err_msg);
@@ -241,14 +239,14 @@ pub fn dimension(name: Option<&str>) -> Result<u64, LlamaCoreError> {
             let err_msg = "Fail to get the underlying value of `EMBEDDING_GRAPHS`.";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
     };
 
     let embedding_graphs = embedding_graphs.lock().map_err(|e| {
-        let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}", e);
+        let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -260,10 +258,8 @@ pub fn dimension(name: Option<&str>) -> Result<u64, LlamaCoreError> {
         Some(model_name) => match embedding_graphs.get(model_name) {
             Some(graph) => Ok(graph.metadata.ctx_size),
             None => {
-                let err_msg = format!(
-                    "The model `{}` does not exist in the embedding graphs.",
-                    model_name
-                );
+                let err_msg =
+                    format!("The model `{model_name}` does not exist in the embedding graphs.");
 
                 #[cfg(feature = "logging")]
                 error!(target: "stdout", "{}", &err_msg);
@@ -279,7 +275,7 @@ pub fn dimension(name: Option<&str>) -> Result<u64, LlamaCoreError> {
                         let err_msg = "Fail to get the underlying value of `EMBEDDING_GRAPHS`.";
 
                         #[cfg(feature = "logging")]
-                        error!(target: "stdout", "{}", err_msg);
+                        error!(target: "stdout", "{err_msg}");
 
                         return Err(LlamaCoreError::Operation(err_msg.into()));
                     }
@@ -332,7 +328,7 @@ pub fn chunk_text(
         let err_msg = "Failed to upload the target file. Only files with 'txt' and 'md' extensions are supported.";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", err_msg);
+        error!(target: "stdout", "{err_msg}");
 
         return Err(LlamaCoreError::Operation(err_msg.into()));
     }
@@ -395,7 +391,7 @@ pub fn chunk_text(
                 "Failed to upload the target file. Only text and markdown files are supported.";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             Err(LlamaCoreError::Operation(err_msg.into()))
         }
@@ -410,14 +406,14 @@ fn get_model_metadata(model_name: Option<&String>) -> Result<GgmlMetadata, Llama
             let err_msg = "Fail to get the underlying value of `EMBEDDING_GRAPHS`.";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
     };
 
     let embedding_graphs = embedding_graphs.lock().map_err(|e| {
-        let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}", e);
+        let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -449,7 +445,7 @@ fn get_model_metadata(model_name: Option<&String>) -> Result<GgmlMetadata, Llama
                 let err_msg = "There is no model available in the embedding graphs.";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 Err(LlamaCoreError::Operation(err_msg.into()))
             }
@@ -464,7 +460,7 @@ fn update_model_metadata(
     let config = match serde_json::to_string(metadata) {
         Ok(config) => config,
         Err(e) => {
-            let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
+            let err_msg = format!("Fail to serialize metadata to a JSON string. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -479,17 +475,14 @@ fn update_model_metadata(
             let err_msg = "Fail to get the underlying value of `EMBEDDING_GRAPHS`.";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
     };
 
     let mut embedding_graphs = embedding_graphs.lock().map_err(|e| {
-        let err_msg = format!(
-            "Fail to acquire the lock of `EMBEDDING_GRAPHS`. Reason: {}",
-            e
-        );
+        let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. Reason: {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -531,7 +524,7 @@ fn update_model_metadata(
                     let err_msg = "There is no model available in the embedding graphs.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
+                    error!(target: "stdout", "{err_msg}");
 
                     Err(LlamaCoreError::Operation(err_msg.into()))
                 }

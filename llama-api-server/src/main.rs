@@ -191,15 +191,15 @@ async fn main() -> Result<(), ServerError> {
     if let Ok(api_key) = std::env::var("API_KEY") {
         // define a const variable for the API key
         if let Err(e) = LLAMA_API_KEY.set(api_key) {
-            let err_msg = format!("Failed to set API key. {}", e);
+            let err_msg = format!("Failed to set API key. {e}");
 
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             return Err(ServerError::Operation(err_msg));
         }
     }
 
-    info!(target: "stdout", "LOG LEVEL: {}", log_level);
+    info!(target: "stdout", "LOG LEVEL: {log_level}");
 
     // log the version of the server
     info!(target: "stdout", "SERVER VERSION: {}", env!("CARGO_PKG_VERSION"));
@@ -219,7 +219,7 @@ async fn main() -> Result<(), ServerError> {
                 if !chat && !embedding && !tts {
                     let err_msg = "Specify at least one of the following: chat, embedding, and/or TTS. by using --chat, --embedding, and/or --tts.";
 
-                    error!(target: "stdout", "{}", err_msg);
+                    error!(target: "stdout", "{err_msg}");
 
                     return Err(ServerError::Operation(err_msg.to_string()));
                 }
@@ -329,7 +329,7 @@ async fn main() -> Result<(), ServerError> {
 
                     // initialize the chat context
                     llama_core::init_ggml_chat_context(&[metadata_chat])
-                        .map_err(|e| ServerError::Operation(format!("{}", e)))?;
+                        .map_err(|e| ServerError::Operation(format!("{e}")))?;
                 }
 
                 // embedding model
@@ -394,7 +394,7 @@ async fn main() -> Result<(), ServerError> {
 
                     // initialize the embeddings context
                     llama_core::init_ggml_embeddings_context(&[metadata_embedding])
-                        .map_err(|e| ServerError::Operation(format!("{}", e)))?;
+                        .map_err(|e| ServerError::Operation(format!("{e}")))?;
                 }
 
                 // tts model
@@ -464,13 +464,13 @@ async fn main() -> Result<(), ServerError> {
 
                     // initialize the tts context
                     llama_core::init_ggml_tts_context(&[metadata_tts])
-                        .map_err(|e| ServerError::Operation(format!("{}", e)))?;
+                        .map_err(|e| ServerError::Operation(format!("{e}")))?;
                 }
 
                 // get running mode
                 let running_mode = llama_core::running_mode()
                     .map_err(|e| ServerError::Operation(e.to_string()))?;
-                info!(target: "stdout", "running_mode: {}", running_mode);
+                info!(target: "stdout", "running_mode: {running_mode}");
 
                 // log plugin version
                 let plugin_info = llama_core::get_plugin_info()
@@ -480,7 +480,7 @@ async fn main() -> Result<(), ServerError> {
                     build_number = plugin_info.build_number,
                     commit_id = plugin_info.commit_id,
                 );
-                info!(target: "stdout", "plugin_ggml_version: {}", plugin_version);
+                info!(target: "stdout", "plugin_ggml_version: {plugin_version}");
 
                 // socket address
                 let addr = config.server.socket_addr;
@@ -522,7 +522,7 @@ async fn main() -> Result<(), ServerError> {
                 });
 
                 let tcp_listener = TcpListener::bind(addr).await.unwrap();
-                info!(target: "stdout", "Listening on {}", addr);
+                info!(target: "stdout", "Listening on {addr}");
 
                 let server = Server::from_tcp(tcp_listener.into_std().unwrap())
                     .unwrap()
@@ -550,7 +550,7 @@ async fn main() -> Result<(), ServerError> {
         } else if cli.server_args.model_alias.len() == 2 {
             model_alias = cli.server_args.model_alias.join(",").to_string();
         }
-        info!(target: "stdout", "model_alias: {}", model_alias);
+        info!(target: "stdout", "model_alias: {model_alias}");
 
         // log context size
         if cli.server_args.ctx_size.is_empty() && cli.server_args.ctx_size.len() > 2 {
@@ -570,7 +570,7 @@ async fn main() -> Result<(), ServerError> {
                 .collect::<Vec<String>>()
                 .join(",");
         }
-        info!(target: "stdout", "ctx_size: {}", ctx_sizes_str);
+        info!(target: "stdout", "ctx_size: {ctx_sizes_str}");
 
         // log batch size
         if cli.server_args.batch_size.is_empty() && cli.server_args.batch_size.len() > 2 {
@@ -590,7 +590,7 @@ async fn main() -> Result<(), ServerError> {
                 .collect::<Vec<String>>()
                 .join(",");
         }
-        info!(target: "stdout", "batch_size: {}", batch_sizes_str);
+        info!(target: "stdout", "batch_size: {batch_sizes_str}");
 
         // log ubatch size
         let mut ubatch_sizes_str = String::new();
@@ -605,7 +605,7 @@ async fn main() -> Result<(), ServerError> {
                 .collect::<Vec<String>>()
                 .join(",");
         }
-        info!(target: "stdout", "ubatch_size: {}", ubatch_sizes_str);
+        info!(target: "stdout", "ubatch_size: {ubatch_sizes_str}");
 
         // log prompt template
         if cli.server_args.prompt_template.is_empty() && cli.server_args.prompt_template.len() > 2 {
@@ -621,7 +621,7 @@ async fn main() -> Result<(), ServerError> {
             .map(|n| n.to_string())
             .collect::<Vec<String>>()
             .join(",");
-        info!(target: "stdout", "prompt_template: {}", prompt_template_str);
+        info!(target: "stdout", "prompt_template: {prompt_template_str}");
         if cli.server_args.model_name.len() != cli.server_args.prompt_template.len() {
             return Err(ServerError::ArgumentError(
                 "The number of model names and prompt templates must be the same.".to_owned(),
@@ -630,7 +630,7 @@ async fn main() -> Result<(), ServerError> {
 
         // log reverse prompt
         if let Some(reverse_prompt) = &cli.server_args.reverse_prompt {
-            info!(target: "stdout", "reverse_prompt: {}", reverse_prompt);
+            info!(target: "stdout", "reverse_prompt: {reverse_prompt}");
         }
 
         // log n_predict
@@ -644,12 +644,12 @@ async fn main() -> Result<(), ServerError> {
 
         // log main_gpu
         if let Some(main_gpu) = &cli.server_args.main_gpu {
-            info!(target: "stdout", "main_gpu: {}", main_gpu);
+            info!(target: "stdout", "main_gpu: {main_gpu}");
         }
 
         // log tensor_split
         if let Some(tensor_split) = &cli.server_args.tensor_split {
-            info!(target: "stdout", "tensor_split: {}", tensor_split);
+            info!(target: "stdout", "tensor_split: {tensor_split}");
         }
 
         // log threads
@@ -657,7 +657,7 @@ async fn main() -> Result<(), ServerError> {
 
         // log no_mmap
         if let Some(no_mmap) = &cli.server_args.no_mmap {
-            info!(target: "stdout", "no_mmap: {}", no_mmap);
+            info!(target: "stdout", "no_mmap: {no_mmap}");
         }
 
         // log temperature
@@ -682,12 +682,12 @@ async fn main() -> Result<(), ServerError> {
 
         // log json schema
         if let Some(json_schema) = &cli.server_args.json_schema {
-            info!(target: "stdout", "json_schema: {}", json_schema);
+            info!(target: "stdout", "json_schema: {json_schema}");
         }
 
         // log multimodal projector
         if let Some(llava_mmproj) = &cli.server_args.llava_mmproj {
-            info!(target: "stdout", "llava_mmproj: {}", llava_mmproj);
+            info!(target: "stdout", "llava_mmproj: {llava_mmproj}");
         }
 
         // log include_usage
@@ -740,7 +740,7 @@ async fn main() -> Result<(), ServerError> {
 
                     // initialize the embeddings context
                     llama_core::init_ggml_embeddings_context(&[metadata_embedding])
-                        .map_err(|e| ServerError::Operation(format!("{}", e)))?;
+                        .map_err(|e| ServerError::Operation(format!("{e}")))?;
                 }
                 _ => {
                     // create a Metadata instance
@@ -797,7 +797,7 @@ async fn main() -> Result<(), ServerError> {
 
                     // initialize the chat context
                     llama_core::init_ggml_chat_context(&[metadata_chat])
-                        .map_err(|e| ServerError::Operation(format!("{}", e)))?;
+                        .map_err(|e| ServerError::Operation(format!("{e}")))?;
                 }
             }
         } else if cli.server_args.prompt_template.len() == 2 {
@@ -855,7 +855,7 @@ async fn main() -> Result<(), ServerError> {
 
             // initialize the chat context
             llama_core::init_ggml_chat_context(&[metadata_chat])
-                .map_err(|e| ServerError::Operation(format!("{}", e)))?;
+                .map_err(|e| ServerError::Operation(format!("{e}")))?;
 
             // create a Metadata instance
             let metadata_embedding = GgmlMetadataBuilder::new(
@@ -898,13 +898,13 @@ async fn main() -> Result<(), ServerError> {
 
             // initialize the embeddings context
             llama_core::init_ggml_embeddings_context(&[metadata_embedding])
-                .map_err(|e| ServerError::Operation(format!("{}", e)))?;
+                .map_err(|e| ServerError::Operation(format!("{e}")))?;
         }
 
         // get running mode
         let running_mode =
             llama_core::running_mode().map_err(|e| ServerError::Operation(e.to_string()))?;
-        info!(target: "stdout", "running_mode: {}", running_mode);
+        info!(target: "stdout", "running_mode: {running_mode}");
 
         // log plugin version
         let plugin_info =
@@ -914,7 +914,7 @@ async fn main() -> Result<(), ServerError> {
             build_number = plugin_info.build_number,
             commit_id = plugin_info.commit_id,
         );
-        info!(target: "stdout", "plugin_ggml_version: {}", plugin_version);
+        info!(target: "stdout", "plugin_ggml_version: {plugin_version}");
 
         // socket address
         let addr = match cli.server_args.socket_addr {
@@ -949,7 +949,7 @@ async fn main() -> Result<(), ServerError> {
         });
 
         let tcp_listener = TcpListener::bind(addr).await.unwrap();
-        info!(target: "stdout", "Listening on {}", addr);
+        info!(target: "stdout", "Listening on {addr}");
 
         let server = Server::from_tcp(tcp_listener.into_std().unwrap())
             .unwrap()
@@ -979,13 +979,13 @@ async fn handle_request(
             let auth_header = match auth_header.to_str() {
                 Ok(auth_header) => auth_header,
                 Err(e) => {
-                    let err_msg = format!("Failed to get authorization header: {}", e);
+                    let err_msg = format!("Failed to get authorization header: {e}");
                     return Ok(error::unauthorized(err_msg));
                 }
             };
 
             let api_key = auth_header.split(" ").nth(1).unwrap_or_default();
-            info!(target: "stdout", "API Key: {}", api_key);
+            info!(target: "stdout", "API Key: {api_key}");
 
             if let Some(stored_api_key) = LLAMA_API_KEY.get() {
                 if api_key != stored_api_key {
@@ -1008,11 +1008,11 @@ async fn handle_request(
                 None => 0,
             };
 
-            info!(target: "stdout", "method: {}, http_version: {}, content-length: {}", method, version, size);
-            info!(target: "stdout", "endpoint: {}", path);
+            info!(target: "stdout", "method: {method}, http_version: {version}, content-length: {size}");
+            info!(target: "stdout", "endpoint: {path}");
         } else {
-            info!(target: "stdout", "method: {}, http_version: {}", method, version);
-            info!(target: "stdout", "endpoint: {}", path);
+            info!(target: "stdout", "method: {method}, http_version: {version}");
+            info!(target: "stdout", "endpoint: {path}");
         }
     }
 
@@ -1028,26 +1028,26 @@ async fn handle_request(
         if status_code.as_u16() < 400 {
             // log response
             let response_version = format!("{:?}", response.version());
-            info!(target: "stdout", "response_version: {}", response_version);
+            info!(target: "stdout", "response_version: {response_version}");
             let response_body_size: u64 = response.body().size_hint().lower();
-            info!(target: "stdout", "response_body_size: {}", response_body_size);
+            info!(target: "stdout", "response_body_size: {response_body_size}");
             let response_status = status_code.as_u16();
-            info!(target: "stdout", "response_status: {}", response_status);
+            info!(target: "stdout", "response_status: {response_status}");
             let response_is_success = status_code.is_success();
-            info!(target: "stdout", "response_is_success: {}", response_is_success);
+            info!(target: "stdout", "response_is_success: {response_is_success}");
         } else {
             let response_version = format!("{:?}", response.version());
-            error!(target: "stdout", "response_version: {}", response_version);
+            error!(target: "stdout", "response_version: {response_version}");
             let response_body_size: u64 = response.body().size_hint().lower();
-            error!(target: "stdout", "response_body_size: {}", response_body_size);
+            error!(target: "stdout", "response_body_size: {response_body_size}");
             let response_status = status_code.as_u16();
-            error!(target: "stdout", "response_status: {}", response_status);
+            error!(target: "stdout", "response_status: {response_status}");
             let response_is_success = status_code.is_success();
-            error!(target: "stdout", "response_is_success: {}", response_is_success);
+            error!(target: "stdout", "response_is_success: {response_is_success}");
             let response_is_client_error = status_code.is_client_error();
-            error!(target: "stdout", "response_is_client_error: {}", response_is_client_error);
+            error!(target: "stdout", "response_is_client_error: {response_is_client_error}");
             let response_is_server_error = status_code.is_server_error();
-            error!(target: "stdout", "response_is_server_error: {}", response_is_server_error);
+            error!(target: "stdout", "response_is_server_error: {response_is_server_error}");
         }
     }
 

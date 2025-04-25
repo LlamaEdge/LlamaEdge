@@ -130,7 +130,7 @@ impl CodeLlamaInstructPrompt {
         match content.is_empty() {
             true => String::from("<<SYS>>\nWrite code to solve the following coding problem that obeys the constraints and passes the example test cases. Please wrap your code answer using ```: <</SYS>>"),
             false => format!(
-                "<<SYS>>\n{system_prompt} <</SYS>>", system_prompt=content
+                "<<SYS>>\n{content} <</SYS>>"
             )
         }
     }
@@ -342,7 +342,7 @@ impl Llama3ChatPrompt {
         match content.is_empty() {
             true => String::from("<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe.<|eot_id|>"),
             false =>format!(
-                "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{system_prompt}<|eot_id|>", system_prompt=content
+                "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{content}<|eot_id|>"
             )
         }
     }
@@ -450,7 +450,7 @@ impl Llama3ToolPrompt {
         match content.is_empty() {
             true => String::from("<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe.<|eot_id|>"),
             false =>format!(
-                "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{system_prompt}<|eot_id|>", system_prompt=content
+                "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{content}<|eot_id|>"
             )
         }
     }
@@ -461,7 +461,7 @@ impl Llama3ToolPrompt {
         match content.is_empty() {
             true => String::from("<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a helpful assistant with tool calling capabilities. When you receive a tool call response, use the output to format an answer to the orginal use question.<|eot_id|>"),
             false =>format!(
-                "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{system_prompt}<|eot_id|>", system_prompt=content
+                "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{content}<|eot_id|>"
             )
         }
     }
@@ -684,7 +684,7 @@ impl Llama4ChatPromptOld {
         match content.is_empty() {
             true => String::from("<|begin_of_text|><|header_start|>system<|header_end|>\n\nYou are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe.<|eot|>"),
             false =>format!(
-                "<|begin_of_text|><|header_start|>system<|header_end|>\n\n{system_prompt}<|eot|>", system_prompt=content
+                "<|begin_of_text|><|header_start|>system<|header_end|>\n\n{content}<|eot|>"
             )
         }
     }
@@ -864,7 +864,7 @@ impl Llama4ChatPrompt {
         match content.is_empty() {
             true => String::from("<|begin_of_text|><|header_start|>system<|header_end|>\n\nYou are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe.<|eot|>"),
             false =>format!(
-                "<|begin_of_text|><|header_start|>system<|header_end|>\n\n{system_prompt}<|eot|>", system_prompt=content
+                "<|begin_of_text|><|header_start|>system<|header_end|>\n\n{content}<|eot|>"
             )
         }
     }

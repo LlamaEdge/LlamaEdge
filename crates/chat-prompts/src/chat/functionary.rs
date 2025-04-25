@@ -51,7 +51,7 @@ Respond in this format:
 >>>${recipient}
 ${content}"###;
 
-                format!("{}\n{}<|eot_id|>", begin, tools)
+                format!("{begin}\n{tools}<|eot_id|>")
             }
             _ => String::from("<|start_header_id|>system<|end_header_id|>\n\nAnswer as concisely as possible.<|eot_id|>"),
         }
@@ -178,7 +178,7 @@ impl FunctionaryV31ToolPrompt {
                 let mut available_tools = String::new();
                 for tool in tools {
                     let tool_s = serde_json::to_string(&tool.function).unwrap();
-                    println!("tool_s: {}", tool_s);
+                    println!("tool_s: {tool_s}");
 
                     available_tools.push_str(&format!("Use the function '{func_name}' to '{desc}'\n{tool_info}\n\n", func_name = &tool.function.name, desc = &tool.function.description.clone().unwrap_or_default(), tool_info = tool_s));
                 }
@@ -214,7 +214,7 @@ Reminder:
 
 <|eot_id|>"###;
 
-                format!("{}\n\n{}\n\n\n{}", begin, tools, end)
+                format!("{begin}\n\n{tools}\n\n\n{end}")
             }
             _ => String::from("<|start_header_id|>system<|end_header_id|>\n\nAnswer as concisely as possible.<|eot_id|>"),
         }

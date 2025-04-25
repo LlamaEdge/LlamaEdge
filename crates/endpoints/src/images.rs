@@ -369,7 +369,7 @@ impl<'de> Deserialize<'de> for ImageCreateRequest {
                             let _ = map.next_value::<IgnoredAny>()?;
 
                             #[cfg(feature = "logging")]
-                            warn!(target: "stdout", "Not supported field: {}", key);
+                            warn!(target: "stdout", "Not supported field: {key}");
                         }
                     }
                 }
@@ -1029,7 +1029,7 @@ impl<'de> Deserialize<'de> for ImageEditRequest {
                             let _ = map.next_value::<IgnoredAny>()?;
 
                             #[cfg(feature = "logging")]
-                            warn!(target: "stdout", "Not supported field: {}", key);
+                            warn!(target: "stdout", "Not supported field: {key}");
                         }
                     }
                 }
@@ -1375,7 +1375,7 @@ impl<'de> Deserialize<'de> for ImageVariationRequest {
                             let _ = map.next_value::<IgnoredAny>()?;
 
                             #[cfg(feature = "logging")]
-                            warn!(target: "stdout", "Not supported field: {}", key);
+                            warn!(target: "stdout", "Not supported field: {key}");
                         }
                     }
                 }
@@ -1513,8 +1513,7 @@ impl<'de> Deserialize<'de> for Scheduler {
                     "ays" => Ok(Scheduler::Ays),
                     "gits" => Ok(Scheduler::Gits),
                     _ => Err(E::custom(format!(
-                        "unknown scheduler type: {}, expected one of: discrete, karras, exponential, ays, gits",
-                        value
+                        "unknown scheduler type: {value}, expected one of: discrete, karras, exponential, ays, gits",
                     ))),
                 }
             }
@@ -2809,8 +2808,7 @@ pub mod sd_webui {
                         "PLMS" => Ok(Sampler::Plms),
                         "UniPC" => Ok(Sampler::UniPC),
                         _ => Err(E::custom(format!(
-                            "unknown sampler type: {}, expected one of: Euler, Euler a, Heun, DPM2, DPM2 a, DPM fast, DPM adaptive, DPM++ 2S a, DPM++ 2M, DPM++ 2M SDE, DPM++ 2M SDE Heun, DPM++ 3M SDE, DPM++ SDE, LCM, LMS, Restart, DDIM, DDIM CFG++, PLMS, UniPC",
-                            value
+                            "unknown sampler type: {value}, expected one of: Euler, Euler a, Heun, DPM2, DPM2 a, DPM fast, DPM adaptive, DPM++ 2S a, DPM++ 2M, DPM++ 2M SDE, DPM++ 2M SDE Heun, DPM++ 3M SDE, DPM++ SDE, LCM, LMS, Restart, DDIM, DDIM CFG++, PLMS, UniPC"
                         ))),
                     }
                 }

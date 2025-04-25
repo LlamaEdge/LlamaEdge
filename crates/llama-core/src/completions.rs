@@ -23,7 +23,7 @@ pub async fn completions(request: &CompletionRequest) -> Result<CompletionObject
         let err_msg = "The completion is only supported in the chat mode.";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", err_msg);
+        error!(target: "stdout", "{err_msg}");
 
         return Err(LlamaCoreError::Operation(err_msg.to_string()));
     }
@@ -49,14 +49,14 @@ fn compute(
             let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
     };
 
     let mut chat_graphs = chat_graphs.lock().map_err(|e| {
-        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -119,7 +119,7 @@ fn compute_by_graph(
     graph
         .set_input(0, wasmedge_wasi_nn::TensorType::U8, &[1], &tensor_data)
         .map_err(|e| {
-            let err_msg = format!("Failed to set the input tensor. {}", e);
+            let err_msg = format!("Failed to set the input tensor. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -129,7 +129,7 @@ fn compute_by_graph(
 
     // execute the inference
     graph.compute().map_err(|e| {
-        let err_msg = format!("Failed to execute the inference. {}", e);
+        let err_msg = format!("Failed to execute the inference. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -142,10 +142,8 @@ fn compute_by_graph(
 
     // convert inference result to string
     let model_answer = String::from_utf8(buffer).map_err(|e| {
-        let err_msg = format!(
-            "Failed to decode the buffer of the inference result to a utf-8 string. {}",
-            e
-        );
+        let err_msg =
+            format!("Failed to decode the buffer of the inference result to a utf-8 string. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -163,7 +161,7 @@ fn compute_by_graph(
     let created = SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_err(|e| {
-            let err_msg = format!("Failed to get the current time. {}", e);
+            let err_msg = format!("Failed to get the current time. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);

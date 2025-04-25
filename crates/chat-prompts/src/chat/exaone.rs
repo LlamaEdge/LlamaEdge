@@ -15,8 +15,7 @@ impl ExaoneDeepChatPrompt {
         match content.is_empty() {
             true => String::from("[|system|]You are a helpful AI assistant. Answer questions as concisely and accurately as possible.[|endofturn|]"),
             false => format!(
-                "[|system|]{system_prompt}[|endofturn|]",
-                system_prompt = content
+                "[|system|]{content}[|endofturn|]"
             ),
         }
     }
@@ -132,8 +131,7 @@ impl ExaoneChatPrompt {
         match content.is_empty() {
             true => String::from("[|system|]You are a helpful AI assistant. Answer questions as concisely and accurately as possible.[|endofturn|]"),
             false => format!(
-                "[|system|]{system_prompt}[|endofturn|]",
-                system_prompt = content
+                "[|system|]{content}[|endofturn|]"
             ),
         }
     }

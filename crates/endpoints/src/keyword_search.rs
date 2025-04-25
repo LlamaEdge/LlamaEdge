@@ -3,6 +3,10 @@ use serde::{Deserialize, Serialize};
 // Document indexing request for JSON input
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IndexRequest {
+    /// The name of the index to create
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// The documents to index
     pub documents: Vec<DocumentInput>,
 }
 
@@ -16,8 +20,10 @@ pub struct DocumentInput {
 // Document processing result
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DocumentResult {
-    pub filename: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filename: Option<String>,
     pub status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
 

@@ -64,7 +64,7 @@ impl std::str::FromStr for LogLevel {
             "warn" => Ok(LogLevel::Warn),
             "error" => Ok(LogLevel::Error),
             "critical" => Ok(LogLevel::Critical),
-            _ => Err(format!("Invalid log level: {}", s)),
+            _ => Err(format!("Invalid log level: {s}")),
         }
     }
 }

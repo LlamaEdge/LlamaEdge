@@ -15,8 +15,7 @@ impl MegrezPrompt {
         match content.is_empty() {
             true => String::from("<|role_start|>system<|role_end|>You are a helpful assistant. Answer questions as concisely and accurately as possible.<|turn_end|>"),
             false => format!(
-                "<|role_start|>system<|role_end|>{system_prompt}<|turn_end|>",
-                system_prompt = content
+                "<|role_start|>system<|role_end|>{content}<|turn_end|>"
             ),
         }
     }

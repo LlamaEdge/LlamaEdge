@@ -13,7 +13,7 @@ pub async fn models() -> Result<ListModelsResponse, LlamaCoreError> {
     {
         if let Some(chat_graphs) = CHAT_GRAPHS.get() {
             let chat_graphs = chat_graphs.lock().map_err(|e| {
-                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+                let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {e}");
 
                 #[cfg(feature = "logging")]
                 error!(target: "stdout", "{}", &err_msg);
@@ -41,8 +41,7 @@ pub async fn models() -> Result<ListModelsResponse, LlamaCoreError> {
         if let Some(embedding_graphs) = EMBEDDING_GRAPHS.get() {
             let embedding_graphs = embedding_graphs.lock().map_err(|e| {
                 LlamaCoreError::Operation(format!(
-                    "Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}",
-                    e
+                    "Fail to acquire the lock of `EMBEDDING_GRAPHS`. {e}"
                 ))
             })?;
 
