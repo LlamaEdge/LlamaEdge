@@ -16,7 +16,7 @@ pub(crate) async fn handle_llama_request(req: Request<Body>) -> Response<Body> {
             if path.starts_with("/v1/files") {
                 ggml::files_handler(req).await
             } else {
-                error!(target: "stdout", "Invalid endpoint: {}", path);
+                error!(target: "stdout", "Invalid endpoint: {path}");
 
                 error::invalid_endpoint(path)
             }

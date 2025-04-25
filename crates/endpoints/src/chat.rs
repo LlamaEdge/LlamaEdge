@@ -522,7 +522,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
 
                 while let Some(key) = map.next_key::<String>()? {
                     #[cfg(feature = "logging")]
-                    debug!(target: "stdout", "key: {}", key);
+                    debug!(target: "stdout", "key: {key}");
 
                     match key.as_str() {
                         "model" => model = map.next_value()?,
@@ -569,7 +569,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                             let _ = map.next_value::<IgnoredAny>()?;
 
                             #[cfg(feature = "logging")]
-                            warn!(target: "stdout", "Not supported field: {}", key);
+                            warn!(target: "stdout", "Not supported field: {key}");
                         }
                     }
                 }
@@ -1148,8 +1148,8 @@ fn test_chat_serialize_chat_request() {
             .with_rag_vdb_settings(
                 "http://localhost:6333",
                 &["collection1".to_string(), "collection2".to_string()],
-                &[10, 20],
-                &[0.5, 0.6],
+                [10, 20],
+                [0.5, 0.6],
                 None,
             )
             .with_kw_search_url("http://localhost:9069")
@@ -3105,7 +3105,7 @@ impl<'de> Deserialize<'de> for ChatCompletionObjectMessage {
                             let _ = map.next_value::<IgnoredAny>()?;
 
                             #[cfg(feature = "logging")]
-                            warn!(target: "stdout", "Not supported field: {}", key);
+                            warn!(target: "stdout", "Not supported field: {key}");
                         }
                     }
                 }
@@ -3321,7 +3321,7 @@ impl<'de> Deserialize<'de> for ChatCompletionChunkChoiceDelta {
                             let _ = map.next_value::<IgnoredAny>()?;
 
                             #[cfg(feature = "logging")]
-                            warn!(target: "stdout", "Not supported field: {}", key);
+                            warn!(target: "stdout", "Not supported field: {key}");
                         }
                     }
                 }

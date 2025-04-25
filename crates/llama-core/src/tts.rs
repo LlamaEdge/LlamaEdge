@@ -17,7 +17,7 @@ pub async fn create_speech(request: SpeechRequest) -> Result<Vec<u8>, LlamaCoreE
         let err_msg = "Generating audio speech is only supported in the tts mode.";
 
         #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", err_msg);
+        error!(target: "stdout", "{err_msg}");
 
         return Err(LlamaCoreError::Operation(err_msg.into()));
     }
@@ -38,7 +38,7 @@ pub async fn create_speech(request: SpeechRequest) -> Result<Vec<u8>, LlamaCoreE
         };
 
         let mut tts_graphs = tts_graphs.lock().map_err(|e| {
-            let err_msg = format!("Fail to acquire the lock of `TTS_GRAPHS`. {}", e);
+            let err_msg = format!("Fail to acquire the lock of `TTS_GRAPHS`. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -91,7 +91,7 @@ fn compute_by_graph(
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Generate audio");
     if let Err(e) = graph.compute() {
-        let err_msg = format!("Failed to compute the graph. {}", e);
+        let err_msg = format!("Failed to compute the graph. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -105,7 +105,7 @@ fn compute_by_graph(
 
     let mut output_buffer = vec![0u8; MAX_BUFFER_SIZE];
     let output_size = graph.get_output(0, &mut output_buffer).map_err(|e| {
-        let err_msg = format!("Failed to get the output tensor. {}", e);
+        let err_msg = format!("Failed to get the output tensor. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -114,7 +114,7 @@ fn compute_by_graph(
     })?;
 
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "Output buffer size: {}", output_size);
+    info!(target: "stdout", "Output buffer size: {output_size}");
 
     Ok(output_buffer)
 }
@@ -127,14 +127,14 @@ fn get_model_metadata(model_name: Option<&String>) -> Result<GgmlTtsMetadata, Ll
             let err_msg = "Fail to get the underlying value of `TTS_GRAPHS`.";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
     };
 
     let tts_graphs = tts_graphs.lock().map_err(|e| {
-        let err_msg = format!("Fail to acquire the lock of `TTS_GRAPHS`. {}", e);
+        let err_msg = format!("Fail to acquire the lock of `TTS_GRAPHS`. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -166,7 +166,7 @@ fn get_model_metadata(model_name: Option<&String>) -> Result<GgmlTtsMetadata, Ll
                 let err_msg = "There is no model available in the tts graphs.";
 
                 #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", err_msg);
+                error!(target: "stdout", "{err_msg}");
 
                 Err(LlamaCoreError::Operation(err_msg.into()))
             }
@@ -181,7 +181,7 @@ fn update_model_metadata(
     let config = match serde_json::to_string(metadata) {
         Ok(config) => config,
         Err(e) => {
-            let err_msg = format!("Fail to serialize metadata to a JSON string. {}", e);
+            let err_msg = format!("Fail to serialize metadata to a JSON string. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -196,14 +196,14 @@ fn update_model_metadata(
             let err_msg = "Fail to get the underlying value of `TTS_GRAPHS`.";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
     };
 
     let mut tts_graphs = tts_graphs.lock().map_err(|e| {
-        let err_msg = format!("Fail to acquire the lock of `TTS_GRAPHS`. Reason: {}", e);
+        let err_msg = format!("Fail to acquire the lock of `TTS_GRAPHS`. Reason: {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -245,7 +245,7 @@ fn update_model_metadata(
                     let err_msg = "There is no model available in the tts graphs.";
 
                     #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{}", err_msg);
+                    error!(target: "stdout", "{err_msg}");
 
                     Err(LlamaCoreError::Operation(err_msg.into()))
                 }

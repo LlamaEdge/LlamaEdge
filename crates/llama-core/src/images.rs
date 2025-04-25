@@ -33,7 +33,7 @@ pub async fn image_generation(
     };
 
     let mut context = text_to_image_ctx.lock().map_err(|e| {
-        let err_msg = format!("Fail to acquire the lock of `SD_TEXT_TO_IMAGE`. {}", e);
+        let err_msg = format!("Fail to acquire the lock of `SD_TEXT_TO_IMAGE`. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -71,17 +71,17 @@ pub async fn image_generation(
     // n
     let n = req.n.unwrap_or(1);
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "number of images to generate: {}", n);
+    info!(target: "stdout", "number of images to generate: {n}");
 
     // cfg_scale
     let cfg_scale = req.cfg_scale.unwrap_or(7.0);
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "cfg_scale: {}", cfg_scale);
+    info!(target: "stdout", "cfg_scale: {cfg_scale}");
 
     // sampling method
     let sample_method = req.sample_method.unwrap_or(SamplingMethod::EulerA);
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "sample_method: {}", sample_method);
+    info!(target: "stdout", "sample_method: {sample_method}");
 
     // convert sample method to value of `SampleMethodT` type
     let sample_method = match sample_method {
@@ -120,33 +120,33 @@ pub async fn image_generation(
     // steps
     let steps = req.steps.unwrap_or(20);
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "steps: {}", steps);
+    info!(target: "stdout", "steps: {steps}");
 
     // size
     let height = req.height.unwrap_or(512);
     let width = req.width.unwrap_or(512);
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "height: {}, width: {}", height, width);
+    info!(target: "stdout", "height: {height}, width: {width}");
 
     // control_strength
     let control_strength = req.control_strength.unwrap_or(0.9);
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "control_strength: {}", control_strength);
+    info!(target: "stdout", "control_strength: {control_strength}");
 
     // seed
     let seed = req.seed.unwrap_or(42);
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "seed: {}", seed);
+    info!(target: "stdout", "seed: {seed}");
 
     // apply canny preprocessor
     let apply_canny_preprocessor = req.apply_canny_preprocessor.unwrap_or(false);
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "apply_canny_preprocessor: {}", apply_canny_preprocessor);
+    info!(target: "stdout", "apply_canny_preprocessor: {apply_canny_preprocessor}");
 
     // style ratio
     let style_ratio = req.style_ratio.unwrap_or(0.2);
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "style_ratio: {}", style_ratio);
+    info!(target: "stdout", "style_ratio: {style_ratio}");
 
     ctx = ctx
         .set_prompt(&req.prompt)
@@ -171,7 +171,7 @@ pub async fn image_generation(
     // control_image
     if let Some(control_image) = &req.control_image {
         #[cfg(feature = "logging")]
-        info!(target: "stdout", "control_image: {:?}", control_image);
+        info!(target: "stdout", "control_image: {control_image:?}");
 
         let control_image_file = Path::new("archives")
             .join(&control_image.id)
@@ -211,7 +211,7 @@ pub async fn image_generation(
     info!(target: "stdout", "generate image");
 
     ctx.generate().map_err(|e| {
-        let err_msg = format!("Fail to dump the image. {}", e);
+        let err_msg = format!("Fail to dump the image. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -229,7 +229,7 @@ pub async fn image_generation(
             let base64_string = match image_to_base64(output_image_file) {
                 Ok(base64_string) => base64_string,
                 Err(e) => {
-                    let err_msg = format!("Fail to convert the image to base64 string. {}", e);
+                    let err_msg = format!("Fail to convert the image to base64 string. {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);
@@ -298,7 +298,7 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
     };
 
     let mut context = image_to_image_ctx.lock().map_err(|e| {
-        let err_msg = format!("Fail to acquire the lock of `SD_IMAGE_TO_IMAGE`. {}", e);
+        let err_msg = format!("Fail to acquire the lock of `SD_IMAGE_TO_IMAGE`. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -335,17 +335,17 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
     // n
     let n = req.n.unwrap_or(1);
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "number of images to generate: {}", n);
+    info!(target: "stdout", "number of images to generate: {n}");
 
     // cfg scale
     let cfg_scale = req.cfg_scale.unwrap_or(7.0);
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "cfg_scale: {}", cfg_scale);
+    info!(target: "stdout", "cfg_scale: {cfg_scale}");
 
     // sample method
     let sample_method = req.sample_method.unwrap_or(SamplingMethod::EulerA);
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "sample_method: {:?}", sample_method);
+    info!(target: "stdout", "sample_method: {sample_method:?}");
     // convert sample method to value of `SampleMethodT` type
     let sample_method = match sample_method {
         SamplingMethod::Euler => {
@@ -383,38 +383,38 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
     // steps
     let steps = req.steps.unwrap_or(20);
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "steps: {}", steps);
+    info!(target: "stdout", "steps: {steps}");
 
     // size
     let height = req.height.unwrap_or(512);
     let width = req.width.unwrap_or(512);
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "height: {}, width: {}", height, width);
+    info!(target: "stdout", "height: {height}, width: {width}");
 
     // control_strength
     let control_strength = req.control_strength.unwrap_or(0.9);
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "control_strength: {}", control_strength);
+    info!(target: "stdout", "control_strength: {control_strength}");
 
     // seed
     let seed = req.seed.unwrap_or(42);
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "seed: {}", seed);
+    info!(target: "stdout", "seed: {seed}");
 
     // strength
     let strength = req.strength.unwrap_or(0.75);
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "strength: {}", strength);
+    info!(target: "stdout", "strength: {strength}");
 
     // apply canny preprocessor
     let apply_canny_preprocessor = req.apply_canny_preprocessor.unwrap_or(false);
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "apply_canny_preprocessor: {}", apply_canny_preprocessor);
+    info!(target: "stdout", "apply_canny_preprocessor: {apply_canny_preprocessor}");
 
     // style ratio
     let style_ratio = req.style_ratio.unwrap_or(0.2);
     #[cfg(feature = "logging")]
-    info!(target: "stdout", "style_ratio: {}", style_ratio);
+    info!(target: "stdout", "style_ratio: {style_ratio}");
 
     // create and dump the generated image
     ctx = ctx
@@ -441,7 +441,7 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
     info!(target: "stdout", "generate image");
 
     ctx.generate().map_err(|e| {
-        let err_msg = format!("Fail to dump the image. {}", e);
+        let err_msg = format!("Fail to dump the image. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -459,7 +459,7 @@ pub async fn image_edit(req: &mut ImageEditRequest) -> Result<ListImagesResponse
             let base64_string = match image_to_base64(output_image_file) {
                 Ok(base64_string) => base64_string,
                 Err(e) => {
-                    let err_msg = format!("Fail to convert the image to base64 string. {}", e);
+                    let err_msg = format!("Fail to convert the image to base64 string. {e}");
 
                     #[cfg(feature = "logging")]
                     error!(target: "stdout", "{}", &err_msg);

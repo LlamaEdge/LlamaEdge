@@ -16,7 +16,7 @@ impl NemotronChatPrompt {
         match content.is_empty() {
             true => String::from("<extra_id_0>System\nYou are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe."),
             false =>format!(
-                "<extra_id_0>System\n{system_prompt}", system_prompt=content
+                "<extra_id_0>System\n{content}"
             )
         }
     }
@@ -121,10 +121,7 @@ impl NemotronToolPrompt {
         let content = message.content();
         match content.is_empty() {
             true => String::from("<|im_start|>system\nAnswer as concisely as possible.<|im_end|>"),
-            false => format!(
-                "<|im_start|>system\n{system_prompt}<|im_end|>",
-                system_prompt = content
-            ),
+            false => format!("<|im_start|>system\n{content}<|im_end|>"),
         }
     }
 
@@ -138,11 +135,11 @@ impl NemotronToolPrompt {
             true => match tools {
                 Some(tools) => {
                     let available_tools = serde_json::to_string(tools).unwrap();
-                    let tools = format!("<tool> {} </tool>", available_tools);
+                    let tools = format!("<tool> {available_tools} </tool>");
 
                     let begin = r#"<extra_id_0>System\nYou are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe."#;
 
-                    format!("{}\n\n{}", begin, tools)
+                    format!("{begin}\n\n{tools}")
                 }
                 None => {
                     String::from("<extra_id_0>System\nYou are a helpful, respectful and honest assistant. Always answer as short as possible, while being safe.")
@@ -151,17 +148,17 @@ impl NemotronToolPrompt {
             false => match tools {
                 Some(tools) => {
                     let available_tools = serde_json::to_string(tools).unwrap();
-                    let tools = format!("<tool> {} </tool>", available_tools);
+                    let tools = format!("<tool> {available_tools} </tool>");
 
                     let begin = format!(
-                        "<extra_id_0>System\n{system_prompt}", system_prompt=content
+                        "<extra_id_0>System\n{content}"
                     );
 
-                    format!("{}\n\n{}", begin, tools)
+                    format!("{begin}\n\n{tools}")
                 }
                 None => {
                     format!(
-                        "<extra_id_0>System\n{system_prompt}", system_prompt=content
+                        "<extra_id_0>System\n{content}"
                     )
                 }
             },
@@ -292,7 +289,7 @@ impl BuildChatPrompt for NemotronToolPrompt {
                     for tool in tools {
                         let available_tool = serde_json::to_string(&tool.function).unwrap();
 
-                        let tool = format!("<tool> {} </tool>\n", available_tool);
+                        let tool = format!("<tool> {available_tool} </tool>\n");
 
                         tools_s.push_str(&tool);
                     }

@@ -17,10 +17,7 @@ impl MiniCPMVPrompt {
         let content = message.content();
         match content.is_empty() {
             true => String::from("<|im_start|>system\nAnswer as concisely as possible.<|im_end|>"),
-            false => format!(
-                "<|im_start|>system\n{system_prompt}<|im_end|>",
-                system_prompt = content
-            ),
+            false => format!("<|im_start|>system\n{content}<|im_end|>"),
         }
     }
 
@@ -62,8 +59,7 @@ impl MiniCPMVPrompt {
                                     let base64_str = part.image().url.as_str();
                                     let format = is_image_format(base64_str)?;
                                     format!(
-                                        r#"<img src="data:image/{};base64,{}">"#,
-                                        format, base64_str
+                                        r#"<img src="data:image/{format};base64,{base64_str}">"#
                                     )
                                 }
                             };

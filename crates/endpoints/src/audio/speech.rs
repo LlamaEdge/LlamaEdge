@@ -131,7 +131,7 @@ impl<'de> Deserialize<'de> for SpeechRequest {
                             let _ = map.next_value::<IgnoredAny>()?;
 
                             #[cfg(feature = "logging")]
-                            warn!(target: "stdout", "Not supported field: {}", key);
+                            warn!(target: "stdout", "Not supported field: {key}");
                         }
                     }
                 }

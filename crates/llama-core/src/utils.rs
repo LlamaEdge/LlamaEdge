@@ -23,14 +23,14 @@ pub fn chat_model_names() -> Result<Vec<String>, LlamaCoreError> {
             let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
     };
 
     let chat_graphs = chat_graphs.lock().map_err(|e| {
-        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -63,7 +63,7 @@ pub fn embedding_model_names() -> Result<Vec<String>, LlamaCoreError> {
     let embedding_graphs = match embedding_graphs.lock() {
         Ok(embedding_graphs) => embedding_graphs,
         Err(e) => {
-            let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {}", e);
+            let err_msg = format!("Fail to acquire the lock of `EMBEDDING_GRAPHS`. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -85,7 +85,7 @@ pub fn chat_prompt_template(name: Option<&str>) -> Result<PromptTemplateType, Ll
     #[cfg(feature = "logging")]
     match name {
         Some(name) => {
-            info!(target: "stdout", "Get the chat prompt template type from the chat model named {}.", name)
+            info!(target: "stdout", "Get the chat prompt template type from the chat model named {name}.")
         }
         None => {
             info!(target: "stdout", "Get the chat prompt template type from the default chat model.")
@@ -98,14 +98,14 @@ pub fn chat_prompt_template(name: Option<&str>) -> Result<PromptTemplateType, Ll
             let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
     };
 
     let chat_graphs = chat_graphs.lock().map_err(|e| {
-        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -175,7 +175,7 @@ where
     let mut output_buffer: Vec<u8> = Vec::with_capacity(MAX_BUFFER_SIZE);
 
     let output_size: usize = graph.get_output(index, &mut output_buffer).map_err(|e| {
-        let err_msg = format!("Fail to get the generated output tensor. {msg}", msg = e);
+        let err_msg = format!("Fail to get the generated output tensor. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -206,7 +206,7 @@ where
     let output_size: usize = graph
         .get_output_single(index, &mut output_buffer)
         .map_err(|e| {
-            let err_msg = format!("Fail to get plugin metadata. {msg}", msg = e);
+            let err_msg = format!("Fail to get plugin metadata. {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -233,7 +233,7 @@ where
         .set_input(idx, wasmedge_wasi_nn::TensorType::U8, &[1], tensor_data)
         .is_err()
     {
-        let err_msg = format!("Fail to set input tensor at index {}", idx);
+        let err_msg = format!("Fail to set input tensor at index {idx}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -256,7 +256,7 @@ where
     let token_info: Value = match serde_json::from_slice(&output_buffer[..]) {
         Ok(token_info) => token_info,
         Err(e) => {
-            let err_msg = format!("Fail to deserialize token info: {msg}", msg = e);
+            let err_msg = format!("Fail to deserialize token info: {e}");
 
             #[cfg(feature = "logging")]
             error!(target: "stdout", "{}", &err_msg);
@@ -271,7 +271,7 @@ where
             let err_msg = "Fail to convert `input_tokens` to u64.";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
@@ -282,7 +282,7 @@ where
             let err_msg = "Fail to convert `output_tokens` to u64.";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
@@ -304,14 +304,14 @@ pub(crate) fn get_token_info_by_graph_name(
             let err_msg = "Fail to get the underlying value of `CHAT_GRAPHS`.";
 
             #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", err_msg);
+            error!(target: "stdout", "{err_msg}");
 
             return Err(LlamaCoreError::Operation(err_msg.into()));
         }
     };
 
     let chat_graphs = chat_graphs.lock().map_err(|e| {
-        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {}", e);
+        let err_msg = format!("Fail to acquire the lock of `CHAT_GRAPHS`. {e}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -390,7 +390,7 @@ where
         .set_input(idx, T::tensor_type(), &T::shape(shape), tensor_data)
         .is_err()
     {
-        let err_msg = format!("Fail to set input tensor at index {}", idx);
+        let err_msg = format!("Fail to set input tensor at index {idx}");
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -427,6 +427,6 @@ impl std::fmt::Display for RunningMode {
 
         mode = mode.trim_end_matches(", ").to_string();
 
-        write!(f, "{}", mode)
+        write!(f, "{mode}")
     }
 }

@@ -230,7 +230,7 @@ pub fn download_file(id: impl AsRef<str>) -> Result<(String, Vec<u8>), LlamaCore
     let mut file = match File::open(file_path) {
         Ok(file) => file,
         Err(e) => {
-            let err_msg = format!("Failed to open the target file. {}", e);
+            let err_msg = format!("Failed to open the target file. {e}");
             return Err(LlamaCoreError::Operation(err_msg));
         }
     };
@@ -240,7 +240,7 @@ pub fn download_file(id: impl AsRef<str>) -> Result<(String, Vec<u8>), LlamaCore
     match file.read_to_end(&mut buffer) {
         Ok(_) => Ok((file_object.filename.clone(), buffer)),
         Err(e) => {
-            let err_msg = format!("Failed to read the content of the target file. {}", e);
+            let err_msg = format!("Failed to read the content of the target file. {e}");
 
             // log
             #[cfg(feature = "logging")]
@@ -268,7 +268,7 @@ fn file_to_base64(file_path: impl AsRef<Path>) -> Result<String, LlamaCoreError>
     let mut file = match File::open(file_path) {
         Ok(file) => file,
         Err(e) => {
-            let err_msg = format!("Failed to open the target file. {}", e);
+            let err_msg = format!("Failed to open the target file. {e}");
             return Err(LlamaCoreError::Operation(err_msg));
         }
     };

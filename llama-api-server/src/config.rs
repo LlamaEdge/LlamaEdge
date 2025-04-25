@@ -51,8 +51,7 @@ impl<'de> Deserialize<'de> for ServerConfig {
         let helper = Helper::deserialize(deserializer)?;
         let socket_addr = helper.socket_addr.parse().map_err(|e| {
             Error::custom(format!(
-                "Failed to parse socket address from config file: {}",
-                e
+                "Failed to parse socket address from config file: {e}"
             ))
         })?;
 
@@ -164,8 +163,7 @@ impl<'de> Deserialize<'de> for ChatConfig {
             .parse::<PromptTemplateType>()
             .map_err(|e| {
                 Error::custom(format!(
-                    "Failed to parse prompt_template from config file: {}",
-                    e
+                    "Failed to parse prompt_template from config file: {e}"
                 ))
             })?;
 
