@@ -2191,6 +2191,27 @@ fn post_process(
             s = s.trim_start_matches(":").trim();
         }
 
+        // handle Qwen3 empty think tags
+        let x = {
+            let pat = r#"<think>
+
+</think>
+"#;
+            if s.contains(pat) {
+                let x = s.replace(pat, "");
+                #[cfg(feature = "logging")]
+                warn!(target: "stdout", "x: {:?}", x);
+                if x.starts_with("()") {
+                    x.trim_start_matches("()").to_owned()
+                } else {
+                    x.to_owned()
+                }
+            } else {
+                s.to_owned()
+            }
+        };
+        s = x.trim();
+
         if s.contains("<|im_start|>") && s.contains("<|im_end|>") {
             let idx_start = s.find("<|im_start|>").unwrap();
             let idx_end = s.find("<|im_end|>").unwrap();
