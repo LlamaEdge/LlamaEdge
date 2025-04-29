@@ -2199,8 +2199,6 @@ fn post_process(
 "#;
             if s.contains(pat) {
                 let x = s.replace(pat, "");
-                #[cfg(feature = "logging")]
-                warn!(target: "stdout", "x: {:?}", x);
                 if x.starts_with("()") {
                     x.trim_start_matches("()").to_owned()
                 } else {
