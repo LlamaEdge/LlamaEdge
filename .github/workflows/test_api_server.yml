@@ -36,7 +36,7 @@ jobs:
     strategy:
       matrix:
         wasmedge_version: [0.14.1]
-        ggml_version: [b5074]
+        ggml_version: [b5201]
     steps:
       - name: Clone project
         id: checkout
@@ -119,14 +119,13 @@ jobs:
         run: |
           pkill -f wasmedge
 
-
   test-api-server-macos-13:
     runs-on: macos-13
     needs: test-api-server-ubuntu
     strategy:
       matrix:
         wasmedge_version: [0.14.1]
-        ggml_version: [b5074]
+        ggml_version: [b5201]
     steps:
       - name: Clone project
         id: checkout
@@ -222,7 +221,7 @@ jobs:
     strategy:
       matrix:
         wasmedge_version: [0.14.1]
-        ggml_version: [b5074]
+        ggml_version: [b5201]
     steps:
       - name: Clone project
         id: checkout
@@ -318,7 +317,7 @@ jobs:
     strategy:
       matrix:
         wasmedge_version: [0.14.1]
-        ggml_version: [b5074]
+        ggml_version: [b5201]
     steps:
       - name: Clone project
         id: checkout
