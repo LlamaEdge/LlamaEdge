@@ -2356,6 +2356,7 @@ fn post_process(
             s.to_owned()
         }
     } else if *template_ty == PromptTemplateType::Qwen2vl
+        || *template_ty == PromptTemplateType::Qwen3NoThink
         || *template_ty == PromptTemplateType::ChatMLThink
     {
         let mut s = output.as_ref().trim();
