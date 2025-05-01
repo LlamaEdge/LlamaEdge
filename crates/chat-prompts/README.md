@@ -691,18 +691,25 @@ The available prompt templates are listed below:
 
   - Example: [second-state/phi-4-GGUF](https://huggingface.co/second-state/phi-4-GGUF)
 
-- `solar-instruct`
+- `qwen3-no-think`
   - Prompt string
 
     ```text
-    <s> ### User:
-    {user_message}
+    <|im_start|>system
+    You are a helpful assistant. Answer questions as concisely as possible.<|im_end|>
+    <|im_start|>user
+    {user_message_1}<|im_end|>
+    <|im_start|>assistant
+    {assistant_message_1}<|im_end|>
+    <|im_start|>user
+    {user_message_2}<|im_end|>
+    <|im_start|>assistant
+    <think>
 
-    \### Assistant:
-    {assistant_message}</s>
+    </think>
     ```
 
-  - Example: [second-state/SOLAR-10.7B-Instruct-v1.0-GGUF](https://huggingface.co/second-state/SOLAR-10.7B-Instruct-v1.0-GGUF)
+  - Example: [second-state/Qwen3-4B-GGUF](https://huggingface.co/second-state/Qwen3-4B-GGUF)
 
 - `stablelm-zephyr`
   - Prompt string
