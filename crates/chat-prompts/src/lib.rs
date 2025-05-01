@@ -116,6 +116,8 @@ pub enum PromptTemplateType {
     Megrez,
     #[value(name = "qwen2-vision")]
     Qwen2vl,
+    #[value(name = "qwen3-no-think")]
+    Qwen3NoThink,
     #[value(name = "exaone-deep-chat")]
     ExaoneDeepChat,
     #[value(name = "exaone-chat")]
@@ -162,6 +164,7 @@ impl PromptTemplateType {
             | PromptTemplateType::Falcon3
             | PromptTemplateType::Megrez
             | PromptTemplateType::Qwen2vl
+            | PromptTemplateType::Qwen3NoThink
             | PromptTemplateType::MistralSmallChat
             | PromptTemplateType::MistralSmallTool
             | PromptTemplateType::ExaoneDeepChat
@@ -257,6 +260,7 @@ impl FromStr for PromptTemplateType {
             "falcon3" => Ok(PromptTemplateType::Falcon3),
             "megrez" => Ok(PromptTemplateType::Megrez),
             "qwen2-vision" => Ok(PromptTemplateType::Qwen2vl),
+            "qwen3-no-think" => Ok(PromptTemplateType::Qwen3NoThink),
             "exaone-deep-chat" => Ok(PromptTemplateType::ExaoneDeepChat),
             "exaone-chat" => Ok(PromptTemplateType::ExaoneChat),
             "embedding" => Ok(PromptTemplateType::Embedding),
@@ -322,6 +326,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::Falcon3 => write!(f, "falcon3"),
             PromptTemplateType::Megrez => write!(f, "megrez"),
             PromptTemplateType::Qwen2vl => write!(f, "qwen2-vision"),
+            PromptTemplateType::Qwen3NoThink => write!(f, "qwen3-no-think"),
             PromptTemplateType::ExaoneDeepChat => write!(f, "exaone-deep-chat"),
             PromptTemplateType::ExaoneChat => write!(f, "exaone-chat"),
             PromptTemplateType::Embedding => write!(f, "embedding"),
