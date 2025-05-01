@@ -48,7 +48,7 @@ use nvidia::{NemotronChatPrompt, NemotronToolPrompt};
 use octopus::*;
 use openchat::*;
 use phi::*;
-use qwen::Qwen2vlPrompt;
+use qwen::{Qwen2vlPrompt, Qwen3NoThinkPrompt};
 use solar::*;
 use vicuna::*;
 use wizard::*;
@@ -122,6 +122,7 @@ pub enum ChatPrompt {
     FalconChatPrompt,
     MegrezPrompt,
     Qwen2vlPrompt,
+    Qwen3NoThinkPrompt,
     ExaoneDeepChatPrompt,
     ExaoneChatPrompt,
 }
@@ -215,6 +216,7 @@ impl From<PromptTemplateType> for ChatPrompt {
             PromptTemplateType::Falcon3 => ChatPrompt::FalconChatPrompt(FalconChatPrompt),
             PromptTemplateType::Megrez => ChatPrompt::MegrezPrompt(MegrezPrompt),
             PromptTemplateType::Qwen2vl => ChatPrompt::Qwen2vlPrompt(Qwen2vlPrompt),
+            PromptTemplateType::Qwen3NoThink => ChatPrompt::Qwen3NoThinkPrompt(Qwen3NoThinkPrompt),
             PromptTemplateType::ExaoneDeepChat => {
                 ChatPrompt::ExaoneDeepChatPrompt(ExaoneDeepChatPrompt)
             }
