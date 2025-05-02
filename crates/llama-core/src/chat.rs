@@ -2317,9 +2317,16 @@ fn post_process(
             s.to_owned()
         }
     } else if *template_ty == PromptTemplateType::Phi4Chat {
-        let s = output.as_ref().trim();
+        let mut s = output.as_ref().trim();
+
+        if s.starts_with("think>") {
+            s = s.trim_start_matches("think>").trim();
+        }
+
         if s.ends_with("<|im_end|>") {
             s.trim_end_matches("<|im_end|>").trim().to_owned()
+        } else if s.ends_with("<|end|>") {
+            s.trim_end_matches("<|end|>").trim().to_owned()
         } else {
             s.to_owned()
         }
