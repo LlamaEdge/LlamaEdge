@@ -300,8 +300,9 @@ fn chat_stream_for_tool(
                 && graph.metadata.prompt_template != PromptTemplateType::FunctionaryV31
                 && graph.metadata.prompt_template != PromptTemplateType::MistralSmallTool
                 && graph.metadata.prompt_template != PromptTemplateType::Llama4Chat
+                && graph.metadata.prompt_template != PromptTemplateType::Qwen3NoThink
             {
-                let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', 'mistral-small-tool', and 'llama-4-chat' prompt templates.", graph.metadata.prompt_template);
+                let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', 'mistral-small-tool', 'llama-4-chat', and 'qwen-3-no-think' prompt templates.", graph.metadata.prompt_template);
 
                 #[cfg(feature = "logging")]
                 error!(target: "stdout", "{}", &err_msg);
@@ -853,8 +854,9 @@ fn compute_by_graph(
                         && graph.metadata.prompt_template != PromptTemplateType::FunctionaryV31
                         && graph.metadata.prompt_template != PromptTemplateType::MistralSmallTool
                         && graph.metadata.prompt_template != PromptTemplateType::Llama4Chat
+                        && graph.metadata.prompt_template != PromptTemplateType::Qwen3NoThink
                     {
-                        let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', 'mistral-small-tool', and 'llama-4-chat' prompt templates.", graph.metadata.prompt_template);
+                        let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', 'mistral-small-tool', 'llama-4-chat', and 'qwen-3-no-think' prompt templates.", graph.metadata.prompt_template);
 
                         #[cfg(feature = "logging")]
                         error!(target: "stdout", "{}", &err_msg);
@@ -1941,9 +1943,120 @@ fn parse_tool_calls(
 
             Ok(parsed)
         }
+        PromptTemplateType::Qwen3NoThink => {
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "raw input: {input:?}");
+
+            match regex::Regex::new(r"(?s)<tool_call>((.|\r|\n)*?)</tool_call>") {
+                Ok(re) => {
+                    let mut values: Vec<serde_json::Value> = vec![];
+                    for cap in re.captures_iter(input) {
+                        let matched = cap[1].trim();
+
+                        #[cfg(feature = "logging")]
+                        info!(target: "stdout", "captured: {matched}");
+
+                        match serde_json::from_str::<serde_json::Value>(matched) {
+                            Ok(value) => values.push(value),
+                            Err(e) => {
+                                let err_msg = format!(
+                                    "Failed to deserialize generated tool calls. Reason: {e}"
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "stdout", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            }
+                        }
+                    }
+
+                    let mut tool_calls: Vec<ToolCall> = vec![];
+                    for value in values.iter() {
+                        let name = match value.get("name") {
+                            Some(name) => name.to_string().replace("\"", ""),
+                            None => {
+                                let err_msg = format!(
+                                    "Failed to get the name of the function. Tool call: {value:?}"
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "stdout", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            }
+                        };
+
+                        let arguments = match value.get("arguments") {
+                            Some(arguments) => {
+                                if arguments.is_string() {
+                                    arguments.as_str().unwrap().to_string()
+                                } else if arguments.is_object() {
+                                    let map = arguments.as_object().unwrap();
+
+                                    #[cfg(feature = "logging")]
+                                    info!(target: "stdout", "func arguments: {map:?}");
+
+                                    serde_json::to_string(map).unwrap()
+                                } else {
+                                    serde_json::to_string(arguments).unwrap()
+                                }
+                            }
+                            None => {
+                                let err_msg = format!(
+                                    "Failed to get the arguments of the function. Tool call: {value:?}"
+                                );
+
+                                #[cfg(feature = "logging")]
+                                error!(target: "stdout", "{}", &err_msg);
+
+                                return Err(LlamaCoreError::Operation(err_msg));
+                            }
+                        };
+
+                        let function = Function { name, arguments };
+
+                        let tool_call = ToolCall {
+                            id: "call_abc123".to_string(),
+                            ty: "function".to_string(),
+                            function,
+                        };
+
+                        tool_calls.push(tool_call);
+                    }
+
+                    let parsed = if tool_calls.is_empty() {
+                        ParseResult {
+                            raw: input.to_owned(),
+                            content: Some(input.to_owned()),
+                            tool_calls: vec![],
+                        }
+                    } else {
+                        ParseResult {
+                            raw: input.to_owned(),
+                            content: None,
+                            tool_calls,
+                        }
+                    };
+
+                    #[cfg(feature = "logging")]
+                    info!(target: "stdout", "parsed result: {parsed:?}");
+
+                    Ok(parsed)
+                }
+                Err(e) => {
+                    let err_msg = format!("Failed to create a regex pattern. Reason: {e}");
+
+                    #[cfg(feature = "logging")]
+                    error!(target: "stdout", "{}", &err_msg);
+
+                    Err(LlamaCoreError::Operation(err_msg))
+                }
+            }
+        }
         _ => {
             let err_msg = format!(
-                "The tool use is only supported for prompt templates: {}, {}, {}, {}, {}, {}, {}, and {}.",
+                "The tool use is only supported for prompt templates: {}, {}, {}, {}, {}, {}, {}, {}, {}, and {}.",
                 PromptTemplateType::MistralTool,
                 PromptTemplateType::ChatMLTool,
                 PromptTemplateType::GroqLlama3Tool,
@@ -1952,6 +2065,8 @@ fn parse_tool_calls(
                 PromptTemplateType::NemotronTool,
                 PromptTemplateType::FunctionaryV32,
                 PromptTemplateType::MistralSmallTool,
+                PromptTemplateType::Llama4Chat,
+                PromptTemplateType::Qwen3NoThink,
             );
 
             #[cfg(feature = "logging")]
