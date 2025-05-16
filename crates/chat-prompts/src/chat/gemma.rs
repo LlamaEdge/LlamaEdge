@@ -1,5 +1,8 @@
 use super::BuildChatPrompt;
-use crate::error::{PromptError, Result};
+use crate::{
+    error::{PromptError, Result},
+    utils::get_image_format,
+};
 use endpoints::chat::{
     ChatCompletionAssistantMessage, ChatCompletionRequestMessage, ChatCompletionUserMessage,
     ChatCompletionUserMessageContent, ContentPart,
@@ -99,51 +102,112 @@ impl Gemma3Prompt {
         system_prompt: impl AsRef<str>,
         message: &ChatCompletionUserMessage,
         last_user_message: bool,
-    ) -> String {
-        let content = match message.content() {
-            ChatCompletionUserMessageContent::Text(text) => text.to_string(),
+    ) -> Result<String> {
+        let prompt = match message.content() {
+            ChatCompletionUserMessageContent::Text(content) => {
+                match chat_history.as_ref().is_empty() {
+                        true => {
+                            match (last_user_message, system_prompt.as_ref().is_empty()) {
+                                (true, false) => format!(
+                                    "<bos><start_of_turn>user\n{system_prompt}\n\n{user_message}<end_of_turn>\n<start_of_turn>model",
+                                    system_prompt = system_prompt.as_ref(),
+                                    user_message = content.trim(),
+                                ),
+                                _ => format!(
+                                    "<bos><start_of_turn>user\n{user_message}<end_of_turn>\n<start_of_turn>model",
+                                    user_message = content.trim(),
+                                ),
+                            }
+                        }
+                        false => {
+                            match (last_user_message, system_prompt.as_ref().is_empty()) {
+                                (true, false) => format!(
+                                    "{chat_history}\n<start_of_turn>user\n{system_prompt}\n\n{user_message}<end_of_turn>\n<start_of_turn>model",
+                                    chat_history = chat_history.as_ref().trim(),
+                                    system_prompt = system_prompt.as_ref(),
+                                    user_message = content.trim(),
+                                ),
+                                _ => format!(
+                                    "{chat_history}\n<start_of_turn>user\n{user_message}<end_of_turn>\n<start_of_turn>model",
+                                    chat_history = chat_history.as_ref().trim(),
+                                    user_message = content.trim(),
+                                ),
+                            }
+                        }
+                    }
+            }
             ChatCompletionUserMessageContent::Parts(parts) => {
                 let mut content = String::new();
+                let mut image_contents = vec![];
                 for part in parts {
-                    if let ContentPart::Text(text_content) = part {
-                        content.push_str(text_content.text());
-                        content.push('\n');
+                    match part {
+                        ContentPart::Text(text_content) => {
+                            content.push_str(text_content.text());
+                            content.push('\n');
+                        }
+                        ContentPart::Image(part) => {
+                            let image_content = match part.image().is_url() {
+                                true => String::from("<image>"),
+                                false => {
+                                    let base64_str = part.image().url.as_str();
+                                    let format = get_image_format(base64_str)?;
+                                    format!(
+                                        r#"<img src="data:image/{format};base64,{base64_str}">"#
+                                    )
+                                }
+                            };
+                            image_contents.push(image_content);
+                        }
                     }
                 }
-                content
+
+                let mut image_embeddings = String::new();
+                for image_content in image_contents {
+                    let image_embedding = format!(
+                        "<|vision_start|>{image_content}<|vision_end|>",
+                        image_content = image_content.trim(),
+                    );
+                    image_embeddings.push_str(&image_embedding);
+                }
+
+                match chat_history.as_ref().is_empty() {
+                    true => {
+                        match (last_user_message, system_prompt.as_ref().is_empty()) {
+                            (true, false) => format!(
+                                "<bos><start_of_turn>user\n{system_prompt}\n\n<start_of_image>{image_embeddings}<end_of_image>\n{user_message}<end_of_turn>\n<start_of_turn>model",
+                                system_prompt = system_prompt.as_ref(),
+                                image_embeddings = image_embeddings.trim(),
+                                user_message = content.trim(),
+                            ),
+                            _ => format!(
+                                "<bos><start_of_turn>user\n<start_of_image>{image_embeddings}<end_of_image>\n{user_message}<end_of_turn>\n<start_of_turn>model",
+                                image_embeddings = image_embeddings.trim(),
+                                user_message = content.trim(),
+                            ),
+                        }
+                    }
+                    false => {
+                        match (last_user_message, system_prompt.as_ref().is_empty()) {
+                            (true, false) => format!(
+                                "{chat_history}\n<start_of_turn>user\n{system_prompt}\n\n<start_of_image>{image_embeddings}<end_of_image>\n{user_message}<end_of_turn>\n<start_of_turn>model",
+                                chat_history = chat_history.as_ref().trim(),
+                                system_prompt = system_prompt.as_ref(),
+                                image_embeddings = image_embeddings.trim(),
+                                user_message = content.trim(),
+                            ),
+                            _ => format!(
+                                "{chat_history}\n<start_of_turn>user\n<start_of_image>{image_embeddings}<end_of_image>\n{user_message}<end_of_turn>\n<start_of_turn>model",
+                                chat_history = chat_history.as_ref().trim(),
+                                image_embeddings = image_embeddings.trim(),
+                                user_message = content.trim(),
+                            ),
+                        }
+                    }
+                }
             }
         };
 
-        match chat_history.as_ref().is_empty() {
-                true => {
-                    match (last_user_message, system_prompt.as_ref().is_empty()) {
-                        (true, false) => format!(
-                            "<bos><start_of_turn>user\n{system_prompt}\n\n{user_message}<end_of_turn>\n<start_of_turn>model",
-                            system_prompt = system_prompt.as_ref(),
-                            user_message = content.trim(),
-                        ),
-                        _ => format!(
-                            "<bos><start_of_turn>user\n{user_message}<end_of_turn>\n<start_of_turn>model",
-                            user_message = content.trim(),
-                        ),
-                    }
-                }
-                false => {
-                    match (last_user_message, system_prompt.as_ref().is_empty()) {
-                        (true, false) => format!(
-                            "{chat_history}\n<start_of_turn>user\n{system_prompt}\n\n{user_message}<end_of_turn>\n<start_of_turn>model",
-                            chat_history = chat_history.as_ref().trim(),
-                            system_prompt = system_prompt.as_ref(),
-                            user_message = content.trim(),
-                        ),
-                        _ => format!(
-                            "{chat_history}\n<start_of_turn>user\n{user_message}<end_of_turn>\n<start_of_turn>model",
-                            chat_history = chat_history.as_ref().trim(),
-                            user_message = content.trim(),
-                        ),
-                    }
-                }
-            }
+        Ok(prompt)
     }
 
     /// create an assistant prompt from a chat completion request message.
@@ -191,7 +255,7 @@ impl BuildChatPrompt for Gemma3Prompt {
                         &system_prompt,
                         message,
                         last_user_message,
-                    );
+                    )?;
                 }
                 ChatCompletionRequestMessage::Assistant(message) => {
                     prompt = self.append_assistant_message(&prompt, message)?;
