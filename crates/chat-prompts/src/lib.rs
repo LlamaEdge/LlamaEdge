@@ -122,6 +122,10 @@ pub enum PromptTemplateType {
     ExaoneDeepChat,
     #[value(name = "exaone-chat")]
     ExaoneChat,
+    #[value(name = "seed-instruct")]
+    SeedInstruct,
+    #[value(name = "seed-reasoning")]
+    SeedReasoning,
     #[value(name = "embedding")]
     Embedding,
     #[value(name = "tts")]
@@ -170,7 +174,8 @@ impl PromptTemplateType {
             | PromptTemplateType::ExaoneDeepChat
             | PromptTemplateType::ExaoneChat
             | PromptTemplateType::ChatMLThink
-            | PromptTemplateType::Llama4Chat => true,
+            | PromptTemplateType::Llama4Chat
+            | PromptTemplateType::SeedInstruct => true,
             PromptTemplateType::MistralInstruct
             | PromptTemplateType::MistralTool
             | PromptTemplateType::MistralLite
@@ -187,6 +192,7 @@ impl PromptTemplateType {
             | PromptTemplateType::StableLMZephyr
             | PromptTemplateType::FunctionaryV32
             | PromptTemplateType::FunctionaryV31
+            | PromptTemplateType::SeedReasoning
             | PromptTemplateType::Embedding
             | PromptTemplateType::Tts
             | PromptTemplateType::Null => false,
@@ -200,6 +206,7 @@ impl PromptTemplateType {
             PromptTemplateType::MiniCPMV
                 | PromptTemplateType::Qwen2vl
                 | PromptTemplateType::VicunaLlava
+                | PromptTemplateType::Gemma3
         )
     }
 }
@@ -263,6 +270,8 @@ impl FromStr for PromptTemplateType {
             "qwen3-no-think" => Ok(PromptTemplateType::Qwen3NoThink),
             "exaone-deep-chat" => Ok(PromptTemplateType::ExaoneDeepChat),
             "exaone-chat" => Ok(PromptTemplateType::ExaoneChat),
+            "seed-instruct" => Ok(PromptTemplateType::SeedInstruct),
+            "seed-reasoning" => Ok(PromptTemplateType::SeedReasoning),
             "embedding" => Ok(PromptTemplateType::Embedding),
             "tts" => Ok(PromptTemplateType::Tts),
             "none" => Ok(PromptTemplateType::Null),
@@ -329,6 +338,8 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::Qwen3NoThink => write!(f, "qwen3-no-think"),
             PromptTemplateType::ExaoneDeepChat => write!(f, "exaone-deep-chat"),
             PromptTemplateType::ExaoneChat => write!(f, "exaone-chat"),
+            PromptTemplateType::SeedInstruct => write!(f, "seed-instruct"),
+            PromptTemplateType::SeedReasoning => write!(f, "seed-reasoning"),
             PromptTemplateType::Embedding => write!(f, "embedding"),
             PromptTemplateType::Tts => write!(f, "tts"),
             PromptTemplateType::Null => write!(f, "none"),

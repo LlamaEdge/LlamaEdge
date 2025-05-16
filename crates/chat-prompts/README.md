@@ -711,6 +711,33 @@ The available prompt templates are listed below:
 
   - Example: [second-state/Qwen3-4B-GGUF](https://huggingface.co/second-state/Qwen3-4B-GGUF)
 
+- `seed-instruct`
+  - Prompt string
+
+    ```text
+    <[begin▁of▁sentence]>system
+    {system_message}
+
+    <[end▁of▁sentence]><[begin▁of▁sentence]>user
+    {user_message_1}<[end▁of▁sentence]><[begin▁of▁sentence]>assistant
+    {assistant_message_1}<[end▁of▁sentence]><[begin▁of▁sentence]>user
+    {user_message_2}<[end▁of▁sentence]><[begin▁of▁sentence]>assistant
+    ```
+
+  - Example: [second-state/Seed-Coder-8B-Instruct-GGUF](https://huggingface.co/second-state/Seed-Coder-8B-Instruct-GGUF)
+
+- `seed-reasoning`
+  - Prompt string
+
+    ```text
+    <[begin▁of▁sentence]>user
+    {user_message_1}<[end▁of▁sentence]><[begin▁of▁sentence]>assistant
+    {assistant_message_1}<[end▁of▁sentence]><[begin▁of▁sentence]>user
+    {user_message_2}<[end▁of▁sentence]><[begin▁of▁sentence]>assistant
+    ```
+
+  - Example: [second-state/Seed-Coder-8B-Reasoning-GGUF](https://huggingface.co/second-state/Seed-Coder-8B-Reasoning-GGUF)
+
 - `stablelm-zephyr`
   - Prompt string
 
