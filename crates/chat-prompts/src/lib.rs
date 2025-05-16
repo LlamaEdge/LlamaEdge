@@ -206,6 +206,7 @@ impl PromptTemplateType {
             PromptTemplateType::MiniCPMV
                 | PromptTemplateType::Qwen2vl
                 | PromptTemplateType::VicunaLlava
+                | PromptTemplateType::Gemma3
         )
     }
 }
