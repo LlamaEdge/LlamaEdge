@@ -19,7 +19,7 @@ serde_json.workspace       = true
 uuid.workspace             = true
 once_cell.workspace        = true
 futures.workspace          = true
-reqwest.workspace          = true
+reqwest                    = { workspace = true, features = ["blocking", "json", "stream", "rustls-tls"] }
 qdrant                     = { package = "qdrant_rest_client", version = "0.2.1", optional = true }
 text-splitter              = { version = "^0.7", features = ["tiktoken-rs", "markdown"] }
 tiktoken-rs                = "^0.5"

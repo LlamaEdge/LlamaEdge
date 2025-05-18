@@ -2762,9 +2762,12 @@ fn build_prompt(
 
 /// Downloads an image from the given URL and returns the file name.
 fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> {
-    let image_url = image_url.as_ref();
-    let url = reqwest::Url::parse(image_url).map_err(|e| {
-        let err_msg = format!("Fail to parse the image URL: {image_url}. Reason: {e}");
+    let mut response = reqwest::blocking::get(image_url.as_ref()).map_err(|e| {
+        let err_msg = format!(
+            "Fail to download the image from the URL: {}. Reason: {}",
+            image_url.as_ref(),
+            e
+        );
 
         #[cfg(feature = "logging")]
         error!(target: "stdout", "{}", &err_msg);
@@ -2772,71 +2775,53 @@ fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> 
         LlamaCoreError::Operation(err_msg)
     })?;
 
-    let curr_rt_handle = tokio::runtime::Handle::current();
-    let res = curr_rt_handle.block_on(async {
-        let response = reqwest::get(url).await.map_err(|e| {
-            let err_msg =
-                format!("Fail to download the image from the URL: {image_url}. Reason: {e}");
+    let fname = response
+        .url()
+        .path_segments()
+        .and_then(|mut segments| segments.next_back())
+        .and_then(|name| if name.is_empty() { None } else { Some(name) })
+        .ok_or(LlamaCoreError::Operation(format!(
+            "Fail to get the file name: {}",
+            image_url.as_ref()
+        )))?
+        .to_string();
 
-            #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", &err_msg);
+    // create a unique file id
+    let id = format!("file_{}", uuid::Uuid::new_v4());
+    // save the file
+    let path = Path::new("archives");
+    if !path.exists() {
+        fs::create_dir(path).unwrap();
+    }
+    let file_path = path.join(&id);
+    if !file_path.exists() {
+        fs::create_dir(&file_path).unwrap();
+    }
+    let img_path = file_path.join(&fname);
+    let mut dest: File = File::create(&img_path).map_err(|e| {
+        let err_msg = format!("Failed to create archive document {}. {}", &fname, e);
 
-            LlamaCoreError::Operation(err_msg)
-        })?;
+        // log
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
 
-        let fname = response
-            .url()
-            .path_segments()
-            .and_then(|mut segments| segments.next_back())
-            .and_then(|name| if name.is_empty() { None } else { Some(name) })
-            .ok_or(LlamaCoreError::Operation(format!(
-                "Fail to get the file name: {image_url}"
-            )))?
-            .to_string();
+        LlamaCoreError::Operation(err_msg)
+    })?;
 
-        // create a unique file id
-        let id = format!("file_{}", uuid::Uuid::new_v4());
-        // save the file
-        let path = Path::new("archives");
-        if !path.exists() {
-            fs::create_dir(path).unwrap();
-        }
-        let file_path = path.join(&id);
-        if !file_path.exists() {
-            fs::create_dir(&file_path).unwrap();
-        }
-        let img_path = file_path.join(&fname);
-        let mut dest: File = File::create(&img_path).map_err(|e| {
-            let err_msg = format!("Failed to create archive document {}. {}", &fname, e);
+    // Write the response body to file
+    std::io::copy(&mut response, &mut dest).map_err(|e| {
+        let err_msg = format!(
+            "Fail to write the image content to the file: {}. Reason: {}",
+            &fname, e
+        );
 
-            // log
-            #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", &err_msg);
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
 
-            LlamaCoreError::Operation(err_msg)
-        })?;
+        LlamaCoreError::Operation(err_msg)
+    })?;
 
-        let mut content = response.bytes_stream();
-        while let Some(Ok(item)) = content.next().await {
-            std::io::copy(&mut item.as_ref(), &mut dest).map_err(|e| {
-                let err_msg = format!(
-                    "Fail to write the image content to the file: {}. Reason: {}",
-                    &fname, e
-                );
-
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-        }
-
-        Ok(img_path.as_path().to_string_lossy().to_string())
-    });
-
-    res
-
-    // Ok(img_path.as_path().to_string_lossy().to_string())
+    Ok(img_path.as_path().to_string_lossy().to_string())
 }
 
 fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<(), LlamaCoreError> {
