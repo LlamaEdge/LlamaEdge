@@ -26,7 +26,6 @@ use endpoints::{
     common::{FinishReason, Usage},
 };
 use error::{BackendError, LlamaCoreError};
-use futures::StreamExt;
 use std::{
     collections::VecDeque,
     fs::{self, File},
