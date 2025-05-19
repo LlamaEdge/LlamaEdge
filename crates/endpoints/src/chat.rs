@@ -285,14 +285,14 @@ impl ChatCompletionRequestBuilder {
         kw_search_url: impl Into<String>,
         kw_search_index: impl Into<String>,
         kw_search_fields: Option<Vec<String>>,
-        kw_top_k: Option<u64>,
+        kw_search_limit: Option<u64>,
         weighted_alpha: Option<f32>,
         kw_api_key: Option<String>,
     ) -> Self {
         self.req.kw_search_url = Some(kw_search_url.into());
         self.req.kw_search_index = Some(kw_search_index.into());
         self.req.kw_search_fields = kw_search_fields;
-        self.req.kw_top_k = kw_top_k;
+        self.req.kw_search_limit = kw_search_limit;
         self.req.weighted_alpha = weighted_alpha;
         self.req.kw_api_key = kw_api_key;
 
@@ -449,8 +449,8 @@ pub struct ChatCompletionRequest {
     pub kw_search_index: Option<String>,
     /// The number of top keyword search results to return. Defaults to 5. This parameter is only used in RAG chat completions.
     #[cfg(all(feature = "rag", feature = "index"))]
-    #[serde(rename = "kw_top_k", skip_serializing_if = "Option::is_none")]
-    pub kw_top_k: Option<u64>,
+    #[serde(rename = "kw_search_limit", skip_serializing_if = "Option::is_none")]
+    pub kw_search_limit: Option<u64>,
     /// The fields to use for the keyword search. This parameter is only used in RAG chat completions and reserved for Elasticsearch.
     #[cfg(all(feature = "rag", feature = "index"))]
     #[serde(rename = "kw_search_fields", skip_serializing_if = "Option::is_none")]
@@ -520,7 +520,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 #[cfg(all(feature = "rag", feature = "index"))]
                 let mut kw_search_index: Option<String> = None;
                 #[cfg(all(feature = "rag", feature = "index"))]
-                let mut kw_top_k: Option<u64> = None;
+                let mut kw_search_limit: Option<u64> = None;
                 #[cfg(all(feature = "rag", feature = "index"))]
                 let mut kw_search_fields: Option<Vec<String>> = None;
                 #[cfg(all(feature = "rag", feature = "index"))]
@@ -569,7 +569,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                         #[cfg(all(feature = "rag", feature = "index"))]
                         "kw_search_index" => kw_search_index = map.next_value()?,
                         #[cfg(all(feature = "rag", feature = "index"))]
-                        "kw_top_k" => kw_top_k = map.next_value()?,
+                        "kw_search_limit" => kw_search_limit = map.next_value()?,
                         #[cfg(all(feature = "rag", feature = "index"))]
                         "kw_search_fields" => kw_search_fields = map.next_value()?,
                         #[cfg(all(feature = "rag", feature = "index"))]
@@ -629,8 +629,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 }
 
                 #[cfg(all(feature = "rag", feature = "index"))]
-                if kw_top_k.is_none() {
-                    kw_top_k = Some(5);
+                if kw_search_limit.is_none() {
+                    kw_search_limit = Some(5);
                 }
 
                 #[cfg(all(feature = "rag", feature = "index"))]
@@ -676,7 +676,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     #[cfg(all(feature = "rag", feature = "index"))]
                     kw_search_index,
                     #[cfg(all(feature = "rag", feature = "index"))]
-                    kw_top_k,
+                    kw_search_limit,
                     #[cfg(all(feature = "rag", feature = "index"))]
                     kw_search_fields,
                     #[cfg(all(feature = "rag", feature = "index"))]
@@ -724,7 +724,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
             #[cfg(all(feature = "rag", feature = "index"))]
             "kw_search_index",
             #[cfg(all(feature = "rag", feature = "index"))]
-            "kw_top_k",
+            "kw_search_limit",
             #[cfg(all(feature = "rag", feature = "index"))]
             "kw_search_fields",
             #[cfg(all(feature = "rag", feature = "index"))]
@@ -779,7 +779,7 @@ impl Default for ChatCompletionRequest {
             #[cfg(all(feature = "rag", feature = "index"))]
             kw_search_index: None,
             #[cfg(all(feature = "rag", feature = "index"))]
-            kw_top_k: Some(5),
+            kw_search_limit: Some(5),
             #[cfg(all(feature = "rag", feature = "index"))]
             kw_search_fields: None,
             #[cfg(all(feature = "rag", feature = "index"))]
@@ -1190,7 +1190,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","properties":{"a":{"description":"the left hand side number","format":"int32","type":"integer"},"b":{"description":"the right hand side number","format":"int32","type":"integer"}},"required":["a","b"],"title":"SumRequest","type":"object"}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_search_url":"http://localhost:9069","kw_search_index":"index-name","kw_top_k":5,"weighted_alpha":0.5}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","properties":{"a":{"description":"the left hand side number","format":"int32","type":"integer"},"b":{"description":"the right hand side number","format":"int32","type":"integer"}},"required":["a","b"],"title":"SumRequest","type":"object"}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_search_url":"http://localhost:9069","kw_search_index":"index-name","kw_search_limit":5,"weighted_alpha":0.5}"#
         );
     }
 }
@@ -1423,7 +1423,7 @@ fn test_chat_deserialize_chat_request() {
             Some("http://localhost:9069".to_string())
         );
         assert_eq!(request.kw_search_index, Some("index-name".to_string()));
-        assert_eq!(request.kw_top_k, Some(5));
+        assert_eq!(request.kw_search_limit, Some(5));
     }
 }
 
