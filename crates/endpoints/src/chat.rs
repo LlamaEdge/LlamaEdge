@@ -280,6 +280,7 @@ impl ChatCompletionRequestBuilder {
     /// * `kw_top_k` - The number of top keyword search results to return.
     /// * `weighted_alpha` - The weighted alpha for the keyword search results (alpha) and the embedding search results (1-alpha).
     /// * `kw_api_key` - The API key for the keyword search server.
+    #[cfg(all(feature = "rag", feature = "index"))]
     pub fn with_kw_search_settings(
         mut self,
         kw_search_url: impl Into<String>,
@@ -296,17 +297,6 @@ impl ChatCompletionRequestBuilder {
         self.req.weighted_alpha = weighted_alpha;
         self.req.kw_api_key = kw_api_key;
 
-        self
-    }
-
-    /// Sets the weighted alpha for the keyword search results (alpha) and the embedding search results (1-alpha).
-    ///
-    /// # Arguments
-    ///
-    /// * `weighted_alpha` - The weighted alpha for the keyword search results (alpha) and the embedding search results (1-alpha).
-    #[cfg(all(feature = "rag", feature = "index"))]
-    pub fn with_weighted_alpha(mut self, weighted_alpha: f32) -> Self {
-        self.req.weighted_alpha = Some(weighted_alpha);
         self
     }
 
