@@ -26,11 +26,8 @@ use endpoints::{
     common::{FinishReason, Usage},
 };
 use error::{BackendError, LlamaCoreError};
-use futures::StreamExt;
 use std::{
     collections::VecDeque,
-    fs::{self, File},
-    path::Path,
     pin::Pin,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -2093,25 +2090,12 @@ fn check_model_metadata(
                         let image = image_part.image();
 
                         if image.is_url() {
-                            #[cfg(feature = "logging")]
-                            info!(target: "stdout", "The image is provided in URL format.");
-
-                            // download the image
-                            let img_path_str = download_image(&image.url)?;
+                            let err_msg = "The image is provided in URL format. Only base64 format is supported.".to_string();
 
                             #[cfg(feature = "logging")]
-                            info!(target: "stdout", "The image is saved to {img_path_str}");
+                            error!(target: "stdout", "{}", &err_msg);
 
-                            // update metadata image
-                            metadata.image = Some(img_path_str);
-
-                            if !should_update {
-                                should_update = true;
-                            }
-
-                            // TODO: now only support a single image
-
-                            break;
+                            return Err(LlamaCoreError::Operation(err_msg));
                         } else {
                             #[cfg(feature = "logging")]
                             info!(target: "stdout", "The image is provided in base64 format.");
@@ -2758,85 +2742,6 @@ fn build_prompt(
             false => return Ok((prompt, ctx_size - max_prompt_tokens, tool_use)),
         }
     }
-}
-
-/// Downloads an image from the given URL and returns the file name.
-fn download_image(image_url: impl AsRef<str>) -> Result<String, LlamaCoreError> {
-    let image_url = image_url.as_ref();
-    let url = reqwest::Url::parse(image_url).map_err(|e| {
-        let err_msg = format!("Fail to parse the image URL: {image_url}. Reason: {e}");
-
-        #[cfg(feature = "logging")]
-        error!(target: "stdout", "{}", &err_msg);
-
-        LlamaCoreError::Operation(err_msg)
-    })?;
-
-    let curr_rt_handle = tokio::runtime::Handle::current();
-    let res = curr_rt_handle.block_on(async {
-        let response = reqwest::get(url).await.map_err(|e| {
-            let err_msg =
-                format!("Fail to download the image from the URL: {image_url}. Reason: {e}");
-
-            #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", &err_msg);
-
-            LlamaCoreError::Operation(err_msg)
-        })?;
-
-        let fname = response
-            .url()
-            .path_segments()
-            .and_then(|mut segments| segments.next_back())
-            .and_then(|name| if name.is_empty() { None } else { Some(name) })
-            .ok_or(LlamaCoreError::Operation(format!(
-                "Fail to get the file name: {image_url}"
-            )))?
-            .to_string();
-
-        // create a unique file id
-        let id = format!("file_{}", uuid::Uuid::new_v4());
-        // save the file
-        let path = Path::new("archives");
-        if !path.exists() {
-            fs::create_dir(path).unwrap();
-        }
-        let file_path = path.join(&id);
-        if !file_path.exists() {
-            fs::create_dir(&file_path).unwrap();
-        }
-        let img_path = file_path.join(&fname);
-        let mut dest: File = File::create(&img_path).map_err(|e| {
-            let err_msg = format!("Failed to create archive document {}. {}", &fname, e);
-
-            // log
-            #[cfg(feature = "logging")]
-            error!(target: "stdout", "{}", &err_msg);
-
-            LlamaCoreError::Operation(err_msg)
-        })?;
-
-        let mut content = response.bytes_stream();
-        while let Some(Ok(item)) = content.next().await {
-            std::io::copy(&mut item.as_ref(), &mut dest).map_err(|e| {
-                let err_msg = format!(
-                    "Fail to write the image content to the file: {}. Reason: {}",
-                    &fname, e
-                );
-
-                #[cfg(feature = "logging")]
-                error!(target: "stdout", "{}", &err_msg);
-
-                LlamaCoreError::Operation(err_msg)
-            })?;
-        }
-
-        Ok(img_path.as_path().to_string_lossy().to_string())
-    });
-
-    res
-
-    // Ok(img_path.as_path().to_string_lossy().to_string())
 }
 
 fn set_prompt(model_name: Option<&String>, prompt: impl AsRef<str>) -> Result<(), LlamaCoreError> {
