@@ -288,7 +288,7 @@ impl ChatCompletionRequestBuilder {
     /// * `kw_index_name` - The name of the index to use for keyword search.
     #[cfg(all(feature = "rag", feature = "index"))]
     pub fn with_kw_index_name(mut self, kw_index_name: impl Into<String>) -> Self {
-        self.req.kw_index_name = Some(kw_index_name.into());
+        self.req.kw_search_index = Some(kw_index_name.into());
         self
     }
 
@@ -449,8 +449,8 @@ pub struct ChatCompletionRequest {
     pub kw_search_url: Option<String>,
     /// The name of the index to use for the keyword search. This parameter is only used in RAG chat completions.
     #[cfg(all(feature = "rag", feature = "index"))]
-    #[serde(rename = "kw_index_name", skip_serializing_if = "Option::is_none")]
-    pub kw_index_name: Option<String>,
+    #[serde(rename = "kw_search_index", skip_serializing_if = "Option::is_none")]
+    pub kw_search_index: Option<String>,
     /// The number of top keyword search results to return. Defaults to 5. This parameter is only used in RAG chat completions.
     #[cfg(all(feature = "rag", feature = "index"))]
     #[serde(rename = "kw_top_k", skip_serializing_if = "Option::is_none")]
@@ -522,7 +522,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 #[cfg(all(feature = "rag", feature = "index"))]
                 let mut kw_search_url = None;
                 #[cfg(all(feature = "rag", feature = "index"))]
-                let mut kw_index_name: Option<String> = None;
+                let mut kw_search_index: Option<String> = None;
                 #[cfg(all(feature = "rag", feature = "index"))]
                 let mut kw_top_k: Option<u64> = None;
                 #[cfg(all(feature = "rag", feature = "index"))]
@@ -571,7 +571,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                         #[cfg(all(feature = "rag", feature = "index"))]
                         "kw_search_url" => kw_search_url = map.next_value()?,
                         #[cfg(all(feature = "rag", feature = "index"))]
-                        "kw_index_name" => kw_index_name = map.next_value()?,
+                        "kw_search_index" => kw_search_index = map.next_value()?,
                         #[cfg(all(feature = "rag", feature = "index"))]
                         "kw_top_k" => kw_top_k = map.next_value()?,
                         #[cfg(all(feature = "rag", feature = "index"))]
@@ -623,12 +623,12 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 }
 
                 #[cfg(all(feature = "rag", feature = "index"))]
-                if let Some(name) = &kw_index_name {
+                if let Some(name) = &kw_search_index {
                     if name.is_empty() {
                         #[cfg(feature = "logging")]
                         warn!(target: "stdout", "Found empty index name");
 
-                        kw_index_name = None;
+                        kw_search_index = None;
                     }
                 }
 
@@ -678,7 +678,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     #[cfg(all(feature = "rag", feature = "index"))]
                     kw_search_url,
                     #[cfg(all(feature = "rag", feature = "index"))]
-                    kw_index_name,
+                    kw_search_index,
                     #[cfg(all(feature = "rag", feature = "index"))]
                     kw_top_k,
                     #[cfg(all(feature = "rag", feature = "index"))]
@@ -726,7 +726,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
             #[cfg(all(feature = "rag", feature = "index"))]
             "kw_search_url",
             #[cfg(all(feature = "rag", feature = "index"))]
-            "kw_index_name",
+            "kw_search_index",
             #[cfg(all(feature = "rag", feature = "index"))]
             "kw_top_k",
             #[cfg(all(feature = "rag", feature = "index"))]
@@ -781,7 +781,7 @@ impl Default for ChatCompletionRequest {
             #[cfg(all(feature = "rag", feature = "index"))]
             kw_search_url: None,
             #[cfg(all(feature = "rag", feature = "index"))]
-            kw_index_name: None,
+            kw_search_index: None,
             #[cfg(all(feature = "rag", feature = "index"))]
             kw_top_k: Some(5),
             #[cfg(all(feature = "rag", feature = "index"))]
@@ -1421,7 +1421,7 @@ fn test_chat_deserialize_chat_request() {
             request.kw_search_url,
             Some("http://localhost:9069".to_string())
         );
-        assert_eq!(request.kw_index_name, Some("index-name".to_string()));
+        assert_eq!(request.kw_search_index, Some("index-name".to_string()));
         assert_eq!(request.kw_top_k, Some(5));
     }
 }
