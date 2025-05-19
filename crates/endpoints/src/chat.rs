@@ -270,36 +270,32 @@ impl ChatCompletionRequestBuilder {
         self
     }
 
-    /// Sets the URL of the keyword search server.
+    /// Sets the keyword search settings.
     ///
     /// # Arguments
     ///
     /// * `kw_search_url` - The URL of the keyword search server.
-    #[cfg(all(feature = "rag", feature = "index"))]
-    pub fn with_kw_search_url(mut self, kw_search_url: impl Into<String>) -> Self {
-        self.req.kw_search_url = Some(kw_search_url.into());
-        self
-    }
-
-    /// Sets the index name for keyword search.
-    ///
-    /// # Arguments
-    ///
-    /// * `kw_index_name` - The name of the index to use for keyword search.
-    #[cfg(all(feature = "rag", feature = "index"))]
-    pub fn with_kw_index_name(mut self, kw_index_name: impl Into<String>) -> Self {
-        self.req.kw_search_index = Some(kw_index_name.into());
-        self
-    }
-
-    /// Sets the number of top keyword search results to return.
-    ///
-    /// # Arguments
-    ///
+    /// * `kw_search_index` - The name of the index to use for keyword search.
+    /// * `kw_search_fields` - The fields to use for the keyword search.
     /// * `kw_top_k` - The number of top keyword search results to return.
-    #[cfg(all(feature = "rag", feature = "index"))]
-    pub fn with_kw_top_k(mut self, kw_top_k: u64) -> Self {
-        self.req.kw_top_k = Some(kw_top_k);
+    /// * `weighted_alpha` - The weighted alpha for the keyword search results (alpha) and the embedding search results (1-alpha).
+    /// * `kw_api_key` - The API key for the keyword search server.
+    pub fn with_kw_search_settings(
+        mut self,
+        kw_search_url: impl Into<String>,
+        kw_search_index: impl Into<String>,
+        kw_search_fields: Option<Vec<String>>,
+        kw_top_k: Option<u64>,
+        weighted_alpha: Option<f32>,
+        kw_api_key: Option<String>,
+    ) -> Self {
+        self.req.kw_search_url = Some(kw_search_url.into());
+        self.req.kw_search_index = Some(kw_search_index.into());
+        self.req.kw_search_fields = kw_search_fields;
+        self.req.kw_top_k = kw_top_k;
+        self.req.weighted_alpha = weighted_alpha;
+        self.req.kw_api_key = kw_api_key;
+
         self
     }
 
@@ -1182,14 +1178,19 @@ fn test_chat_serialize_chat_request() {
                 [0.5, 0.6],
                 None,
             )
-            .with_kw_search_url("http://localhost:9069")
-            .with_kw_index_name("index-name")
-            .with_kw_top_k(5)
+            .with_kw_search_settings(
+                "http://localhost:9069",
+                "index-name",
+                None,
+                Some(5),
+                Some(0.5),
+                None,
+            )
             .build();
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","properties":{"a":{"description":"the left hand side number","format":"int32","type":"integer"},"b":{"description":"the right hand side number","format":"int32","type":"integer"}},"required":["a","b"],"title":"SumRequest","type":"object"}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_search_url":"http://localhost:9069","kw_index_name":"index-name","kw_top_k":5,"weighted_alpha":0.5}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","properties":{"a":{"description":"the left hand side number","format":"int32","type":"integer"},"b":{"description":"the right hand side number","format":"int32","type":"integer"}},"required":["a","b"],"title":"SumRequest","type":"object"}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_search_url":"http://localhost:9069","kw_search_index":"index-name","kw_top_k":5,"weighted_alpha":0.5}"#
         );
     }
 }
@@ -1402,7 +1403,7 @@ fn test_chat_deserialize_chat_request() {
 
     #[cfg(all(feature = "rag", feature = "index"))]
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_search_url":"http://localhost:9069","kw_index_name":"index-name","kw_top_k":5}"#;
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_search_url":"http://localhost:9069","kw_search_index":"index-name","kw_top_k":5}"#;
 
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         let tool_choice = request.tool_choice.unwrap();
