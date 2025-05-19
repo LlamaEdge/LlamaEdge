@@ -61,5 +61,5 @@ pub struct QueryResponse {
 pub struct SearchHit {
     pub title: String,
     pub content: String,
-    pub score: f32,
+    pub score: f64,
 }
