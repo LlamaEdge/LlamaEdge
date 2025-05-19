@@ -287,7 +287,7 @@ impl ChatCompletionRequestBuilder {
         kw_search_index: impl Into<String>,
         kw_search_fields: Option<Vec<String>>,
         kw_search_limit: Option<u64>,
-        weighted_alpha: Option<f32>,
+        weighted_alpha: Option<f64>,
         kw_api_key: Option<String>,
     ) -> Self {
         self.req.kw_search_url = Some(kw_search_url.into());
@@ -452,7 +452,7 @@ pub struct ChatCompletionRequest {
     /// The weighted alpha for the keyword search results (alpha) and the embedding search results (1-alpha). Defaults to 0.5.
     #[cfg(all(feature = "rag", feature = "index"))]
     #[serde(rename = "weighted_alpha", skip_serializing_if = "Option::is_none")]
-    pub weighted_alpha: Option<f32>,
+    pub weighted_alpha: Option<f64>,
 }
 #[allow(deprecated)]
 impl<'de> Deserialize<'de> for ChatCompletionRequest {
@@ -516,7 +516,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 #[cfg(all(feature = "rag", feature = "index"))]
                 let mut kw_api_key: Option<String> = None;
                 #[cfg(all(feature = "rag", feature = "index"))]
-                let mut weighted_alpha: Option<f32> = None;
+                let mut weighted_alpha: Option<f64> = None;
 
                 while let Some(key) = map.next_key::<String>()? {
                     #[cfg(feature = "logging")]
