@@ -459,6 +459,10 @@ pub struct ChatCompletionRequest {
     #[cfg(all(feature = "rag", feature = "index"))]
     #[serde(rename = "kw_search_fields", skip_serializing_if = "Option::is_none")]
     pub kw_search_fields: Option<Vec<String>>,
+    /// The API key for the keyword search server.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    #[serde(rename = "kw_api_key", skip_serializing_if = "Option::is_none")]
+    pub kw_api_key: Option<String>,
     /// The weighted alpha for the keyword search results (alpha) and the embedding search results (1-alpha). Defaults to 0.5.
     #[cfg(all(feature = "rag", feature = "index"))]
     #[serde(rename = "weighted_alpha", skip_serializing_if = "Option::is_none")]
@@ -524,6 +528,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 #[cfg(all(feature = "rag", feature = "index"))]
                 let mut kw_search_fields: Option<Vec<String>> = None;
                 #[cfg(all(feature = "rag", feature = "index"))]
+                let mut kw_api_key: Option<String> = None;
+                #[cfg(all(feature = "rag", feature = "index"))]
                 let mut weighted_alpha: Option<f32> = None;
 
                 while let Some(key) = map.next_key::<String>()? {
@@ -570,6 +576,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                         "kw_top_k" => kw_top_k = map.next_value()?,
                         #[cfg(all(feature = "rag", feature = "index"))]
                         "kw_search_fields" => kw_search_fields = map.next_value()?,
+                        #[cfg(all(feature = "rag", feature = "index"))]
+                        "kw_api_key" => kw_api_key = map.next_value()?,
                         #[cfg(all(feature = "rag", feature = "index"))]
                         "weighted_alpha" => weighted_alpha = map.next_value()?,
                         _ => {
@@ -676,6 +684,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     #[cfg(all(feature = "rag", feature = "index"))]
                     kw_search_fields,
                     #[cfg(all(feature = "rag", feature = "index"))]
+                    kw_api_key,
+                    #[cfg(all(feature = "rag", feature = "index"))]
                     weighted_alpha,
                 })
             }
@@ -721,6 +731,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
             "kw_top_k",
             #[cfg(all(feature = "rag", feature = "index"))]
             "kw_search_fields",
+            #[cfg(all(feature = "rag", feature = "index"))]
+            "kw_api_key",
             #[cfg(all(feature = "rag", feature = "index"))]
             "weighted_alpha",
         ];
@@ -774,6 +786,8 @@ impl Default for ChatCompletionRequest {
             kw_top_k: Some(5),
             #[cfg(all(feature = "rag", feature = "index"))]
             kw_search_fields: None,
+            #[cfg(all(feature = "rag", feature = "index"))]
+            kw_api_key: None,
             #[cfg(all(feature = "rag", feature = "index"))]
             weighted_alpha: Some(0.5),
         }
