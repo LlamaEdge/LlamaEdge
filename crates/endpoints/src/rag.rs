@@ -24,7 +24,7 @@ pub struct RagScoredPoint {
     pub source: String,
 
     /// Points vector distance to the query vector
-    pub score: f32,
+    pub score: f64,
 }
 
 #[test]
