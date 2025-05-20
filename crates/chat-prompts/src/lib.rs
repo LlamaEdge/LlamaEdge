@@ -110,6 +110,8 @@ pub enum PromptTemplateType {
     MiniCPMV,
     #[value(name = "moxin-chat")]
     MoxinChat,
+    #[value(name = "moxin-instruct")]
+    MoxinInstruct,
     #[value(name = "falcon3")]
     Falcon3,
     #[value(name = "megrez")]
@@ -193,6 +195,7 @@ impl PromptTemplateType {
             | PromptTemplateType::FunctionaryV32
             | PromptTemplateType::FunctionaryV31
             | PromptTemplateType::SeedReasoning
+            | PromptTemplateType::MoxinInstruct
             | PromptTemplateType::Embedding
             | PromptTemplateType::Tts
             | PromptTemplateType::Null => false,
@@ -264,6 +267,7 @@ impl FromStr for PromptTemplateType {
             "functionary-31" => Ok(PromptTemplateType::FunctionaryV31),
             "minicpmv" => Ok(PromptTemplateType::MiniCPMV),
             "moxin-chat" => Ok(PromptTemplateType::MoxinChat),
+            "moxin-instruct" => Ok(PromptTemplateType::MoxinInstruct),
             "falcon3" => Ok(PromptTemplateType::Falcon3),
             "megrez" => Ok(PromptTemplateType::Megrez),
             "qwen2-vision" => Ok(PromptTemplateType::Qwen2vl),
@@ -332,6 +336,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::FunctionaryV31 => write!(f, "functionary-31"),
             PromptTemplateType::MiniCPMV => write!(f, "minicpmv"),
             PromptTemplateType::MoxinChat => write!(f, "moxin-chat"),
+            PromptTemplateType::MoxinInstruct => write!(f, "moxin-instruct"),
             PromptTemplateType::Falcon3 => write!(f, "falcon3"),
             PromptTemplateType::Megrez => write!(f, "megrez"),
             PromptTemplateType::Qwen2vl => write!(f, "qwen2-vision"),

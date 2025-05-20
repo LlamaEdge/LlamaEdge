@@ -121,6 +121,7 @@ pub enum ChatPrompt {
     FunctionaryV31ToolPrompt,
     MiniCPMVPrompt,
     MoxinChatPrompt,
+    MoxinInstructPrompt,
     FalconChatPrompt,
     MegrezPrompt,
     Qwen2vlPrompt,
@@ -217,6 +218,9 @@ impl From<PromptTemplateType> for ChatPrompt {
             }
             PromptTemplateType::MiniCPMV => ChatPrompt::MiniCPMVPrompt(MiniCPMVPrompt),
             PromptTemplateType::MoxinChat => ChatPrompt::MoxinChatPrompt(MoxinChatPrompt),
+            PromptTemplateType::MoxinInstruct => {
+                ChatPrompt::MoxinInstructPrompt(MoxinInstructPrompt)
+            }
             PromptTemplateType::Falcon3 => ChatPrompt::FalconChatPrompt(FalconChatPrompt),
             PromptTemplateType::Megrez => ChatPrompt::MegrezPrompt(MegrezPrompt),
             PromptTemplateType::Qwen2vl => ChatPrompt::Qwen2vlPrompt(Qwen2vlPrompt),
