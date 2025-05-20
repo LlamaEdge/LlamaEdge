@@ -2438,7 +2438,9 @@ fn post_process(
             s = s.trim_end_matches("<|eom_id|>").trim();
         }
         s.to_owned()
-    } else if *template_ty == PromptTemplateType::MoxinChat {
+    } else if *template_ty == PromptTemplateType::MoxinChat
+        || *template_ty == PromptTemplateType::MoxinInstruct
+    {
         let s = output.as_ref().trim();
         if s.ends_with("</s>") {
             s.trim_end_matches("</s>").trim().to_owned()
