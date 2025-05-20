@@ -79,22 +79,6 @@ pub async fn chat(
     result
 }
 
-// /// Processes a chat-completion request and returns ChatCompletionChunk instances in stream.
-// #[deprecated(since = "0.10.0", note = "Please use the `chat` function.")]
-// pub async fn chat_completions_stream(
-//     chat_request: &mut ChatCompletionRequest,
-// ) -> Result<impl futures::TryStream<Ok = String, Error = LlamaCoreError>, LlamaCoreError> {
-//     chat_stream(chat_request).await
-// }
-
-// /// Processes a chat-completion request and returns a ChatCompletionObject instance.
-// #[deprecated(since = "0.10.0", note = "Please use the `chat` function.")]
-// pub async fn chat_completions(
-//     chat_request: &mut ChatCompletionRequest,
-// ) -> Result<ChatCompletionObject, LlamaCoreError> {
-//     chat_once(chat_request).await
-// }
-
 async fn chat_stream(
     chat_request: &mut ChatCompletionRequest,
 ) -> Result<
