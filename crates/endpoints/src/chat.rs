@@ -270,47 +270,33 @@ impl ChatCompletionRequestBuilder {
         self
     }
 
-    /// Sets the URL of the keyword search server.
+    /// Sets the keyword search settings.
     ///
     /// # Arguments
     ///
     /// * `kw_search_url` - The URL of the keyword search server.
-    #[cfg(all(feature = "rag", feature = "index"))]
-    pub fn with_kw_search_url(mut self, kw_search_url: impl Into<String>) -> Self {
-        self.req.kw_search_url = Some(kw_search_url.into());
-        self
-    }
-
-    /// Sets the index name for keyword search.
-    ///
-    /// # Arguments
-    ///
-    /// * `kw_index_name` - The name of the index to use for keyword search.
-    #[cfg(all(feature = "rag", feature = "index"))]
-    pub fn with_kw_index_name(mut self, kw_index_name: impl Into<String>) -> Self {
-        self.req.kw_index_name = Some(kw_index_name.into());
-        self
-    }
-
-    /// Sets the number of top keyword search results to return.
-    ///
-    /// # Arguments
-    ///
+    /// * `kw_search_index` - The name of the index to use for keyword search.
+    /// * `kw_search_fields` - The fields to use for the keyword search.
     /// * `kw_top_k` - The number of top keyword search results to return.
-    #[cfg(all(feature = "rag", feature = "index"))]
-    pub fn with_kw_top_k(mut self, kw_top_k: u64) -> Self {
-        self.req.kw_top_k = Some(kw_top_k);
-        self
-    }
-
-    /// Sets the weighted alpha for the keyword search results (alpha) and the embedding search results (1-alpha).
-    ///
-    /// # Arguments
-    ///
     /// * `weighted_alpha` - The weighted alpha for the keyword search results (alpha) and the embedding search results (1-alpha).
+    /// * `kw_api_key` - The API key for the keyword search server.
     #[cfg(all(feature = "rag", feature = "index"))]
-    pub fn with_weighted_alpha(mut self, weighted_alpha: f32) -> Self {
-        self.req.weighted_alpha = Some(weighted_alpha);
+    pub fn with_kw_search_settings(
+        mut self,
+        kw_search_url: impl Into<String>,
+        kw_search_index: impl Into<String>,
+        kw_search_fields: Option<Vec<String>>,
+        kw_search_limit: Option<u64>,
+        weighted_alpha: Option<f64>,
+        kw_api_key: Option<String>,
+    ) -> Self {
+        self.req.kw_search_url = Some(kw_search_url.into());
+        self.req.kw_search_index = Some(kw_search_index.into());
+        self.req.kw_search_fields = kw_search_fields;
+        self.req.kw_search_limit = kw_search_limit;
+        self.req.weighted_alpha = weighted_alpha;
+        self.req.kw_api_key = kw_api_key;
+
         self
     }
 
@@ -449,16 +435,24 @@ pub struct ChatCompletionRequest {
     pub kw_search_url: Option<String>,
     /// The name of the index to use for the keyword search. This parameter is only used in RAG chat completions.
     #[cfg(all(feature = "rag", feature = "index"))]
-    #[serde(rename = "kw_index_name", skip_serializing_if = "Option::is_none")]
-    pub kw_index_name: Option<String>,
+    #[serde(rename = "kw_search_index", skip_serializing_if = "Option::is_none")]
+    pub kw_search_index: Option<String>,
     /// The number of top keyword search results to return. Defaults to 5. This parameter is only used in RAG chat completions.
     #[cfg(all(feature = "rag", feature = "index"))]
-    #[serde(rename = "kw_top_k", skip_serializing_if = "Option::is_none")]
-    pub kw_top_k: Option<u64>,
+    #[serde(rename = "kw_search_limit", skip_serializing_if = "Option::is_none")]
+    pub kw_search_limit: Option<u64>,
+    /// The fields to use for the keyword search. This parameter is only used in RAG chat completions and reserved for Elasticsearch.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    #[serde(rename = "kw_search_fields", skip_serializing_if = "Option::is_none")]
+    pub kw_search_fields: Option<Vec<String>>,
+    /// The API key for the keyword search server.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    #[serde(rename = "kw_api_key", skip_serializing_if = "Option::is_none")]
+    pub kw_api_key: Option<String>,
     /// The weighted alpha for the keyword search results (alpha) and the embedding search results (1-alpha). Defaults to 0.5.
     #[cfg(all(feature = "rag", feature = "index"))]
     #[serde(rename = "weighted_alpha", skip_serializing_if = "Option::is_none")]
-    pub weighted_alpha: Option<f32>,
+    pub weighted_alpha: Option<f64>,
 }
 #[allow(deprecated)]
 impl<'de> Deserialize<'de> for ChatCompletionRequest {
@@ -514,11 +508,15 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 #[cfg(all(feature = "rag", feature = "index"))]
                 let mut kw_search_url = None;
                 #[cfg(all(feature = "rag", feature = "index"))]
-                let mut kw_index_name: Option<String> = None;
+                let mut kw_search_index: Option<String> = None;
                 #[cfg(all(feature = "rag", feature = "index"))]
-                let mut kw_top_k: Option<u64> = None;
+                let mut kw_search_limit: Option<u64> = None;
                 #[cfg(all(feature = "rag", feature = "index"))]
-                let mut weighted_alpha: Option<f32> = None;
+                let mut kw_search_fields: Option<Vec<String>> = None;
+                #[cfg(all(feature = "rag", feature = "index"))]
+                let mut kw_api_key: Option<String> = None;
+                #[cfg(all(feature = "rag", feature = "index"))]
+                let mut weighted_alpha: Option<f64> = None;
 
                 while let Some(key) = map.next_key::<String>()? {
                     #[cfg(feature = "logging")]
@@ -559,9 +557,13 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                         #[cfg(all(feature = "rag", feature = "index"))]
                         "kw_search_url" => kw_search_url = map.next_value()?,
                         #[cfg(all(feature = "rag", feature = "index"))]
-                        "kw_index_name" => kw_index_name = map.next_value()?,
+                        "kw_search_index" => kw_search_index = map.next_value()?,
                         #[cfg(all(feature = "rag", feature = "index"))]
-                        "kw_top_k" => kw_top_k = map.next_value()?,
+                        "kw_search_limit" => kw_search_limit = map.next_value()?,
+                        #[cfg(all(feature = "rag", feature = "index"))]
+                        "kw_search_fields" => kw_search_fields = map.next_value()?,
+                        #[cfg(all(feature = "rag", feature = "index"))]
+                        "kw_api_key" => kw_api_key = map.next_value()?,
                         #[cfg(all(feature = "rag", feature = "index"))]
                         "weighted_alpha" => weighted_alpha = map.next_value()?,
                         _ => {
@@ -607,18 +609,18 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 }
 
                 #[cfg(all(feature = "rag", feature = "index"))]
-                if let Some(name) = &kw_index_name {
+                if let Some(name) = &kw_search_index {
                     if name.is_empty() {
                         #[cfg(feature = "logging")]
                         warn!(target: "stdout", "Found empty index name");
 
-                        kw_index_name = None;
+                        kw_search_index = None;
                     }
                 }
 
                 #[cfg(all(feature = "rag", feature = "index"))]
-                if kw_top_k.is_none() {
-                    kw_top_k = Some(5);
+                if kw_search_limit.is_none() {
+                    kw_search_limit = Some(5);
                 }
 
                 #[cfg(all(feature = "rag", feature = "index"))]
@@ -662,9 +664,13 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     #[cfg(all(feature = "rag", feature = "index"))]
                     kw_search_url,
                     #[cfg(all(feature = "rag", feature = "index"))]
-                    kw_index_name,
+                    kw_search_index,
                     #[cfg(all(feature = "rag", feature = "index"))]
-                    kw_top_k,
+                    kw_search_limit,
+                    #[cfg(all(feature = "rag", feature = "index"))]
+                    kw_search_fields,
+                    #[cfg(all(feature = "rag", feature = "index"))]
+                    kw_api_key,
                     #[cfg(all(feature = "rag", feature = "index"))]
                     weighted_alpha,
                 })
@@ -706,9 +712,15 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
             #[cfg(all(feature = "rag", feature = "index"))]
             "kw_search_url",
             #[cfg(all(feature = "rag", feature = "index"))]
-            "kw_index_name",
+            "kw_search_index",
             #[cfg(all(feature = "rag", feature = "index"))]
-            "kw_top_k",
+            "kw_search_limit",
+            #[cfg(all(feature = "rag", feature = "index"))]
+            "kw_search_fields",
+            #[cfg(all(feature = "rag", feature = "index"))]
+            "kw_api_key",
+            #[cfg(all(feature = "rag", feature = "index"))]
+            "weighted_alpha",
         ];
         deserializer.deserialize_struct(
             "ChatCompletionRequest",
@@ -755,9 +767,13 @@ impl Default for ChatCompletionRequest {
             #[cfg(all(feature = "rag", feature = "index"))]
             kw_search_url: None,
             #[cfg(all(feature = "rag", feature = "index"))]
-            kw_index_name: None,
+            kw_search_index: None,
             #[cfg(all(feature = "rag", feature = "index"))]
-            kw_top_k: Some(5),
+            kw_search_limit: Some(5),
+            #[cfg(all(feature = "rag", feature = "index"))]
+            kw_search_fields: None,
+            #[cfg(all(feature = "rag", feature = "index"))]
+            kw_api_key: None,
             #[cfg(all(feature = "rag", feature = "index"))]
             weighted_alpha: Some(0.5),
         }
@@ -1152,14 +1168,19 @@ fn test_chat_serialize_chat_request() {
                 [0.5, 0.6],
                 None,
             )
-            .with_kw_search_url("http://localhost:9069")
-            .with_kw_index_name("index-name")
-            .with_kw_top_k(5)
+            .with_kw_search_settings(
+                "http://localhost:9069",
+                "index-name",
+                None,
+                Some(5),
+                Some(0.5),
+                None,
+            )
             .build();
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","properties":{"a":{"description":"the left hand side number","format":"int32","type":"integer"},"b":{"description":"the right hand side number","format":"int32","type":"integer"}},"required":["a","b"],"title":"SumRequest","type":"object"}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_search_url":"http://localhost:9069","kw_index_name":"index-name","kw_top_k":5,"weighted_alpha":0.5}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","properties":{"a":{"description":"the left hand side number","format":"int32","type":"integer"},"b":{"description":"the right hand side number","format":"int32","type":"integer"}},"required":["a","b"],"title":"SumRequest","type":"object"}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_search_url":"http://localhost:9069","kw_search_index":"index-name","kw_search_limit":5,"weighted_alpha":0.5}"#
         );
     }
 }
@@ -1372,7 +1393,7 @@ fn test_chat_deserialize_chat_request() {
 
     #[cfg(all(feature = "rag", feature = "index"))]
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_search_url":"http://localhost:9069","kw_index_name":"index-name","kw_top_k":5}"#;
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_search_url":"http://localhost:9069","kw_search_index":"index-name","kw_top_k":5}"#;
 
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         let tool_choice = request.tool_choice.unwrap();
@@ -1391,8 +1412,8 @@ fn test_chat_deserialize_chat_request() {
             request.kw_search_url,
             Some("http://localhost:9069".to_string())
         );
-        assert_eq!(request.kw_index_name, Some("index-name".to_string()));
-        assert_eq!(request.kw_top_k, Some(5));
+        assert_eq!(request.kw_search_index, Some("index-name".to_string()));
+        assert_eq!(request.kw_search_limit, Some(5));
     }
 }
 
