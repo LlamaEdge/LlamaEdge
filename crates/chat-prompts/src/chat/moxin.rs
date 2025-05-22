@@ -121,10 +121,22 @@ impl BuildChatPrompt for MoxinChatPrompt {
 #[derive(Debug, Default, Clone)]
 pub struct MoxinInstructPrompt;
 impl MoxinInstructPrompt {
+    /// Create a system prompt from a chat completion request message.
+    fn create_system_prompt(&self, message: &ChatCompletionSystemMessage) -> String {
+        let content = message.content();
+        match content.is_empty() {
+            true => String::from(
+                "<|system|>\nYou are an AI assistant. Answer questions as concisely and accurately as possible.",
+            ),
+            false => format!("<|system|>\n[INST] {content}"),
+        }
+    }
+
     /// Create a user prompt from a chat completion request message.
     fn append_user_message(
         &self,
         chat_history: impl AsRef<str>,
+        system_prompt: impl AsRef<str>,
         message: &ChatCompletionUserMessage,
     ) -> String {
         let content = match message.content() {
@@ -142,7 +154,11 @@ impl MoxinInstructPrompt {
         };
 
         match chat_history.as_ref().is_empty() {
-            true => format!("<|user|>\n{user_message}", user_message = content.trim(),),
+            true => format!(
+                "{system_prompt}\n<|user|>\n{user_message}",
+                system_prompt = system_prompt.as_ref().trim(),
+                user_message = content.trim(),
+            ),
             false => format!(
                 "{chat_history}\n<|user|>\n{user_message}",
                 chat_history = chat_history.as_ref().trim(),
@@ -179,12 +195,18 @@ impl BuildChatPrompt for MoxinInstructPrompt {
             return Err(crate::error::PromptError::NoMessages);
         }
 
+        // system prompt
+        let system_prompt = match messages[0] {
+            ChatCompletionRequestMessage::System(ref message) => self.create_system_prompt(message),
+            _ => String::from("<|system|>\nYou are an AI assistant. Answer questions as concisely and accurately as possible."),
+        };
+
         // append user/assistant messages
         let mut prompt = String::new();
         for message in messages {
             match message {
                 ChatCompletionRequestMessage::User(message) => {
-                    prompt = self.append_user_message(&prompt, message);
+                    prompt = self.append_user_message(&prompt, &system_prompt, message);
                 }
                 ChatCompletionRequestMessage::Assistant(message) => {
                     prompt = self.append_assistant_message(&prompt, message)?;
