@@ -2457,6 +2457,10 @@ fn post_process(
             s = s.trim_start_matches(":").trim();
         }
 
+        if s.starts_with("</think>") {
+            s = s.trim_start_matches("</think>").trim();
+        }
+
         if s.ends_with("<|im_end|>") {
             s.trim_end_matches("<|im_end|>").trim().to_owned()
         } else {
