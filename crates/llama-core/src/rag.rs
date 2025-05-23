@@ -239,7 +239,7 @@ pub async fn rag_retrieve_context(
                     if let Some(source) = payload.get("source").and_then(Value::as_str) {
                         points.push(RagScoredPoint {
                             source: source.to_string(),
-                            score: point.score,
+                            score: point.score as f64,
                         })
                     }
 

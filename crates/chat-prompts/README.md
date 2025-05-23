@@ -600,10 +600,12 @@ The available prompt templates are listed below:
 - `moxin-instruct`
 
   ```text
+  <|system|>
+  {system_message}
   <|user|>
   {user_message_1}
   <|assistant|>
-  {assistant_message_1}<|endoftext|>
+  {assistant_message_1}
   <|user|>
   {user_message_2}
   <|assistant|>
