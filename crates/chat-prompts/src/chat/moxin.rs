@@ -128,7 +128,7 @@ impl MoxinInstructPrompt {
             true => String::from(
                 "<|system|>\nYou are an AI assistant. Answer questions as concisely and accurately as possible.",
             ),
-            false => format!("<|system|>\n[INST] {content}"),
+            false => format!("<|system|>\n{content}"),
         }
     }
 
