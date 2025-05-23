@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct IndexRequest {
     /// The name of the index to create
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+    pub index: Option<String>,
     /// The documents to index
     pub documents: Vec<DocumentInput>,
 }
