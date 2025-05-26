@@ -2,7 +2,7 @@
 
 use crate::embeddings::EmbeddingsResponse;
 #[cfg(feature = "index")]
-use crate::keyword_search::IndexResponse;
+use crate::rag::keyword_search::IndexResponse;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
