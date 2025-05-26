@@ -242,60 +242,137 @@ impl ChatCompletionRequestBuilder {
         self
     }
 
-    /// Sets the VectorDB settings, which are only used in RAG chat completions.
+    /// Settings for vector search with Qdrant.
     ///
     /// # Arguments
     ///
     /// * `vdb_server_url` - The URL of the VectorDB server.
     ///
     /// * `vdb_collection_name` - The names of the collections in VectorDB.
-    ///
-    /// * `limit` - Max number of retrieved results. Note that the number of the values must be the same as the number of `collection_name`.
-    ///
-    /// * `score_threshold` - The score threshold for the retrieved results. Note that the number of the values must be the same as the number of `collection_name`.
     #[cfg(feature = "rag")]
-    pub fn with_rag_vdb_settings(
+    pub fn with_vector_search_settings(
         mut self,
         vdb_server_url: impl Into<String>,
         vdb_collection_name: impl Into<Vec<String>>,
-        limit: impl Into<Vec<u64>>,
-        score_threshold: impl Into<Vec<f32>>,
         vdb_api_key: Option<String>,
     ) -> Self {
         self.req.vdb_server_url = Some(vdb_server_url.into());
         self.req.vdb_collection_name = Some(vdb_collection_name.into());
-        self.req.limit = Some(limit.into());
-        self.req.score_threshold = Some(score_threshold.into());
         self.req.vdb_api_key = vdb_api_key;
         self
     }
 
-    /// Sets the keyword search settings.
+    /// Settings for keyword search with kw-search-server.
     ///
     /// # Arguments
     ///
     /// * `kw_search_url` - The URL of the keyword search server.
     /// * `kw_search_index` - The name of the index to use for keyword search.
-    /// * `kw_search_fields` - The fields to use for the keyword search.
-    /// * `kw_top_k` - The number of top keyword search results to return.
-    /// * `weighted_alpha` - The weighted alpha for the keyword search results (alpha) and the embedding search results (1-alpha).
     /// * `kw_api_key` - The API key for the keyword search server.
     #[cfg(all(feature = "rag", feature = "index"))]
     pub fn with_kw_search_settings(
         mut self,
         kw_search_url: impl Into<String>,
         kw_search_index: impl Into<String>,
-        kw_search_fields: Option<Vec<String>>,
-        kw_search_limit: Option<u64>,
-        weighted_alpha: Option<f64>,
         kw_api_key: Option<String>,
     ) -> Self {
         self.req.kw_search_url = Some(kw_search_url.into());
         self.req.kw_search_index = Some(kw_search_index.into());
-        self.req.kw_search_fields = kw_search_fields;
-        self.req.kw_search_limit = kw_search_limit;
-        self.req.weighted_alpha = weighted_alpha;
         self.req.kw_api_key = kw_api_key;
+
+        self
+    }
+
+    /// Settings for keyword search with Elasticsearch.
+    ///
+    /// # Arguments
+    ///
+    /// * `es_search_url` - The URL of the Elasticsearch server.
+    /// * `es_search_index` - The name of the index to use for the keyword search.
+    /// * `es_search_fields` - The fields to use for the keyword search.
+    /// * `es_api_key` - The API key for the Elasticsearch server.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    pub fn with_es_search_settings(
+        mut self,
+        es_search_url: impl Into<String>,
+        es_search_index: impl Into<String>,
+        es_search_fields: impl Into<Vec<String>>,
+        es_api_key: Option<String>,
+    ) -> Self {
+        self.req.es_search_url = Some(es_search_url.into());
+        self.req.es_search_index = Some(es_search_index.into());
+        self.req.es_search_fields = Some(es_search_fields.into());
+        self.req.es_api_key = es_api_key;
+
+        self
+    }
+
+    /// Settings for keyword search with TiDB.
+    ///
+    /// # Arguments
+    ///
+    /// * `tidb_search_host` - The host of the TiDB server.
+    /// * `tidb_search_port` - The port of the TiDB server.
+    /// * `tidb_search_username` - The username of the TiDB server.
+    /// * `tidb_search_password` - The password of the TiDB server.
+    /// * `tidb_search_database` - The database of the TiDB server.
+    /// * `tidb_search_table` - The table of the TiDB server.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    pub fn with_tidb_search_settings(
+        mut self,
+        tidb_search_host: impl Into<String>,
+        tidb_search_port: impl Into<u16>,
+        tidb_search_username: impl Into<String>,
+        tidb_search_password: impl Into<String>,
+        tidb_search_database: impl Into<String>,
+        tidb_search_table: impl Into<String>,
+    ) -> Self {
+        self.req.tidb_search_host = Some(tidb_search_host.into());
+        self.req.tidb_search_port = Some(tidb_search_port.into());
+        self.req.tidb_search_username = Some(tidb_search_username.into());
+        self.req.tidb_search_password = Some(tidb_search_password.into());
+        self.req.tidb_search_database = Some(tidb_search_database.into());
+        self.req.tidb_search_table = Some(tidb_search_table.into());
+
+        self
+    }
+
+    /// Settings for filtering vector search results.
+    ///
+    /// # Arguments
+    ///
+    /// * `limit` - The limit for the search.
+    /// * `score_threshold` - The score threshold for the search.
+    /// * `weighted_alpha` - The weighted alpha for the search.
+    #[cfg(all(feature = "rag", not(feature = "index")))]
+    pub fn with_vector_search_filter(
+        mut self,
+        limit: impl Into<u64>,
+        score_threshold: impl Into<f32>,
+    ) -> Self {
+        self.req.limit = Some(limit.into());
+        self.req.score_threshold = Some(score_threshold.into());
+
+        self
+    }
+
+    /// Settings for filtering vector and keyword search results.
+    ///
+    /// # Arguments
+    ///
+    /// * `limit` - The limit for the search.
+    /// * `score_threshold` - The score threshold for the search.
+    /// * `weighted_alpha` - The weighted alpha for the search.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    pub fn with_search_filter(
+        mut self,
+        limit: impl Into<u64>,
+        score_threshold: impl Into<f32>,
+        weighted_alpha: impl Into<f64>,
+    ) -> Self {
+        self.req.limit = Some(limit.into());
+        self.req.score_threshold = Some(score_threshold.into());
+        self.req.weighted_alpha = Some(weighted_alpha.into());
 
         self
     }
@@ -400,11 +477,12 @@ pub struct ChatCompletionRequest {
     pub tool_choice: Option<ToolChoice>,
 
     /// Number of user messages to use for context retrieval.
-    /// The parameter is only used in RAG chat completions.
+    /// The parameter is only used in RAG.
     #[cfg(feature = "rag")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub context_window: Option<u64>,
 
+    // * Fields for vector search
     /// The URL of the VectorDB server.
     #[cfg(feature = "rag")]
     #[serde(rename = "vdb_server_url", skip_serializing_if = "Option::is_none")]
@@ -416,40 +494,88 @@ pub struct ChatCompletionRequest {
         skip_serializing_if = "Option::is_none"
     )]
     pub vdb_collection_name: Option<Vec<String>>,
-    /// Max number of retrieved results. The number of the values must be the same as the number of `vdb_collection_name`.
-    #[cfg(feature = "rag")]
-    #[serde(rename = "limit", skip_serializing_if = "Option::is_none")]
-    pub limit: Option<Vec<u64>>,
-    /// The score threshold for the retrieved results. The number of the values must be the same as the number of `vdb_collection_name`.
-    #[cfg(feature = "rag")]
-    #[serde(rename = "score_threshold", skip_serializing_if = "Option::is_none")]
-    pub score_threshold: Option<Vec<f32>>,
     /// The API key for the VectorDB server.
     #[cfg(feature = "rag")]
     #[serde(rename = "vdb_api_key", skip_serializing_if = "Option::is_none")]
     pub vdb_api_key: Option<String>,
 
-    /// The URL of the keyword search server.
+    // * Fields for keyword search with kw-search-server
+    /// The URL of the kw-search-server. This parameter is only used in RAG.
     #[cfg(all(feature = "rag", feature = "index"))]
     #[serde(rename = "kw_search_url", skip_serializing_if = "Option::is_none")]
     pub kw_search_url: Option<String>,
-    /// The name of the index to use for the keyword search. This parameter is only used in RAG chat completions.
+    /// The name of the index to use for the keyword search. This parameter is only used in RAG and reserved for kw-search-server.
     #[cfg(all(feature = "rag", feature = "index"))]
     #[serde(rename = "kw_search_index", skip_serializing_if = "Option::is_none")]
     pub kw_search_index: Option<String>,
-    /// The number of top keyword search results to return. Defaults to 5. This parameter is only used in RAG chat completions.
-    #[cfg(all(feature = "rag", feature = "index"))]
-    #[serde(rename = "kw_search_limit", skip_serializing_if = "Option::is_none")]
-    pub kw_search_limit: Option<u64>,
-    /// The fields to use for the keyword search. This parameter is only used in RAG chat completions and reserved for Elasticsearch.
-    #[cfg(all(feature = "rag", feature = "index"))]
-    #[serde(rename = "kw_search_fields", skip_serializing_if = "Option::is_none")]
-    pub kw_search_fields: Option<Vec<String>>,
-    /// The API key for the keyword search server.
+    /// The API key for the keyword search server. This parameter is only used in RAG and reserved for kw-search-server.
     #[cfg(all(feature = "rag", feature = "index"))]
     #[serde(rename = "kw_api_key", skip_serializing_if = "Option::is_none")]
     pub kw_api_key: Option<String>,
-    /// The weighted alpha for the keyword search results (alpha) and the embedding search results (1-alpha). Defaults to 0.5.
+
+    // * Fields for keyword search with Elasticsearch
+    /// The URL of the Elasticsearch server. This parameter is only used in RAG.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    #[serde(rename = "kw_search_url", skip_serializing_if = "Option::is_none")]
+    pub es_search_url: Option<String>,
+    /// The name of the index to use for the keyword search. This parameter is only used in RAG and reserved for Elasticsearch.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    #[serde(rename = "kw_search_index", skip_serializing_if = "Option::is_none")]
+    pub es_search_index: Option<String>,
+    /// The fields to use for the keyword search. This parameter is only used in RAG and reserved for Elasticsearch.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    #[serde(rename = "kw_search_fields", skip_serializing_if = "Option::is_none")]
+    pub es_search_fields: Option<Vec<String>>,
+    /// The API key for Elasticsearch server. This parameter is only used in RAG and reserved for Elasticsearch.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    #[serde(rename = "kw_api_key", skip_serializing_if = "Option::is_none")]
+    pub es_api_key: Option<String>,
+
+    // * Fields for keyword search with TiDB
+    /// The host of the TiDB server. This parameter is only used in RAG and reserved for TiDB.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    #[serde(rename = "tidb_search_host", skip_serializing_if = "Option::is_none")]
+    pub tidb_search_host: Option<String>,
+    /// The port of the TiDB server. This parameter is only used in RAG and reserved for TiDB.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    #[serde(rename = "tidb_search_port", skip_serializing_if = "Option::is_none")]
+    pub tidb_search_port: Option<u16>,
+    /// The username of the TiDB server. This parameter is only used in RAG and reserved for TiDB.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    #[serde(
+        rename = "tidb_search_username",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub tidb_search_username: Option<String>,
+    /// The password of the TiDB server. This parameter is only used in RAG and reserved for TiDB.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    #[serde(
+        rename = "tidb_search_password",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub tidb_search_password: Option<String>,
+    /// The database of the TiDB server. This parameter is only used in RAG and reserved for TiDB.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    #[serde(
+        rename = "tidb_search_database",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub tidb_search_database: Option<String>,
+    /// The table name of the TiDB server. This parameter is only used in RAG and reserved for TiDB.
+    #[cfg(all(feature = "rag", feature = "index"))]
+    #[serde(rename = "tidb_search_table", skip_serializing_if = "Option::is_none")]
+    pub tidb_search_table: Option<String>,
+
+    // * Fields for filtering search results
+    /// Max number of retrieved results. This parameter is only used in RAG.
+    #[cfg(feature = "rag")]
+    #[serde(rename = "limit", skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u64>,
+    /// The score threshold for the retrieved results. This parameter is only used in RAG.
+    #[cfg(feature = "rag")]
+    #[serde(rename = "score_threshold", skip_serializing_if = "Option::is_none")]
+    pub score_threshold: Option<f32>,
+    /// The weighted alpha for the keyword search result (`alpha`) and the vector search result (`1-alpha`). This parameter is only used in RAG.
     #[cfg(all(feature = "rag", feature = "index"))]
     #[serde(rename = "weighted_alpha", skip_serializing_if = "Option::is_none")]
     pub weighted_alpha: Option<f64>,
@@ -495,26 +621,52 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 let mut tool_choice = None;
                 #[cfg(feature = "rag")]
                 let mut context_window = None;
+
+                // fields for vector search
                 #[cfg(feature = "rag")]
                 let mut vdb_server_url = None;
                 #[cfg(feature = "rag")]
                 let mut vdb_collection_name = None;
                 #[cfg(feature = "rag")]
-                let mut limit = None;
-                #[cfg(feature = "rag")]
-                let mut score_threshold = None;
-                #[cfg(feature = "rag")]
                 let mut vdb_api_key = None;
+
+                // fields for keyword search with kw-search-server
                 #[cfg(all(feature = "rag", feature = "index"))]
                 let mut kw_search_url = None;
                 #[cfg(all(feature = "rag", feature = "index"))]
                 let mut kw_search_index: Option<String> = None;
                 #[cfg(all(feature = "rag", feature = "index"))]
-                let mut kw_search_limit: Option<u64> = None;
-                #[cfg(all(feature = "rag", feature = "index"))]
-                let mut kw_search_fields: Option<Vec<String>> = None;
-                #[cfg(all(feature = "rag", feature = "index"))]
                 let mut kw_api_key: Option<String> = None;
+
+                // fields for keyword search with Elasticsearch
+                #[cfg(all(feature = "rag", feature = "index"))]
+                let mut es_search_url = None;
+                #[cfg(all(feature = "rag", feature = "index"))]
+                let mut es_search_index = None;
+                #[cfg(all(feature = "rag", feature = "index"))]
+                let mut es_search_fields = None;
+                #[cfg(all(feature = "rag", feature = "index"))]
+                let mut es_api_key = None;
+
+                // fields for keyword search with TiDB
+                #[cfg(all(feature = "rag", feature = "index"))]
+                let mut tidb_search_host = None;
+                #[cfg(all(feature = "rag", feature = "index"))]
+                let mut tidb_search_port = None;
+                #[cfg(all(feature = "rag", feature = "index"))]
+                let mut tidb_search_username = None;
+                #[cfg(all(feature = "rag", feature = "index"))]
+                let mut tidb_search_password = None;
+                #[cfg(all(feature = "rag", feature = "index"))]
+                let mut tidb_search_database = None;
+                #[cfg(all(feature = "rag", feature = "index"))]
+                let mut tidb_search_table = None;
+
+                // fields for vector and index search results
+                #[cfg(feature = "rag")]
+                let mut limit = None;
+                #[cfg(feature = "rag")]
+                let mut score_threshold = None;
                 #[cfg(all(feature = "rag", feature = "index"))]
                 let mut weighted_alpha: Option<f64> = None;
 
@@ -549,21 +701,41 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                         #[cfg(feature = "rag")]
                         "vdb_collection_name" => vdb_collection_name = map.next_value()?,
                         #[cfg(feature = "rag")]
-                        "limit" => limit = map.next_value()?,
-                        #[cfg(feature = "rag")]
-                        "score_threshold" => score_threshold = map.next_value()?,
-                        #[cfg(feature = "rag")]
                         "vdb_api_key" => vdb_api_key = map.next_value()?,
+
                         #[cfg(all(feature = "rag", feature = "index"))]
                         "kw_search_url" => kw_search_url = map.next_value()?,
                         #[cfg(all(feature = "rag", feature = "index"))]
                         "kw_search_index" => kw_search_index = map.next_value()?,
                         #[cfg(all(feature = "rag", feature = "index"))]
-                        "kw_search_limit" => kw_search_limit = map.next_value()?,
-                        #[cfg(all(feature = "rag", feature = "index"))]
-                        "kw_search_fields" => kw_search_fields = map.next_value()?,
-                        #[cfg(all(feature = "rag", feature = "index"))]
                         "kw_api_key" => kw_api_key = map.next_value()?,
+
+                        #[cfg(all(feature = "rag", feature = "index"))]
+                        "es_search_url" => es_search_url = map.next_value()?,
+                        #[cfg(all(feature = "rag", feature = "index"))]
+                        "es_search_index" => es_search_index = map.next_value()?,
+                        #[cfg(all(feature = "rag", feature = "index"))]
+                        "es_search_fields" => es_search_fields = map.next_value()?,
+                        #[cfg(all(feature = "rag", feature = "index"))]
+                        "es_api_key" => es_api_key = map.next_value()?,
+
+                        #[cfg(all(feature = "rag", feature = "index"))]
+                        "tidb_search_host" => tidb_search_host = map.next_value()?,
+                        #[cfg(all(feature = "rag", feature = "index"))]
+                        "tidb_search_port" => tidb_search_port = map.next_value()?,
+                        #[cfg(all(feature = "rag", feature = "index"))]
+                        "tidb_search_username" => tidb_search_username = map.next_value()?,
+                        #[cfg(all(feature = "rag", feature = "index"))]
+                        "tidb_search_password" => tidb_search_password = map.next_value()?,
+                        #[cfg(all(feature = "rag", feature = "index"))]
+                        "tidb_search_database" => tidb_search_database = map.next_value()?,
+                        #[cfg(all(feature = "rag", feature = "index"))]
+                        "tidb_search_table" => tidb_search_table = map.next_value()?,
+
+                        #[cfg(feature = "rag")]
+                        "limit" => limit = map.next_value()?,
+                        #[cfg(feature = "rag")]
+                        "score_threshold" => score_threshold = map.next_value()?,
                         #[cfg(all(feature = "rag", feature = "index"))]
                         "weighted_alpha" => weighted_alpha = map.next_value()?,
                         _ => {
@@ -618,16 +790,6 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     }
                 }
 
-                #[cfg(all(feature = "rag", feature = "index"))]
-                if kw_search_limit.is_none() {
-                    kw_search_limit = Some(5);
-                }
-
-                #[cfg(all(feature = "rag", feature = "index"))]
-                if weighted_alpha.is_none() {
-                    weighted_alpha = Some(0.5);
-                }
-
                 // Construct ChatCompletionRequest with all fields
                 Ok(ChatCompletionRequest {
                     model,
@@ -656,21 +818,41 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     #[cfg(feature = "rag")]
                     vdb_collection_name,
                     #[cfg(feature = "rag")]
-                    limit,
-                    #[cfg(feature = "rag")]
-                    score_threshold,
-                    #[cfg(feature = "rag")]
                     vdb_api_key,
+
                     #[cfg(all(feature = "rag", feature = "index"))]
                     kw_search_url,
                     #[cfg(all(feature = "rag", feature = "index"))]
                     kw_search_index,
                     #[cfg(all(feature = "rag", feature = "index"))]
-                    kw_search_limit,
-                    #[cfg(all(feature = "rag", feature = "index"))]
-                    kw_search_fields,
-                    #[cfg(all(feature = "rag", feature = "index"))]
                     kw_api_key,
+
+                    #[cfg(all(feature = "rag", feature = "index"))]
+                    es_search_url,
+                    #[cfg(all(feature = "rag", feature = "index"))]
+                    es_search_index,
+                    #[cfg(all(feature = "rag", feature = "index"))]
+                    es_search_fields,
+                    #[cfg(all(feature = "rag", feature = "index"))]
+                    es_api_key,
+
+                    #[cfg(all(feature = "rag", feature = "index"))]
+                    tidb_search_host,
+                    #[cfg(all(feature = "rag", feature = "index"))]
+                    tidb_search_port,
+                    #[cfg(all(feature = "rag", feature = "index"))]
+                    tidb_search_username,
+                    #[cfg(all(feature = "rag", feature = "index"))]
+                    tidb_search_password,
+                    #[cfg(all(feature = "rag", feature = "index"))]
+                    tidb_search_database,
+                    #[cfg(all(feature = "rag", feature = "index"))]
+                    tidb_search_table,
+
+                    #[cfg(feature = "rag")]
+                    limit,
+                    #[cfg(feature = "rag")]
+                    score_threshold,
                     #[cfg(all(feature = "rag", feature = "index"))]
                     weighted_alpha,
                 })
@@ -704,10 +886,6 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
             #[cfg(feature = "rag")]
             "vdb_collection_name",
             #[cfg(feature = "rag")]
-            "limit",
-            #[cfg(feature = "rag")]
-            "score_threshold",
-            #[cfg(feature = "rag")]
             "vdb_api_key",
             #[cfg(all(feature = "rag", feature = "index"))]
             "kw_search_url",
@@ -716,9 +894,31 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
             #[cfg(all(feature = "rag", feature = "index"))]
             "kw_search_limit",
             #[cfg(all(feature = "rag", feature = "index"))]
-            "kw_search_fields",
-            #[cfg(all(feature = "rag", feature = "index"))]
             "kw_api_key",
+            #[cfg(all(feature = "rag", feature = "index"))]
+            "es_search_url",
+            #[cfg(all(feature = "rag", feature = "index"))]
+            "es_search_index",
+            #[cfg(all(feature = "rag", feature = "index"))]
+            "es_search_fields",
+            #[cfg(all(feature = "rag", feature = "index"))]
+            "es_api_key",
+            #[cfg(all(feature = "rag", feature = "index"))]
+            "tidb_search_host",
+            #[cfg(all(feature = "rag", feature = "index"))]
+            "tidb_search_port",
+            #[cfg(all(feature = "rag", feature = "index"))]
+            "tidb_search_username",
+            #[cfg(all(feature = "rag", feature = "index"))]
+            "tidb_search_password",
+            #[cfg(all(feature = "rag", feature = "index"))]
+            "tidb_search_database",
+            #[cfg(all(feature = "rag", feature = "index"))]
+            "tidb_search_table",
+            #[cfg(feature = "rag")]
+            "limit",
+            #[cfg(feature = "rag")]
+            "score_threshold",
             #[cfg(all(feature = "rag", feature = "index"))]
             "weighted_alpha",
         ];
@@ -754,28 +954,49 @@ impl Default for ChatCompletionRequest {
             tool_choice: None,
             #[cfg(feature = "rag")]
             context_window: None,
+
             #[cfg(feature = "rag")]
             vdb_server_url: None,
             #[cfg(feature = "rag")]
             vdb_collection_name: None,
             #[cfg(feature = "rag")]
-            limit: None,
-            #[cfg(feature = "rag")]
-            score_threshold: None,
-            #[cfg(feature = "rag")]
             vdb_api_key: None,
+
             #[cfg(all(feature = "rag", feature = "index"))]
             kw_search_url: None,
             #[cfg(all(feature = "rag", feature = "index"))]
             kw_search_index: None,
             #[cfg(all(feature = "rag", feature = "index"))]
-            kw_search_limit: Some(5),
-            #[cfg(all(feature = "rag", feature = "index"))]
-            kw_search_fields: None,
-            #[cfg(all(feature = "rag", feature = "index"))]
             kw_api_key: None,
+
             #[cfg(all(feature = "rag", feature = "index"))]
-            weighted_alpha: Some(0.5),
+            es_search_url: None,
+            #[cfg(all(feature = "rag", feature = "index"))]
+            es_search_index: None,
+            #[cfg(all(feature = "rag", feature = "index"))]
+            es_search_fields: None,
+            #[cfg(all(feature = "rag", feature = "index"))]
+            es_api_key: None,
+
+            #[cfg(all(feature = "rag", feature = "index"))]
+            tidb_search_host: None,
+            #[cfg(all(feature = "rag", feature = "index"))]
+            tidb_search_port: None,
+            #[cfg(all(feature = "rag", feature = "index"))]
+            tidb_search_username: None,
+            #[cfg(all(feature = "rag", feature = "index"))]
+            tidb_search_password: None,
+            #[cfg(all(feature = "rag", feature = "index"))]
+            tidb_search_database: None,
+            #[cfg(all(feature = "rag", feature = "index"))]
+            tidb_search_table: None,
+
+            #[cfg(feature = "rag")]
+            limit: None,
+            #[cfg(feature = "rag")]
+            score_threshold: None,
+            #[cfg(all(feature = "rag", feature = "index"))]
+            weighted_alpha: None,
         }
     }
 }
@@ -1083,18 +1304,17 @@ fn test_chat_serialize_chat_request() {
             .with_tools(vec![tool])
             .with_tool_choice(ToolChoice::Auto)
             .with_rag_context_window(3)
-            .with_rag_vdb_settings(
+            .with_vector_search_settings(
                 "http://localhost:6333",
                 &["collection1".to_string(), "collection2".to_string()],
-                &[10, 20],
-                &[0.5, 0.6],
                 None,
             )
+            .with_vector_search_filter(10u64, 0.5f32)
             .build();
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","properties":{"a":{"description":"the left hand side number","format":"int32","type":"integer"},"b":{"description":"the right hand side number","format":"int32","type":"integer"}},"required":["a","b"],"title":"SumRequest","type":"object"}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6]}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","properties":{"a":{"description":"the left hand side number","format":"int32","type":"integer"},"b":{"description":"the right hand side number","format":"int32","type":"integer"}},"required":["a","b"],"title":"SumRequest","type":"object"}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":10,"score_threshold":0.5}"#
         );
     }
 
@@ -1161,26 +1381,18 @@ fn test_chat_serialize_chat_request() {
             .with_tools(vec![tool])
             .with_tool_choice(ToolChoice::Auto)
             .with_rag_context_window(3)
-            .with_rag_vdb_settings(
+            .with_vector_search_settings(
                 "http://localhost:6333",
                 &["collection1".to_string(), "collection2".to_string()],
-                [10, 20],
-                [0.5, 0.6],
                 None,
             )
-            .with_kw_search_settings(
-                "http://localhost:9069",
-                "index-name",
-                None,
-                Some(5),
-                Some(0.5),
-                None,
-            )
+            .with_kw_search_settings("http://localhost:9069", "index-name", None)
+            .with_search_filter(10u64, 0.5f32, 0.5f64)
             .build();
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","properties":{"a":{"description":"the left hand side number","format":"int32","type":"integer"},"b":{"description":"the right hand side number","format":"int32","type":"integer"}},"required":["a","b"],"title":"SumRequest","type":"object"}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_search_url":"http://localhost:9069","kw_search_index":"index-name","kw_search_limit":5,"weighted_alpha":0.5}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","properties":{"a":{"description":"the left hand side number","format":"int32","type":"integer"},"b":{"description":"the right hand side number","format":"int32","type":"integer"}},"required":["a","b"],"title":"SumRequest","type":"object"}}}],"tool_choice":"auto","context_window":3,"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"kw_search_url":"http://localhost:9069","kw_search_index":"index-name","limit":10,"score_threshold":0.5,"weighted_alpha":0.5}"#
         );
     }
 }
@@ -1374,7 +1586,7 @@ fn test_chat_deserialize_chat_request() {
 
     #[cfg(feature = "rag")]
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6]}"#;
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":10,"score_threshold":0.5}"#;
 
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         let tool_choice = request.tool_choice.unwrap();
@@ -1387,13 +1599,13 @@ fn test_chat_deserialize_chat_request() {
             request.vdb_collection_name,
             Some(vec!["collection1".to_string(), "collection2".to_string()])
         );
-        assert_eq!(request.limit, Some(vec![10, 20]));
-        assert_eq!(request.score_threshold, Some(vec![0.5, 0.6]));
+        assert_eq!(request.limit, Some(10));
+        assert_eq!(request.score_threshold, Some(0.5));
     }
 
     #[cfg(all(feature = "rag", feature = "index"))]
     {
-        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"limit":[10,20],"score_threshold":[0.5,0.6],"kw_search_url":"http://localhost:9069","kw_search_index":"index-name","kw_top_k":5}"#;
+        let json = r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"vdb_server_url":"http://localhost:6333","vdb_collection_name":["collection1","collection2"],"kw_search_url":"http://localhost:9069","kw_search_index":"index-name"}"#;
 
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         let tool_choice = request.tool_choice.unwrap();
@@ -1406,14 +1618,11 @@ fn test_chat_deserialize_chat_request() {
             request.vdb_collection_name,
             Some(vec!["collection1".to_string(), "collection2".to_string()])
         );
-        assert_eq!(request.limit, Some(vec![10, 20]));
-        assert_eq!(request.score_threshold, Some(vec![0.5, 0.6]));
         assert_eq!(
             request.kw_search_url,
             Some("http://localhost:9069".to_string())
         );
         assert_eq!(request.kw_search_index, Some("index-name".to_string()));
-        assert_eq!(request.kw_search_limit, Some(5));
     }
 }
 
