@@ -3,7 +3,7 @@
 use crate::{embeddings::embeddings, error::LlamaCoreError, running_mode, RunningMode};
 use endpoints::{
     embeddings::{EmbeddingObject, EmbeddingRequest, EmbeddingsResponse, InputText},
-    rag::{RagScoredPoint, RetrieveObject},
+    rag::vector_search::{DataFrom, RagScoredPoint, RetrieveObject},
 };
 use qdrant::*;
 use serde_json::Value;
@@ -240,6 +240,7 @@ pub async fn rag_retrieve_context(
                         points.push(RagScoredPoint {
                             source: source.to_string(),
                             score: point.score as f64,
+                            from: DataFrom::VectorSearch,
                         })
                     }
 
