@@ -22,9 +22,18 @@ pub struct RetrieveObject {
 pub struct RagScoredPoint {
     /// Source of the context
     pub source: String,
-
     /// Points vector distance to the query vector
     pub score: f64,
+    /// The source of the context
+    pub from: DataFrom,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum DataFrom {
+    /// The context is from the vector database.
+    VectorDatabase,
+    /// The context is from the keyword search.
+    KeywordSearch,
 }
 
 #[test]
@@ -34,6 +43,7 @@ fn test_rag_serialize_retrieve_object() {
             points: Some(vec![RagScoredPoint {
                 source: "source".to_string(),
                 score: 0.5,
+                from: DataFrom::VectorDatabase,
             }]),
             limit: 1,
             score_threshold: 0.5,
@@ -41,7 +51,7 @@ fn test_rag_serialize_retrieve_object() {
         let json = serde_json::to_string(&ro).unwrap();
         assert_eq!(
             json,
-            r#"{"points":[{"source":"source","score":0.5}],"limit":1,"score_threshold":0.5}"#
+            r#"{"points":[{"source":"source","score":0.5,"from":"vector_database"}],"limit":1,"score_threshold":0.5}"#
         );
     }
 
@@ -52,15 +62,17 @@ fn test_rag_serialize_retrieve_object() {
             score_threshold: 0.5,
         };
         let json = serde_json::to_string(&ro).unwrap();
-        assert_eq!(json, r#"{"limit":1,"score_threshold":0.5}"#);
+        assert_eq!(
+            json,
+            r#"{"limit":1,"score_threshold":0.5,"from":"keyword_search"}"#
+        );
     }
 }
 
 #[test]
 fn test_rag_deserialize_retrieve_object() {
     {
-        let json =
-            r#"{"points":[{"source":"source","score":0.5}],"limit":1,"score_threshold":0.5}"#;
+        let json = r#"{"points":[{"source":"source","score":0.5,"from":"vector_database"}],"limit":1,"score_threshold":0.5}"#;
         let ro: RetrieveObject = serde_json::from_str(json).unwrap();
         assert_eq!(ro.limit, 1);
         assert_eq!(ro.score_threshold, 0.5);
@@ -69,6 +81,7 @@ fn test_rag_deserialize_retrieve_object() {
         assert_eq!(points.len(), 1);
         assert_eq!(points[0].source, "source");
         assert_eq!(points[0].score, 0.5);
+        assert_eq!(points[0].from, DataFrom::VectorDatabase);
     }
 
     {
