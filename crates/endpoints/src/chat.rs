@@ -2839,12 +2839,15 @@ pub enum ContentPart {
     Text(TextContentPart),
     #[serde(rename = "image_url")]
     Image(ImageContentPart),
+    #[serde(rename = "input_audio")]
+    Audio(AudioContentPart),
 }
 impl ContentPart {
     pub fn ty(&self) -> &str {
         match self {
             ContentPart::Text(_) => "text",
             ContentPart::Image(_) => "image_url",
+            ContentPart::Audio(_) => "input_audio",
         }
     }
 }
@@ -2866,6 +2869,17 @@ fn test_chat_serialize_content_part() {
         json,
         r#"{"type":"image_url","image_url":{"url":"https://example.com/image.png","detail":"auto"}}"#
     );
+
+    let audio_content_part = AudioContentPart::new(Audio {
+        data: "dummy-base64-encodings".to_string(),
+        format: AudioFormat::Wav,
+    });
+    let content_part = ContentPart::Audio(audio_content_part);
+    let json = serde_json::to_string(&content_part).unwrap();
+    assert_eq!(
+        json,
+        r#"{"type":"input_audio","input_audio":{"data":"dummy-base64-encodings","format":"wav"}}"#
+    );
 }
 
 #[test]
@@ -2877,6 +2891,11 @@ fn test_chat_deserialize_content_part() {
     let json = r#"{"type":"image_url","image_url":{"url":"https://example.com/image.png","detail":"auto"}}"#;
     let content_part: ContentPart = serde_json::from_str(json).unwrap();
     assert_eq!(content_part.ty(), "image_url");
+
+    let json =
+        r#"{"type":"input_audio","input_audio":{"data":"dummy-base64-encodings","format":"wav"}}"#;
+    let content_part: ContentPart = serde_json::from_str(json).unwrap();
+    assert_eq!(content_part.ty(), "input_audio");
 }
 
 /// Represents the text part of a user message content.
@@ -3056,6 +3075,109 @@ fn test_chat_deserialize_image() {
     let image: Image = serde_json::from_str(json).unwrap();
     assert_eq!(image.url, "base64");
     assert_eq!(image.detail, None);
+}
+
+/// Represents the audio part of a user message content.
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub struct AudioContentPart {
+    #[serde(rename = "input_audio")]
+    audio: Audio,
+}
+impl AudioContentPart {
+    pub fn new(audio: Audio) -> Self {
+        Self { audio }
+    }
+
+    /// The audio data.
+    pub fn audio(&self) -> &Audio {
+        &self.audio
+    }
+}
+
+#[test]
+fn test_chat_serialize_audio_content_part() {
+    let audio_content_part = AudioContentPart {
+        audio: Audio {
+            data: "dummy-base64-encodings".to_string(),
+            format: AudioFormat::Wav,
+        },
+    };
+    let json = serde_json::to_string(&audio_content_part).unwrap();
+    assert_eq!(
+        json,
+        r#"{"input_audio":{"data":"dummy-base64-encodings","format":"wav"}}"#
+    );
+
+    let audio_content_part = AudioContentPart {
+        audio: Audio {
+            data: "dummy-base64-encodings".to_string(),
+            format: AudioFormat::Mp3,
+        },
+    };
+    let json = serde_json::to_string(&audio_content_part).unwrap();
+    assert_eq!(
+        json,
+        r#"{"input_audio":{"data":"dummy-base64-encodings","format":"mp3"}}"#
+    );
+}
+
+#[test]
+fn test_chat_deserialize_audio_content_part() {
+    let json = r#"{"input_audio":{"data":"dummy-base64-encodings","format":"wav"}}"#;
+    let audio_content_part: AudioContentPart = serde_json::from_str(json).unwrap();
+    assert_eq!(audio_content_part.audio.data, "dummy-base64-encodings");
+    assert_eq!(audio_content_part.audio.format, AudioFormat::Wav);
+
+    let json = r#"{"input_audio":{"data":"dummy-base64-encodings","format":"mp3"}}"#;
+    let audio_content_part: AudioContentPart = serde_json::from_str(json).unwrap();
+    assert_eq!(audio_content_part.audio.data, "dummy-base64-encodings");
+    assert_eq!(audio_content_part.audio.format, AudioFormat::Mp3);
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub struct Audio {
+    /// Base64 encoded audio data.
+    pub data: String,
+    /// The format of the encoded audio data.
+    pub format: AudioFormat,
+}
+
+/// The format of the encoded audio data.
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum AudioFormat {
+    Wav,
+    Mp3,
+}
+
+#[test]
+fn test_chat_serialize_audio() {
+    let audio = Audio {
+        data: "dummy-base64-encodings".to_string(),
+        format: AudioFormat::Wav,
+    };
+    let json = serde_json::to_string(&audio).unwrap();
+    assert_eq!(json, r#"{"data":"dummy-base64-encodings","format":"wav"}"#);
+
+    let audio = Audio {
+        data: "dummy-base64-encodings".to_string(),
+        format: AudioFormat::Mp3,
+    };
+    let json = serde_json::to_string(&audio).unwrap();
+    assert_eq!(json, r#"{"data":"dummy-base64-encodings","format":"mp3"}"#);
+}
+
+#[test]
+fn test_chat_deserialize_audio() {
+    let json = r#"{"data":"dummy-base64-encodings","format":"wav"}"#;
+    let audio: Audio = serde_json::from_str(json).unwrap();
+    assert_eq!(audio.data, "dummy-base64-encodings");
+    assert_eq!(audio.format, AudioFormat::Wav);
+
+    let json = r#"{"data":"dummy-base64-encodings","format":"mp3"}"#;
+    let audio: Audio = serde_json::from_str(json).unwrap();
+    assert_eq!(audio.data, "dummy-base64-encodings");
+    assert_eq!(audio.format, AudioFormat::Mp3);
 }
 
 /// Sampling methods used for chat completion requests.
