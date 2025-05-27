@@ -158,6 +158,10 @@ impl Gemma3Prompt {
                             };
                             image_contents.push(image_content);
                         }
+                        ContentPart::Audio(_part) => {
+                            let err_msg = "Audio content is not supported for models that use the `gemma-3` prompt template.";
+                            return Err(PromptError::UnsupportedContent(err_msg.to_string()));
+                        }
                     }
                 }
 
