@@ -21,6 +21,7 @@ pub mod openchat;
 pub mod phi;
 pub mod qwen;
 pub mod seed;
+pub mod smol;
 pub mod solar;
 pub mod vicuna;
 pub mod wizard;
@@ -51,6 +52,7 @@ use openchat::*;
 use phi::*;
 use qwen::{Qwen2vlPrompt, Qwen3NoThinkPrompt};
 use seed::{SeedInstructPrompt, SeedReasoningPrompt};
+use smol::SmolvlPrompt;
 use solar::*;
 use vicuna::*;
 use wizard::*;
@@ -130,6 +132,7 @@ pub enum ChatPrompt {
     ExaoneChatPrompt,
     SeedInstructPrompt,
     SeedReasoningPrompt,
+    SmolvlPrompt,
 }
 impl From<PromptTemplateType> for ChatPrompt {
     fn from(ty: PromptTemplateType) -> Self {
@@ -233,6 +236,7 @@ impl From<PromptTemplateType> for ChatPrompt {
             PromptTemplateType::SeedReasoning => {
                 ChatPrompt::SeedReasoningPrompt(SeedReasoningPrompt)
             }
+            PromptTemplateType::Smolvl => ChatPrompt::SmolvlPrompt(SmolvlPrompt),
             PromptTemplateType::Embedding => {
                 panic!("Embedding prompt template is not used for building chat prompts")
             }
