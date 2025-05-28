@@ -215,6 +215,8 @@ impl BuildChatPrompt for MoxinInstructPrompt {
             }
         }
 
+        prompt.push_str("\n<|assistant|>");
+
         Ok(prompt)
     }
 }

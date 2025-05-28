@@ -13,10 +13,7 @@ pub mod completions;
 pub mod embeddings;
 pub mod files;
 pub mod images;
-#[cfg(feature = "index")]
-#[cfg_attr(docsrs, doc(cfg(feature = "index")))]
-pub mod keyword_search;
 pub mod models;
-#[cfg(feature = "rag")]
-#[cfg_attr(docsrs, doc(cfg(feature = "rag")))]
+#[cfg(any(feature = "rag", feature = "index"))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "rag", feature = "index"))))]
 pub mod rag;

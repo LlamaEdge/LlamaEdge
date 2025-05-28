@@ -2491,6 +2491,23 @@ fn post_process(
         }
 
         s.to_owned()
+    } else if *template_ty == PromptTemplateType::Smolvl {
+        let mut s = output.as_ref().trim();
+
+        if s.starts_with(":") {
+            s = s.trim_start_matches(":").trim();
+        }
+
+        if s.ends_with("<end_of_utterance>") {
+            s = s.trim_end_matches("<end_of_utterance>").trim();
+        }
+
+        if s.contains("<end_of_utterance>:") {
+            let parts = s.split("<end_of_utterance>:").collect::<Vec<_>>();
+            parts.last().unwrap().trim().to_owned()
+        } else {
+            s.to_owned()
+        }
     } else {
         output.as_ref().trim().to_owned()
     };

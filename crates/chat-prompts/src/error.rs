@@ -21,6 +21,8 @@ pub enum PromptError {
     UnknownPromptTemplateType(String),
     #[error("Unknown merge RAG context policy: {0}")]
     UnknownMergeRagContextPolicy(String),
+    #[error("Unsupported content. Reason: {0}")]
+    UnsupportedContent(String),
     #[error("Failed to build prompt. Reason: {0}")]
     Operation(String),
 }

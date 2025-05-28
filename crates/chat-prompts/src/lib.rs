@@ -128,6 +128,8 @@ pub enum PromptTemplateType {
     SeedInstruct,
     #[value(name = "seed-reasoning")]
     SeedReasoning,
+    #[value(name = "smol-vision")]
+    Smolvl,
     #[value(name = "embedding")]
     Embedding,
     #[value(name = "tts")]
@@ -196,6 +198,7 @@ impl PromptTemplateType {
             | PromptTemplateType::FunctionaryV31
             | PromptTemplateType::SeedReasoning
             | PromptTemplateType::MoxinInstruct
+            | PromptTemplateType::Smolvl
             | PromptTemplateType::Embedding
             | PromptTemplateType::Tts
             | PromptTemplateType::Null => false,
@@ -210,6 +213,7 @@ impl PromptTemplateType {
                 | PromptTemplateType::Qwen2vl
                 | PromptTemplateType::VicunaLlava
                 | PromptTemplateType::Gemma3
+                | PromptTemplateType::Smolvl
         )
     }
 }
@@ -276,6 +280,7 @@ impl FromStr for PromptTemplateType {
             "exaone-chat" => Ok(PromptTemplateType::ExaoneChat),
             "seed-instruct" => Ok(PromptTemplateType::SeedInstruct),
             "seed-reasoning" => Ok(PromptTemplateType::SeedReasoning),
+            "smol-vision" => Ok(PromptTemplateType::Smolvl),
             "embedding" => Ok(PromptTemplateType::Embedding),
             "tts" => Ok(PromptTemplateType::Tts),
             "none" => Ok(PromptTemplateType::Null),
@@ -345,6 +350,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::ExaoneChat => write!(f, "exaone-chat"),
             PromptTemplateType::SeedInstruct => write!(f, "seed-instruct"),
             PromptTemplateType::SeedReasoning => write!(f, "seed-reasoning"),
+            PromptTemplateType::Smolvl => write!(f, "smol-vision"),
             PromptTemplateType::Embedding => write!(f, "embedding"),
             PromptTemplateType::Tts => write!(f, "tts"),
             PromptTemplateType::Null => write!(f, "none"),
