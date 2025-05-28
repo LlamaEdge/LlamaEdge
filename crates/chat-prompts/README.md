@@ -754,6 +754,19 @@ The available prompt templates are listed below:
 
   - Example: [second-state/Seed-Coder-8B-Reasoning-GGUF](https://huggingface.co/second-state/Seed-Coder-8B-Reasoning-GGUF)
 
+- `smol-vision`
+  - Prompt string
+
+    ```text
+    <|im_start|>
+    User: {user_message_1}<image>
+    Assistant: {assistant_message_1}
+    User: {user_message_2}
+    Assistant:
+    ```
+
+  - Example: [second-state/SmolVLM2-2.2B-Instruct-GGUF](https://huggingface.co/second-state/SmolVLM2-2.2B-Instruct-GGUF)
+
 - `stablelm-zephyr`
   - Prompt string
 
