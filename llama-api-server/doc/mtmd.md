@@ -1,6 +1,12 @@
-# Vision Models
+# Multi-Modal Models
 
 LlamaEdge provides support for a collection of open-source vision models, such as [Gemma-3-it](https://huggingface.co/collections/second-state/gemma-3-it-gguf-models-67d18b5fb8e881054276af2b) and [Qwen2.5-VL](https://huggingface.co/collections/second-state/qwen25-vl-gguf-models-6829541a1443e849614a9fa0). The following sections demonstrate how to run vision models using [LlamaEdge 0.18.5](https://github.com/LlamaEdge/LlamaEdge/releases/tag/0.18.5) or later versions, using the Qwen2.5-VL model as an example.
+
+The list of multi-modal models supported:
+
+- [Qwen2.5-VL models](https://huggingface.co/collections/second-state/qwen25-vl-gguf-models-6829541a1443e849614a9fa0)
+- [Gemma-3-it models](https://huggingface.co/collections/second-state/gemma-3-it-gguf-models-67d18b5fb8e881054276af2b)
+- [SmolVLM2 models](https://huggingface.co/collections/second-state/smolvlm2-gguf-models-6836811b9a711ff2ff0191a0)
 
 ## Setup
 
