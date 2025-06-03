@@ -2500,6 +2500,8 @@ pub enum McpTransport {
     Sse,
     #[serde(rename = "stream-http")]
     StreamHttp,
+    #[serde(rename = "stdio")]
+    Stdio,
 }
 
 /// Message for comprising the conversation.
