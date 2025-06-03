@@ -2503,6 +2503,15 @@ pub enum McpTransport {
     #[serde(rename = "stdio")]
     Stdio,
 }
+impl fmt::Display for McpTransport {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            McpTransport::Sse => write!(f, "sse"),
+            McpTransport::StreamHttp => write!(f, "stream-http"),
+            McpTransport::Stdio => write!(f, "stdio"),
+        }
+    }
+}
 
 /// Message for comprising the conversation.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
