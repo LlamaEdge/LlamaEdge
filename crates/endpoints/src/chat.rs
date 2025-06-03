@@ -1170,6 +1170,7 @@ fn test_chat_serialize_chat_request() {
             ty: ToolType::Mcp,
             server_label: "test".to_string(),
             server_url: "https://test.com".to_string(),
+            transport: McpTransport::Sse,
             allowed_tools: Some(vec!["test".to_string()]),
             headers: Some(HashMap::from([(
                 "Authorization".to_string(),
@@ -1200,7 +1201,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r###"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"TemperatureUnit":{"enum":["celsius","fahrenheit"],"type":"string"}},"properties":{"api_key":{"description":"the OpenWeatherMap API key to use. If not provided, the server will use the OPENWEATHERMAP_API_KEY environment variable.","type":["string","null"]},"location":{"description":"the city to get the weather for, e.g., 'Beijing', 'New York', 'Tokyo'","type":"string"},"unit":{"allOf":[{"$ref":"#/definitions/TemperatureUnit"}],"description":"the unit to use for the temperature, e.g., 'celsius', 'fahrenheit'"}},"required":["location","unit"],"title":"GetWeatherRequest","type":"object"}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}},"mcp_tools":[{"type":"mcp","server_label":"test","server_url":"https://test.com","allowed_tools":["test"],"headers":{"Authorization":"Bearer token"}}]}"###
+            r###"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"TemperatureUnit":{"enum":["celsius","fahrenheit"],"type":"string"}},"properties":{"api_key":{"description":"the OpenWeatherMap API key to use. If not provided, the server will use the OPENWEATHERMAP_API_KEY environment variable.","type":["string","null"]},"location":{"description":"the city to get the weather for, e.g., 'Beijing', 'New York', 'Tokyo'","type":"string"},"unit":{"allOf":[{"$ref":"#/definitions/TemperatureUnit"}],"description":"the unit to use for the temperature, e.g., 'celsius', 'fahrenheit'"}},"required":["location","unit"],"title":"GetWeatherRequest","type":"object"}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}},"mcp_tools":[{"type":"mcp","server_label":"test","server_url":"https://test.com","transport":"sse","allowed_tools":["test"],"headers":{"Authorization":"Bearer token"}}]}"###
         );
     }
 
@@ -1292,7 +1293,7 @@ fn test_chat_serialize_chat_request() {
         let params: JsonObject = serde_json::from_str(params_json).unwrap();
 
         let tool = Tool {
-            ty: "function".to_string(),
+            ty: ToolType::Function,
             function: ToolFunction {
                 name: "my_function".to_string(),
                 description: None,
@@ -1556,6 +1557,7 @@ fn test_chat_deserialize_chat_request() {
             "type": "mcp",
             "server_label": "test",
             "server_url": "https://test.com",
+            "transport": "sse",
             "allowed_tools": ["test"],
             "headers": {
                 "Authorization": "Bearer token"
@@ -1568,6 +1570,21 @@ fn test_chat_deserialize_chat_request() {
 
         let request: ChatCompletionRequest = serde_json::from_str(json_str).unwrap();
         assert!(request.model.is_some());
+        let mcp_tools = request.mcp_tools.unwrap();
+        assert!(mcp_tools.len() == 1);
+        let mcp_tool = &mcp_tools[0];
+        assert_eq!(mcp_tool.ty, ToolType::Mcp);
+        assert_eq!(mcp_tool.server_label, "test");
+        assert_eq!(mcp_tool.server_url, "https://test.com");
+        assert_eq!(mcp_tool.transport, McpTransport::Sse);
+        assert_eq!(mcp_tool.allowed_tools, Some(vec!["test".to_string()]));
+        assert_eq!(
+            mcp_tool.headers,
+            Some(HashMap::from([(
+                "Authorization".to_string(),
+                "Bearer token".to_string(),
+            )]))
+        );
         let tools = request.tools.unwrap();
         assert!(tools.len() == 1);
         let tool = &tools[0];
@@ -2364,24 +2381,32 @@ fn test_chat_deserialize_tool_function_params() {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct McpTool {
-    /// The type of the tool. Currently, only `function` is supported.
+    /// The type of the tool.
     #[serde(rename = "type")]
     pub ty: ToolType,
+    /// The label of the server..
     #[serde(rename = "server_label")]
     pub server_label: String,
+    /// The URL of the server.
     #[serde(rename = "server_url")]
     pub server_url: String,
+    /// The transport type to use for the server.
+    #[serde(rename = "transport")]
+    pub transport: McpTransport,
+    /// The tools allowed to be called by the model.
     #[serde(rename = "allowed_tools", skip_serializing_if = "Option::is_none")]
     pub allowed_tools: Option<Vec<String>>,
+    /// The headers to send to the server.
     #[serde(rename = "headers", skip_serializing_if = "Option::is_none")]
     pub headers: Option<HashMap<String, String>>,
 }
 impl McpTool {
-    pub fn new(server_label: String, server_url: String) -> Self {
+    pub fn new(server_label: String, server_url: String, transport: McpTransport) -> Self {
         Self {
             ty: ToolType::Mcp,
             server_label,
             server_url,
+            transport,
             allowed_tools: None,
             headers: None,
         }
@@ -2390,30 +2415,36 @@ impl McpTool {
 
 #[test]
 fn test_chat_serialize_mcp_tool() {
-    let tool = McpTool::new("test".to_string(), "https://test.com".to_string());
+    let tool = McpTool::new(
+        "test".to_string(),
+        "https://test.com".to_string(),
+        McpTransport::Sse,
+    );
     let json = serde_json::to_string(&tool).unwrap();
     assert_eq!(
         json,
-        r#"{"type":"mcp","server_label":"test","server_url":"https://test.com"}"#
+        r#"{"type":"mcp","server_label":"test","server_url":"https://test.com","transport":"sse"}"#
     );
 
     let tool = McpTool {
         ty: ToolType::Mcp,
         server_label: "test".to_string(),
         server_url: "https://test.com".to_string(),
+        transport: McpTransport::Sse,
         allowed_tools: Some(vec!["test".to_string()]),
         headers: Some(HashMap::new()),
     };
     let json = serde_json::to_string(&tool).unwrap();
     assert_eq!(
         json,
-        r#"{"type":"mcp","server_label":"test","server_url":"https://test.com","allowed_tools":["test"],"headers":{}}"#
+        r#"{"type":"mcp","server_label":"test","server_url":"https://test.com","transport":"sse","allowed_tools":["test"],"headers":{}}"#
     );
 
     let tool = McpTool {
         ty: ToolType::Mcp,
         server_label: "test".to_string(),
         server_url: "https://test.com".to_string(),
+        transport: McpTransport::StreamHttp,
         allowed_tools: Some(vec!["test".to_string()]),
         headers: Some(HashMap::from([(
             "Authorization".to_string(),
@@ -2423,25 +2454,28 @@ fn test_chat_serialize_mcp_tool() {
     let json = serde_json::to_string(&tool).unwrap();
     assert_eq!(
         json,
-        r#"{"type":"mcp","server_label":"test","server_url":"https://test.com","allowed_tools":["test"],"headers":{"Authorization":"Bearer token"}}"#
+        r#"{"type":"mcp","server_label":"test","server_url":"https://test.com","transport":"stream-http","allowed_tools":["test"],"headers":{"Authorization":"Bearer token"}}"#
     );
 }
 
 #[test]
 fn test_chat_deserialize_mcp_tool() {
-    let json = r#"{"type":"mcp","server_label":"test","server_url":"https://test.com"}"#;
+    let json =
+        r#"{"type":"mcp","server_label":"test","server_url":"https://test.com","transport":"sse"}"#;
     let tool: McpTool = serde_json::from_str(json).unwrap();
     assert_eq!(tool.ty, ToolType::Mcp);
     assert_eq!(tool.server_label, "test");
     assert_eq!(tool.server_url, "https://test.com");
+    assert_eq!(tool.transport, McpTransport::Sse);
     assert_eq!(tool.allowed_tools, None);
     assert_eq!(tool.headers, None);
 
-    let json = r#"{"type":"mcp","server_label":"test","server_url":"https://test.com","allowed_tools":["test"],"headers":{"Authorization":"Bearer token"}}"#;
+    let json = r#"{"type":"mcp","server_label":"test","server_url":"https://test.com","transport":"stream-http","allowed_tools":["test"],"headers":{"Authorization":"Bearer token"}}"#;
     let tool: McpTool = serde_json::from_str(json).unwrap();
     assert_eq!(tool.ty, ToolType::Mcp);
     assert_eq!(tool.server_label, "test");
     assert_eq!(tool.server_url, "https://test.com");
+    assert_eq!(tool.transport, McpTransport::StreamHttp);
     assert_eq!(tool.allowed_tools, Some(vec!["test".to_string()]));
     assert_eq!(
         tool.headers,
@@ -2458,6 +2492,14 @@ pub enum ToolType {
     Function,
     #[serde(rename = "mcp")]
     Mcp,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+pub enum McpTransport {
+    #[serde(rename = "sse")]
+    Sse,
+    #[serde(rename = "stream-http")]
+    StreamHttp,
 }
 
 /// Message for comprising the conversation.
