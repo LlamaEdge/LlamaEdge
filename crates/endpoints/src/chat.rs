@@ -449,21 +449,6 @@ pub struct ChatCompletionRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user: Option<String>,
 
-    //* OpenAI specific parameters
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[deprecated(
-        since = "0.10.0",
-        note = "Please use `tools` and `tool_choice` instead."
-    )]
-    #[allow(deprecated)]
-    pub functions: Option<Vec<ChatCompletionRequestFunction>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[deprecated(
-        since = "0.10.0",
-        note = "Please use `tools` and `tool_choice` instead."
-    )]
-    pub function_call: Option<String>,
-
     /// Format that the model must output
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_format: Option<ChatResponseFormat>,
@@ -614,8 +599,6 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 let mut frequency_penalty = None;
                 let mut logit_bias = None;
                 let mut user = None;
-                let mut functions = None;
-                let mut function_call = None;
                 let mut response_format = None;
                 let mut tools = None;
                 let mut tool_choice = None;
@@ -689,8 +672,6 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                         "frequency_penalty" => frequency_penalty = map.next_value()?,
                         "logit_bias" => logit_bias = map.next_value()?,
                         "user" => user = map.next_value()?,
-                        "functions" => functions = map.next_value()?,
-                        "function_call" => function_call = map.next_value()?,
                         "response_format" => response_format = map.next_value()?,
                         "tools" => tools = map.next_value()?,
                         "tool_choice" => tool_choice = map.next_value()?,
@@ -806,8 +787,6 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     frequency_penalty,
                     logit_bias,
                     user,
-                    functions,
-                    function_call,
                     response_format,
                     tools,
                     tool_choice,
@@ -874,8 +853,6 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
             "frequency_penalty",
             "logit_bias",
             "user",
-            "functions",
-            "function_call",
             "response_format",
             "tools",
             "tool_choice",
@@ -947,8 +924,6 @@ impl Default for ChatCompletionRequest {
             frequency_penalty: Some(0.0),
             logit_bias: None,
             user: None,
-            functions: None,
-            function_call: None,
             response_format: None,
             tools: None,
             tool_choice: None,
