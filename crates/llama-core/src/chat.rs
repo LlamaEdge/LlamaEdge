@@ -2254,14 +2254,9 @@ fn post_process(
     } else if *template_ty == PromptTemplateType::GemmaInstruct
         || *template_ty == PromptTemplateType::Gemma3
     {
-        let mut s = output.as_ref().trim();
+        let s = output.as_ref().trim();
         if s.ends_with("<end_of_turn>") {
-            s = s.trim_end_matches("<end_of_turn>").trim();
-        }
-
-        if s.contains("<end_of_turn>") {
-            let parts = s.split("<end_of_turn>").collect::<Vec<_>>();
-            parts.last().unwrap().trim().to_owned()
+            s.trim_end_matches("<end_of_turn>").trim().to_owned()
         } else {
             s.to_owned()
         }
