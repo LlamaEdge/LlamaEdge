@@ -231,6 +231,16 @@ impl ChatCompletionRequestBuilder {
         self
     }
 
+    /// Sets MCP tools.
+    ///
+    /// # Arguments
+    ///
+    /// * `mcp_tools` - A list of MCP tools the model may call.
+    pub fn with_mcp_tools(mut self, mcp_tools: Vec<McpTool>) -> Self {
+        self.req.mcp_tools = Some(mcp_tools);
+        self
+    }
+
     /// Sets the number of user messages to use for context retrieval.
     ///
     /// # Arguments
@@ -449,21 +459,6 @@ pub struct ChatCompletionRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user: Option<String>,
 
-    //* OpenAI specific parameters
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[deprecated(
-        since = "0.10.0",
-        note = "Please use `tools` and `tool_choice` instead."
-    )]
-    #[allow(deprecated)]
-    pub functions: Option<Vec<ChatCompletionRequestFunction>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[deprecated(
-        since = "0.10.0",
-        note = "Please use `tools` and `tool_choice` instead."
-    )]
-    pub function_call: Option<String>,
-
     /// Format that the model must output
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_format: Option<ChatResponseFormat>,
@@ -475,6 +470,10 @@ pub struct ChatCompletionRequest {
     /// Controls which (if any) function is called by the model.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_choice: Option<ToolChoice>,
+
+    // * Fields for MCP Tools
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mcp_tools: Option<Vec<McpTool>>,
 
     /// Number of user messages to use for context retrieval.
     /// The parameter is only used in RAG.
@@ -614,11 +613,13 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 let mut frequency_penalty = None;
                 let mut logit_bias = None;
                 let mut user = None;
-                let mut functions = None;
-                let mut function_call = None;
                 let mut response_format = None;
                 let mut tools = None;
                 let mut tool_choice = None;
+
+                // fields for MCP Tools
+                let mut mcp_tools = None;
+
                 #[cfg(feature = "rag")]
                 let mut context_window = None;
 
@@ -689,11 +690,11 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                         "frequency_penalty" => frequency_penalty = map.next_value()?,
                         "logit_bias" => logit_bias = map.next_value()?,
                         "user" => user = map.next_value()?,
-                        "functions" => functions = map.next_value()?,
-                        "function_call" => function_call = map.next_value()?,
                         "response_format" => response_format = map.next_value()?,
                         "tools" => tools = map.next_value()?,
                         "tool_choice" => tool_choice = map.next_value()?,
+                        "mcp_tools" => mcp_tools = map.next_value()?,
+
                         #[cfg(feature = "rag")]
                         "context_window" => context_window = map.next_value()?,
                         #[cfg(feature = "rag")]
@@ -764,7 +765,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 // Check tools and tool_choice
                 // `auto` is the default if tools are present.
                 // `none` is the default when no tools are present.
-                if tools.is_some() {
+                if tools.is_some() || mcp_tools.is_some() {
                     if tool_choice.is_none() {
                         tool_choice = Some(ToolChoice::Auto);
                     }
@@ -806,11 +807,10 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     frequency_penalty,
                     logit_bias,
                     user,
-                    functions,
-                    function_call,
                     response_format,
                     tools,
                     tool_choice,
+                    mcp_tools,
                     #[cfg(feature = "rag")]
                     context_window,
                     #[cfg(feature = "rag")]
@@ -874,11 +874,10 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
             "frequency_penalty",
             "logit_bias",
             "user",
-            "functions",
-            "function_call",
             "response_format",
             "tools",
             "tool_choice",
+            "mcp_tools",
             #[cfg(feature = "rag")]
             "context_window",
             #[cfg(feature = "rag")]
@@ -947,11 +946,10 @@ impl Default for ChatCompletionRequest {
             frequency_penalty: Some(0.0),
             logit_bias: None,
             user: None,
-            functions: None,
-            function_call: None,
             response_format: None,
             tools: None,
             tool_choice: None,
+            mcp_tools: None,
             #[cfg(feature = "rag")]
             context_window: None,
 
@@ -1160,12 +1158,24 @@ fn test_chat_serialize_chat_request() {
         let json_schema: JsonObject = serde_json::from_str(json_str).unwrap();
 
         let tool = Tool {
-            ty: "function".to_string(),
+            ty: ToolType::Function,
             function: ToolFunction {
                 name: "my_function".to_string(),
                 description: None,
                 parameters: Some(json_schema),
             },
+        };
+
+        let mcp_tool = McpTool {
+            ty: ToolType::Mcp,
+            server_label: "test".to_string(),
+            server_url: "https://test.com".to_string(),
+            transport: McpTransport::Sse,
+            allowed_tools: Some(vec!["test".to_string()]),
+            headers: Some(HashMap::from([(
+                "Authorization".to_string(),
+                "Bearer token".to_string(),
+            )])),
         };
 
         let request = ChatCompletionRequestBuilder::new(&messages)
@@ -1180,8 +1190,9 @@ fn test_chat_serialize_chat_request() {
             .with_frequency_penalty(0.5)
             .with_reponse_format(ChatResponseFormat::default())
             .with_tools(vec![tool])
+            .with_mcp_tools(vec![mcp_tool])
             .with_tool_choice(ToolChoice::Tool(ToolChoiceTool {
-                ty: "function".to_string(),
+                ty: ToolType::Function,
                 function: ToolChoiceToolFunction {
                     name: "my_function".to_string(),
                 },
@@ -1190,7 +1201,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r###"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"TemperatureUnit":{"enum":["celsius","fahrenheit"],"type":"string"}},"properties":{"api_key":{"description":"the OpenWeatherMap API key to use. If not provided, the server will use the OPENWEATHERMAP_API_KEY environment variable.","type":["string","null"]},"location":{"description":"the city to get the weather for, e.g., 'Beijing', 'New York', 'Tokyo'","type":"string"},"unit":{"allOf":[{"$ref":"#/definitions/TemperatureUnit"}],"description":"the unit to use for the temperature, e.g., 'celsius', 'fahrenheit'"}},"required":["location","unit"],"title":"GetWeatherRequest","type":"object"}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}}}"###
+            r###"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_tokens":-1,"max_completion_tokens":100,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tools":[{"type":"function","function":{"name":"my_function","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","definitions":{"TemperatureUnit":{"enum":["celsius","fahrenheit"],"type":"string"}},"properties":{"api_key":{"description":"the OpenWeatherMap API key to use. If not provided, the server will use the OPENWEATHERMAP_API_KEY environment variable.","type":["string","null"]},"location":{"description":"the city to get the weather for, e.g., 'Beijing', 'New York', 'Tokyo'","type":"string"},"unit":{"allOf":[{"$ref":"#/definitions/TemperatureUnit"}],"description":"the unit to use for the temperature, e.g., 'celsius', 'fahrenheit'"}},"required":["location","unit"],"title":"GetWeatherRequest","type":"object"}}}],"tool_choice":{"type":"function","function":{"name":"my_function"}},"mcp_tools":[{"type":"mcp","server_label":"test","server_url":"https://test.com","transport":"sse","allowed_tools":["test"],"headers":{"Authorization":"Bearer token"}}]}"###
         );
     }
 
@@ -1212,7 +1223,7 @@ fn test_chat_serialize_chat_request() {
         messages.push(assistant_message);
 
         let tool = Tool {
-            ty: "function".to_string(),
+            ty: ToolType::Function,
             function: ToolFunction {
                 name: "my_function".to_string(),
                 description: None,
@@ -1282,7 +1293,7 @@ fn test_chat_serialize_chat_request() {
         let params: JsonObject = serde_json::from_str(params_json).unwrap();
 
         let tool = Tool {
-            ty: "function".to_string(),
+            ty: ToolType::Function,
             function: ToolFunction {
                 name: "my_function".to_string(),
                 description: None,
@@ -1359,7 +1370,7 @@ fn test_chat_serialize_chat_request() {
         let params: JsonObject = serde_json::from_str(params_json).unwrap();
 
         let tool = Tool {
-            ty: "function".to_string(),
+            ty: ToolType::Function,
             function: ToolFunction {
                 name: "my_function".to_string(),
                 description: None,
@@ -1478,7 +1489,7 @@ fn test_chat_deserialize_chat_request() {
         assert_eq!(
             request.tool_choice,
             Some(ToolChoice::Tool(ToolChoiceTool {
-                ty: "function".to_string(),
+                ty: ToolType::Function,
                 function: ToolChoiceToolFunction {
                     name: "my_function".to_string(),
                 },
@@ -1541,16 +1552,43 @@ fn test_chat_deserialize_chat_request() {
             }
         }
     ],
+    "mcp_tools": [
+        {
+            "type": "mcp",
+            "server_label": "test",
+            "server_url": "https://test.com",
+            "transport": "sse",
+            "allowed_tools": ["test"],
+            "headers": {
+                "Authorization": "Bearer token"
+            }
+        }
+    ],
     "tool_choice": "required",
     "stream": false
 }"###;
 
         let request: ChatCompletionRequest = serde_json::from_str(json_str).unwrap();
         assert!(request.model.is_some());
+        let mcp_tools = request.mcp_tools.unwrap();
+        assert!(mcp_tools.len() == 1);
+        let mcp_tool = &mcp_tools[0];
+        assert_eq!(mcp_tool.ty, ToolType::Mcp);
+        assert_eq!(mcp_tool.server_label, "test");
+        assert_eq!(mcp_tool.server_url, "https://test.com");
+        assert_eq!(mcp_tool.transport, McpTransport::Sse);
+        assert_eq!(mcp_tool.allowed_tools, Some(vec!["test".to_string()]));
+        assert_eq!(
+            mcp_tool.headers,
+            Some(HashMap::from([(
+                "Authorization".to_string(),
+                "Bearer token".to_string(),
+            )]))
+        );
         let tools = request.tools.unwrap();
         assert!(tools.len() == 1);
         let tool = &tools[0];
-        assert_eq!(tool.ty, "function");
+        assert_eq!(tool.ty, ToolType::Function);
         assert_eq!(tool.function.name, "sum");
         assert!(tool.function.parameters.is_some());
         let params = tool.function.parameters.as_ref().unwrap();
@@ -1696,7 +1734,7 @@ fn test_chat_serialize_tool_choice() {
     assert_eq!(json, r#""auto""#);
 
     let tool_choice = ToolChoice::Tool(ToolChoiceTool {
-        ty: "function".to_string(),
+        ty: ToolType::Function,
         function: ToolChoiceToolFunction {
             name: "my_function".to_string(),
         },
@@ -1723,7 +1761,7 @@ fn test_chat_deserialize_tool_choice() {
     assert_eq!(
         tool_choice,
         ToolChoice::Tool(ToolChoiceTool {
-            ty: "function".to_string(),
+            ty: ToolType::Function,
             function: ToolChoiceToolFunction {
                 name: "my_function".to_string(),
             },
@@ -1736,7 +1774,7 @@ fn test_chat_deserialize_tool_choice() {
 pub struct ToolChoiceTool {
     /// The type of the tool. Currently, only `function` is supported.
     #[serde(rename = "type")]
-    pub ty: String,
+    pub ty: ToolType,
     /// The function the model calls.
     pub function: ToolChoiceToolFunction,
 }
@@ -1753,14 +1791,14 @@ pub struct ToolChoiceToolFunction {
 pub struct Tool {
     /// The type of the tool. Currently, only `function` is supported.
     #[serde(rename = "type")]
-    pub ty: String,
+    pub ty: ToolType,
     /// Function the model may generate JSON inputs for.
     pub function: ToolFunction,
 }
 impl Tool {
     pub fn new(function: ToolFunction) -> Self {
         Self {
-            ty: "function".to_string(),
+            ty: ToolType::Function,
             function,
         }
     }
@@ -1770,7 +1808,7 @@ impl Tool {
 fn test_chat_serialize_tool() {
     {
         let tool = Tool {
-            ty: "function".to_string(),
+            ty: ToolType::Function,
             function: ToolFunction {
                 name: "my_function".to_string(),
                 description: None,
@@ -1809,7 +1847,7 @@ fn test_chat_serialize_tool() {
         let input_schema: JsonObject = serde_json::from_str(input_schema_str).unwrap();
 
         let tool = Tool {
-            ty: "function".to_string(),
+            ty: ToolType::Function,
             function: ToolFunction {
                 name: "sum".to_string(),
                 description: Some("Calculate the sum of two numbers".to_string()),
@@ -1962,7 +2000,7 @@ fn test_chat_deserialize_tool() {
     }
 }"###;
     let tool: Tool = serde_json::from_str(json).unwrap();
-    assert_eq!(tool.ty, "function");
+    assert_eq!(tool.ty, ToolType::Function);
     assert_eq!(tool.function.name, "get_current_weather");
     assert!(tool.function.description.is_some());
     assert!(tool.function.parameters.is_some());
@@ -2338,6 +2376,140 @@ fn test_chat_deserialize_tool_function_params() {
         );
         assert_eq!(query.title, Some("Query".to_string()));
         assert_eq!(query.default, None);
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct McpTool {
+    /// The type of the tool.
+    #[serde(rename = "type")]
+    pub ty: ToolType,
+    /// The label of the server..
+    #[serde(rename = "server_label")]
+    pub server_label: String,
+    /// The URL of the server.
+    #[serde(rename = "server_url")]
+    pub server_url: String,
+    /// The transport type to use for the server.
+    #[serde(rename = "transport")]
+    pub transport: McpTransport,
+    /// The tools allowed to be called by the model.
+    #[serde(rename = "allowed_tools", skip_serializing_if = "Option::is_none")]
+    pub allowed_tools: Option<Vec<String>>,
+    /// The headers to send to the server.
+    #[serde(rename = "headers", skip_serializing_if = "Option::is_none")]
+    pub headers: Option<HashMap<String, String>>,
+}
+impl McpTool {
+    pub fn new(server_label: String, server_url: String, transport: McpTransport) -> Self {
+        Self {
+            ty: ToolType::Mcp,
+            server_label,
+            server_url,
+            transport,
+            allowed_tools: None,
+            headers: None,
+        }
+    }
+}
+
+#[test]
+fn test_chat_serialize_mcp_tool() {
+    let tool = McpTool::new(
+        "test".to_string(),
+        "https://test.com".to_string(),
+        McpTransport::Sse,
+    );
+    let json = serde_json::to_string(&tool).unwrap();
+    assert_eq!(
+        json,
+        r#"{"type":"mcp","server_label":"test","server_url":"https://test.com","transport":"sse"}"#
+    );
+
+    let tool = McpTool {
+        ty: ToolType::Mcp,
+        server_label: "test".to_string(),
+        server_url: "https://test.com".to_string(),
+        transport: McpTransport::Sse,
+        allowed_tools: Some(vec!["test".to_string()]),
+        headers: Some(HashMap::new()),
+    };
+    let json = serde_json::to_string(&tool).unwrap();
+    assert_eq!(
+        json,
+        r#"{"type":"mcp","server_label":"test","server_url":"https://test.com","transport":"sse","allowed_tools":["test"],"headers":{}}"#
+    );
+
+    let tool = McpTool {
+        ty: ToolType::Mcp,
+        server_label: "test".to_string(),
+        server_url: "https://test.com".to_string(),
+        transport: McpTransport::StreamHttp,
+        allowed_tools: Some(vec!["test".to_string()]),
+        headers: Some(HashMap::from([(
+            "Authorization".to_string(),
+            "Bearer token".to_string(),
+        )])),
+    };
+    let json = serde_json::to_string(&tool).unwrap();
+    assert_eq!(
+        json,
+        r#"{"type":"mcp","server_label":"test","server_url":"https://test.com","transport":"stream-http","allowed_tools":["test"],"headers":{"Authorization":"Bearer token"}}"#
+    );
+}
+
+#[test]
+fn test_chat_deserialize_mcp_tool() {
+    let json =
+        r#"{"type":"mcp","server_label":"test","server_url":"https://test.com","transport":"sse"}"#;
+    let tool: McpTool = serde_json::from_str(json).unwrap();
+    assert_eq!(tool.ty, ToolType::Mcp);
+    assert_eq!(tool.server_label, "test");
+    assert_eq!(tool.server_url, "https://test.com");
+    assert_eq!(tool.transport, McpTransport::Sse);
+    assert_eq!(tool.allowed_tools, None);
+    assert_eq!(tool.headers, None);
+
+    let json = r#"{"type":"mcp","server_label":"test","server_url":"https://test.com","transport":"stream-http","allowed_tools":["test"],"headers":{"Authorization":"Bearer token"}}"#;
+    let tool: McpTool = serde_json::from_str(json).unwrap();
+    assert_eq!(tool.ty, ToolType::Mcp);
+    assert_eq!(tool.server_label, "test");
+    assert_eq!(tool.server_url, "https://test.com");
+    assert_eq!(tool.transport, McpTransport::StreamHttp);
+    assert_eq!(tool.allowed_tools, Some(vec!["test".to_string()]));
+    assert_eq!(
+        tool.headers,
+        Some(HashMap::from([(
+            "Authorization".to_string(),
+            "Bearer token".to_string()
+        )]))
+    );
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub enum ToolType {
+    #[serde(rename = "function")]
+    Function,
+    #[serde(rename = "mcp")]
+    Mcp,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+pub enum McpTransport {
+    #[serde(rename = "sse")]
+    Sse,
+    #[serde(rename = "stream-http")]
+    StreamHttp,
+    #[serde(rename = "stdio")]
+    Stdio,
+}
+impl fmt::Display for McpTransport {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            McpTransport::Sse => write!(f, "sse"),
+            McpTransport::StreamHttp => write!(f, "stream-http"),
+            McpTransport::Stdio => write!(f, "stdio"),
+        }
     }
 }
 
