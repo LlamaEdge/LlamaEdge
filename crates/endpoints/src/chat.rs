@@ -241,6 +241,12 @@ impl ChatCompletionRequestBuilder {
         self
     }
 
+    #[cfg(all(feature = "rag", feature = "index"))]
+    pub fn with_kw_search_mcp_tool(mut self, kw_search_mcp_tool: McpTool) -> Self {
+        self.req.kw_search_mcp_tool = Some(kw_search_mcp_tool);
+        self
+    }
+
     /// Sets the number of user messages to use for context retrieval.
     ///
     /// # Arguments
@@ -474,6 +480,9 @@ pub struct ChatCompletionRequest {
     // * Fields for MCP Tools
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mcp_tools: Option<Vec<McpTool>>,
+    #[cfg(all(feature = "rag", feature = "index"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kw_search_mcp_tool: Option<McpTool>,
 
     /// Number of user messages to use for context retrieval.
     /// The parameter is only used in RAG.
@@ -619,6 +628,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
 
                 // fields for MCP Tools
                 let mut mcp_tools = None;
+                #[cfg(all(feature = "rag", feature = "index"))]
+                let mut kw_search_mcp_tool = None;
 
                 #[cfg(feature = "rag")]
                 let mut context_window = None;
@@ -694,6 +705,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                         "tools" => tools = map.next_value()?,
                         "tool_choice" => tool_choice = map.next_value()?,
                         "mcp_tools" => mcp_tools = map.next_value()?,
+                        #[cfg(all(feature = "rag", feature = "index"))]
+                        "kw_search_mcp_tool" => kw_search_mcp_tool = map.next_value()?,
 
                         #[cfg(feature = "rag")]
                         "context_window" => context_window = map.next_value()?,
@@ -765,7 +778,7 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 // Check tools and tool_choice
                 // `auto` is the default if tools are present.
                 // `none` is the default when no tools are present.
-                if tools.is_some() || mcp_tools.is_some() {
+                if tools.is_some() || mcp_tools.is_some() || kw_search_mcp_tool.is_some() {
                     if tool_choice.is_none() {
                         tool_choice = Some(ToolChoice::Auto);
                     }
@@ -811,6 +824,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                     tools,
                     tool_choice,
                     mcp_tools,
+                    #[cfg(all(feature = "rag", feature = "index"))]
+                    kw_search_mcp_tool,
                     #[cfg(feature = "rag")]
                     context_window,
                     #[cfg(feature = "rag")]
@@ -878,6 +893,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
             "tools",
             "tool_choice",
             "mcp_tools",
+            #[cfg(all(feature = "rag", feature = "index"))]
+            "kw_search_mcp_tool",
             #[cfg(feature = "rag")]
             "context_window",
             #[cfg(feature = "rag")]
@@ -950,6 +967,8 @@ impl Default for ChatCompletionRequest {
             tools: None,
             tool_choice: None,
             mcp_tools: None,
+            #[cfg(all(feature = "rag", feature = "index"))]
+            kw_search_mcp_tool: None,
             #[cfg(feature = "rag")]
             context_window: None,
 
