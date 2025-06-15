@@ -778,12 +778,17 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 // Check tools and tool_choice
                 // `auto` is the default if tools are present.
                 // `none` is the default when no tools are present.
-                if tools.is_some() || mcp_tools.is_some() || kw_search_mcp_tool.is_some() {
+                if tools.is_some() || mcp_tools.is_some() {
                     if tool_choice.is_none() {
                         tool_choice = Some(ToolChoice::Auto);
                     }
                 } else if tool_choice.is_none() {
                     tool_choice = Some(ToolChoice::None);
+                }
+
+                #[cfg(all(feature = "rag", feature = "index"))]
+                if kw_search_mcp_tool.is_some() && tool_choice.is_none() {
+                    tool_choice = Some(ToolChoice::Auto);
                 }
 
                 if n_choice.is_none() {
