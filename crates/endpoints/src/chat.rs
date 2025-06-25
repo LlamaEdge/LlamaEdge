@@ -1524,7 +1524,7 @@ fn test_chat_deserialize_chat_request() {
 
         let request: ChatCompletionRequest = serde_json::from_str(json).unwrap();
         let tool_choice = request.tool_choice.unwrap();
-        assert_eq!(tool_choice, ToolChoice::Auto);
+        assert_eq!(tool_choice, ToolChoice::None);
     }
 
     {
