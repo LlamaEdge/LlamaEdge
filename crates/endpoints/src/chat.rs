@@ -745,10 +745,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
                 }
 
                 // Check tools and tool_choice
-                if tools.is_some() || mcp_tools.is_some() {
-                    if tool_choice.is_none() {
-                        tool_choice = Some(ToolChoice::None);
-                    }
+                if (tools.is_some() || mcp_tools.is_some()) && tool_choice.is_none() {
+                    tool_choice = Some(ToolChoice::None);
                 }
 
                 #[cfg(all(feature = "rag", feature = "index"))]
