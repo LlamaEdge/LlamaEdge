@@ -234,9 +234,15 @@ impl Qwen3NoThinkPrompt {
         let content = match message.content() {
             Some(content) => content.to_string(),
             // Note that the content is optional if `tool_calls` is specified.
-            None => match message.tool_calls().is_some() {
-                true => String::new(),
-                false => return Err(PromptError::NoAssistantMessage),
+            None => match message.tool_calls() {
+                Some(tool_calls) if !tool_calls.is_empty() => {
+                    let mut functions = vec![];
+                    for tool_call in tool_calls {
+                        functions.push(&tool_call.function);
+                    }
+                    serde_json::to_string(&functions).unwrap()
+                }
+                _ => return Err(PromptError::NoAssistantMessage),
             },
         };
 
