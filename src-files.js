@@ -1,0 +1,2 @@
+createSrcSidebar('[["llama_core",["",[["metadata",[],["ggml.rs","mod.rs","piper.rs","whisper.rs"]]],["audio.rs","chat.rs","completions.rs","embeddings.rs","error.rs","files.rs","graph.rs","images.rs","lib.rs","models.rs","rag.rs","search.rs","tts.rs","utils.rs"]]]]');
+//{"start":19,"fragment_lengths":[245]}
