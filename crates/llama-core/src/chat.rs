@@ -1932,22 +1932,32 @@ fn parse_tool_calls(
                 Ok(re) => {
                     let mut values: Vec<serde_json::Value> = vec![];
                     for cap in re.captures_iter(input) {
-                        let matched = cap[1].trim();
+                        let mut matched = cap[1].trim();
+
+                        if matched.starts_with("\\n") {
+                            matched = matched.trim_start_matches("\\n");
+                        }
+
+                        if matched.ends_with("\\n") {
+                            matched = matched.trim_end_matches("\\n");
+                        }
 
                         #[cfg(feature = "logging")]
-                        info!(target: "stdout", "captured: {matched}");
+                        info!(target: "stdout", "captured: {matched:#?}");
 
-                        match serde_json::from_str::<serde_json::Value>(matched) {
-                            Ok(value) => values.push(value),
-                            Err(e) => {
-                                let err_msg = format!(
-                                    "Failed to deserialize generated tool calls. Reason: {e}"
+                        if !matched.is_empty() {
+                            match serde_json::from_str::<serde_json::Value>(matched) {
+                                Ok(value) => values.push(value),
+                                Err(e) => {
+                                    let err_msg = format!(
+                                    "Failed to deserialize generated tool calls: {matched:#?}. Reason: {e}"
                                 );
 
-                                #[cfg(feature = "logging")]
-                                error!(target: "stdout", "{}", &err_msg);
+                                    #[cfg(feature = "logging")]
+                                    error!(target: "stdout", "{}", &err_msg);
 
-                                return Err(LlamaCoreError::Operation(err_msg));
+                                    return Err(LlamaCoreError::Operation(err_msg));
+                                }
                             }
                         }
                     }
