@@ -282,8 +282,9 @@ fn chat_stream_for_tool(
                 && graph.metadata.prompt_template != PromptTemplateType::MistralSmallTool
                 && graph.metadata.prompt_template != PromptTemplateType::Llama4Chat
                 && graph.metadata.prompt_template != PromptTemplateType::Qwen3NoThink
+                && graph.metadata.prompt_template != PromptTemplateType::Smol3NoThink
             {
-                let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', 'mistral-small-tool', 'llama-4-chat', and 'qwen-3-no-think' prompt templates.", graph.metadata.prompt_template);
+                let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', 'mistral-small-tool', 'llama-4-chat', 'qwen-3-no-think', and 'smol-3-no-think' prompt templates.", graph.metadata.prompt_template);
 
                 #[cfg(feature = "logging")]
                 error!(target: "stdout", "{}", &err_msg);
@@ -836,8 +837,9 @@ fn compute_by_graph(
                         && graph.metadata.prompt_template != PromptTemplateType::MistralSmallTool
                         && graph.metadata.prompt_template != PromptTemplateType::Llama4Chat
                         && graph.metadata.prompt_template != PromptTemplateType::Qwen3NoThink
+                        && graph.metadata.prompt_template != PromptTemplateType::Smol3NoThink
                     {
-                        let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', 'mistral-small-tool', 'llama-4-chat', and 'qwen-3-no-think' prompt templates.", graph.metadata.prompt_template);
+                        let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', 'mistral-small-tool', 'llama-4-chat', 'qwen-3-no-think', and 'smol3-no-think' prompt templates.", graph.metadata.prompt_template);
 
                         #[cfg(feature = "logging")]
                         error!(target: "stdout", "{}", &err_msg);
@@ -1924,7 +1926,7 @@ fn parse_tool_calls(
 
             Ok(parsed)
         }
-        PromptTemplateType::Qwen3NoThink => {
+        PromptTemplateType::Qwen3NoThink | PromptTemplateType::Smol3NoThink => {
             #[cfg(feature = "logging")]
             info!(target: "stdout", "raw input: {input:?}");
 
@@ -2518,6 +2520,15 @@ fn post_process(
         } else {
             s.to_owned()
         }
+    } else if *template_ty == PromptTemplateType::Smol3NoThink {
+        let mut s = output.as_ref().trim();
+
+        if s.ends_with("<|im_end|>") {
+            s = s.trim_end_matches("<|im_end|>").trim();
+        }
+
+        let re = regex::Regex::new(r"(?s)^<think>.*?</think>\s*").unwrap();
+        re.replace(s, "").to_string()
     } else {
         output.as_ref().trim().to_owned()
     };
