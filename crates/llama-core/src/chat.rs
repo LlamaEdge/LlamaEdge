@@ -2438,12 +2438,13 @@ fn parse_tool_calls(
                         tool_calls: vec![],
                     }),
                     false => {
-                        let err_msg = "No <action> tags found in the response";
+                        let content = format!("<final_answer>{}</final_answer>", input.trim());
 
-                        #[cfg(feature = "logging")]
-                        error!(target: "stdout", "{}", &err_msg);
-
-                        Err(LlamaCoreError::Operation(err_msg.to_string()))
+                        Ok(ParseResult {
+                            raw: input.to_owned(),
+                            content: Some(content),
+                            tool_calls: vec![],
+                        })
                     }
                 },
             }
