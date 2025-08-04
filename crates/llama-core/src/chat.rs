@@ -284,8 +284,9 @@ fn chat_stream_for_tool(
                 && graph.metadata.prompt_template != PromptTemplateType::Qwen3NoThink
                 && graph.metadata.prompt_template != PromptTemplateType::Smol3NoThink
                 && graph.metadata.prompt_template != PromptTemplateType::Gemma3
+                && graph.metadata.prompt_template != PromptTemplateType::Qwen3Agent
             {
-                let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', 'mistral-small-tool', 'llama-4-chat', 'qwen-3-no-think', 'smol-3-no-think', and 'gemma-3' prompt templates.", graph.metadata.prompt_template);
+                let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', 'mistral-small-tool', 'llama-4-chat', 'qwen3-no-think', 'smol-3-no-think', 'gemma-3', and 'qwen3-agent' prompt templates.", graph.metadata.prompt_template);
 
                 #[cfg(feature = "logging")]
                 error!(target: "stdout", "{}", &err_msg);
@@ -840,8 +841,9 @@ fn compute_by_graph(
                         && graph.metadata.prompt_template != PromptTemplateType::Qwen3NoThink
                         && graph.metadata.prompt_template != PromptTemplateType::Smol3NoThink
                         && graph.metadata.prompt_template != PromptTemplateType::Gemma3
+                        && graph.metadata.prompt_template != PromptTemplateType::Qwen3Agent
                     {
-                        let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', 'mistral-small-tool', 'llama-4-chat', 'qwen-3-no-think', 'smol-3-no-think', and 'gemma-3' prompt templates.", graph.metadata.prompt_template);
+                        let err_msg = format!("Unsupported prompt template: {}. The tool use is only supported for 'mistral-tool', 'chatml-tool', 'groq-llama3-tool', 'llama-3-tool', 'internlm-2-tool', 'nemotron-tool', 'functionary-31', 'functionary-32', 'mistral-small-tool', 'llama-4-chat', 'qwen3-no-think', 'smol-3-no-think', 'gemma-3', and 'qwen3-agent' prompt templates.", graph.metadata.prompt_template);
 
                         #[cfg(feature = "logging")]
                         error!(target: "stdout", "{}", &err_msg);
@@ -854,6 +856,12 @@ fn compute_by_graph(
                     let (finish_reason, content, include_tool_calls) =
                         if parsed_result.tool_calls.is_empty() {
                             (FinishReason::stop, Some(parsed_result.raw.clone()), false)
+                        } else if graph.metadata.prompt_template != PromptTemplateType::Qwen3Agent {
+                            (
+                                FinishReason::tool_calls,
+                                Some(parsed_result.raw.clone()),
+                                true,
+                            )
                         } else {
                             (
                                 FinishReason::tool_calls,
@@ -2170,9 +2178,110 @@ fn parse_tool_calls(
                 }
             }
         }
+        PromptTemplateType::Qwen3Agent => {
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "Raw input to tool call parser: {input:?}");
+
+            // 检测 <action> 标签
+            match regex::Regex::new(r"<action>(.*?)</action>")
+                .unwrap()
+                .captures(input)
+            {
+                Some(captures) => {
+                    let action = captures.get(1).unwrap().as_str();
+
+                    #[cfg(feature = "logging")]
+                    info!(target: "stdout", "Action: {action}");
+
+                    match serde_json::from_str::<serde_json::Value>(action) {
+                        Ok(value) => {
+                            let name = match value.get("name") {
+                                Some(name) => name.to_string().replace("\"", ""),
+                                None => {
+                                    let err_msg = format!(
+                                        "Failed to get the name of the function. Tool call: {value:?}"
+                                    );
+
+                                    #[cfg(feature = "logging")]
+                                    error!(target: "stdout", "{}", &err_msg);
+
+                                    return Err(LlamaCoreError::Operation(err_msg));
+                                }
+                            };
+
+                            let arguments = match value.get("arguments") {
+                                Some(arguments) => {
+                                    if arguments.is_string() {
+                                        arguments.as_str().unwrap().to_string()
+                                    } else if arguments.is_object() {
+                                        let map = arguments.as_object().unwrap();
+
+                                        #[cfg(feature = "logging")]
+                                        info!(target: "stdout", "func arguments: {map:?}");
+
+                                        serde_json::to_string(map).unwrap()
+                                    } else {
+                                        serde_json::to_string(arguments).unwrap()
+                                    }
+                                }
+                                None => {
+                                    let err_msg = format!(
+                                        "Failed to get the arguments of the function. Tool call: {value:?}"
+                                    );
+
+                                    #[cfg(feature = "logging")]
+                                    error!(target: "stdout", "{}", &err_msg);
+
+                                    return Err(LlamaCoreError::Operation(err_msg));
+                                }
+                            };
+
+                            let function = Function { name, arguments };
+
+                            let tool_call = ToolCall {
+                                id: "call_abc123".to_string(),
+                                ty: "function".to_string(),
+                                function,
+                            };
+
+                            Ok(ParseResult {
+                                raw: input.to_owned(),
+                                content: Some(input.to_owned()),
+                                tool_calls: vec![tool_call],
+                            })
+                        }
+                        Err(e) => {
+                            let err_msg = format!(
+                            "Failed to deserialize generated tool calls: {action:#?}. Reason: {e}"
+                        );
+
+                            #[cfg(feature = "logging")]
+                            error!(target: "stdout", "{}", &err_msg);
+
+                            Err(LlamaCoreError::Operation(err_msg))
+                        }
+                    }
+                }
+                None => match input.contains("<final_answer>") {
+                    true => Ok(ParseResult {
+                        raw: input.to_owned(),
+                        content: Some(input.to_owned()),
+                        tool_calls: vec![],
+                    }),
+                    false => {
+                        let err_msg = "No <action> tags found in the response";
+
+                        #[cfg(feature = "logging")]
+                        error!(target: "stdout", "{}", &err_msg);
+
+                        Err(LlamaCoreError::Operation(err_msg.to_string()))
+                    }
+                },
+            }
+        }
         _ => {
             let err_msg = format!(
-                "The tool use is only supported for prompt templates: {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, and {}.",
+                "The tool use is only supported for prompt templates: {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, and {}.",
                 PromptTemplateType::MistralTool,
                 PromptTemplateType::ChatMLTool,
                 PromptTemplateType::GroqLlama3Tool,
@@ -2185,6 +2294,7 @@ fn parse_tool_calls(
                 PromptTemplateType::Qwen3NoThink,
                 PromptTemplateType::Smol3NoThink,
                 PromptTemplateType::Gemma3,
+                PromptTemplateType::Qwen3Agent,
             );
 
             #[cfg(feature = "logging")]
@@ -2586,6 +2696,7 @@ fn post_process(
         }
     } else if *template_ty == PromptTemplateType::Qwen2vl
         || *template_ty == PromptTemplateType::Qwen3NoThink
+        || *template_ty == PromptTemplateType::Qwen3Agent
         || *template_ty == PromptTemplateType::ChatMLThink
     {
         let mut s = output.as_ref().trim();
