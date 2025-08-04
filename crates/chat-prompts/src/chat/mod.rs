@@ -50,7 +50,7 @@ use nvidia::{NemotronChatPrompt, NemotronToolPrompt};
 use octopus::*;
 use openchat::*;
 use phi::*;
-use qwen::{Qwen2vlPrompt, Qwen3NoThinkPrompt};
+use qwen::{Qwen2vlPrompt, Qwen3AgentPrompt, Qwen3NoThinkPrompt};
 use seed::{SeedInstructPrompt, SeedReasoningPrompt};
 use smol::{Smol3NoThinkPrompt, SmolvlPrompt};
 use solar::*;
@@ -128,6 +128,7 @@ pub enum ChatPrompt {
     MegrezPrompt,
     Qwen2vlPrompt,
     Qwen3NoThinkPrompt,
+    Qwen3AgentPrompt,
     ExaoneDeepChatPrompt,
     ExaoneChatPrompt,
     SeedInstructPrompt,
@@ -229,6 +230,7 @@ impl From<PromptTemplateType> for ChatPrompt {
             PromptTemplateType::Megrez => ChatPrompt::MegrezPrompt(MegrezPrompt),
             PromptTemplateType::Qwen2vl => ChatPrompt::Qwen2vlPrompt(Qwen2vlPrompt),
             PromptTemplateType::Qwen3NoThink => ChatPrompt::Qwen3NoThinkPrompt(Qwen3NoThinkPrompt),
+            PromptTemplateType::Qwen3Agent => ChatPrompt::Qwen3AgentPrompt(Qwen3AgentPrompt),
             PromptTemplateType::ExaoneDeepChat => {
                 ChatPrompt::ExaoneDeepChatPrompt(ExaoneDeepChatPrompt)
             }
