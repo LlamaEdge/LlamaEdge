@@ -2696,7 +2696,6 @@ fn post_process(
         }
     } else if *template_ty == PromptTemplateType::Qwen2vl
         || *template_ty == PromptTemplateType::Qwen3NoThink
-        || *template_ty == PromptTemplateType::Qwen3Agent
         || *template_ty == PromptTemplateType::ChatMLThink
     {
         let mut s = output.as_ref().trim();
@@ -2765,6 +2764,26 @@ fn post_process(
 
         let re = regex::Regex::new(r"(?s)^<think>.*?</think>\s*").unwrap();
         re.replace(s, "").to_string()
+    } else if *template_ty == PromptTemplateType::Qwen3Agent {
+        let mut s = output.as_ref().trim();
+
+        if s.starts_with(":") {
+            s = s.trim_start_matches(":").trim();
+        }
+
+        if s.starts_with("</think>") {
+            s = s.trim_start_matches("</think>").trim();
+        }
+
+        if s.ends_with("<|im_end|>") {
+            s = s.trim_end_matches("<|im_end|>").trim();
+        }
+
+        if s.contains("<final_answer>") && !s.contains("</final_answer>") {
+            format!("{}</final_answer>", s)
+        } else {
+            s.to_owned()
+        }
     } else {
         output.as_ref().trim().to_owned()
     };
