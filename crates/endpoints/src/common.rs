@@ -9,7 +9,7 @@ pub enum LlamaCppLogitBiasType {
 }
 
 /// Token usage
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct Usage {
     /// Number of tokens in the prompt.
     pub prompt_tokens: u64,
