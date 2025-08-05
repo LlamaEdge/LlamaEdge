@@ -565,38 +565,16 @@ impl BuildChatPrompt for Qwen3AgentPrompt {
             ChatCompletionRequestMessage::System(ref message) => match tools {
                 Some(tools) if !tools.is_empty() => {
                     let available_tools = serde_json::to_string(tools).unwrap();
-                    let tools = format!("<tools>\n{available_tools}\n</tools>");
 
-                    let begin = r#"# Tools
+                    let system_prompt = QWEN3_AGENT_SYSTEM_PROMPT.replace("${tool_list}", &available_tools);
 
-You may call one or more functions to assist with the user query.
-
-You are provided with function signatures within <tools></tools> XML tags:"#;
-
-                    let end = r#"For each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\n<tool_call>\n{"name": <function-name>, "arguments": <args-json-object>}\n</tool_call>"#;
-
-                    let content = message.content();
-                    match content.is_empty() {
-                        true => format!("<|im_start|>system\nYou are a helpful assistant. Answer questions as concisely as possible.\n\n{begin}\n{tools}\n\n{end}\n<|im_end|>"),
-                        false => format!("<|im_start|>system\n{content}\n\n{begin}\n{tools}\n\n{end}\n<|im_end|>"),
-                    }
+                    format!("<|im_start|>system\n{system_prompt}\n<|im_end|>")
                 }
                 _ => self.create_system_prompt(message),
             },
             _ => match tools {
                 Some(tools) if !tools.is_empty() => {
                     let available_tools = serde_json::to_string_pretty(tools).unwrap();
-//                     let tools = format!("<tools>\n{available_tools}\n</tools>");
-
-//                     let begin = r#"# Tools
-
-// You may call one or more functions to assist with the user query.
-
-// You are provided with function signatures within <tools></tools> XML tags:"#;
-
-//                     let end = r#"For each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\n<tool_call>\n{"name": <function-name>, "arguments": <args-json-object>}\n</tool_call>"#;
-
-//                     format!("<|im_start|>system\nYou are a helpful assistant. Answer questions as concisely as possible.\n\n{begin}\n{tools}\n\n{end}\n<|im_end|>")
 
                     let system_prompt = QWEN3_AGENT_SYSTEM_PROMPT.replace("${tool_list}", &available_tools);
 
