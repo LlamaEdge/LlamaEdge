@@ -2451,7 +2451,7 @@ fn parse_tool_calls(
         }
         _ => {
             let err_msg = format!(
-                "The tool use is only supported for prompt templates: {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, and {}.",
+                "The tool use is only supported for prompt templates: {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, and {}.",
                 PromptTemplateType::MistralTool,
                 PromptTemplateType::ChatMLTool,
                 PromptTemplateType::GroqLlama3Tool,
@@ -2963,7 +2963,7 @@ fn post_process(
         }
 
         if s.contains("<final_answer>") && !s.contains("</final_answer>") {
-            format!("{}</final_answer>", s)
+            format!("{s}</final_answer>")
         } else {
             s.to_owned()
         }
