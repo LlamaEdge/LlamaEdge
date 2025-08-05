@@ -2781,7 +2781,7 @@ fn post_process(
         }
 
         if s.contains("<final_answer>") && !s.contains("</final_answer>") {
-            format!("{}</final_answer>", s)
+            format!("{s}</final_answer>")
         } else {
             s.to_owned()
         }
