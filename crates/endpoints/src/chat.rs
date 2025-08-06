@@ -36,7 +36,7 @@
 //!   let json = serde_json::to_string(&request).unwrap();
 //!   assert_eq!(
 //!       json,
-//!       r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"temperature":0.8,"top_p":0.9,"n":1,"stream":false,"max_completion_tokens":-1,"presence_penalty":0.0,"frequency_penalty":0.0,"tool_choice":"none"}"#
+//!       r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"temperature":0.8,"top_p":0.9,"n":1,"stream":false,"max_completion_tokens":2147483647,"presence_penalty":0.0,"frequency_penalty":0.0,"tool_choice":"none"}"#
 //!   );
 //! }
 //! ```
@@ -1051,7 +1051,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_completion_tokens":-1,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto"}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_completion_tokens":2147483647,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto"}"#
         );
     }
 
@@ -1081,7 +1081,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"temperature":0.8,"top_p":0.9,"n":1,"stream":false,"max_completion_tokens":-1,"presence_penalty":0.0,"frequency_penalty":0.0,"tool_choice":"none"}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"temperature":0.8,"top_p":0.9,"n":1,"stream":false,"max_completion_tokens":2147483647,"presence_penalty":0.0,"frequency_penalty":0.0,"tool_choice":"none"}"#
         );
     }
 
