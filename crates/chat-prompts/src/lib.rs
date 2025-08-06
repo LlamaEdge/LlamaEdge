@@ -132,6 +132,8 @@ pub enum PromptTemplateType {
     Smolvl,
     #[value(name = "smol3-no-think")]
     Smol3NoThink,
+    #[value(name = "gpt-oss")]
+    GptOss,
     #[value(name = "embedding")]
     Embedding,
     #[value(name = "tts")]
@@ -182,7 +184,8 @@ impl PromptTemplateType {
             | PromptTemplateType::ChatMLThink
             | PromptTemplateType::Llama4Chat
             | PromptTemplateType::SeedInstruct
-            | PromptTemplateType::Smol3NoThink => true,
+            | PromptTemplateType::Smol3NoThink
+            | PromptTemplateType::GptOss => true,
             PromptTemplateType::MistralInstruct
             | PromptTemplateType::MistralTool
             | PromptTemplateType::MistralLite
@@ -285,6 +288,7 @@ impl FromStr for PromptTemplateType {
             "seed-reasoning" => Ok(PromptTemplateType::SeedReasoning),
             "smol-vision" => Ok(PromptTemplateType::Smolvl),
             "smol3-no-think" => Ok(PromptTemplateType::Smol3NoThink),
+            "gpt-oss" => Ok(PromptTemplateType::GptOss),
             "embedding" => Ok(PromptTemplateType::Embedding),
             "tts" => Ok(PromptTemplateType::Tts),
             "none" => Ok(PromptTemplateType::Null),
@@ -356,6 +360,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::SeedReasoning => write!(f, "seed-reasoning"),
             PromptTemplateType::Smolvl => write!(f, "smol-vision"),
             PromptTemplateType::Smol3NoThink => write!(f, "smol3-no-think"),
+            PromptTemplateType::GptOss => write!(f, "gpt-oss"),
             PromptTemplateType::Embedding => write!(f, "embedding"),
             PromptTemplateType::Tts => write!(f, "tts"),
             PromptTemplateType::Null => write!(f, "none"),
