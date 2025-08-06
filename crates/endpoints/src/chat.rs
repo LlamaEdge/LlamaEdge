@@ -420,7 +420,7 @@ pub struct ChatCompletionRequest {
     /// Defaults to None
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop: Option<Vec<String>>,
-    /// An upper bound for the number of tokens that can be generated for a completion. `-1` means infinity. `-2` means until context filled. Defaults to `-1`.
+    /// An upper bound for the number of tokens that can be generated for a completion. `-1` means infinity. `-2` means until context filled. Defaults to `i32::MAX`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_completion_tokens: Option<i32>,
     /// Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
@@ -741,7 +741,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
 
                 // Set default value for `max_completion_tokens` if not provided
                 if max_completion_tokens.is_none() {
-                    max_completion_tokens = Some(-1);
+                    // max_completion_tokens = Some(-1);
+                    max_completion_tokens = Some(i32::MAX);
                 }
 
                 // Check tools and tool_choice
@@ -923,7 +924,8 @@ impl Default for ChatCompletionRequest {
             stream: Some(false),
             stream_options: None,
             stop: None,
-            max_completion_tokens: Some(-1),
+            // max_completion_tokens: Some(-1),
+            max_completion_tokens: Some(i32::MAX),
             presence_penalty: Some(0.0),
             frequency_penalty: Some(0.0),
             logit_bias: None,
@@ -1429,7 +1431,7 @@ fn test_chat_deserialize_chat_request() {
             request.stop,
             Some(vec!["stop1".to_string(), "stop2".to_string()])
         );
-        assert_eq!(request.max_completion_tokens, Some(-1));
+        assert_eq!(request.max_completion_tokens, Some(i32::MAX));
         assert_eq!(request.presence_penalty, Some(0.5));
         assert_eq!(request.frequency_penalty, Some(0.5));
         assert_eq!(request.tool_choice, None);
