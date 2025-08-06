@@ -2657,7 +2657,8 @@ fn post_process(
     } else if *template_ty == PromptTemplateType::GptOss {
         let s = output.as_ref().trim();
 
-        let re = regex::Regex::new(r"(?s).*<\|message\|>(.*?)<\|return\|>$").unwrap();
+        let re =
+            regex::Regex::new(r"(?s).*<\|channel\|>final<\|message\|>(.*?)<\|return\|>$").unwrap();
 
         if let Some(caps) = re.captures(s) {
             let extracted = &caps[1];
