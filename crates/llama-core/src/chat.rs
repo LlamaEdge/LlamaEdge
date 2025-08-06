@@ -2654,6 +2654,17 @@ fn post_process(
 
         let re = regex::Regex::new(r"(?s)^<think>.*?</think>\s*").unwrap();
         re.replace(s, "").to_string()
+    } else if *template_ty == PromptTemplateType::GptOss {
+        let s = output.as_ref().trim();
+
+        let re = regex::Regex::new(r"(?s).*<\|message\|>(.*?)<\|return\|>$").unwrap();
+
+        if let Some(caps) = re.captures(s) {
+            let extracted = &caps[1];
+            extracted.to_owned()
+        } else {
+            s.to_owned()
+        }
     } else {
         output.as_ref().trim().to_owned()
     };
