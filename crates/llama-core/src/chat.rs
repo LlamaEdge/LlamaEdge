@@ -2310,7 +2310,7 @@ fn update_n_predict(
     info!(target: "stdout", "n_predict: {}", metadata.n_predict);
 
     // From high to low priority
-    // 1. chat_request.max_tokens & chat_request.max_completion_tokens
+    // 1. chat_request.max_completion_tokens
     // 2. available_completion_tokens
     // 3. n_predict
 
