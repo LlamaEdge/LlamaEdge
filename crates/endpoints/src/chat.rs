@@ -36,7 +36,7 @@
 //!   let json = serde_json::to_string(&request).unwrap();
 //!   assert_eq!(
 //!       json,
-//!       r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"temperature":0.8,"top_p":0.9,"n":1,"stream":false,"max_completion_tokens":-1,"presence_penalty":0.0,"frequency_penalty":0.0,"tool_choice":"none"}"#
+//!       r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"temperature":0.8,"top_p":0.9,"n":1,"stream":false,"max_completion_tokens":2147483647,"presence_penalty":0.0,"frequency_penalty":0.0,"tool_choice":"none"}"#
 //!   );
 //! }
 //! ```
@@ -420,7 +420,7 @@ pub struct ChatCompletionRequest {
     /// Defaults to None
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop: Option<Vec<String>>,
-    /// An upper bound for the number of tokens that can be generated for a completion. `-1` means infinity. `-2` means until context filled. Defaults to `-1`.
+    /// An upper bound for the number of tokens that can be generated for a completion. `-1` means infinity. `-2` means until context filled. Defaults to `i32::MAX`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_completion_tokens: Option<i32>,
     /// Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
@@ -741,7 +741,8 @@ impl<'de> Deserialize<'de> for ChatCompletionRequest {
 
                 // Set default value for `max_completion_tokens` if not provided
                 if max_completion_tokens.is_none() {
-                    max_completion_tokens = Some(-1);
+                    // max_completion_tokens = Some(-1);
+                    max_completion_tokens = Some(i32::MAX);
                 }
 
                 // Check tools and tool_choice
@@ -923,7 +924,8 @@ impl Default for ChatCompletionRequest {
             stream: Some(false),
             stream_options: None,
             stop: None,
-            max_completion_tokens: Some(-1),
+            // max_completion_tokens: Some(-1),
+            max_completion_tokens: Some(i32::MAX),
             presence_penalty: Some(0.0),
             frequency_penalty: Some(0.0),
             logit_bias: None,
@@ -1049,7 +1051,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_completion_tokens":-1,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto"}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":"Hello, world!"},{"role":"assistant","content":"Hello, world!"}],"temperature":0.8,"top_p":1.0,"n":3,"stream":true,"stream_options":{"include_usage":true},"stop":["stop1","stop2"],"max_completion_tokens":2147483647,"presence_penalty":0.5,"frequency_penalty":0.5,"response_format":{"type":"text"},"tool_choice":"auto"}"#
         );
     }
 
@@ -1079,7 +1081,7 @@ fn test_chat_serialize_chat_request() {
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
-            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"temperature":0.8,"top_p":0.9,"n":1,"stream":false,"max_completion_tokens":-1,"presence_penalty":0.0,"frequency_penalty":0.0,"tool_choice":"none"}"#
+            r#"{"model":"model-id","messages":[{"role":"system","content":"Hello, world!"},{"role":"user","content":[{"type":"text","text":"what is in the picture?"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"temperature":0.8,"top_p":0.9,"n":1,"stream":false,"max_completion_tokens":2147483647,"presence_penalty":0.0,"frequency_penalty":0.0,"tool_choice":"none"}"#
         );
     }
 
@@ -1429,7 +1431,7 @@ fn test_chat_deserialize_chat_request() {
             request.stop,
             Some(vec!["stop1".to_string(), "stop2".to_string()])
         );
-        assert_eq!(request.max_completion_tokens, Some(-1));
+        assert_eq!(request.max_completion_tokens, Some(i32::MAX));
         assert_eq!(request.presence_penalty, Some(0.5));
         assert_eq!(request.frequency_penalty, Some(0.5));
         assert_eq!(request.tool_choice, None);
@@ -2549,7 +2551,7 @@ impl ChatCompletionRequestMessage {
     }
 
     /// Creates a new tool message.
-    pub fn new_tool_message(content: impl Into<String>, tool_call_id: Option<String>) -> Self {
+    pub fn new_tool_message(content: impl Into<String>, tool_call_id: impl Into<String>) -> Self {
         ChatCompletionRequestMessage::Tool(ChatCompletionToolMessage::new(content, tool_call_id))
     }
 
@@ -2600,7 +2602,7 @@ fn test_chat_serialize_request_message() {
 
     let message = ChatCompletionRequestMessage::Tool(ChatCompletionToolMessage::new(
         "Hello, world!",
-        Some("tool-call-id".into()),
+        "tool-call-id",
     ));
     let json = serde_json::to_string(&message).unwrap();
     assert_eq!(
@@ -2821,8 +2823,7 @@ pub struct ChatCompletionToolMessage {
     /// The contents of the tool message.
     content: String,
     /// Tool call that this message is responding to.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    tool_call_id: Option<String>,
+    tool_call_id: String,
 }
 impl ChatCompletionToolMessage {
     /// Creates a new tool message.
@@ -2832,10 +2833,10 @@ impl ChatCompletionToolMessage {
     /// * `content` - The contents of the tool message.
     ///
     /// * `tool_call_id` - Tool call that this message is responding to.
-    pub fn new(content: impl Into<String>, tool_call_id: Option<String>) -> Self {
+    pub fn new(content: impl Into<String>, tool_call_id: impl Into<String>) -> Self {
         Self {
             content: content.into(),
-            tool_call_id,
+            tool_call_id: tool_call_id.into(),
         }
     }
 
@@ -2850,8 +2851,8 @@ impl ChatCompletionToolMessage {
     }
 
     /// Tool call that this message is responding to.
-    pub fn tool_call_id(&self) -> Option<String> {
-        self.tool_call_id.clone()
+    pub fn tool_call_id(&self) -> &str {
+        &self.tool_call_id
     }
 }
 

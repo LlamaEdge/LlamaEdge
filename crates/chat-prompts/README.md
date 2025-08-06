@@ -303,6 +303,26 @@ The available prompt templates are listed below:
 
   - Example: [second-state/glm-4-9b-chat-GGUF](https://huggingface.co/second-state/glm-4-9b-chat-GGUF)
 
+- `gpt-oss`
+  - Prompt string
+
+    ```text
+    <|start|>system<|message|>
+    You are ChatGPT, a large language model trained by OpenAI.
+    Knowledge cutoff: 2024-06
+    Current date: 2025-08-06
+    Reasoning: medium
+    # Valid channels: analysis, commentary, final. Channel must be included for every message.
+    <|end|>
+
+    <|start|>user<|message|>Hello!<|end|>
+    <|start|>assistant<|channel|>final<|message|>Hi there!<|end|>
+    <|start|>user<|message|>What's your favorite color?<|end|>
+    <|start|>assistant
+    ```
+
+  - Example: [second-state/gpt-oss-20b-GGUF](https://huggingface.co/second-state/gpt-oss-20b-GGUF)
+
 - `human-assistant`
   - Prompt string
 

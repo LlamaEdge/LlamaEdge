@@ -2310,7 +2310,7 @@ fn update_n_predict(
     info!(target: "stdout", "n_predict: {}", metadata.n_predict);
 
     // From high to low priority
-    // 1. chat_request.max_tokens & chat_request.max_completion_tokens
+    // 1. chat_request.max_completion_tokens
     // 2. available_completion_tokens
     // 3. n_predict
 
@@ -2654,6 +2654,17 @@ fn post_process(
 
         let re = regex::Regex::new(r"(?s)^<think>.*?</think>\s*").unwrap();
         re.replace(s, "").to_string()
+    } else if *template_ty == PromptTemplateType::GptOss {
+        let s = output.as_ref().trim();
+
+        let re = regex::Regex::new(r"(?s).*<\|message\|>(.*?)<\|return\|>$").unwrap();
+
+        if let Some(caps) = re.captures(s) {
+            let extracted = &caps[1];
+            extracted.to_owned()
+        } else {
+            s.to_owned()
+        }
     } else {
         output.as_ref().trim().to_owned()
     };
@@ -2794,6 +2805,23 @@ fn build_prompt(
             true => {
                 match chat_request.messages[0].role() {
                     ChatCompletionRole::System => {
+                        // corner case: context size is too small, `system -> user -> assistant -> tool` cannot be trimmed.
+                        if chat_request.messages.len() == 4
+                            && chat_request.messages[1].role() == ChatCompletionRole::User
+                            && chat_request.messages[2].role() == ChatCompletionRole::Assistant
+                            && chat_request.messages[3].role() == ChatCompletionRole::Tool
+                        {
+                            let err_msg = format!(
+                                "The number of prompt tokens ({}) is greater than the max prompt tokens ({}). Please increase the context size.",
+                                token_info.prompt_tokens, max_prompt_tokens
+                            );
+
+                            #[cfg(feature = "logging")]
+                            error!(target: "stdout", "{}", &err_msg);
+
+                            return Err(LlamaCoreError::Operation(err_msg));
+                        }
+
                         if chat_request.messages.len() > 2 {
                             #[cfg(feature = "logging")]
                             info!(target: "stdout", "Prune chat history: current length {}", chat_request.messages.len());
@@ -2839,6 +2867,23 @@ fn build_prompt(
                         }
                     }
                     ChatCompletionRole::User => {
+                        // corner case: context size is too small, `user -> assistant -> tool` cannot be trimmed.
+                        if chat_request.messages.len() == 3
+                            && chat_request.messages[1].role() == ChatCompletionRole::User
+                            && chat_request.messages[2].role() == ChatCompletionRole::Assistant
+                            && chat_request.messages[3].role() == ChatCompletionRole::Tool
+                        {
+                            let err_msg = format!(
+                            "The number of prompt tokens ({}) is greater than the max prompt tokens ({}). Please increase the context size.",
+                            token_info.prompt_tokens, max_prompt_tokens
+                        );
+
+                            #[cfg(feature = "logging")]
+                            error!(target: "stdout", "{}", &err_msg);
+
+                            return Err(LlamaCoreError::Operation(err_msg));
+                        }
+
                         if chat_request.messages.len() > 1 {
                             // user_1 -> ... -> user_2 -> ... -> user_latest
 

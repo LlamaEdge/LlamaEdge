@@ -17,6 +17,7 @@ pub mod mistral;
 pub mod moxin;
 pub mod nvidia;
 pub mod octopus;
+pub mod openai;
 pub mod openchat;
 pub mod phi;
 pub mod qwen;
@@ -48,6 +49,7 @@ use mistral::*;
 use moxin::*;
 use nvidia::{NemotronChatPrompt, NemotronToolPrompt};
 use octopus::*;
+use openai::GptOssPrompt;
 use openchat::*;
 use phi::*;
 use qwen::{Qwen2vlPrompt, Qwen3NoThinkPrompt};
@@ -134,6 +136,7 @@ pub enum ChatPrompt {
     SeedReasoningPrompt,
     SmolvlPrompt,
     Smol3NoThinkPrompt,
+    GptOssPrompt,
 }
 impl From<PromptTemplateType> for ChatPrompt {
     fn from(ty: PromptTemplateType) -> Self {
@@ -239,6 +242,7 @@ impl From<PromptTemplateType> for ChatPrompt {
             }
             PromptTemplateType::Smolvl => ChatPrompt::SmolvlPrompt(SmolvlPrompt),
             PromptTemplateType::Smol3NoThink => ChatPrompt::Smol3NoThinkPrompt(Smol3NoThinkPrompt),
+            PromptTemplateType::GptOss => ChatPrompt::GptOssPrompt(GptOssPrompt),
             PromptTemplateType::Embedding => {
                 panic!("Embedding prompt template is not used for building chat prompts")
             }
