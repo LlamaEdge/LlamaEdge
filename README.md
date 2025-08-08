@@ -7,7 +7,7 @@ The LlamaEdge project makes it easy for you to run LLM inference apps and create
 📖 Checkout our [official docs](https://llamaedge.com/docs) and a [Manning ebook](https://www.manning.com/liveprojectseries/open-source-llms-on-your-own-computer) on how to customize open source models.
 
 🔥 Run multiple models with LlamaEdge!
-[LLM (Text Generation)](https://llamaedge.com/docs/category/llm) | [Speech to Text](https://llamaedge.com/docs/category/speech-to-text) | [Text to speech](https://llamaedge.com/docs/category/text-to-speech) | [Text to Image](https://llamaedge.com/docs/category/text-to-image) | [Multimodal](https://llamaedge.com/docs/category/multimodal)
+[LLM (Text Generation)](https://llamaedge.com/docs/category/llm) | [Embedding](https://llamaedge.com/docs/ai-models/embeddings/) | [Speech to Text](https://llamaedge.com/docs/category/speech-to-text) | [Text to speech](https://llamaedge.com/docs/category/text-to-speech) | [Text to Image](https://llamaedge.com/docs/category/text-to-image) | [Multimodal](https://llamaedge.com/docs/category/multimodal)
 
 
 ## Quick start
@@ -38,13 +38,13 @@ wasmedge --dir .:. --nn-preload default:GGML:AUTO:Llama-3.2-1B-Instruct-Q5_K_M.g
 
 Next steps:
 
-* [Use a web-based chatbot to interact with your local LLM](https://llamaedge.com/docs/user-guide/llm/get-started-with-llamaedge)
-* [Start an API server for the LLMs](https://llamaedge.com/docs/user-guide/openai-api/intro)
+* [Use a web-based chatbot to interact with your local LLM](https://llamaedge.com/docs/ai-models/llm/quick-start-llm)
 * [Start an LLM service with your own knowledge base](https://docs.gaianet.ai/node-guide/quick-start)
 
 Serve any GenAI model in OpenAI-compatible web service endpoints:
 
 * LLM (`/v1/chat/completion` endpoints) -- https://github.com/LlamaEdge/LlamaEdge (this repo)
+*  LLM (`/v1/embeddings` endpoints) -- https://github.com/LlamaEdge/LlamaEdge (this repo)
 * Voice to text (`/v1/audio/transcriptions` endpoints) -- https://github.com/LlamaEdge/whisper-api-server
 * Text to voice (`/v1/audio/speech` endpoints) -- https://github.com/LlamaEdge/tts-api-server
 * Text to image (`/v1/images/generations` endpoints) -- https://github.com/LlamaEdge/sd-api-server
