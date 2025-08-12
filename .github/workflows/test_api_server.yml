@@ -35,8 +35,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        wasmedge_version: [0.14.1]
-        ggml_version: [b5896]
+        wasmedge_version: [0.15.0]
+        ggml_version: [b6097]
     steps:
       - name: Clone project
         id: checkout
