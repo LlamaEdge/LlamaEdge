@@ -1,5 +1,4 @@
-use super::BuildChatPrompt;
-use crate::error::Result;
+use crate::{error::Result, BuildChatPrompt};
 use endpoints::chat::{
     ChatCompletionRequestMessage, ChatCompletionSystemMessage, ChatCompletionUserMessage,
     ChatCompletionUserMessageContent, ContentPart,
