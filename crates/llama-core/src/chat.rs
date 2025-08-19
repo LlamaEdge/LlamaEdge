@@ -10,10 +10,7 @@ use crate::{
     },
     Graph, RunningMode, CACHED_UTF8_ENCODINGS, CHAT_GRAPHS, OUTPUT_TENSOR,
 };
-use chat_prompts::{
-    chat::{BuildChatPrompt, ChatPrompt},
-    PromptTemplateType,
-};
+use chat_prompts::{BuildChatPrompt, ChatPrompt, PromptTemplateType};
 use either::{Either, Left, Right};
 use endpoints::{
     chat::{
