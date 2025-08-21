@@ -2,12 +2,16 @@
 //!
 //! For the details of available prompt templates, see [README.md](https://github.com/LlamaEdge/LlamaEdge/tree/main/api-server/chat-prompts).
 
+pub mod agent;
 pub mod chat;
 pub mod error;
 pub mod utils;
 
+use agent::*;
+use chat::*;
 use clap::ValueEnum;
-use endpoints::chat::ChatCompletionRequestMessage;
+use endpoints::chat::{ChatCompletionRequestMessage, Tool};
+use error::Result;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -120,6 +124,8 @@ pub enum PromptTemplateType {
     Qwen2vl,
     #[value(name = "qwen3-no-think")]
     Qwen3NoThink,
+    #[value(name = "qwen3-agent")]
+    Qwen3Agent,
     #[value(name = "exaone-deep-chat")]
     ExaoneDeepChat,
     #[value(name = "exaone-chat")]
@@ -177,6 +183,7 @@ impl PromptTemplateType {
             | PromptTemplateType::Megrez
             | PromptTemplateType::Qwen2vl
             | PromptTemplateType::Qwen3NoThink
+            | PromptTemplateType::Qwen3Agent
             | PromptTemplateType::MistralSmallChat
             | PromptTemplateType::MistralSmallTool
             | PromptTemplateType::ExaoneDeepChat
@@ -282,6 +289,7 @@ impl FromStr for PromptTemplateType {
             "megrez" => Ok(PromptTemplateType::Megrez),
             "qwen2-vision" => Ok(PromptTemplateType::Qwen2vl),
             "qwen3-no-think" => Ok(PromptTemplateType::Qwen3NoThink),
+            "qwen3-agent" => Ok(PromptTemplateType::Qwen3Agent),
             "exaone-deep-chat" => Ok(PromptTemplateType::ExaoneDeepChat),
             "exaone-chat" => Ok(PromptTemplateType::ExaoneChat),
             "seed-instruct" => Ok(PromptTemplateType::SeedInstruct),
@@ -354,6 +362,7 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::Megrez => write!(f, "megrez"),
             PromptTemplateType::Qwen2vl => write!(f, "qwen2-vision"),
             PromptTemplateType::Qwen3NoThink => write!(f, "qwen3-no-think"),
+            PromptTemplateType::Qwen3Agent => write!(f, "qwen3-agent"),
             PromptTemplateType::ExaoneDeepChat => write!(f, "exaone-deep-chat"),
             PromptTemplateType::ExaoneChat => write!(f, "exaone-chat"),
             PromptTemplateType::SeedInstruct => write!(f, "seed-instruct"),
@@ -364,6 +373,190 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::Embedding => write!(f, "embedding"),
             PromptTemplateType::Tts => write!(f, "tts"),
             PromptTemplateType::Null => write!(f, "none"),
+        }
+    }
+}
+
+#[enum_dispatch::enum_dispatch(BuildChatPrompt)]
+pub enum ChatPrompt {
+    Llama2ChatPrompt,
+    Llama3ChatPrompt,
+    Llama3ToolPrompt,
+    Llama4ChatPrompt,
+    MistralInstructPrompt,
+    MistralToolPrompt,
+    MistralLitePrompt,
+    MistralSmallChatPrompt,
+    MistralSmallToolPrompt,
+    OpenChatPrompt,
+    CodeLlamaInstructPrompt,
+    CodeLlamaSuperInstructPrompt,
+    HumanAssistantChatPrompt,
+    /// Vicuna 1.0
+    VicunaChatPrompt,
+    /// Vicuna 1.1
+    Vicuna11ChatPrompt,
+    VicunaLlavaPrompt,
+    ChatMLPrompt,
+    ChatMLToolPrompt,
+    ChatMLThinkPrompt,
+    InternLM2ToolPrompt,
+    Baichuan2ChatPrompt,
+    WizardCoderPrompt,
+    ZephyrChatPrompt,
+    StableLMZephyrChatPrompt,
+    NeuralChatPrompt,
+    DeepseekChatPrompt,
+    DeepseekCoderPrompt,
+    DeepseekChat2Prompt,
+    DeepseekChat25Prompt,
+    SolarInstructPrompt,
+    Phi2ChatPrompt,
+    Phi2InstructPrompt,
+    Phi3ChatPrompt,
+    Phi3InstructPrompt,
+    Phi4ChatPrompt,
+    GemmaInstructPrompt,
+    Gemma3Prompt,
+    OctopusPrompt,
+    Glm4ChatPrompt,
+    GroqLlama3ToolPrompt,
+    BreezeInstructPrompt,
+    NemotronChatPrompt,
+    NemotronToolPrompt,
+    FunctionaryV32ToolPrompt,
+    FunctionaryV31ToolPrompt,
+    MiniCPMVPrompt,
+    MoxinChatPrompt,
+    MoxinInstructPrompt,
+    FalconChatPrompt,
+    MegrezPrompt,
+    Qwen2vlPrompt,
+    Qwen3NoThinkPrompt,
+    Qwen3AgentPrompt,
+    ExaoneDeepChatPrompt,
+    ExaoneChatPrompt,
+    SeedInstructPrompt,
+    SeedReasoningPrompt,
+    SmolvlPrompt,
+    Smol3NoThinkPrompt,
+    GptOssPrompt,
+}
+impl From<PromptTemplateType> for ChatPrompt {
+    fn from(ty: PromptTemplateType) -> Self {
+        match ty {
+            PromptTemplateType::Llama2Chat => ChatPrompt::Llama2ChatPrompt(Llama2ChatPrompt),
+            PromptTemplateType::Llama3Chat => ChatPrompt::Llama3ChatPrompt(Llama3ChatPrompt),
+            PromptTemplateType::Llama3Tool => ChatPrompt::Llama3ToolPrompt(Llama3ToolPrompt),
+            PromptTemplateType::Llama4Chat => ChatPrompt::Llama4ChatPrompt(Llama4ChatPrompt),
+            PromptTemplateType::MistralInstruct => {
+                ChatPrompt::MistralInstructPrompt(MistralInstructPrompt)
+            }
+            PromptTemplateType::MistralTool => ChatPrompt::MistralToolPrompt(MistralToolPrompt),
+            PromptTemplateType::MistralLite => ChatPrompt::MistralLitePrompt(MistralLitePrompt),
+            PromptTemplateType::MistralSmallChat => {
+                ChatPrompt::MistralSmallChatPrompt(MistralSmallChatPrompt)
+            }
+            PromptTemplateType::MistralSmallTool => {
+                ChatPrompt::MistralSmallToolPrompt(MistralSmallToolPrompt)
+            }
+            PromptTemplateType::OpenChat => ChatPrompt::OpenChatPrompt(OpenChatPrompt),
+            PromptTemplateType::CodeLlama => {
+                ChatPrompt::CodeLlamaInstructPrompt(CodeLlamaInstructPrompt)
+            }
+            PromptTemplateType::CodeLlamaSuper => {
+                ChatPrompt::CodeLlamaSuperInstructPrompt(CodeLlamaSuperInstructPrompt)
+            }
+            PromptTemplateType::HumanAssistant => {
+                ChatPrompt::HumanAssistantChatPrompt(HumanAssistantChatPrompt)
+            }
+            PromptTemplateType::VicunaChat => ChatPrompt::VicunaChatPrompt(VicunaChatPrompt),
+            PromptTemplateType::Vicuna11Chat => ChatPrompt::Vicuna11ChatPrompt(Vicuna11ChatPrompt),
+            PromptTemplateType::VicunaLlava => ChatPrompt::VicunaLlavaPrompt(VicunaLlavaPrompt),
+            PromptTemplateType::ChatML => ChatPrompt::ChatMLPrompt(ChatMLPrompt),
+            PromptTemplateType::ChatMLTool => ChatPrompt::ChatMLToolPrompt(ChatMLToolPrompt),
+            PromptTemplateType::ChatMLThink => ChatPrompt::ChatMLThinkPrompt(ChatMLThinkPrompt),
+            PromptTemplateType::InternLM2Tool => {
+                ChatPrompt::InternLM2ToolPrompt(InternLM2ToolPrompt)
+            }
+            PromptTemplateType::Baichuan2 => ChatPrompt::Baichuan2ChatPrompt(Baichuan2ChatPrompt),
+            PromptTemplateType::WizardCoder => ChatPrompt::WizardCoderPrompt(WizardCoderPrompt),
+            PromptTemplateType::Zephyr => ChatPrompt::ZephyrChatPrompt(ZephyrChatPrompt),
+            PromptTemplateType::StableLMZephyr => {
+                ChatPrompt::StableLMZephyrChatPrompt(StableLMZephyrChatPrompt)
+            }
+            PromptTemplateType::IntelNeural => ChatPrompt::NeuralChatPrompt(NeuralChatPrompt),
+            PromptTemplateType::DeepseekChat => ChatPrompt::DeepseekChatPrompt(DeepseekChatPrompt),
+            PromptTemplateType::DeepseekCoder => {
+                ChatPrompt::DeepseekCoderPrompt(DeepseekCoderPrompt)
+            }
+            PromptTemplateType::DeepseekChat2 => {
+                ChatPrompt::DeepseekChat2Prompt(DeepseekChat2Prompt)
+            }
+            PromptTemplateType::DeepseekChat25 => {
+                ChatPrompt::DeepseekChat25Prompt(DeepseekChat25Prompt)
+            }
+            PromptTemplateType::DeepseekChat3 => {
+                ChatPrompt::DeepseekChat25Prompt(DeepseekChat25Prompt)
+            }
+            PromptTemplateType::SolarInstruct => {
+                ChatPrompt::SolarInstructPrompt(SolarInstructPrompt)
+            }
+            PromptTemplateType::Phi2Chat => ChatPrompt::Phi2ChatPrompt(Phi2ChatPrompt),
+            PromptTemplateType::Phi2Instruct => ChatPrompt::Phi2InstructPrompt(Phi2InstructPrompt),
+            PromptTemplateType::Phi3Chat => ChatPrompt::Phi3ChatPrompt(Phi3ChatPrompt),
+            PromptTemplateType::Phi3Instruct => ChatPrompt::Phi3InstructPrompt(Phi3InstructPrompt),
+            PromptTemplateType::Phi4Chat => ChatPrompt::Phi4ChatPrompt(Phi4ChatPrompt),
+            PromptTemplateType::GemmaInstruct => {
+                ChatPrompt::GemmaInstructPrompt(GemmaInstructPrompt)
+            }
+            PromptTemplateType::Gemma3 => ChatPrompt::Gemma3Prompt(Gemma3Prompt),
+            PromptTemplateType::Octopus => ChatPrompt::OctopusPrompt(OctopusPrompt),
+            PromptTemplateType::Glm4Chat => ChatPrompt::Glm4ChatPrompt(Glm4ChatPrompt),
+            PromptTemplateType::GroqLlama3Tool => {
+                ChatPrompt::GroqLlama3ToolPrompt(GroqLlama3ToolPrompt)
+            }
+            PromptTemplateType::BreezeInstruct => {
+                ChatPrompt::BreezeInstructPrompt(BreezeInstructPrompt)
+            }
+            PromptTemplateType::NemotronChat => ChatPrompt::NemotronChatPrompt(NemotronChatPrompt),
+            PromptTemplateType::NemotronTool => ChatPrompt::NemotronToolPrompt(NemotronToolPrompt),
+            PromptTemplateType::FunctionaryV32 => {
+                ChatPrompt::FunctionaryV32ToolPrompt(FunctionaryV32ToolPrompt)
+            }
+            PromptTemplateType::FunctionaryV31 => {
+                ChatPrompt::FunctionaryV31ToolPrompt(FunctionaryV31ToolPrompt)
+            }
+            PromptTemplateType::MiniCPMV => ChatPrompt::MiniCPMVPrompt(MiniCPMVPrompt),
+            PromptTemplateType::MoxinChat => ChatPrompt::MoxinChatPrompt(MoxinChatPrompt),
+            PromptTemplateType::MoxinInstruct => {
+                ChatPrompt::MoxinInstructPrompt(MoxinInstructPrompt)
+            }
+            PromptTemplateType::Falcon3 => ChatPrompt::FalconChatPrompt(FalconChatPrompt),
+            PromptTemplateType::Megrez => ChatPrompt::MegrezPrompt(MegrezPrompt),
+            PromptTemplateType::Qwen2vl => ChatPrompt::Qwen2vlPrompt(Qwen2vlPrompt),
+            PromptTemplateType::Qwen3NoThink => ChatPrompt::Qwen3NoThinkPrompt(Qwen3NoThinkPrompt),
+            PromptTemplateType::Qwen3Agent => ChatPrompt::Qwen3AgentPrompt(Qwen3AgentPrompt),
+            PromptTemplateType::ExaoneDeepChat => {
+                ChatPrompt::ExaoneDeepChatPrompt(ExaoneDeepChatPrompt)
+            }
+            PromptTemplateType::ExaoneChat => ChatPrompt::ExaoneChatPrompt(ExaoneChatPrompt),
+            PromptTemplateType::SeedInstruct => ChatPrompt::SeedInstructPrompt(SeedInstructPrompt),
+            PromptTemplateType::SeedReasoning => {
+                ChatPrompt::SeedReasoningPrompt(SeedReasoningPrompt)
+            }
+            PromptTemplateType::Smolvl => ChatPrompt::SmolvlPrompt(SmolvlPrompt),
+            PromptTemplateType::Smol3NoThink => ChatPrompt::Smol3NoThinkPrompt(Smol3NoThinkPrompt),
+            PromptTemplateType::GptOss => ChatPrompt::GptOssPrompt(GptOssPrompt),
+            PromptTemplateType::Embedding => {
+                panic!("Embedding prompt template is not used for building chat prompts")
+            }
+            PromptTemplateType::Tts => {
+                panic!("Tts prompt template is not used for building chat prompts")
+            }
+            PromptTemplateType::Null => {
+                panic!("Null prompt template is not used for building chat prompts")
+            }
         }
     }
 }
@@ -494,5 +687,19 @@ impl FromStr for MergeRagContextPolicy {
                 ))
             }
         })
+    }
+}
+
+/// Trait for building prompts for chat completions.
+#[enum_dispatch::enum_dispatch]
+pub trait BuildChatPrompt: Send {
+    fn build(&self, messages: &mut Vec<ChatCompletionRequestMessage>) -> Result<String>;
+
+    fn build_with_tools(
+        &self,
+        messages: &mut Vec<ChatCompletionRequestMessage>,
+        _tools: Option<&[Tool]>,
+    ) -> Result<String> {
+        self.build(messages)
     }
 }

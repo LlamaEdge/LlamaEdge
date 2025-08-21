@@ -1,5 +1,7 @@
-use super::BuildChatPrompt;
-use crate::error::{PromptError, Result};
+use crate::{
+    error::{PromptError, Result},
+    BuildChatPrompt,
+};
 use base64::{engine::general_purpose, Engine as _};
 use endpoints::chat::{
     ChatCompletionAssistantMessage, ChatCompletionRequestMessage, ChatCompletionSystemMessage,

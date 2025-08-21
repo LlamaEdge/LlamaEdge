@@ -1,7 +1,7 @@
-use super::BuildChatPrompt;
 use crate::{
     error::{PromptError, Result},
     utils::get_image_format,
+    BuildChatPrompt,
 };
 use endpoints::chat::{
     ChatCompletionAssistantMessage, ChatCompletionRequestMessage, ChatCompletionSystemMessage,
