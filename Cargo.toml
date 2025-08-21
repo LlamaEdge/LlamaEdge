@@ -13,7 +13,7 @@ resolver = "2"
 serde            = { version = "1.0", features = ["derive"] }
 serde_json       = "1.0"
 endpoints        = { path = "crates/endpoints", version = "^0.34" }
-chat-prompts     = { path = "crates/chat-prompts", version = "^0.33" }
+chat-prompts     = { path = "crates/chat-prompts", version = "^0.34" }
 thiserror        = "1"
 uuid             = { version = "1.4", features = ["v4", "fast-rng", "macro-diagnostics"] }
 clap             = { version = "4.4.6", features = ["cargo", "derive"] }
