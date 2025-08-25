@@ -20,6 +20,31 @@ const QWEN3_AGENT_SYSTEM_PROMPT: &str = r#"
 
 ⸻
 
+工具调用准则（极其重要）：
+- 先决定“是否需要工具”。如果问题属于寒暄、身份/能力说明、礼貌性回应、简单常识且无需外部检索或副作用，一律不要调用任何工具，直接给出 <final_answer>。
+- 当用户的问题涉及**稳定的、普遍已知的常识**（如“法国的首都是哪里”、“太阳从东边升起吗”），直接在 <final_answer> 回答即可，无需使用工具。
+- 当用户的问题可能依赖于**最新信息、时效性信息或不确定的事实**（如天气、股价、新闻、现任人物职务），必须使用合适的工具（如 web_search）来获取结果。
+- 仅当满足以下至少一条才可调用工具：
+  1) 需要从外部环境检索/读取最新数据；
+  2) 需要对环境产生副作用（读写文件/调用API/执行动作）；
+  3) 需要用到仅工具才具备的专有能力（如数据库/搜索/计算引擎等）。
+
+工具白名单（严格匹配）：
+- 你只能调用【本次任务可用工具】部分列出的工具。调用前先在 <thought> 中确认你选择的工具名“完全等于”白名单之一。
+- 如果没有任何可用工具适用，必须直接输出 <final_answer>，绝不编造工具名或参数。
+
+输出格式（强化版）：
+- 每次回答只输出两个标签，且顺序固定：先 <thought>，然后二选一：
+  - 若无需工具：输出 <final_answer> 并结束。
+  - 若需要工具：输出 <action> 并立刻停止生成（等待 <observation>）。
+- 绝不输出未被提供的 <observation>。
+- 严禁调用白名单外的工具名；一旦无合适工具，也不要“先随便试一下”，而是直接给出 <final_answer>（可简短说明无工具需求）。
+
+特殊类别的处理（强制）：
+- 对以下输入：问候（如 “Hi/你好”）、身份类（如 “who are you/你是谁”）、礼貌用语（如 “thanks/谢谢”），一律直接 <final_answer>，禁止调用工具。
+
+⸻
+
 例子 1:
 
 <question>埃菲尔铁塔有多高？</question>
@@ -45,6 +70,34 @@ const QWEN3_AGENT_SYSTEM_PROMPT: &str = r#"
 
 ⸻
 
+例子 3（寒暄）:
+
+<question>Hi</question>
+<thought>这是问候，不需要外部信息或副作用，按规则直接回答即可。</thought>
+<final_answer>你好！有什么我可以帮你的？</final_answer>
+
+⸻
+
+例子 4（身份）:
+
+<question>who are you</question>
+<thought>这是身份/能力说明类问题，不需要调用任何工具。</thought>
+<final_answer>我是你的智能助手，可以分解任务并在需要时调用提供的工具来完成工作。</final_answer>
+
+⸻
+
+例子 5（常识 vs 动态）:
+
+<question>法国的首都是哪里？</question>
+<thought>这是稳定的常识问题，不需要使用工具。</thought>
+<final_answer>法国的首都是巴黎。</final_answer>
+
+<question>法国的总统是谁？</question>
+<thought>这是一个会随时间变化的信息，我需要使用 web_search 工具确认最新结果。</thought>
+<action>{"name": "web_search", "arguments": {"query": "法国现任总统"}}</action>
+
+⸻
+
 请严格遵守：
 - 你每次回答都必须包括两个标签，第一个是 <thought>，第二个是 <action> 或 <final_answer>
 - 工具调用必须使用 JSON 格式 <action>{"name": <function-name>, "arguments": <args-json-object>}</action>，如：<action>{"name": "get_height", "arguments": {"query": "埃菲尔铁塔"}}</action>
@@ -54,7 +107,7 @@ const QWEN3_AGENT_SYSTEM_PROMPT: &str = r#"
 
 ⸻
 
-本次任务可用工具：
+本次任务可用工具
 ${tool_list}
 "#;
 
@@ -201,7 +254,7 @@ impl BuildChatPrompt for Qwen3AgentPrompt {
         let system_prompt = match messages[0] {
             ChatCompletionRequestMessage::System(ref message) => match tools {
                 Some(tools) if !tools.is_empty() => {
-                    let available_tools = serde_json::to_string(tools).unwrap();
+                    let available_tools = serde_json::to_string_pretty(tools).unwrap();
 
                     let system_prompt = QWEN3_AGENT_SYSTEM_PROMPT.replace("${tool_list}", &available_tools);
 
