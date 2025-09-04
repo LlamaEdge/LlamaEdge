@@ -21,11 +21,9 @@ serde_json.workspace = true
 
 [features]
 default = []
-full    = ["rag", "whisper", "logging", "index"]
-rag     = []
+full    = ["whisper", "logging"]
 whisper = []
 logging = ["log"]
-index   = []
 
 [package.metadata.docs.rs]
 all-features = true
