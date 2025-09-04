@@ -16,12 +16,6 @@ pub mod graph;
 pub mod images;
 pub mod metadata;
 pub mod models;
-#[cfg(feature = "rag")]
-#[cfg_attr(docsrs, doc(cfg(feature = "rag")))]
-pub mod rag;
-#[cfg(feature = "search")]
-#[cfg_attr(docsrs, doc(cfg(feature = "search")))]
-pub mod search;
 pub mod tts;
 pub mod utils;
 
@@ -173,87 +167,6 @@ pub fn init_ggml_embeddings_context(
 
                 LlamaCoreError::InitContext(err_msg.into())
             })?;
-        }
-    }
-
-    Ok(())
-}
-
-/// Initialize the ggml context for RAG scenarios.
-#[cfg(feature = "rag")]
-pub fn init_ggml_rag_context(
-    metadata_for_chats: &[GgmlMetadata],
-    metadata_for_embeddings: &[GgmlMetadata],
-) -> Result<(), LlamaCoreError> {
-    #[cfg(feature = "logging")]
-    info!(target: "stdout", "Initializing the core context for RAG scenarios");
-
-    // chat models
-    if metadata_for_chats.is_empty() {
-        let err_msg = "The metadata for chat models is empty";
-
-        #[cfg(feature = "logging")]
-        error!(target: "stdout", "{err_msg}");
-
-        return Err(LlamaCoreError::InitContext(err_msg.into()));
-    }
-    let mut chat_graphs = HashMap::new();
-    for metadata in metadata_for_chats {
-        let graph = Graph::new(metadata.clone())?;
-
-        chat_graphs.insert(graph.name().to_string(), graph);
-    }
-    CHAT_GRAPHS.set(Mutex::new(chat_graphs)).map_err(|_| {
-        let err_msg = "Failed to initialize the core context. Reason: The `CHAT_GRAPHS` has already been initialized";
-
-        #[cfg(feature = "logging")]
-        error!(target: "stdout", "{err_msg}");
-
-        LlamaCoreError::InitContext(err_msg.into())
-    })?;
-
-    // embedding models
-    if metadata_for_embeddings.is_empty() {
-        let err_msg = "The metadata for embeddings is empty";
-
-        #[cfg(feature = "logging")]
-        error!(target: "stdout", "{err_msg}");
-
-        return Err(LlamaCoreError::InitContext(err_msg.into()));
-    }
-    let mut embedding_graphs = HashMap::new();
-    for metadata in metadata_for_embeddings {
-        let graph = Graph::new(metadata.clone())?;
-
-        embedding_graphs.insert(graph.name().to_string(), graph);
-    }
-    EMBEDDING_GRAPHS
-        .set(Mutex::new(embedding_graphs))
-        .map_err(|_| {
-            let err_msg = "Failed to initialize the core context. Reason: The `EMBEDDING_GRAPHS` has already been initialized";
-
-            #[cfg(feature = "logging")]
-            error!(target: "stdout", "{err_msg}");
-
-            LlamaCoreError::InitContext(err_msg.into())
-        })?;
-
-    // set running mode
-    let running_mode = RunningMode::RAG;
-    match RUNNING_MODE.get() {
-        Some(mode) => {
-            let mut mode = mode.write().unwrap();
-            *mode |= running_mode;
-        }
-        None => {
-            RUNNING_MODE.set(RwLock::new(running_mode)).map_err(|_| {
-                    let err_msg = "Failed to initialize the rag context. Reason: The `RUNNING_MODE` has already been initialized";
-
-                    #[cfg(feature = "logging")]
-                    error!(target: "stdout", "{err_msg}");
-
-                    LlamaCoreError::InitContext(err_msg.into())
-                })?;
         }
     }
 
