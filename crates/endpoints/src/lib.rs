@@ -14,6 +14,3 @@ pub mod embeddings;
 pub mod files;
 pub mod images;
 pub mod models;
-#[cfg(any(feature = "rag", feature = "index"))]
-#[cfg_attr(docsrs, doc(cfg(any(feature = "rag", feature = "index"))))]
-pub mod rag;
