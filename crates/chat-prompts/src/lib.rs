@@ -134,6 +134,10 @@ pub enum PromptTemplateType {
     SeedInstruct,
     #[value(name = "seed-reasoning")]
     SeedReasoning,
+    #[value(name = "seed-oss-think")]
+    SeedOssThink,
+    #[value(name = "seed-oss-no-think")]
+    SeedOssNoThink,
     #[value(name = "smol-vision")]
     Smolvl,
     #[value(name = "smol3-no-think")]
@@ -191,6 +195,8 @@ impl PromptTemplateType {
             | PromptTemplateType::ChatMLThink
             | PromptTemplateType::Llama4Chat
             | PromptTemplateType::SeedInstruct
+            | PromptTemplateType::SeedOssThink
+            | PromptTemplateType::SeedOssNoThink
             | PromptTemplateType::Smol3NoThink
             | PromptTemplateType::GptOss => true,
             PromptTemplateType::MistralInstruct
@@ -294,6 +300,8 @@ impl FromStr for PromptTemplateType {
             "exaone-chat" => Ok(PromptTemplateType::ExaoneChat),
             "seed-instruct" => Ok(PromptTemplateType::SeedInstruct),
             "seed-reasoning" => Ok(PromptTemplateType::SeedReasoning),
+            "seed-oss-think" => Ok(PromptTemplateType::SeedOssThink),
+            "seed-oss-no-think" => Ok(PromptTemplateType::SeedOssNoThink),
             "smol-vision" => Ok(PromptTemplateType::Smolvl),
             "smol3-no-think" => Ok(PromptTemplateType::Smol3NoThink),
             "gpt-oss" => Ok(PromptTemplateType::GptOss),
@@ -367,6 +375,8 @@ impl std::fmt::Display for PromptTemplateType {
             PromptTemplateType::ExaoneChat => write!(f, "exaone-chat"),
             PromptTemplateType::SeedInstruct => write!(f, "seed-instruct"),
             PromptTemplateType::SeedReasoning => write!(f, "seed-reasoning"),
+            PromptTemplateType::SeedOssThink => write!(f, "seed-oss-think"),
+            PromptTemplateType::SeedOssNoThink => write!(f, "seed-oss-no-think"),
             PromptTemplateType::Smolvl => write!(f, "smol-vision"),
             PromptTemplateType::Smol3NoThink => write!(f, "smol3-no-think"),
             PromptTemplateType::GptOss => write!(f, "gpt-oss"),
@@ -438,6 +448,8 @@ pub enum ChatPrompt {
     ExaoneChatPrompt,
     SeedInstructPrompt,
     SeedReasoningPrompt,
+    SeedOssThinkPrompt,
+    SeedOssNoThinkPrompt,
     SmolvlPrompt,
     Smol3NoThinkPrompt,
     GptOssPrompt,
@@ -547,6 +559,10 @@ impl From<PromptTemplateType> for ChatPrompt {
             }
             PromptTemplateType::Smolvl => ChatPrompt::SmolvlPrompt(SmolvlPrompt),
             PromptTemplateType::Smol3NoThink => ChatPrompt::Smol3NoThinkPrompt(Smol3NoThinkPrompt),
+            PromptTemplateType::SeedOssThink => ChatPrompt::SeedOssThinkPrompt(SeedOssThinkPrompt),
+            PromptTemplateType::SeedOssNoThink => {
+                ChatPrompt::SeedOssNoThinkPrompt(SeedOssNoThinkPrompt)
+            }
             PromptTemplateType::GptOss => ChatPrompt::GptOssPrompt(GptOssPrompt),
             PromptTemplateType::Embedding => {
                 panic!("Embedding prompt template is not used for building chat prompts")
