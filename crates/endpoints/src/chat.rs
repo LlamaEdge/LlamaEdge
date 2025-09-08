@@ -913,10 +913,11 @@ pub struct StreamOptions {
 }
 
 /// Controls which (if any) function is called by the model. Defaults to `None`.
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub enum ToolChoice {
     /// The model will not call a function and instead generates a message.
     #[serde(rename = "none")]
+    #[default]
     None,
     /// The model can pick between generating a message or calling a function.
     #[serde(rename = "auto")]
@@ -927,11 +928,6 @@ pub enum ToolChoice {
     /// Specifies a tool the model should use. Use to force the model to call a specific function.
     #[serde(untagged)]
     Tool(ToolChoiceTool),
-}
-impl Default for ToolChoice {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 #[test]
