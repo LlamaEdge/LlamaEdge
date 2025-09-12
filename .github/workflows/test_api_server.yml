@@ -37,6 +37,7 @@ jobs:
       matrix:
         wasmedge_version: [0.14.1, 0.15.0]
         ggml_version: [b6399]
+
     steps:
       - name: Clone project
         id: checkout
@@ -54,9 +55,16 @@ jobs:
         with:
           target: wasm32-wasip1
 
-      - name: Install WasmEdge
+      - name: Install WasmEdge 0.14.1
+        if: matrix.wasmedge_version == '0.14.1'
         run: |
           curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v ${{ matrix.wasmedge_version }} --ggmlbn=${{ matrix.ggml_version }}
+          ls -al $HOME/.wasmedge/bin
+
+      - name: Install WasmEdge 0.15.0
+        if: matrix.wasmedge_version == '0.15.0'
+        run: |
+          curl -sSf https://github.com/WasmEdge/WasmEdge/raw/156d64f13117a99bdc89d251bcc4605a6898fc35/utils/install_v2.sh | bash -s -- -v ${{ matrix.wasmedge_version }} --ggmlbn=${{ matrix.ggml_version }}
           ls -al $HOME/.wasmedge/bin
 
       - name: Install Hurl
@@ -151,9 +159,16 @@ jobs:
           tar -xzvf wasi-sdk-24.0-arm64-macos.tar.gz
           mv wasi-sdk-24.0-arm64-macos wasi-sdk-24.0
 
-      - name: Install WasmEdge
+      - name: Install WasmEdge 0.14.1
+        if: matrix.wasmedge_version == '0.14.1'
         run: |
           curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v ${{ matrix.wasmedge_version }} --ggmlbn=${{ matrix.ggml_version }}
+          ls -al $HOME/.wasmedge/bin
+
+      - name: Install WasmEdge 0.15.0
+        if: matrix.wasmedge_version == '0.15.0'
+        run: |
+          curl -sSf https://github.com/WasmEdge/WasmEdge/raw/156d64f13117a99bdc89d251bcc4605a6898fc35/utils/install_v2.sh | bash -s -- -v ${{ matrix.wasmedge_version }} --ggmlbn=${{ matrix.ggml_version }}
           ls -al $HOME/.wasmedge/bin
 
       - name: Install Hurl
@@ -249,9 +264,16 @@ jobs:
           tar -xzvf wasi-sdk-24.0-arm64-macos.tar.gz
           mv wasi-sdk-24.0-arm64-macos wasi-sdk-24.0
 
-      - name: Install WasmEdge
+      - name: Install WasmEdge 0.14.1
+        if: matrix.wasmedge_version == '0.14.1'
         run: |
           curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v ${{ matrix.wasmedge_version }} --ggmlbn=${{ matrix.ggml_version }}
+          ls -al $HOME/.wasmedge/bin
+
+      - name: Install WasmEdge 0.15.0
+        if: matrix.wasmedge_version == '0.15.0'
+        run: |
+          curl -sSf https://github.com/WasmEdge/WasmEdge/raw/156d64f13117a99bdc89d251bcc4605a6898fc35/utils/install_v2.sh | bash -s -- -v ${{ matrix.wasmedge_version }} --ggmlbn=${{ matrix.ggml_version }}
           ls -al $HOME/.wasmedge/bin
 
       - name: Install Hurl
