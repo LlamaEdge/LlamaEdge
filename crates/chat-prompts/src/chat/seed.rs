@@ -390,7 +390,7 @@ impl BuildChatPrompt for SeedOssThinkPrompt {
         let system_message = match &messages[0] {
             ChatCompletionRequestMessage::System(message) => match tools {
                 Some(tools) if !tools.is_empty() => {
-                    let available_tools = serde_json::to_string(tools).unwrap();
+                    let available_tools = serde_json::to_string_pretty(tools).unwrap();
 
                     let content = message.content();
                     match content.is_empty() {
@@ -583,7 +583,7 @@ impl BuildChatPrompt for SeedOssNoThinkPrompt {
         let system_message = match &messages[0] {
             ChatCompletionRequestMessage::System(message) => match tools {
                 Some(tools) if !tools.is_empty() => {
-                    let available_tools = serde_json::to_string(tools).unwrap();
+                    let available_tools = serde_json::to_string_pretty(tools).unwrap();
 
                     let content = message.content();
                     match content.is_empty() {
