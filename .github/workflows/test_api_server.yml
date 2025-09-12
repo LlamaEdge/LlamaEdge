@@ -64,7 +64,7 @@ jobs:
       - name: Install WasmEdge 0.15.0
         if: matrix.wasmedge_version == '0.15.0'
         run: |
-          curl -sSf https://github.com/WasmEdge/WasmEdge/raw/156d64f13117a99bdc89d251bcc4605a6898fc35/utils/install_v2.sh | bash -s -- -v ${{ matrix.wasmedge_version }} --ggmlbn=${{ matrix.ggml_version }}
+          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/156d64f13117a99bdc89d251bcc4605a6898fc35/utils/install_v2.sh | bash -s -- -v ${{ matrix.wasmedge_version }} --ggmlbn=${{ matrix.ggml_version }}
           ls -al $HOME/.wasmedge/bin
 
       - name: Install Hurl
@@ -168,7 +168,7 @@ jobs:
       - name: Install WasmEdge 0.15.0
         if: matrix.wasmedge_version == '0.15.0'
         run: |
-          curl -sSf https://github.com/WasmEdge/WasmEdge/raw/156d64f13117a99bdc89d251bcc4605a6898fc35/utils/install_v2.sh | bash -s -- -v ${{ matrix.wasmedge_version }} --ggmlbn=${{ matrix.ggml_version }}
+          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/156d64f13117a99bdc89d251bcc4605a6898fc35/utils/install_v2.sh | bash -s -- -v ${{ matrix.wasmedge_version }} --ggmlbn=${{ matrix.ggml_version }}
           ls -al $HOME/.wasmedge/bin
 
       - name: Install Hurl
@@ -273,7 +273,7 @@ jobs:
       - name: Install WasmEdge 0.15.0
         if: matrix.wasmedge_version == '0.15.0'
         run: |
-          curl -sSf https://github.com/WasmEdge/WasmEdge/raw/156d64f13117a99bdc89d251bcc4605a6898fc35/utils/install_v2.sh | bash -s -- -v ${{ matrix.wasmedge_version }} --ggmlbn=${{ matrix.ggml_version }}
+          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/156d64f13117a99bdc89d251bcc4605a6898fc35/utils/install_v2.sh | bash -s -- -v ${{ matrix.wasmedge_version }} --ggmlbn=${{ matrix.ggml_version }}
           ls -al $HOME/.wasmedge/bin
 
       - name: Install Hurl
