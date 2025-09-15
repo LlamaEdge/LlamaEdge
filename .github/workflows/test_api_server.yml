@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        wasmedge_version: [0.14.1]
+        wasmedge_version: [0.14.1, 0.15.0]
         ggml_version: [b6399]
 
     steps:
@@ -55,8 +55,7 @@ jobs:
         with:
           target: wasm32-wasip1
 
-      - name: Install WasmEdge 0.14.1
-        if: matrix.wasmedge_version == '0.14.1'
+      - name: Install WasmEdge
         run: |
           curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v ${{ matrix.wasmedge_version }} --ggmlbn=${{ matrix.ggml_version }}
           ls -al $HOME/.wasmedge/bin
@@ -153,8 +152,7 @@ jobs:
           tar -xzvf wasi-sdk-24.0-arm64-macos.tar.gz
           mv wasi-sdk-24.0-arm64-macos wasi-sdk-24.0
 
-      - name: Install WasmEdge 0.14.1
-        if: matrix.wasmedge_version == '0.14.1'
+      - name: Install WasmEdge
         run: |
           curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v ${{ matrix.wasmedge_version }} --ggmlbn=${{ matrix.ggml_version }}
           ls -al $HOME/.wasmedge/bin
@@ -225,7 +223,7 @@ jobs:
     needs: test-api-server-macos-14
     strategy:
       matrix:
-        wasmedge_version: [0.14.1]
+        wasmedge_version: [0.14.1, 0.15.0]
         ggml_version: [b6399]
         arch: [x86_64, arm64]
 
@@ -252,8 +250,7 @@ jobs:
           tar -xzvf wasi-sdk-24.0-arm64-macos.tar.gz
           mv wasi-sdk-24.0-arm64-macos wasi-sdk-24.0
 
-      - name: Install WasmEdge 0.14.1
-        if: matrix.wasmedge_version == '0.14.1'
+      - name: Install WasmEdge
         run: |
           curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v ${{ matrix.wasmedge_version }} --ggmlbn=${{ matrix.ggml_version }}
           ls -al $HOME/.wasmedge/bin
