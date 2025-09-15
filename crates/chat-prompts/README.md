@@ -762,6 +762,58 @@ The available prompt templates are listed below:
 
   - Example: [second-state/Seed-Coder-8B-Instruct-GGUF](https://huggingface.co/second-state/Seed-Coder-8B-Instruct-GGUF)
 
+- `seed-oss-think` and `seed-oss-no-think`
+  - Prompt string (`seed-oss-think`)
+
+    ```text
+    <seed:bos>system
+    You are Doubao, a helpful AI assistant.
+    <seed:eos>
+
+    <seed:bos>user
+    {user_message_1}
+    <seed:eos>
+
+    <seed:bos>assistant
+    <seed:think>{thinking_content}</seed:think>
+    {assistant_message_1}
+    <seed:eos>
+
+    <seed:bos>user
+    {user_message_2}
+    <seed:eos>
+
+    <seed:bos>assistant
+    ```
+
+  - Prompt string (`seed-oss-no-think`)
+
+    ```text
+    <seed:bos>system
+    You are Doubao, a helpful AI assistant.
+    <seed:eos>
+
+    <seed:bos>system
+    You are an intelligent assistant that can answer questions in one step without the need for reasoning and thinking, that is, your     thinking budget is 0. Next, please skip       the thinking process and directly start answering the user's questions.
+    <seed:eos>
+
+    <seed:bos>user
+    {user_message_1}
+    <seed:eos>
+
+    <seed:bos>assistant
+    {assistant_message_1}
+    <seed:eos>
+
+    <seed:bos>user
+    {user_message_2}
+    <seed:eos>
+
+    <seed:bos>assistant
+    ```
+
+  - Example: [second-state/Seed-OSS-36B-Instruct-GGUF](https://huggingface.co/second-state/Seed-OSS-36B-Instruct-GGUF)
+
 - `seed-reasoning`
   - Prompt string
 
