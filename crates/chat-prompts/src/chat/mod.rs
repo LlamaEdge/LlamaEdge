@@ -51,7 +51,7 @@ pub use openai::GptOssPrompt;
 pub use openchat::*;
 pub use phi::*;
 pub use qwen::{Qwen2vlPrompt, Qwen3NoThinkPrompt};
-pub use seed::{SeedInstructPrompt, SeedReasoningPrompt};
+pub use seed::{SeedInstructPrompt, SeedOssNoThinkPrompt, SeedOssThinkPrompt, SeedReasoningPrompt};
 pub use smol::{Smol3NoThinkPrompt, SmolvlPrompt};
 pub use solar::*;
 pub use vicuna::*;

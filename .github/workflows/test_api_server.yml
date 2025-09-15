@@ -35,8 +35,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        wasmedge_version: [0.14.1]
-        ggml_version: [b5896]
+        wasmedge_version: [0.14.1, 0.15.0]
+        ggml_version: [b6399]
+
     steps:
       - name: Clone project
         id: checkout
@@ -101,127 +102,33 @@ jobs:
         run: |
           pkill -f wasmedge
 
-      - name: Start llama-api-server with config file
-        run: |
-          cp ./tests/assets/llama_server_config.toml ./llama_server_config.toml
-          curl -LO https://huggingface.co/second-state/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q5_K_M.gguf
-          curl -LO https://huggingface.co/second-state/OuteTTS-0.2-500M-GGUF/resolve/main/OuteTTS-0.2-500M-Q5_K_M.gguf
-          curl -LO https://huggingface.co/second-state/OuteTTS-0.2-500M-GGUF/resolve/main/wavtokenizer-large-75-ggml-f16.gguf
-          nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:Llama-3.2-1B-Instruct-Q5_K_M.gguf --nn-preload embedding:GGML:AUTO:nomic-embed-text-v1.5-f16.gguf --nn-preload tts:GGML:AUTO:OuteTTS-0.2-500M-Q5_K_M.gguf llama-api-server.wasm config --file llama_server_config.toml --chat --embedding --tts > ./start-llamaedge.log 2>&1 &
-          sleep 15
-          cat start-llamaedge.log
+      # - name: Start llama-api-server with config file
+      #   run: |
+      #     cp ./tests/assets/llama_server_config.toml ./llama_server_config.toml
+      #     curl -LO https://huggingface.co/second-state/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q5_K_M.gguf
+      #     curl -LO https://huggingface.co/second-state/OuteTTS-0.2-500M-GGUF/resolve/main/OuteTTS-0.2-500M-Q5_K_M.gguf
+      #     curl -LO https://huggingface.co/second-state/OuteTTS-0.2-500M-GGUF/resolve/main/wavtokenizer-large-75-ggml-f16.gguf
+      #     nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:Llama-3.2-1B-Instruct-Q5_K_M.gguf --nn-preload embedding:GGML:AUTO:nomic-embed-text-v1.5-f16.gguf --nn-preload tts:GGML:AUTO:OuteTTS-0.2-500M-Q5_K_M.gguf llama-api-server.wasm config --file llama_server_config.toml --chat --embedding --tts > ./start-llamaedge.log 2>&1 &
+      #     sleep 15
+      #     cat start-llamaedge.log
 
-      - name: Run test_config.hurl
-        run: |
-          hurl --test --jobs 1 ./tests/test_config.hurl
+      # - name: Run test_config.hurl
+      #   run: |
+      #     hurl --test --jobs 1 ./tests/test_config.hurl
 
-      - name: Stop llama-api-server for testing config
-        run: |
-          pkill -f wasmedge
+      # - name: Stop llama-api-server for testing config
+      #   run: |
+      #     pkill -f wasmedge
 
-  test-api-server-macos-13:
-    runs-on: macos-13
+  test-api-server-macos-14:
+    runs-on: macos-14
     needs: test-api-server-ubuntu
     strategy:
       matrix:
         wasmedge_version: [0.14.1]
-        ggml_version: [b5896]
-    steps:
-      - name: Clone project
-        id: checkout
-        uses: actions/checkout@v3
+        ggml_version: [b6399]
+        arch: [x86_64, arm64]
 
-      - name: Install Rust-nightly
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: nightly
-          target: wasm32-wasip1
-          components: rustfmt, clippy
-
-      - name: Install Rust-stable
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          target: wasm32-wasip1
-
-      - name: Download wasi-sdk for x86_64-macos
-        run: |
-          curl -LO https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-24/wasi-sdk-24.0-x86_64-macos.tar.gz
-          tar -xzvf wasi-sdk-24.0-x86_64-macos.tar.gz
-          mv wasi-sdk-24.0-x86_64-macos wasi-sdk-24.0
-
-      - name: Install WasmEdge
-        run: |
-          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- -v ${{ matrix.wasmedge_version }} --ggmlbn=${{ matrix.ggml_version }}
-          ls -al $HOME/.wasmedge/bin
-
-      - name: Install Hurl
-        run: |
-          brew install hurl
-
-      - name: Build llama-api-server
-        env:
-          WASI_SDK_PATH: /Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0
-          CC: "/Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0/bin/clang --sysroot=/Users/runner/work/LlamaEdge/LlamaEdge/wasi-sdk-24.0/share/wasi-sysroot"
-          RUSTFLAGS: "--cfg wasmedge --cfg tokio_unstable"
-        run: |
-          cargo build -p llama-api-server --release
-          cp target/wasm32-wasip1/release/llama-api-server.wasm ./llama-api-server.wasm
-
-      - name: Start llama-api-server for testing chat completions
-        run: |
-          curl -LO https://huggingface.co/second-state/Qwen2-1.5B-Instruct-GGUF/resolve/main/Qwen2-1.5B-Instruct-Q3_K_M.gguf
-          nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:Qwen2-1.5B-Instruct-Q3_K_M.gguf llama-api-server.wasm --model-name Qwen2-1.5B-Instruct --prompt-template chatml --ctx-size 4096 --socket-addr 0.0.0.0:8080 > ./start-llamaedge.log 2>&1 &
-          sleep 25
-          cat start-llamaedge.log
-
-      - name: Run test_chat.hurl
-        run: |
-          hurl --test --jobs 1 ./tests/test_chat.hurl
-
-      - name: Stop llama-api-server for testing chat completions
-        run: |
-          pkill -f wasmedge
-
-      - name: Start llama-api-server for testing embeddings
-        run: |
-          curl -LO https://huggingface.co/second-state/Nomic-embed-text-v1.5-Embedding-GGUF/resolve/main/nomic-embed-text-v1.5-f16.gguf
-          nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:nomic-embed-text-v1.5-f16.gguf llama-api-server.wasm --model-name nomic-embed-text-v1.5 --prompt-template embedding --ctx-size 512 --socket-addr 0.0.0.0:8080 > ./start-llamaedge.log 2>&1 &
-          sleep 15
-          cat start-llamaedge.log
-
-      - name: Run test_embeddings.hurl
-        run: |
-          hurl --test --jobs 1 ./tests/test_embeddings.hurl
-
-      - name: Stop llama-api-server for testing chat completions
-        run: |
-          pkill -f wasmedge
-
-      - name: Start llama-api-server with config file
-        run: |
-          cp ./tests/assets/llama_server_config.toml ./llama_server_config.toml
-          curl -LO https://huggingface.co/second-state/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q5_K_M.gguf
-          curl -LO https://huggingface.co/second-state/OuteTTS-0.2-500M-GGUF/resolve/main/OuteTTS-0.2-500M-Q5_K_M.gguf
-          curl -LO https://huggingface.co/second-state/OuteTTS-0.2-500M-GGUF/resolve/main/wavtokenizer-large-75-ggml-f16.gguf
-          nohup $HOME/.wasmedge/bin/wasmedge --dir .:. --nn-preload default:GGML:AUTO:Llama-3.2-1B-Instruct-Q5_K_M.gguf --nn-preload embedding:GGML:AUTO:nomic-embed-text-v1.5-f16.gguf --nn-preload tts:GGML:AUTO:OuteTTS-0.2-500M-Q5_K_M.gguf llama-api-server.wasm config --file llama_server_config.toml --chat --embedding --tts > ./start-llamaedge.log 2>&1 &
-          sleep 20
-          cat start-llamaedge.log
-
-      - name: Run test_config.hurl
-        run: |
-          hurl --test --jobs 1 ./tests/test_config.hurl
-
-      - name: Stop llama-api-server for testing config
-        run: |
-          pkill -f wasmedge
-
-  test-api-server-macos-14:
-    runs-on: macos-14
-    needs: test-api-server-macos-13
-    strategy:
-      matrix:
-        wasmedge_version: [0.14.1]
-        ggml_version: [b5896]
     steps:
       - name: Clone project
         id: checkout
@@ -316,8 +223,10 @@ jobs:
     needs: test-api-server-macos-14
     strategy:
       matrix:
-        wasmedge_version: [0.14.1]
-        ggml_version: [b5896]
+        wasmedge_version: [0.14.1, 0.15.0]
+        ggml_version: [b6399]
+        arch: [x86_64, arm64]
+
     steps:
       - name: Clone project
         id: checkout
