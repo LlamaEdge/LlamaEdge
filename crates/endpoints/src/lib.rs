@@ -16,3 +16,4 @@ pub mod images;
 #[cfg(feature = "keyword_search")]
 pub mod keyword_search;
 pub mod models;
+pub mod responses;
