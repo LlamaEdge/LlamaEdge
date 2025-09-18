@@ -1,6 +1,6 @@
+use crate::chat::JsonObject;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::chat::{JsonObject};
 
 /// Represents a response object from the API
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -57,7 +57,6 @@ pub struct ResponseObject {
     pub top_p: f64,
     /// Represents token usage details including input tokens, output tokens, a breakdown of output tokens, and the total tokens used.
     pub usage: Usage,
-
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -139,7 +138,7 @@ pub enum InstructionInputContentItem {
         #[serde(rename = "type")]
         ty: String,
         input_audio: InstructionInputAudio,
-    }
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -229,9 +228,7 @@ pub enum ContentItem {
     },
     /// Refusal content type (when model refuses to answer)
     #[serde(rename = "refusal")]
-    Refusal {
-        refusal: String,
-    },
+    Refusal { refusal: String },
 }
 
 /// Represents annotation information for text content
@@ -471,7 +468,8 @@ mod tests {
         };
 
         let json = serde_json::to_string(&annotation).expect("Failed to serialize");
-        let expected_json = r#"{"type":"file_citation","file_id":"file_123","filename":"example.txt","index":0}"#;
+        let expected_json =
+            r#"{"type":"file_citation","file_id":"file_123","filename":"example.txt","index":0}"#;
         assert_eq!(json, expected_json);
 
         let deserialized: Annotation = serde_json::from_str(&json).expect("Failed to deserialize");
@@ -581,7 +579,8 @@ mod tests {
 
         for annotation in annotations {
             let json = serde_json::to_string(&annotation).expect("Failed to serialize");
-            let deserialized: Annotation = serde_json::from_str(&json).expect("Failed to deserialize");
+            let deserialized: Annotation =
+                serde_json::from_str(&json).expect("Failed to deserialize");
             assert_eq!(deserialized, annotation);
         }
     }
@@ -590,13 +589,11 @@ mod tests {
     fn test_content_item_text_serialization() {
         let content_item = ContentItem::Text {
             text: "This is a sample text output".to_string(),
-            annotations: vec![
-                Annotation::FileCitation {
-                    id: "file_123".to_string(),
-                    filename: "example.txt".to_string(),
-                    index: 0,
-                },
-            ],
+            annotations: vec![Annotation::FileCitation {
+                id: "file_123".to_string(),
+                filename: "example.txt".to_string(),
+                index: 0,
+            }],
         };
 
         let json = serde_json::to_string(&content_item).expect("Failed to serialize");
@@ -615,7 +612,8 @@ mod tests {
         };
 
         let json = serde_json::to_string(&content_item).expect("Failed to serialize");
-        let expected_json = r#"{"type":"output_text","text":"Text without annotations","annotations":[]}"#;
+        let expected_json =
+            r#"{"type":"output_text","text":"Text without annotations","annotations":[]}"#;
         assert_eq!(json, expected_json);
 
         let deserialized: ContentItem = serde_json::from_str(&json).expect("Failed to deserialize");
@@ -629,7 +627,8 @@ mod tests {
         };
 
         let json = serde_json::to_string(&content_item).expect("Failed to serialize");
-        let expected_json = r#"{"type":"refusal","refusal":"I cannot provide information about that topic."}"#;
+        let expected_json =
+            r#"{"type":"refusal","refusal":"I cannot provide information about that topic."}"#;
         assert_eq!(json, expected_json);
 
         let deserialized: ContentItem = serde_json::from_str(&json).expect("Failed to deserialize");
@@ -681,13 +680,11 @@ mod tests {
             },
             ContentItem::Text {
                 text: "Text with annotation".to_string(),
-                annotations: vec![
-                    Annotation::FileCitation {
-                        id: "file_123".to_string(),
-                        filename: "test.txt".to_string(),
-                        index: 0,
-                    },
-                ],
+                annotations: vec![Annotation::FileCitation {
+                    id: "file_123".to_string(),
+                    filename: "test.txt".to_string(),
+                    index: 0,
+                }],
             },
             ContentItem::Refusal {
                 refusal: "Access denied".to_string(),
@@ -699,7 +696,8 @@ mod tests {
 
         for content_item in content_items {
             let json = serde_json::to_string(&content_item).expect("Failed to serialize");
-            let deserialized: ContentItem = serde_json::from_str(&json).expect("Failed to deserialize");
+            let deserialized: ContentItem =
+                serde_json::from_str(&json).expect("Failed to deserialize");
             assert_eq!(deserialized, content_item);
         }
     }
@@ -764,13 +762,11 @@ mod tests {
     fn test_tool_choice_allowed_tools_required_mode_serialization() {
         let tool_choice = ToolChoice::AllowedTools {
             mode: "required".to_string(),
-            tools: vec![
-                ToolChoiceMcpTool {
-                    server_label: "file_server".to_string(),
-                    name: "read_file".to_string(),
-                    ty: "mcp".to_string(),
-                },
-            ],
+            tools: vec![ToolChoiceMcpTool {
+                server_label: "file_server".to_string(),
+                name: "read_file".to_string(),
+                ty: "mcp".to_string(),
+            }],
         };
 
         let json = serde_json::to_string(&tool_choice).expect("Failed to serialize");
@@ -790,7 +786,8 @@ mod tests {
         });
 
         let json = serde_json::to_string(&tool_choice).expect("Failed to serialize");
-        let expected_json = r#"{"server_label":"database_server","name":"query_database","type":"mcp"}"#;
+        let expected_json =
+            r#"{"server_label":"database_server","name":"query_database","type":"mcp"}"#;
         assert_eq!(json, expected_json);
 
         let deserialized: ToolChoice = serde_json::from_str(&json).expect("Failed to deserialize");
@@ -945,7 +942,10 @@ mod tests {
         match result {
             Ok(response) => {
                 // If deserialization succeeds, verify key fields
-                assert_eq!(response.id, "resp_67ca09c5efe0819096d0511c92b8c890096610f474011cc0");
+                assert_eq!(
+                    response.id,
+                    "resp_67ca09c5efe0819096d0511c92b8c890096610f474011cc0"
+                );
                 assert_eq!(response.object, "response");
                 assert_eq!(response.created_at, 1741294021);
                 assert_eq!(response.status, "completed");
@@ -962,11 +962,22 @@ mod tests {
 
                 // Check output
                 assert_eq!(response.output.len(), 1);
-                if let OutputItem::FunctionToolCall { id, call_id, name, arguments, status, .. } = &response.output[0] {
+                if let OutputItem::FunctionToolCall {
+                    id,
+                    call_id,
+                    name,
+                    arguments,
+                    status,
+                    ..
+                } = &response.output[0]
+                {
                     assert_eq!(id, "fc_67ca09c6bedc8190a7abfec07b1a1332096610f474011cc0");
                     assert_eq!(call_id, "call_unLAR8MvFNptuiZK6K6HCy5k");
                     assert_eq!(name, "get_current_weather");
-                    assert_eq!(arguments, "{\"location\":\"Boston, MA\",\"unit\":\"celsius\"}");
+                    assert_eq!(
+                        arguments,
+                        "{\"location\":\"Boston, MA\",\"unit\":\"celsius\"}"
+                    );
                     assert_eq!(status, "completed");
                 } else {
                     panic!("Expected FunctionToolCall variant");
@@ -977,7 +988,10 @@ mod tests {
                 let tools = response.tools.as_ref().unwrap();
                 assert_eq!(tools.len(), 1);
                 assert_eq!(tools[0].name, "get_current_weather");
-                assert_eq!(tools[0].description, "Get the current weather in a given location");
+                assert_eq!(
+                    tools[0].description,
+                    "Get the current weather in a given location"
+                );
                 assert_eq!(tools[0].strict, true);
 
                 println!("✅ ResponseObject deserialization successful!");
