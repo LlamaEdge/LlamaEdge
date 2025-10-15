@@ -1,4 +1,4 @@
-use crate::chat::JsonObject;
+use crate::chat::{JsonObject, LogProbs};
 use serde::{Deserialize, Serialize};
 
 /// Represents a list of Response items.
@@ -355,7 +355,7 @@ pub enum ResponseOutputItemOutputMessageContent {
         text: String,
         #[serde(rename = "type")]
         ty: String,
-        // TODO: Add `logprobs` field
+        logprobs: Vec<LogProbs>,
     },
     /// A refusal from the model to answer.
     Refusal {
@@ -665,4 +665,218 @@ fn test_response_item_list_deserialization() {
             panic!("Expected deserialization to succeed, but got error: {}", e);
         }
     }
+}
+
+#[test]
+fn test_response_output_item_output_message_content_output_text_serialization() {
+    let content = ResponseOutputItemOutputMessageContent::OutputText {
+        annotations: vec![Annotation::FileCitation {
+            id: "file_123".to_string(),
+            filename: "document.pdf".to_string(),
+            index: 0,
+            ty: "file_citation".to_string(),
+        }],
+        text: "This is the output text from the model.".to_string(),
+        ty: "output_text".to_string(),
+        logprobs: vec![],
+    };
+
+    let serialized = serde_json::to_string_pretty(&content).unwrap();
+    let expected = r#"{
+  "annotations": [
+    {
+      "file_id": "file_123",
+      "filename": "document.pdf",
+      "index": 0,
+      "type": "file_citation"
+    }
+  ],
+  "text": "This is the output text from the model.",
+  "type": "output_text",
+  "logprobs": []
+}"#;
+    assert_eq!(serialized, expected);
+
+    // Test deserialization
+    let deserialized: ResponseOutputItemOutputMessageContent =
+        serde_json::from_str(&serialized).unwrap();
+
+    match deserialized {
+        ResponseOutputItemOutputMessageContent::OutputText {
+            text,
+            annotations,
+            ty,
+            logprobs,
+        } => {
+            assert_eq!(text, "This is the output text from the model.");
+            assert_eq!(ty, "output_text");
+            assert_eq!(annotations.len(), 1);
+            assert_eq!(logprobs.len(), 0);
+
+            match &annotations[0] {
+                Annotation::FileCitation {
+                    id,
+                    filename,
+                    index,
+                    ty,
+                } => {
+                    assert_eq!(id, "file_123");
+                    assert_eq!(filename, "document.pdf");
+                    assert_eq!(*index, 0);
+                    assert_eq!(ty, "file_citation");
+                }
+                _ => panic!("Expected FileCitation annotation"),
+            }
+        }
+        _ => panic!("Expected OutputText variant"),
+    }
+
+    println!("✅ ResponseOutputItemOutputMessageContent OutputText serialization test passed!");
+}
+
+#[test]
+fn test_response_output_item_output_message_content_refusal_serialization() {
+    let content = ResponseOutputItemOutputMessageContent::Refusal {
+        refusal: "I cannot answer this question as it violates our usage policies.".to_string(),
+        ty: "refusal".to_string(),
+    };
+
+    let serialized = serde_json::to_string_pretty(&content).unwrap();
+    let expected = r#"{
+  "refusal": "I cannot answer this question as it violates our usage policies.",
+  "type": "refusal"
+}"#;
+    assert_eq!(serialized, expected);
+
+    // Test deserialization
+    let deserialized: ResponseOutputItemOutputMessageContent =
+        serde_json::from_str(&serialized).unwrap();
+
+    match deserialized {
+        ResponseOutputItemOutputMessageContent::Refusal { refusal, ty } => {
+            assert_eq!(
+                refusal,
+                "I cannot answer this question as it violates our usage policies."
+            );
+            assert_eq!(ty, "refusal");
+        }
+        _ => panic!("Expected Refusal variant"),
+    }
+
+    println!("✅ ResponseOutputItemOutputMessageContent Refusal serialization test passed!");
+}
+
+#[test]
+fn test_response_output_item_output_message_content_with_multiple_annotations() {
+    let content = ResponseOutputItemOutputMessageContent::OutputText {
+        annotations: vec![
+            Annotation::UrlCitation {
+                end_index: 45,
+                start_index: 10,
+                title: "OpenAI Documentation".to_string(),
+                ty: "url_citation".to_string(),
+                url: "https://platform.openai.com/docs".to_string(),
+            },
+            Annotation::FilePath {
+                id: "file_456".to_string(),
+                index: 1,
+                ty: "file_path".to_string(),
+            },
+        ],
+        text: "Here is some information with citations and file references.".to_string(),
+        ty: "output_text".to_string(),
+        logprobs: vec![],
+    };
+
+    let serialized = serde_json::to_string_pretty(&content).unwrap();
+
+    // Test deserialization
+    let deserialized: ResponseOutputItemOutputMessageContent =
+        serde_json::from_str(&serialized).unwrap();
+
+    match deserialized {
+        ResponseOutputItemOutputMessageContent::OutputText {
+            text,
+            annotations,
+            ty,
+            ..
+        } => {
+            assert_eq!(
+                text,
+                "Here is some information with citations and file references."
+            );
+            assert_eq!(ty, "output_text");
+            assert_eq!(annotations.len(), 2);
+
+            // Verify first annotation (UrlCitation)
+            match &annotations[0] {
+                Annotation::UrlCitation { title, url, .. } => {
+                    assert_eq!(title, "OpenAI Documentation");
+                    assert_eq!(url, "https://platform.openai.com/docs");
+                }
+                _ => panic!("Expected UrlCitation annotation"),
+            }
+
+            // Verify second annotation (FilePath)
+            match &annotations[1] {
+                Annotation::FilePath { id, index, .. } => {
+                    assert_eq!(id, "file_456");
+                    assert_eq!(*index, 1);
+                }
+                _ => panic!("Expected FilePath annotation"),
+            }
+        }
+        _ => panic!("Expected OutputText variant"),
+    }
+
+    println!("✅ ResponseOutputItemOutputMessageContent with multiple annotations test passed!");
+}
+
+#[test]
+fn test_response_output_item_output_message_content_deserialization_from_json() {
+    // Test deserialization of OutputText from JSON
+    let json = r#"{
+  "type": "output_text",
+  "text": "The capital of France is Paris.",
+  "annotations": [],
+  "logprobs": []
+}"#;
+
+    let result: Result<ResponseOutputItemOutputMessageContent, _> = serde_json::from_str(json);
+
+    match result {
+        Ok(ResponseOutputItemOutputMessageContent::OutputText {
+            text,
+            ty,
+            annotations,
+            logprobs,
+        }) => {
+            assert_eq!(text, "The capital of France is Paris.");
+            assert_eq!(ty, "output_text");
+            assert_eq!(annotations.len(), 0);
+            assert_eq!(logprobs.len(), 0);
+        }
+        Ok(_) => panic!("Expected OutputText variant"),
+        Err(e) => panic!("Deserialization failed: {}", e),
+    }
+
+    // Test deserialization of Refusal from JSON
+    let json_refusal = r#"{
+  "type": "refusal",
+  "refusal": "I'm sorry, but I can't assist with that request."
+}"#;
+
+    let result_refusal: Result<ResponseOutputItemOutputMessageContent, _> =
+        serde_json::from_str(json_refusal);
+
+    match result_refusal {
+        Ok(ResponseOutputItemOutputMessageContent::Refusal { refusal, ty }) => {
+            assert_eq!(refusal, "I'm sorry, but I can't assist with that request.");
+            assert_eq!(ty, "refusal");
+        }
+        Ok(_) => panic!("Expected Refusal variant"),
+        Err(e) => panic!("Deserialization failed: {}", e),
+    }
+
+    println!("✅ ResponseOutputItemOutputMessageContent JSON deserialization test passed!");
 }

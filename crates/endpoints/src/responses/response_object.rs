@@ -3,9 +3,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Represents a request body to generate a model response.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 pub struct RequestOfModelResponse {
     /// Whether to run the model response in the background.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub background: Option<bool>,
     /// The conversation that this response belongs to. Items from this conversation are prepended to `input_items` for this response request. Input items and output items from this response are automatically added to this conversation after this response completes.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -18,25 +19,30 @@ pub struct RequestOfModelResponse {
     /// - `message.input_image.image_url`: Include image urls from the input message.
     /// - `message.output_text.logprobs`: Include logprobs with assistant messages.
     /// - `reasoning.encrypted_content`: Includes an encrypted version of reasoning tokens in reasoning item outputs. This enables reasoning items to be used in multi-turn conversations when using the Responses API statelessly (like when the store parameter is set to false, or when an organization is enrolled in the zero data retention program).
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub include: Option<Vec<String>>,
     /// Text, image, or file inputs to the model, used to generate a response.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub input: Option<Input>,
     /// A system (or developer) message inserted into the model's context.
     ///
     /// When using along with `previous_response_id`, the instructions from a previous response will not be carried over to the next response. This makes it simple to swap out system (or developer) messages in new responses.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub instructions: Option<String>,
     /// An upper bound for the number of tokens that can be generated for a response, including visible output tokens and reasoning tokens.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_output_tokens: Option<u32>,
+    pub max_output_tokens: Option<i32>,
     /// The maximum number of total calls to built-in tools that can be processed in a response. This maximum number applies across all built-in tool calls, not per individual tool. Any further attempts to call a tool by the model will be ignored.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_tool_calls: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<HashMap<String, String>>,
     /// Model ID used to generate the response.
-    pub model: String,
-    /// Whether to allow the model to run tool calls in parallel.
-    pub parallel_tool_calls: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    /// Whether to allow the model to run tool calls in parallel. Defaults to `true`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parallel_tool_calls: Option<bool>,
     /// The unique ID of the previous response to the model. Use this to create multi-turn conversations.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub previous_response_id: Option<String>,
@@ -49,54 +55,282 @@ pub struct RequestOfModelResponse {
     /// If set to true, the model response data will be streamed to the client as it is generated using server-sent events.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stream: Option<bool>,
-    /// What sampling temperature to use.
-    pub temperature: f64,
+    /// Adjust the randomness of the generated text. Between 0.0 and 2.0. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.
+    ///
+    /// We generally recommend altering this or top_p but not both.
+    /// Defaults to `0.8`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<f64>,
     /// Controls which (if any) function is called by the model.
     pub tool_choice: ToolChoice,
     /// An array of tools the model may call while generating a response.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub tools: Option<Vec<Tool>>,
-    /// An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass.
-    /// It's recommended that altering this or temperature but not both.
-    pub top_p: f64,
+    /// An alternative to sampling with temperature. Limit the next token selection to a subset of tokens with a cumulative probability above a threshold `p`. The value should be between 0.0 and 1.0.
+    ///
+    /// Top-p sampling, also known as nucleus sampling, is another text generation method that selects the next token from a subset of tokens that together have a cumulative probability of at least `p`. This method provides a balance between diversity and quality by considering both the probabilities of tokens and the number of tokens to sample from. A higher value for top_p (e.g., 0.95) will lead to more diverse text, while a lower value (e.g., 0.5) will generate more focused and conservative text.
+    ///
+    /// We generally recommend altering this or temperature but not both.
+    /// Defaults to `0.9`. To disable top-p sampling, set it to `1.0`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub top_p: Option<f64>,
     /// The truncation strategy to use for the model response.
     ///
     /// - `auto`: If the input to this Response exceeds the model's context window size, the model will truncate the response to fit the context window by dropping items from the beginning of the conversation.
     /// - `disabled` (default): If the input size will exceed the context window size for a model, the request will fail with a 400 error.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub truncation: Option<String>,
+}
+impl<'de> serde::Deserialize<'de> for RequestOfModelResponse {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::{self, MapAccess, Visitor};
+        use std::fmt;
+
+        struct RequestOfModelResponseVisitor;
+
+        impl<'de> Visitor<'de> for RequestOfModelResponseVisitor {
+            type Value = RequestOfModelResponse;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("struct RequestOfModelResponse")
+            }
+
+            fn visit_map<V>(self, mut map: V) -> Result<RequestOfModelResponse, V::Error>
+            where
+                V: MapAccess<'de>,
+            {
+                let mut background = None;
+                let mut conversation = None;
+                let mut include = None;
+                let mut input = None;
+                let mut instructions = None;
+                let mut max_output_tokens = None;
+                let mut max_tool_calls = None;
+                let mut metadata = None;
+                let mut model = None;
+                let mut parallel_tool_calls = None;
+                let mut previous_response_id = None;
+                let mut safety_identifier = None;
+                let mut store = None;
+                let mut stream = None;
+                let mut temperature = None;
+                let mut tool_choice = None;
+                let mut tools = None;
+                let mut top_p = None;
+                let mut truncation = None;
+
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "background" => {
+                            if background.is_some() {
+                                return Err(de::Error::duplicate_field("background"));
+                            }
+                            background = Some(map.next_value()?);
+                        }
+                        "conversation" => {
+                            if conversation.is_some() {
+                                return Err(de::Error::duplicate_field("conversation"));
+                            }
+                            conversation = Some(map.next_value()?);
+                        }
+                        "include" => {
+                            if include.is_some() {
+                                return Err(de::Error::duplicate_field("include"));
+                            }
+                            include = Some(map.next_value()?);
+                        }
+                        "input" => {
+                            if input.is_some() {
+                                return Err(de::Error::duplicate_field("input"));
+                            }
+                            input = Some(map.next_value()?);
+                        }
+                        "instructions" => {
+                            if instructions.is_some() {
+                                return Err(de::Error::duplicate_field("instructions"));
+                            }
+                            instructions = Some(map.next_value()?);
+                        }
+                        "max_output_tokens" => {
+                            if max_output_tokens.is_some() {
+                                return Err(de::Error::duplicate_field("max_output_tokens"));
+                            }
+                            max_output_tokens = Some(map.next_value()?);
+                        }
+                        "max_tool_calls" => {
+                            if max_tool_calls.is_some() {
+                                return Err(de::Error::duplicate_field("max_tool_calls"));
+                            }
+                            max_tool_calls = Some(map.next_value()?);
+                        }
+                        "metadata" => {
+                            if metadata.is_some() {
+                                return Err(de::Error::duplicate_field("metadata"));
+                            }
+                            metadata = Some(map.next_value()?);
+                        }
+                        "model" => {
+                            if model.is_some() {
+                                return Err(de::Error::duplicate_field("model"));
+                            }
+                            model = Some(map.next_value()?);
+                        }
+                        "parallel_tool_calls" => {
+                            if parallel_tool_calls.is_some() {
+                                return Err(de::Error::duplicate_field("parallel_tool_calls"));
+                            }
+                            parallel_tool_calls = Some(map.next_value()?);
+                        }
+                        "previous_response_id" => {
+                            if previous_response_id.is_some() {
+                                return Err(de::Error::duplicate_field("previous_response_id"));
+                            }
+                            previous_response_id = Some(map.next_value()?);
+                        }
+                        "safety_identifier" => {
+                            if safety_identifier.is_some() {
+                                return Err(de::Error::duplicate_field("safety_identifier"));
+                            }
+                            safety_identifier = Some(map.next_value()?);
+                        }
+                        "store" => {
+                            if store.is_some() {
+                                return Err(de::Error::duplicate_field("store"));
+                            }
+                            store = Some(map.next_value()?);
+                        }
+                        "stream" => {
+                            if stream.is_some() {
+                                return Err(de::Error::duplicate_field("stream"));
+                            }
+                            stream = Some(map.next_value()?);
+                        }
+                        "temperature" => {
+                            if temperature.is_some() {
+                                return Err(de::Error::duplicate_field("temperature"));
+                            }
+                            temperature = Some(map.next_value()?);
+                        }
+                        "tool_choice" => {
+                            if tool_choice.is_some() {
+                                return Err(de::Error::duplicate_field("tool_choice"));
+                            }
+                            tool_choice = Some(map.next_value()?);
+                        }
+                        "tools" => {
+                            if tools.is_some() {
+                                return Err(de::Error::duplicate_field("tools"));
+                            }
+                            tools = Some(map.next_value()?);
+                        }
+                        "top_p" => {
+                            if top_p.is_some() {
+                                return Err(de::Error::duplicate_field("top_p"));
+                            }
+                            top_p = Some(map.next_value()?);
+                        }
+                        "truncation" => {
+                            if truncation.is_some() {
+                                return Err(de::Error::duplicate_field("truncation"));
+                            }
+                            truncation = Some(map.next_value()?);
+                        }
+                        _ => {
+                            // 忽略未知字段
+                            let _: serde::de::IgnoredAny = map.next_value()?;
+                        }
+                    }
+                }
+
+                let tool_choice = tool_choice.unwrap_or(ToolChoice::None);
+                let parallel_tool_calls = if parallel_tool_calls.is_none() {
+                    Some(true)
+                } else {
+                    parallel_tool_calls
+                };
+
+                Ok(RequestOfModelResponse {
+                    background,
+                    conversation,
+                    include,
+                    input,
+                    instructions,
+                    max_output_tokens,
+                    max_tool_calls,
+                    metadata,
+                    model,
+                    parallel_tool_calls,
+                    previous_response_id,
+                    safety_identifier,
+                    store,
+                    stream,
+                    temperature,
+                    tool_choice,
+                    tools,
+                    top_p,
+                    truncation,
+                })
+            }
+        }
+
+        const FIELDS: &[&str] = &[
+            "background",
+            "conversation",
+            "include",
+            "input",
+            "instructions",
+            "max_output_tokens",
+            "max_tool_calls",
+            "metadata",
+            "model",
+            "parallel_tool_calls",
+            "previous_response_id",
+            "safety_identifier",
+            "store",
+            "stream",
+            "temperature",
+            "tool_choice",
+            "tools",
+            "top_p",
+            "truncation",
+        ];
+
+        deserializer.deserialize_struct(
+            "RequestOfModelResponse",
+            FIELDS,
+            RequestOfModelResponseVisitor,
+        )
+    }
 }
 
 /// Represents a response object
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResponseObject {
     /// Whether to run the model response in the background.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub background: Option<bool>,
+    pub background: bool,
     /// The conversation that this response belongs to. Input items and output items from this response are automatically added to this conversation.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub conversation: Option<Conversation>,
     /// Unix timestamp (in seconds) of when this Response was created.
     pub created_at: u64,
     /// An error object returned when the model fails to generate a Response.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<ResponseObjectError>,
     /// Unique identifier for this Response.
     pub id: String,
     /// Details about why the response is incomplete.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub incomplete_details: Option<ResponseObjectIncompleteDetails>,
     /// A system (or developer) message inserted into the model's context.
     ///
     /// When using along with `previous_response_id`, the instructions from a previous response will not be carried over to the next response.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub instructions: Option<Input>,
     /// An upper bound for the number of tokens that can be generated for a response, including visible output tokens and reasoning tokens.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub max_output_tokens: Option<u32>,
     /// The maximum number of total calls to built-in tools that can be processed in a response. This maximum number applies across all built-in tool calls, not per individual tool. Any further attempts to call a tool by the model will be ignored.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub max_tool_calls: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<HashMap<String, String>>,
+    pub metadata: HashMap<String, String>,
     /// Model ID used to generate the response.
     pub model: String,
     /// The object type of this resource - always set to `response`.
@@ -108,7 +342,6 @@ pub struct ResponseObject {
     /// The unique ID of the previous response to the model. Use this to create multi-turn conversations.
     pub previous_response_id: Option<String>,
     /// A stable identifier used to help detect users of your application that may be violating OpenAI's usage policies. The IDs should be a string that uniquely identifies each user.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub safety_identifier: Option<String>,
     /// The status of the response generation. One of `completed`, `failed`, `in_progress`, `cancelled`, `queued`, or `incomplete`.
     pub status: String,
@@ -263,16 +496,15 @@ pub struct Tool {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Usage {
     /// The number of input tokens.
-    pub input_tokens: u32,
+    pub input_tokens: u64,
     /// A detailed breakdown of the input tokens.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub input_tokens_details: Option<InputTokensDetails>,
+    pub input_tokens_details: InputTokensDetails,
     /// The number of output tokens.
-    pub output_tokens: u32,
+    pub output_tokens: u64,
     /// A detailed breakdown of the output tokens.
     pub output_tokens_details: OutputTokensDetails,
     /// The total number of tokens used.
-    pub total_tokens: u32,
+    pub total_tokens: u64,
 }
 
 /// Represents input token details
@@ -454,6 +686,7 @@ mod tests {
     fn test_response_object_deserialization() {
         let json = r#"{
   "id": "resp_67ca09c5efe0819096d0511c92b8c890096610f474011cc0",
+  "background": false,
   "object": "response",
   "created_at": 1741294021,
   "status": "completed",
@@ -518,6 +751,9 @@ mod tests {
   "truncation": "disabled",
   "usage": {
     "input_tokens": 291,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
     "output_tokens": 23,
     "output_tokens_details": {
       "reasoning_tokens": 0
@@ -604,7 +840,7 @@ mod tests {
     #[test]
     fn test_response_object_basic_serialization() {
         let response = ResponseObject {
-            background: None,
+            background: false,
             conversation: None,
             created_at: 1693123456,
             error: None,
@@ -613,7 +849,7 @@ mod tests {
             instructions: None,
             max_output_tokens: None,
             max_tool_calls: None,
-            metadata: None,
+            metadata: HashMap::new(),
             model: "gpt-4".to_string(),
             object: "response".to_string(),
             output: vec![ResponseOutputItem::OutputMessage {
@@ -621,6 +857,7 @@ mod tests {
                     annotations: vec![],
                     text: "Hello, world!".to_string(),
                     ty: "text".to_string(),
+                    logprobs: vec![],
                 }],
                 id: "msg_123".to_string(),
                 role: "assistant".to_string(),
@@ -638,7 +875,7 @@ mod tests {
             truncation: None,
             usage: Usage {
                 input_tokens: 10,
-                input_tokens_details: None,
+                input_tokens_details: InputTokensDetails { cached_tokens: 0 },
                 output_tokens: 5,
                 output_tokens_details: OutputTokensDetails {
                     reasoning_tokens: 0,
@@ -683,7 +920,7 @@ mod tests {
         metadata.insert("session_id".to_string(), "session456".to_string());
 
         let response = ResponseObject {
-            background: Some(false),
+            background: false,
             conversation: Some(Conversation::ConversationObject {
                 id: "conv_123".to_string(),
             }),
@@ -694,7 +931,7 @@ mod tests {
             instructions: Some(Input::Text("You are a helpful assistant.".to_string())),
             max_output_tokens: Some(1000),
             max_tool_calls: Some(5),
-            metadata: Some(metadata),
+            metadata,
             model: "gpt-4-turbo".to_string(),
             object: "response".to_string(),
             output: vec![
@@ -703,6 +940,7 @@ mod tests {
                         annotations: vec![],
                         text: "I can help you with that.".to_string(),
                         ty: "text".to_string(),
+                        logprobs: vec![],
                     }],
                     id: "msg_456".to_string(),
                     role: "assistant".to_string(),
@@ -747,7 +985,7 @@ mod tests {
             truncation: Some("auto".to_string()),
             usage: Usage {
                 input_tokens: 50,
-                input_tokens_details: Some(InputTokensDetails { cached_tokens: 10 }),
+                input_tokens_details: InputTokensDetails { cached_tokens: 10 },
                 output_tokens: 25,
                 output_tokens_details: OutputTokensDetails {
                     reasoning_tokens: 5,
@@ -791,20 +1029,9 @@ mod tests {
         assert_eq!(response.usage.total_tokens, deserialized.usage.total_tokens);
 
         // Verify optional nested fields
-        assert!(deserialized.usage.input_tokens_details.is_some());
         assert_eq!(
-            response
-                .usage
-                .input_tokens_details
-                .as_ref()
-                .unwrap()
-                .cached_tokens,
-            deserialized
-                .usage
-                .input_tokens_details
-                .as_ref()
-                .unwrap()
-                .cached_tokens
+            response.usage.input_tokens_details.cached_tokens,
+            deserialized.usage.input_tokens_details.cached_tokens
         );
         assert_eq!(
             response.usage.output_tokens_details.reasoning_tokens,
@@ -822,7 +1049,7 @@ mod tests {
     #[test]
     fn test_response_object_output_variants_serialization() {
         let response = ResponseObject {
-            background: None,
+            background: false,
             conversation: None,
             created_at: 1693123456,
             error: None,
@@ -831,7 +1058,7 @@ mod tests {
             instructions: None,
             max_output_tokens: None,
             max_tool_calls: None,
-            metadata: None,
+            metadata: HashMap::new(),
             model: "gpt-4".to_string(),
             object: "response".to_string(),
             output: vec![
@@ -841,6 +1068,7 @@ mod tests {
                             annotations: vec![],
                             text: "Here's the information you requested.".to_string(),
                             ty: "text".to_string(),
+                            logprobs: vec![],
                         },
                         ResponseOutputItemOutputMessageContent::Refusal {
                             refusal: "I cannot provide that information.".to_string(),
@@ -887,7 +1115,7 @@ mod tests {
             truncation: None,
             usage: Usage {
                 input_tokens: 20,
-                input_tokens_details: None,
+                input_tokens_details: InputTokensDetails { cached_tokens: 0 },
                 output_tokens: 15,
                 output_tokens_details: OutputTokensDetails {
                     reasoning_tokens: 0,
@@ -955,7 +1183,7 @@ mod tests {
     fn test_response_object_error_scenarios_serialization() {
         // Test ResponseObject with error
         let response_with_error = ResponseObject {
-            background: None,
+            background: false,
             conversation: None,
             created_at: 1693123456,
             error: Some(ResponseObjectError {
@@ -969,7 +1197,7 @@ mod tests {
             instructions: None,
             max_output_tokens: None,
             max_tool_calls: None,
-            metadata: None,
+            metadata: HashMap::new(),
             model: "gpt-4".to_string(),
             object: "response".to_string(),
             output: vec![],
@@ -984,7 +1212,7 @@ mod tests {
             truncation: None,
             usage: Usage {
                 input_tokens: 100,
-                input_tokens_details: None,
+                input_tokens_details: InputTokensDetails { cached_tokens: 0 },
                 output_tokens: 0,
                 output_tokens_details: OutputTokensDetails {
                     reasoning_tokens: 0,
@@ -1018,7 +1246,7 @@ mod tests {
     fn test_conversation_variants_serialization() {
         // Test with Conversation::Id variant
         let response_with_id = ResponseObject {
-            background: None,
+            background: false,
             conversation: Some(Conversation::Id("conv_simple_id".to_string())),
             created_at: 1693123456,
             error: None,
@@ -1027,7 +1255,7 @@ mod tests {
             instructions: None,
             max_output_tokens: None,
             max_tool_calls: None,
-            metadata: None,
+            metadata: HashMap::new(),
             model: "gpt-4".to_string(),
             object: "response".to_string(),
             output: vec![],
@@ -1042,7 +1270,7 @@ mod tests {
             truncation: None,
             usage: Usage {
                 input_tokens: 10,
-                input_tokens_details: None,
+                input_tokens_details: InputTokensDetails { cached_tokens: 0 },
                 output_tokens: 5,
                 output_tokens_details: OutputTokensDetails {
                     reasoning_tokens: 0,
@@ -1082,6 +1310,7 @@ mod tests {
     fn test_response_object_real_json_deserialization() {
         let json = r#"{
   "id": "resp_67ccd3a9da748190baa7f1570fe91ac604becb25c45c1d41",
+  "background": false,
   "object": "response",
   "created_at": 1741476777,
   "status": "completed",
@@ -1100,7 +1329,8 @@ mod tests {
         {
           "type": "output_text",
           "text": "The image depicts a scenic landscape with a wooden boardwalk or pathway leading through lush, green grass under a blue sky with some clouds. The setting suggests a peaceful natural area, possibly a park or nature reserve. There are trees and shrubs in the background.",
-          "annotations": []
+          "annotations": [],
+          "logprobs": []
         }
       ]
     }
@@ -1166,16 +1396,7 @@ mod tests {
                 assert_eq!(response.usage.output_tokens_details.reasoning_tokens, 0);
 
                 // Verify input_tokens_details
-                assert!(response.usage.input_tokens_details.is_some());
-                assert_eq!(
-                    response
-                        .usage
-                        .input_tokens_details
-                        .as_ref()
-                        .unwrap()
-                        .cached_tokens,
-                    0
-                );
+                assert_eq!(response.usage.input_tokens_details.cached_tokens, 0);
 
                 // Verify output content
                 assert_eq!(response.output.len(), 1);
@@ -1198,6 +1419,7 @@ mod tests {
                                 text,
                                 annotations,
                                 ty,
+                                logprobs: _,
                             } => {
                                 assert_eq!(ty, "output_text");
                                 assert_eq!(text, "The image depicts a scenic landscape with a wooden boardwalk or pathway leading through lush, green grass under a blue sky with some clouds. The setting suggests a peaceful natural area, possibly a park or nature reserve. There are trees and shrubs in the background.");
@@ -1279,16 +1501,16 @@ mod tests {
             max_output_tokens: None,
             max_tool_calls: None,
             metadata: None,
-            model: "gpt-4.1".to_string(),
-            parallel_tool_calls: false,
+            model: Some("gpt-4.1".to_string()),
+            parallel_tool_calls: None,
             previous_response_id: None,
             safety_identifier: None,
             store: None,
             stream: None,
-            temperature: 1.0,
+            temperature: Some(1.0),
             tool_choice: ToolChoice::Auto,
             tools: None,
-            top_p: 1.0,
+            top_p: Some(1.0),
             truncation: None,
         };
 
@@ -1303,10 +1525,7 @@ mod tests {
         assert_eq!(request.model, deserialized.model);
         assert_eq!(request.temperature, deserialized.temperature);
         assert_eq!(request.top_p, deserialized.top_p);
-        assert_eq!(
-            request.parallel_tool_calls,
-            deserialized.parallel_tool_calls
-        );
+        assert_eq!(Some(true), deserialized.parallel_tool_calls);
         assert_eq!(request.tool_choice, deserialized.tool_choice);
 
         // Verify input structure
@@ -1372,13 +1591,13 @@ mod tests {
             max_output_tokens: None,
             max_tool_calls: None,
             metadata: None,
-            model: "gpt-4.1".to_string(),
-            parallel_tool_calls: false,
+            model: Some("gpt-4.1".to_string()),
+            parallel_tool_calls: None,
             previous_response_id: None,
             safety_identifier: None,
             store: None,
             stream: None,
-            temperature: 1.0,
+            temperature: Some(1.0),
             tool_choice: ToolChoice::Auto,
             tools: Some(vec![Tool {
                 name: "get_current_weather".to_string(),
@@ -1408,7 +1627,7 @@ mod tests {
                 strict: true,
                 ty: "function".to_string(),
             }]),
-            top_p: 1.0,
+            top_p: Some(1.0),
             truncation: None,
         };
 
@@ -1426,10 +1645,7 @@ mod tests {
         assert_eq!(request.model, deserialized.model);
         assert_eq!(request.temperature, deserialized.temperature);
         assert_eq!(request.top_p, deserialized.top_p);
-        assert_eq!(
-            request.parallel_tool_calls,
-            deserialized.parallel_tool_calls
-        );
+        assert_eq!(Some(true), deserialized.parallel_tool_calls);
         assert_eq!(request.tool_choice, deserialized.tool_choice);
 
         // Verify input is text
@@ -1479,6 +1695,7 @@ mod tests {
         // Test deserialization of the specific JSON provided by the user
         let json = r#"{
   "id": "resp_67ca09c5efe0819096d0511c92b8c890096610f474011cc0",
+  "background": false,
   "object": "response",
   "created_at": 1741294021,
   "status": "completed",
@@ -1543,6 +1760,9 @@ mod tests {
   "truncation": "disabled",
   "usage": {
     "input_tokens": 291,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
     "output_tokens": 23,
     "output_tokens_details": {
       "reasoning_tokens": 0
