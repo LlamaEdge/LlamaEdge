@@ -294,7 +294,7 @@ async fn main() -> anyhow::Result<()> {
 
         println!("\n[Bot]:");
         let mut assistant_answer = String::new();
-        match llama_core::chat::chat(&mut chat_request).await {
+        match llama_core::chat::chat_completions::chat(&mut chat_request).await {
             Ok((res, _include_tool_calls)) => match res {
                 Left(mut stream) => {
                     while let Some(data) = stream.try_next().await? {
