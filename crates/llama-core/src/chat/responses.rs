@@ -2785,7 +2785,8 @@ fn build_prompt(
     // convert chat_request.input to a user message and append it to chat_request.messages
     let mut chat_completions_messages = to_chat_messages(chat_request.input.as_ref().unwrap())?;
 
-    warn!(target: "stdout", "converted chat messages: {chat_completions_messages:?}");
+    #[cfg(feature = "logging")]
+    debug!(target: "stdout", "converted chat messages: {chat_completions_messages:?}");
 
     loop {
         // if chat_request.messages.is_empty() {
