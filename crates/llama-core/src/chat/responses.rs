@@ -475,7 +475,7 @@ fn compute_by_graph(
                         annotations: vec![],
                         text: message.to_string(),
                         ty: "output_text".to_string(),
-                        logprobs: vec![],
+                        logprobs: None,
                     };
 
                     let output_message = ResponseOutputItem::OutputMessage {
@@ -579,7 +579,7 @@ fn compute_by_graph(
                 annotations: vec![],
                 text: message.to_string(),
                 ty: "output_text".to_string(),
-                logprobs: vec![],
+                logprobs: None,
             };
 
             let output_message = ResponseOutputItem::OutputMessage {
@@ -686,7 +686,7 @@ fn compute_by_graph(
                 annotations: vec![],
                 text: message.to_string(),
                 ty: "output_text".to_string(),
-                logprobs: vec![],
+                logprobs: None,
             };
 
             let output_message = ResponseOutputItem::OutputMessage {
