@@ -1,4 +1,4 @@
-use crate::chat::{JsonObject, LogProbs};
+use crate::chat::JsonObject;
 use serde::{Deserialize, Serialize};
 
 /// Represents a list of Response items.
@@ -355,7 +355,8 @@ pub enum ResponseOutputItemOutputMessageContent {
         text: String,
         #[serde(rename = "type")]
         ty: String,
-        logprobs: Vec<LogProbs>,
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        logprobs: Vec<LogProb>,
     },
     /// A refusal from the model to answer.
     Refusal {
@@ -363,6 +364,23 @@ pub enum ResponseOutputItemOutputMessageContent {
         #[serde(rename = "type")]
         ty: String,
     },
+}
+
+/// Log probability information for the choice.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct LogProb {
+    pub bytes: Vec<u8>,
+    pub logprob: f64,
+    pub token: String,
+    pub top_logprobs: Vec<TopLogProb>,
+}
+
+/// Represents the top log probabilities for tokens.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TopLogProb {
+    pub bytes: Vec<u8>,
+    pub logprob: f64,
+    pub token: String,
 }
 
 /// Represents annotation information of the text output.
