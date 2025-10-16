@@ -1,0 +1,9 @@
+(function() {
+    var implementors = Object.fromEntries([["llama_core",[["impl <a class=\"trait\" href=\"https://docs.rs/serde_core/1.0.228/serde_core/ser/trait.Serialize.html\" title=\"trait serde_core::ser::Serialize\">Serialize</a> for <a class=\"struct\" href=\"llama_core/metadata/ggml/struct.GgmlMetadata.html\" title=\"struct llama_core::metadata::ggml::GgmlMetadata\">GgmlMetadata</a>"],["impl <a class=\"trait\" href=\"https://docs.rs/serde_core/1.0.228/serde_core/ser/trait.Serialize.html\" title=\"trait serde_core::ser::Serialize\">Serialize</a> for <a class=\"struct\" href=\"llama_core/metadata/ggml/struct.GgmlTtsMetadata.html\" title=\"struct llama_core::metadata::ggml::GgmlTtsMetadata\">GgmlTtsMetadata</a>"],["impl <a class=\"trait\" href=\"https://docs.rs/serde_core/1.0.228/serde_core/ser/trait.Serialize.html\" title=\"trait serde_core::ser::Serialize\">Serialize</a> for <a class=\"struct\" href=\"llama_core/metadata/piper/struct.PiperMetadata.html\" title=\"struct llama_core::metadata::piper::PiperMetadata\">PiperMetadata</a>"],["impl <a class=\"trait\" href=\"https://docs.rs/serde_core/1.0.228/serde_core/ser/trait.Serialize.html\" title=\"trait serde_core::ser::Serialize\">Serialize</a> for <a class=\"struct\" href=\"llama_core/metadata/whisper/struct.WhisperMetadata.html\" title=\"struct llama_core::metadata::whisper::WhisperMetadata\">WhisperMetadata</a>"]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":57,"fragment_lengths":[1337]}
