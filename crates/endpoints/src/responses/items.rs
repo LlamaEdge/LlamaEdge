@@ -355,8 +355,8 @@ pub enum ResponseOutputItemOutputMessageContent {
         text: String,
         #[serde(rename = "type")]
         ty: String,
-        #[serde(skip_serializing_if = "Vec::is_empty")]
-        logprobs: Vec<LogProb>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        logprobs: Option<Vec<LogProb>>,
     },
     /// A refusal from the model to answer.
     Refusal {
@@ -696,7 +696,7 @@ fn test_response_output_item_output_message_content_output_text_serialization() 
         }],
         text: "This is the output text from the model.".to_string(),
         ty: "output_text".to_string(),
-        logprobs: vec![],
+        logprobs: None,
     };
 
     let serialized = serde_json::to_string_pretty(&content).unwrap();
@@ -710,8 +710,7 @@ fn test_response_output_item_output_message_content_output_text_serialization() 
     }
   ],
   "text": "This is the output text from the model.",
-  "type": "output_text",
-  "logprobs": []
+  "type": "output_text"
 }"#;
     assert_eq!(serialized, expected);
 
@@ -729,7 +728,7 @@ fn test_response_output_item_output_message_content_output_text_serialization() 
             assert_eq!(text, "This is the output text from the model.");
             assert_eq!(ty, "output_text");
             assert_eq!(annotations.len(), 1);
-            assert_eq!(logprobs.len(), 0);
+            assert!(logprobs.is_none());
 
             match &annotations[0] {
                 Annotation::FileCitation {
@@ -803,7 +802,7 @@ fn test_response_output_item_output_message_content_with_multiple_annotations() 
         ],
         text: "Here is some information with citations and file references.".to_string(),
         ty: "output_text".to_string(),
-        logprobs: vec![],
+        logprobs: None,
     };
 
     let serialized = serde_json::to_string_pretty(&content).unwrap();
@@ -817,7 +816,7 @@ fn test_response_output_item_output_message_content_with_multiple_annotations() 
             text,
             annotations,
             ty,
-            ..
+            logprobs,
         } => {
             assert_eq!(
                 text,
@@ -825,6 +824,7 @@ fn test_response_output_item_output_message_content_with_multiple_annotations() 
             );
             assert_eq!(ty, "output_text");
             assert_eq!(annotations.len(), 2);
+            assert!(logprobs.is_none());
 
             // Verify first annotation (UrlCitation)
             match &annotations[0] {
@@ -872,7 +872,7 @@ fn test_response_output_item_output_message_content_deserialization_from_json() 
             assert_eq!(text, "The capital of France is Paris.");
             assert_eq!(ty, "output_text");
             assert_eq!(annotations.len(), 0);
-            assert_eq!(logprobs.len(), 0);
+            assert!(logprobs.is_some() && logprobs.unwrap().is_empty());
         }
         Ok(_) => panic!("Expected OutputText variant"),
         Err(e) => panic!("Deserialization failed: {}", e),

@@ -857,7 +857,7 @@ mod tests {
                     annotations: vec![],
                     text: "Hello, world!".to_string(),
                     ty: "text".to_string(),
-                    logprobs: vec![],
+                    logprobs: None,
                 }],
                 id: "msg_123".to_string(),
                 role: "assistant".to_string(),
@@ -940,7 +940,7 @@ mod tests {
                         annotations: vec![],
                         text: "I can help you with that.".to_string(),
                         ty: "text".to_string(),
-                        logprobs: vec![],
+                        logprobs: None,
                     }],
                     id: "msg_456".to_string(),
                     role: "assistant".to_string(),
@@ -1068,7 +1068,7 @@ mod tests {
                             annotations: vec![],
                             text: "Here's the information you requested.".to_string(),
                             ty: "text".to_string(),
-                            logprobs: vec![],
+                            logprobs: None,
                         },
                         ResponseOutputItemOutputMessageContent::Refusal {
                             refusal: "I cannot provide that information.".to_string(),
@@ -1419,11 +1419,14 @@ mod tests {
                                 text,
                                 annotations,
                                 ty,
-                                logprobs: _,
+                                logprobs,
                             } => {
                                 assert_eq!(ty, "output_text");
                                 assert_eq!(text, "The image depicts a scenic landscape with a wooden boardwalk or pathway leading through lush, green grass under a blue sky with some clouds. The setting suggests a peaceful natural area, possibly a park or nature reserve. There are trees and shrubs in the background.");
                                 assert_eq!(annotations.len(), 0);
+                                assert!(
+                                    logprobs.is_some() && logprobs.as_ref().unwrap().is_empty()
+                                );
                             }
                             _ => panic!("Expected OutputText variant"),
                         }
