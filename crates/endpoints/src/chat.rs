@@ -480,6 +480,7 @@ impl ChatCompletionRequest {
             ChatCompletionRequestMessage::Assistant(_) => "assistant".to_string(),
             ChatCompletionRequestMessage::System(_) => "system".to_string(),
             ChatCompletionRequestMessage::Tool(_) => "tool".to_string(),
+            ChatCompletionRequestMessage::Developer(_) => "developer".to_string(),
         })
     }
 }
@@ -1725,6 +1726,7 @@ impl fmt::Display for McpTransport {
 #[serde(tag = "role", rename_all = "lowercase")]
 pub enum ChatCompletionRequestMessage {
     System(ChatCompletionSystemMessage),
+    Developer(ChatCompletionDeveloperMessage),
     User(ChatCompletionUserMessage),
     Assistant(ChatCompletionAssistantMessage),
     Tool(ChatCompletionToolMessage),
@@ -1739,6 +1741,17 @@ impl ChatCompletionRequestMessage {
     /// * `name` - An optional name for the participant. Provides the model information to differentiate between participants of the same role.
     pub fn new_system_message(content: impl Into<String>, name: Option<String>) -> Self {
         ChatCompletionRequestMessage::System(ChatCompletionSystemMessage::new(content, name))
+    }
+
+    /// Creates a new developer message.
+    ///
+    /// # Arguments
+    ///
+    /// * `content` - The contents of the developer message.
+    ///
+    /// * `name` - An optional name for the participant. Provides the model information to differentiate between participants of the same role.
+    pub fn new_developer_message(content: impl Into<String>, name: Option<String>) -> Self {
+        ChatCompletionRequestMessage::Developer(ChatCompletionDeveloperMessage::new(content, name))
     }
 
     /// Creates a new user message.
@@ -1786,6 +1799,7 @@ impl ChatCompletionRequestMessage {
             ChatCompletionRequestMessage::User(_) => ChatCompletionRole::User,
             ChatCompletionRequestMessage::Assistant(_) => ChatCompletionRole::Assistant,
             ChatCompletionRequestMessage::Tool(_) => ChatCompletionRole::Tool,
+            ChatCompletionRequestMessage::Developer(_) => ChatCompletionRole::Developer,
         }
     }
 
@@ -1796,6 +1810,7 @@ impl ChatCompletionRequestMessage {
             ChatCompletionRequestMessage::User(message) => message.name(),
             ChatCompletionRequestMessage::Assistant(message) => message.name(),
             ChatCompletionRequestMessage::Tool(_) => None,
+            ChatCompletionRequestMessage::Developer(message) => message.name(),
         }
     }
 }
@@ -1880,6 +1895,43 @@ impl ChatCompletionSystemMessage {
 
     pub fn role(&self) -> ChatCompletionRole {
         ChatCompletionRole::System
+    }
+
+    pub fn content(&self) -> &str {
+        &self.content
+    }
+
+    pub fn name(&self) -> Option<&String> {
+        self.name.as_ref()
+    }
+}
+
+/// Defines the content of a developer message.
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct ChatCompletionDeveloperMessage {
+    /// The contents of the developer message.
+    content: String,
+    /// An optional name for the participant. Provides the model information to differentiate between participants of the same role.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<String>,
+}
+impl ChatCompletionDeveloperMessage {
+    /// Creates a new developer message.
+    ///
+    /// # Arguments
+    ///
+    /// * `content` - The contents of the developer message.
+    ///
+    /// * `name` - An optional name for the participant. Provides the model information to differentiate between participants of the same role.
+    pub fn new(content: impl Into<String>, name: Option<String>) -> Self {
+        Self {
+            content: content.into(),
+            name,
+        }
+    }
+
+    pub fn role(&self) -> ChatCompletionRole {
+        ChatCompletionRole::Developer
     }
 
     pub fn content(&self) -> &str {
@@ -2572,6 +2624,7 @@ pub enum ChatCompletionRequestSampling {
 #[serde(rename_all = "lowercase")]
 pub enum ChatCompletionRole {
     System,
+    Developer,
     User,
     Assistant,
     /// **Deprecated since 0.10.0.** Use [ChatCompletionRole::Tool] instead.
@@ -2582,6 +2635,7 @@ impl std::fmt::Display for ChatCompletionRole {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ChatCompletionRole::System => write!(f, "system"),
+            ChatCompletionRole::Developer => write!(f, "developer"),
             ChatCompletionRole::User => write!(f, "user"),
             ChatCompletionRole::Assistant => write!(f, "assistant"),
             ChatCompletionRole::Function => write!(f, "function"),
@@ -2784,8 +2838,35 @@ fn test_serialize_chat_completion_object_choice() {
 }
 
 /// Log probability information for the choice.
-#[derive(Debug, Deserialize, Serialize)]
-pub struct LogProbs;
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct LogProbs {
+    pub content: Vec<LogProb>,
+    pub refusal: Vec<LogProb>,
+}
+
+/// Log probability information for the choice.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct LogProb {
+    /// A list of integers representing the UTF-8 bytes representation of the token. Useful in instances where characters are represented by multiple tokens and their byte representations must be combined to generate the correct text representation. Can be `null` if there is no bytes representation for the token.
+    pub bytes: Option<Vec<u8>>,
+    /// The log probability of this token, if it is within the top 20 most likely tokens. Otherwise, the value `-9999.0`` is used to signify that the token is very unlikely.
+    pub logprob: f64,
+    /// The token.
+    pub token: String,
+    /// List of the most likely tokens and their log probability, at this token position. In rare cases, there may be fewer than the number of requested `top_logprobs` returned.
+    pub top_logprobs: Vec<TopLogProb>,
+}
+
+/// Represents the top log probabilities for tokens.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TopLogProb {
+    /// A list of integers representing the UTF-8 bytes representation of the token. Useful in instances where characters are represented by multiple tokens and their byte representations must be combined to generate the correct text representation. Can be `null` if there is no bytes representation for the token.
+    pub bytes: Option<Vec<u8>>,
+    /// The log probability of this token, if it is within the top 20 most likely tokens. Otherwise, the value `-9999.0` is used to signify that the token is very unlikely.
+    pub logprob: f64,
+    /// The token.
+    pub token: String,
+}
 
 /// Represents a chat completion message generated by the model.
 #[derive(Debug, Serialize)]

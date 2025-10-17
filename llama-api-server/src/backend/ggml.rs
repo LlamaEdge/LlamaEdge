@@ -5,10 +5,14 @@ use endpoints::{
     completions::CompletionRequest,
     embeddings::{ChunksRequest, ChunksResponse, EmbeddingRequest},
     files::{DeleteFileStatus, FileObject},
+    responses::response_object::RequestOfModelResponse,
 };
 use futures_util::TryStreamExt;
 use hyper::{body::to_bytes, Body, Method, Request, Response};
-use llama_core::utils::RunningMode;
+use llama_core::{
+    chat::{chat_completions, responses},
+    utils::RunningMode,
+};
 use multipart::server::{Multipart, ReadEntry, ReadEntryResult};
 use multipart_2021 as multipart;
 use std::{
@@ -418,7 +422,7 @@ pub(crate) async fn chat_completions_handler(mut req: Request<Body>) -> Response
 
     debug!(target: "stdout", "request:\n{}", serde_json::to_string_pretty(&chat_request).unwrap());
 
-    let res = match llama_core::chat::chat(&mut chat_request).await {
+    let res = match chat_completions::chat(&mut chat_request).await {
         Ok((result, include_tool_calls)) => match result {
             either::Left(stream) => {
                 let stream = stream.map_err(|e| e.to_string());
@@ -1373,6 +1377,184 @@ pub(crate) async fn audio_speech_handler(req: Request<Body>) -> Response<Body> {
     };
 
     info!(target: "stdout", "Send the audio speech response");
+
+    res
+}
+
+/// Process the OpenAI responses request.
+pub(crate) async fn responses_handler(mut req: Request<Body>) -> Response<Body> {
+    info!(target: "stdout", "Handling the coming Responses request");
+
+    let running_mode = match llama_core::running_mode() {
+        Ok(mode) => mode,
+        Err(e) => {
+            let err_msg = format!("Failed to get running mode: {e}");
+
+            error!(target: "stdout", "{e}");
+
+            return error::internal_server_error(err_msg);
+        }
+    };
+    if !running_mode.contains(RunningMode::CHAT) {
+        let err_msg = "Responses tasks are only supported in the chat mode.";
+
+        error!(target: "stdout", "{err_msg}");
+
+        return error::internal_server_error(err_msg);
+    }
+
+    if req.method().eq(&hyper::http::Method::OPTIONS) {
+        let result = Response::builder()
+            .header("Access-Control-Allow-Origin", "*")
+            .header("Access-Control-Allow-Methods", "*")
+            .header("Access-Control-Allow-Headers", "*")
+            .header("Content-Type", "application/json")
+            .body(Body::empty());
+
+        match result {
+            Ok(response) => return response,
+            Err(e) => {
+                let err_msg = e.to_string();
+
+                // log
+                error!(target: "stdout", "{}", &err_msg);
+
+                return error::internal_server_error(err_msg);
+            }
+        }
+    }
+
+    info!(target: "stdout", "Prepare the Responses request");
+
+    // parse request
+    let body_bytes = match to_bytes(req.body_mut()).await {
+        Ok(body_bytes) => body_bytes,
+        Err(e) => {
+            let err_msg = format!("Fail to read buffer from request body. {e}");
+
+            // log
+            error!(target: "stdout", "{}", &err_msg);
+
+            return error::internal_server_error(err_msg);
+        }
+    };
+    let mut model_response_request: RequestOfModelResponse =
+        match serde_json::from_slice(&body_bytes) {
+            Ok(chat_request) => chat_request,
+            Err(e) => {
+                let mut err_msg = format!("Fail to deserialize Responses request: {e}.");
+
+                if let Ok(json_value) = serde_json::from_slice::<serde_json::Value>(&body_bytes) {
+                    err_msg = format!("{err_msg}\njson_value: {json_value}");
+                }
+
+                // log
+                error!(target: "stdout", "{}", &err_msg);
+
+                return error::bad_request(err_msg);
+            }
+        };
+
+    // // check if the user id is provided
+    // if model_response_request.user.is_none() {
+    //     model_response_request.user = Some(gen_chat_id())
+    // };
+    // let id = model_response_request.user.clone().unwrap();
+
+    // // log user id
+    // info!(target: "stdout", "user: {}", model_response_request.user.clone().unwrap());
+
+    debug!(target: "stdout", "request:\n{}", serde_json::to_string_pretty(&model_response_request).unwrap());
+
+    let res = match responses::chat(&mut model_response_request).await {
+        Ok((result, include_tool_calls)) => match result {
+            either::Left(stream) => {
+                let stream = stream.map_err(|e| e.to_string());
+
+                let result = Response::builder()
+                    .header("Access-Control-Allow-Origin", "*")
+                    .header("Access-Control-Allow-Methods", "*")
+                    .header("Access-Control-Allow-Headers", "*")
+                    .header("Content-Type", "text/event-stream")
+                    .header("Cache-Control", "no-cache")
+                    .header("Connection", "keep-alive")
+                    // .header("user", id)
+                    .header("requires-tool-call", include_tool_calls.to_string())
+                    .body(Body::wrap_stream(stream));
+
+                match result {
+                    Ok(response) => {
+                        // log
+                        info!(target: "stdout", "finish Responses generation in stream mode");
+
+                        response
+                    }
+                    Err(e) => {
+                        let err_msg =
+                            format!("Failed Responses generation in stream mode. Reason: {e}");
+
+                        // log
+                        error!(target: "stdout", "{}", &err_msg);
+
+                        error::internal_server_error(err_msg)
+                    }
+                }
+            }
+            either::Right(chat_completion_object) => {
+                // serialize chat completion object
+                let s = match serde_json::to_string(&chat_completion_object) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        let err_msg = format!("Failed to serialize Responses object. {e}");
+
+                        // log
+                        error!(target: "stdout", "{}", &err_msg);
+
+                        return error::internal_server_error(err_msg);
+                    }
+                };
+
+                // return response
+                let result = Response::builder()
+                    .header("Access-Control-Allow-Origin", "*")
+                    .header("Access-Control-Allow-Methods", "*")
+                    .header("Access-Control-Allow-Headers", "*")
+                    .header("Content-Type", "application/json")
+                    // .header("user", id)
+                    .header("requires-tool-call", include_tool_calls.to_string())
+                    .body(Body::from(s));
+
+                match result {
+                    Ok(response) => {
+                        // log
+                        info!(target: "stdout", "Finish Responses generation in non-stream mode");
+
+                        response
+                    }
+                    Err(e) => {
+                        let err_msg =
+                            format!("Failed Responses generation in non-stream mode. Reason: {e}");
+
+                        // log
+                        error!(target: "stdout", "{}", &err_msg);
+
+                        error::internal_server_error(err_msg)
+                    }
+                }
+            }
+        },
+        Err(e) => {
+            let err_msg = format!("Failed to get Responses. Reason: {e}");
+
+            // log
+            error!(target: "stdout", "{}", &err_msg);
+
+            error::internal_server_error(err_msg)
+        }
+    };
+
+    // log
+    info!(target: "stdout", "Send the Responses response");
 
     res
 }

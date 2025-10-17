@@ -48,3 +48,18 @@ HTTP 200
 [Asserts]
 jsonpath "$.model" == "Qwen2-1.5B-Instruct"
 jsonpath "$.choices[0].message.content" contains "Paris"
+
+# test /v1/responses endpoint
+POST http://localhost:8080/v1/responses
+Accept: application/json
+Content-Type: application/json
+```json
+{
+    "model": "Qwen2-1.5B-Instruct",
+    "input": "What's the capital of France?"
+}
+```
+HTTP 200
+[Asserts]
+jsonpath "$.model" == "Qwen2-1.5B-Instruct"
+jsonpath "$.output[0].content[0].text" contains "Paris"
