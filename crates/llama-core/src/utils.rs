@@ -12,6 +12,17 @@ pub(crate) fn gen_chat_id() -> String {
     format!("chatcmpl-{}", uuid::Uuid::new_v4())
 }
 
+pub(crate) fn gen_response_id() -> String {
+    let uuid1 = uuid::Uuid::new_v4();
+    let uuid2 = uuid::Uuid::new_v4();
+
+    // 生成48个十六进制字符 (与原硬编码长度一致)
+    let part1 = uuid1.simple().to_string();  // 32个字符
+    let part2 = uuid2.simple().to_string();  // 32个字符
+
+    format!("resp_{}{}", part1, &part2[..16])  // resp_ + 48字符 = 53字符总长度
+}
+
 /// Return the names of the chat models.
 pub fn chat_model_names() -> Result<Vec<String>, LlamaCoreError> {
     #[cfg(feature = "logging")]
