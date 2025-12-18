@@ -46,8 +46,6 @@ pub(crate) static EMBEDDING_GRAPHS: OnceCell<Mutex<HashMap<String, Graph<GgmlMet
 // key: model_name, value: Graph
 pub(crate) static TTS_GRAPHS: OnceCell<Mutex<HashMap<String, Graph<GgmlTtsMetadata>>>> =
     OnceCell::new();
-// cache bytes for decoding utf8
-pub(crate) static CACHED_UTF8_ENCODINGS: OnceCell<Mutex<Vec<u8>>> = OnceCell::new();
 // running mode
 pub(crate) static RUNNING_MODE: OnceCell<RwLock<RunningMode>> = OnceCell::new();
 // stable diffusion context for the text-to-image task
@@ -87,6 +85,16 @@ pub fn init_ggml_chat_context(metadata_for_chats: &[GgmlMetadata]) -> Result<(),
 
         chat_graphs.insert(graph.name().to_string(), graph);
     }
+
+    // Pre-create per-model locks for each chat model
+    // This ensures locks are ready before any requests arrive
+    for model_name in chat_graphs.keys() {
+        chat::chat_completions::get_or_create_model_lock(model_name)?;
+
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Pre-created stream lock for model: {}", model_name);
+    }
+
     CHAT_GRAPHS.set(Mutex::new(chat_graphs)).map_err(|_| {
             let err_msg = "Failed to initialize the core context. Reason: The `CHAT_GRAPHS` has already been initialized";
 

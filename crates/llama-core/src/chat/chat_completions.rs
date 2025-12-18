@@ -8,7 +8,7 @@ use crate::{
         gen_chat_id, get_output_buffer, get_output_buffer_single, get_token_info_by_graph,
         get_token_info_by_graph_name, set_tensor_data_u8,
     },
-    Graph, RunningMode, CACHED_UTF8_ENCODINGS, CHAT_GRAPHS, OUTPUT_TENSOR,
+    Graph, RunningMode, CHAT_GRAPHS, OUTPUT_TENSOR,
 };
 use chat_prompts::{BuildChatPrompt, ChatPrompt, PromptTemplateType};
 use either::{Either, Left, Right};
@@ -24,21 +24,170 @@ use endpoints::{
 };
 use error::{BackendError, LlamaCoreError};
 use std::{
-    collections::VecDeque,
+    collections::{HashMap, VecDeque},
     pin::Pin,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Mutex, OnceLock,
+        Arc, Mutex, OnceLock,
     },
     task::{Context, Poll, Waker},
     time::SystemTime,
 };
 
-// Define a global waker queue for storing waiting ChatStreams
-static CHAT_STREAM_WAKER_QUEUE: OnceLock<Mutex<VecDeque<Waker>>> = OnceLock::new();
+// ============================================================================
+// Per-Model Stream Lock Infrastructure
+// ============================================================================
 
-// Define a global atomic boolean indicating whether there is an active ChatStream
-static CHAT_STREAM_ACTIVE: AtomicBool = AtomicBool::new(false);
+/// Per-model stream lock state.
+/// Each model has its own lock to allow parallel inference across different models.
+pub struct ModelStreamLock {
+    /// Whether this model currently has an active stream
+    pub active: AtomicBool,
+    /// Waker queue for requests waiting on this model
+    pub waker_queue: Mutex<VecDeque<Waker>>,
+}
+
+impl ModelStreamLock {
+    /// Create a new model stream lock
+    pub fn new() -> Self {
+        Self {
+            active: AtomicBool::new(false),
+            waker_queue: Mutex::new(VecDeque::new()),
+        }
+    }
+
+    /// Try to acquire the lock. Returns true if successful.
+    pub fn try_acquire(&self) -> bool {
+        self.active
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok()
+    }
+
+    /// Release the lock and wake the next waiting request.
+    pub fn release(&self) {
+        self.active.store(false, Ordering::SeqCst);
+
+        if let Ok(mut queue) = self.waker_queue.lock() {
+            if let Some(waker) = queue.pop_front() {
+                waker.wake();
+            }
+        }
+    }
+
+    /// Register a waker to be notified when the lock is released.
+    pub fn register_waker(&self, waker: &Waker) {
+        if let Ok(mut queue) = self.waker_queue.lock() {
+            // Remove duplicate wakers
+            queue.retain(|w| !w.will_wake(waker));
+            queue.push_back(waker.clone());
+        }
+    }
+}
+
+impl Default for ModelStreamLock {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// RAII guard for model lock.
+/// Automatically releases the lock when dropped.
+/// Used by non-stream mode to ensure lock release even on early return or panic.
+pub struct ModelLockGuard {
+    lock: Arc<ModelStreamLock>,
+}
+
+impl ModelLockGuard {
+    /// Create a new guard that holds the given lock.
+    /// The lock should already be acquired before creating the guard.
+    pub fn new(lock: Arc<ModelStreamLock>) -> Self {
+        Self { lock }
+    }
+}
+
+impl Drop for ModelLockGuard {
+    fn drop(&mut self) {
+        self.lock.release();
+
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "ModelLockGuard: lock released on drop");
+    }
+}
+
+/// Global model stream locks manager.
+/// Key: model_name, Value: Arc<ModelStreamLock>
+static MODEL_STREAM_LOCKS: OnceLock<Mutex<HashMap<String, Arc<ModelStreamLock>>>> = OnceLock::new();
+
+/// Get the model locks manager, initializing it if necessary.
+fn get_model_locks() -> &'static Mutex<HashMap<String, Arc<ModelStreamLock>>> {
+    MODEL_STREAM_LOCKS.get_or_init(|| {
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Initializing model stream locks manager");
+        Mutex::new(HashMap::new())
+    })
+}
+
+/// Get or create a stream lock for the specified model.
+pub fn get_or_create_model_lock(model_name: &str) -> Result<Arc<ModelStreamLock>, LlamaCoreError> {
+    let locks = get_model_locks();
+    let mut locks_guard = locks.lock().map_err(|e| {
+        let err_msg = format!("Failed to acquire model locks: {e}");
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
+
+    if !locks_guard.contains_key(model_name) {
+        locks_guard.insert(model_name.to_string(), Arc::new(ModelStreamLock::new()));
+
+        #[cfg(feature = "logging")]
+        info!(target: "stdout", "Created new stream lock for model: {}", model_name);
+    }
+
+    Ok(locks_guard.get(model_name).unwrap().clone())
+}
+
+/// Get the lock for the default model (first available model).
+/// Used when the request does not specify a model name.
+pub fn get_default_model_lock() -> Result<(String, Arc<ModelStreamLock>), LlamaCoreError> {
+    let chat_graphs = CHAT_GRAPHS.get().ok_or_else(|| {
+        let err_msg = "CHAT_GRAPHS not initialized";
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg.into())
+    })?;
+
+    let chat_graphs = chat_graphs.lock().map_err(|e| {
+        let err_msg = format!("Failed to acquire CHAT_GRAPHS lock: {e}");
+
+        #[cfg(feature = "logging")]
+        error!(target: "stdout", "{}", &err_msg);
+
+        LlamaCoreError::Operation(err_msg)
+    })?;
+
+    let model_name = chat_graphs
+        .keys()
+        .next()
+        .ok_or_else(|| {
+            let err_msg = "No model available";
+
+            #[cfg(feature = "logging")]
+            error!(target: "stdout", "{}", &err_msg);
+
+            LlamaCoreError::Operation(err_msg.into())
+        })?
+        .clone();
+
+    drop(chat_graphs); // Release CHAT_GRAPHS lock early
+
+    let lock = get_or_create_model_lock(&model_name)?;
+    Ok((model_name, lock))
+}
 
 /// Processes a chat-completion request and returns either a stream of ChatCompletionChunk instances or a ChatCompletionObject instance.
 pub async fn chat(
@@ -147,7 +296,7 @@ async fn chat_stream(
     set_prompt(chat_request.model.as_ref(), &prompt)?;
 
     let stream = match tool_use {
-        false => (ChatStream::new(model_name, id, include_usage, None), false),
+        false => (ChatStream::new(model_name, id, include_usage, None)?, false),
         true => {
             let chat_graphs = match CHAT_GRAPHS.get() {
                 Some(chat_graphs) => chat_graphs,
@@ -385,7 +534,7 @@ fn chat_stream_for_tool(
                 id,
                 include_usage,
                 Some(chunks),
-            );
+            )?;
 
             Ok((stream, include_tool_calls))
         }
@@ -505,7 +654,7 @@ fn chat_stream_for_tool(
                 id,
                 include_usage,
                 Some(chunks),
-            );
+            )?;
 
             Ok((stream, false))
         }
@@ -630,7 +779,7 @@ fn chat_stream_for_tool(
                 id,
                 include_usage,
                 Some(chunks),
-            );
+            )?;
 
             Ok((stream, false))
         }
@@ -662,6 +811,29 @@ async fn chat_once(
     }
 
     let model_name = chat_request.model.clone();
+
+    // Get or create the per-model lock
+    let (resolved_model, model_lock) = match &model_name {
+        Some(name) => (name.clone(), get_or_create_model_lock(name)?),
+        None => get_default_model_lock()?,
+    };
+
+    // Acquire the lock using spin-wait loop
+    // This ensures mutual exclusion with stream requests on the same model
+    while !model_lock.try_acquire() {
+        #[cfg(feature = "logging")]
+        debug!(target: "stdout", "Non-stream request waiting for model lock: {}", &resolved_model);
+
+        // Yield to other tasks to avoid busy-waiting
+        std::hint::spin_loop();
+    }
+
+    #[cfg(feature = "logging")]
+    info!(target: "stdout", "Non-stream request acquired lock for model: {}", &resolved_model);
+
+    // Use RAII guard to ensure lock is released even on early return or panic
+    let _lock_guard = ModelLockGuard::new(model_lock);
+
     let id = match &chat_request.user {
         Some(id) => id.clone(),
         None => gen_chat_id(),
@@ -681,7 +853,7 @@ async fn chat_once(
 
     // build prompt
     let (prompt, avaible_completion_tokens, tool_use) =
-        build_prompt(model_name.as_ref(), chat_request)?;
+        build_prompt(Some(&resolved_model), chat_request)?;
 
     #[cfg(feature = "logging")]
     {
@@ -700,21 +872,22 @@ async fn chat_once(
     info!(target: "stdout", "Feed the prompt to the model");
 
     // feed the prompt to the model
-    set_prompt(model_name.as_ref(), &prompt)?;
+    set_prompt(Some(&resolved_model), &prompt)?;
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Compute chat completion.");
 
     // compute
-    let res = compute(model_name.as_ref(), id, tool_use);
+    let res = compute(Some(&resolved_model), id, tool_use);
 
     #[cfg(feature = "logging")]
     info!(target: "stdout", "End of the chat completion");
 
     // reset the model metadata
-    reset_model_metadata(model_name.as_ref())?;
+    reset_model_metadata(Some(&resolved_model))?;
 
     res
+    // _lock_guard is dropped here, releasing the lock
 }
 
 fn compute(
@@ -3627,6 +3800,9 @@ struct ChatStream {
     cache: Option<VecDeque<String>>,
     is_waiting: bool,
     has_lock: bool,
+    // Per-model lock fields
+    model_lock: Arc<ModelStreamLock>,
+    utf8_cache: Vec<u8>,
 }
 impl ChatStream {
     fn new(
@@ -3634,20 +3810,26 @@ impl ChatStream {
         id: String,
         include_usage: bool,
         cache: Option<Vec<String>>,
-    ) -> Self {
-        // Try to acquire lock
-        let has_lock = CHAT_STREAM_ACTIVE
-            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-            .is_ok();
+    ) -> Result<Self, LlamaCoreError> {
+        // Get or create the per-model lock
+        let (resolved_model, model_lock) = match &model {
+            Some(name) => (name.clone(), get_or_create_model_lock(name)?),
+            None => get_default_model_lock()?,
+        };
+
+        // Try to acquire the per-model lock
+        let has_lock = model_lock.try_acquire();
 
         #[cfg(feature = "logging")]
         if !has_lock {
-            info!(target: "stdout", "Lock acquisition failed in ChatStream::new, creating with waiting status");
+            info!(target: "stdout", "Lock acquisition failed for model {}, creating with waiting status", &resolved_model);
+        } else {
+            info!(target: "stdout", "Lock acquired for model {}", &resolved_model);
         }
 
-        ChatStream {
+        Ok(ChatStream {
             id,
-            model,
+            model: Some(resolved_model),
             include_usage,
             context_full_state: ContextFullState::Message,
             prompt_too_long_state: PromptTooLongState::Message,
@@ -3659,7 +3841,9 @@ impl ChatStream {
             cache: cache.map(VecDeque::from),
             is_waiting: !has_lock,
             has_lock,
-        }
+            model_lock,
+            utf8_cache: Vec::new(),
+        })
     }
 
     // Try to acquire lock, returns whether successful
@@ -3668,13 +3852,14 @@ impl ChatStream {
             return true;
         }
 
-        let acquired = CHAT_STREAM_ACTIVE
-            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-            .is_ok();
+        let acquired = self.model_lock.try_acquire();
 
         if acquired {
             self.has_lock = true;
             self.is_waiting = false;
+
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "ChatStream {} acquired lock for model {:?}", &self.id, &self.model);
         }
 
         acquired
@@ -3858,23 +4043,12 @@ impl Drop for ChatStream {
         #[cfg(feature = "logging")]
         info!(target: "stdout", "Model metadata reset done!");
 
-        // When dropping a ChatStream that held the lock, check if there are waiting streams
+        // Release the per-model lock and wake up waiting streams
         if self.has_lock {
-            // Reset the atomic flag
-            CHAT_STREAM_ACTIVE.store(false, Ordering::SeqCst);
+            self.model_lock.release();
 
             #[cfg(feature = "logging")]
-            info!(target: "stdout", "Lock from ChatStream {} released", &self.id);
-
-            // Wake up waiting streams
-            if let Ok(mut queue) = get_chat_stream_waker_queue().lock() {
-                if let Some(waker) = queue.pop_front() {
-                    #[cfg(feature = "logging")]
-                    info!(target: "stdout", "Waking up a waiting ChatStream");
-
-                    waker.wake();
-                }
-            }
+            info!(target: "stdout", "Lock released for ChatStream {} (model {:?})", &self.id, &self.model);
         }
     }
 }
@@ -3884,19 +4058,14 @@ impl futures::Stream for ChatStream {
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
 
-        // If this is a waiting stream, try to acquire the lock
+        // If this is a waiting stream, try to acquire the per-model lock
         if this.is_waiting {
             if !this.try_acquire_lock() {
-                // Store the waker to be notified when the lock becomes available
-                if let Ok(mut queue) = get_chat_stream_waker_queue().lock() {
-                    // Remove any previous instance of this waker
-                    queue.retain(|w| !w.will_wake(cx.waker()));
-                    // Add this waker to the queue
-                    queue.push_back(cx.waker().clone());
+                // Register waker to be notified when the per-model lock becomes available
+                this.model_lock.register_waker(cx.waker());
 
-                    #[cfg(feature = "logging")]
-                    debug!(target: "stdout", "ChatStream {} is waiting for lock, added waker to queue", &this.id);
-                }
+                #[cfg(feature = "logging")]
+                debug!(target: "stdout", "ChatStream {} waiting for model {:?}", &this.id, &this.model);
 
                 return Poll::Pending;
             }
@@ -3911,16 +4080,23 @@ impl futures::Stream for ChatStream {
             // Lost the lock, need to wait
             this.is_waiting = true;
 
-            // Register waker to be notified when lock is available
-            if let Ok(mut queue) = get_chat_stream_waker_queue().lock() {
-                queue.retain(|w| !w.will_wake(cx.waker()));
-                queue.push_back(cx.waker().clone());
-            }
+            // Register waker to be notified when the per-model lock is available
+            this.model_lock.register_waker(cx.waker());
 
             return Poll::Pending;
         }
 
-        if this.cache.is_none() {
+        if let Some(cache) = &mut this.cache {
+            let x = cache.pop_front();
+
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "Get the next item from the cache for ChatStream {}: {:?}", &this.id, &x);
+
+            match x {
+                Some(x) => Poll::Ready(Some(Ok(x))),
+                None => Poll::Ready(None),
+            }
+        } else {
             let res = compute_stream(
                 this.model.clone(),
                 this.id.clone(),
@@ -3928,6 +4104,7 @@ impl futures::Stream for ChatStream {
                 &mut this.prompt_too_long_state,
                 &mut this.context_full_state,
                 &mut this.stream_state,
+                &mut this.utf8_cache,
             );
 
             match res {
@@ -3944,27 +4121,8 @@ impl futures::Stream for ChatStream {
                 }
                 Err(e) => Poll::Ready(Some(Err(e))),
             }
-        } else {
-            let x = this.cache.as_mut().unwrap().pop_front();
-
-            #[cfg(feature = "logging")]
-            info!(target: "stdout", "Get the next item from the cache for ChatStream {}: {:?}", &this.id, &x);
-
-            match x {
-                Some(x) => Poll::Ready(Some(Ok(x))),
-                None => Poll::Ready(None),
-            }
         }
     }
-}
-
-/// Helper function to get or initialize the waker queue for waiting ChatStreams
-fn get_chat_stream_waker_queue() -> &'static Mutex<VecDeque<Waker>> {
-    CHAT_STREAM_WAKER_QUEUE.get_or_init(|| {
-        #[cfg(feature = "logging")]
-        info!(target: "stdout", "Initializing ChatStream waker queue");
-        Mutex::new(VecDeque::new())
-    })
 }
 
 fn compute_stream(
@@ -3974,6 +4132,7 @@ fn compute_stream(
     prompt_too_long_state: &mut PromptTooLongState,
     context_full_state: &mut ContextFullState,
     stream_state: &mut StreamState,
+    utf8_cache: &mut Vec<u8>,
 ) -> Result<String, LlamaCoreError> {
     #[cfg(feature = "logging")]
     info!(target: "stdout", "Computing stream chunk for ChatStream {}", &id);
@@ -4043,58 +4202,26 @@ fn compute_stream(
                                     let output = match String::from_utf8(output_buffer.clone()) {
                                         Ok(token) => token,
                                         Err(_) => {
-                                            let mutex = CACHED_UTF8_ENCODINGS
-                                                .get_or_init(|| Mutex::new(Vec::new()));
-                                            let mut cached_encodings = mutex.lock().map_err(|e| {
-                                            let err_msg = format!(
-                                                "Fail to acquire the lock of `UTF8_ENCODINGS`. Reason: {e}"
-                                            );
+                                            // Use the per-stream utf8_cache instead of global CACHED_UTF8_ENCODINGS
+                                            utf8_cache.extend_from_slice(&output_buffer[..]);
 
-                                            #[cfg(feature = "logging")]
-                                            error!(target: "stdout", "{}", &err_msg);
-
-
-                                            LlamaCoreError::Operation(err_msg)
-                                        })?;
-
-                                            // cache the bytes for future decoding
-                                            cached_encodings.extend_from_slice(&output_buffer[..]);
-
-                                            match String::from_utf8(cached_encodings.to_vec()) {
+                                            match String::from_utf8(utf8_cache.clone()) {
                                                 Ok(token) => {
-                                                    // clear CACHED_UTF8_ENCODINGS
-                                                    cached_encodings.clear();
-
+                                                    utf8_cache.clear();
                                                     token
                                                 }
                                                 Err(e) => {
-                                                    // TODO This is a temp check. In case, infinite cached encodings happen.
-                                                    if cached_encodings.len() > 4 {
-                                                        let err_msg = format!("Fail to convert a vector of bytes to string. The length of the utf8 bytes exceeds 4. {e}");
-
+                                                    if utf8_cache.len() > 4 {
                                                         #[cfg(feature = "logging")]
-                                                        error!(target: "stdout", "{}", &err_msg);
-
+                                                        error!(target: "stdout", "UTF-8 decode failed, cache too long: {e}");
                                                         #[cfg(feature = "logging")]
-                                                        error!(target: "stdout", "The cached buffer: {:?}", &cached_encodings[..]);
-
-                                                        // let token = String::from_utf8_lossy(
-                                                        //     &cached_encodings,
-                                                        // )
-                                                        // .to_string();
-
-                                                        // clear CACHED_UTF8_ENCODINGS
-                                                        cached_encodings.clear();
-
-                                                        String::from("")
+                                                        error!(target: "stdout", "The cached buffer: {:?}", &utf8_cache[..]);
+                                                        utf8_cache.clear();
                                                     } else {
-                                                        let warn_msg = format!("Fail to convert a vector of bytes to string. {e}");
-
                                                         #[cfg(feature = "logging")]
-                                                        warn!(target: "stdout", "{}", &warn_msg);
-
-                                                        String::from("")
+                                                        warn!(target: "stdout", "UTF-8 decode incomplete: {e}");
                                                     }
+                                                    String::new()
                                                 }
                                             }
                                         }
@@ -4515,62 +4642,27 @@ fn compute_stream(
                                             ) {
                                                 Ok(token) => token,
                                                 Err(_) => {
-                                                    let mutex = CACHED_UTF8_ENCODINGS
-                                                        .get_or_init(|| Mutex::new(Vec::new()));
-                                                    let mut cached_encodings = mutex.lock().map_err(|e| {
-                                            let err_msg = format!(
-                                                "Fail to acquire the lock of `UTF8_ENCODINGS`. Reason: {e}"
-                                            );
-
-                                            #[cfg(feature = "logging")]
-                                            error!(target: "stdout", "{}", &err_msg);
-
-
-                                            LlamaCoreError::Operation(err_msg)
-                                        })?;
-
-                                                    // cache the bytes for future decoding
-                                                    cached_encodings
+                                                    // Use the per-stream utf8_cache instead of global CACHED_UTF8_ENCODINGS
+                                                    utf8_cache
                                                         .extend_from_slice(&output_buffer[..]);
 
-                                                    match String::from_utf8(
-                                                        cached_encodings.to_vec(),
-                                                    ) {
+                                                    match String::from_utf8(utf8_cache.clone()) {
                                                         Ok(token) => {
-                                                            // clear encodings
-                                                            cached_encodings.clear();
-
+                                                            utf8_cache.clear();
                                                             token
                                                         }
                                                         Err(e) => {
-                                                            // TODO This is a temp check. In case, infinite cached encodings happen.
-                                                            if cached_encodings.len() > 4 {
-                                                                let err_msg = format!("Fail to convert a vector of bytes to string. The length of the utf8 bytes exceeds 4. {e}");
-
+                                                            if utf8_cache.len() > 4 {
                                                                 #[cfg(feature = "logging")]
-                                                                error!(target: "stdout", "{}", &err_msg);
-
+                                                                error!(target: "stdout", "UTF-8 decode failed, cache too long: {e}");
                                                                 #[cfg(feature = "logging")]
-                                                                error!(target: "stdout", "The cached buffer: {:?}", &cached_encodings[..]);
-
-                                                                // let token =
-                                                                //     String::from_utf8_lossy(
-                                                                //         &cached_encodings,
-                                                                //     )
-                                                                //     .to_string();
-
-                                                                // clear CACHED_UTF8_ENCODINGS
-                                                                cached_encodings.clear();
-
-                                                                String::from("")
+                                                                error!(target: "stdout", "The cached buffer: {:?}", &utf8_cache[..]);
+                                                                utf8_cache.clear();
                                                             } else {
-                                                                let warn_msg = format!("Fail to convert a vector of bytes to string. {e}");
-
                                                                 #[cfg(feature = "logging")]
-                                                                warn!(target: "stdout", "{}", &warn_msg);
-
-                                                                String::from("")
+                                                                warn!(target: "stdout", "UTF-8 decode incomplete: {e}");
                                                             }
+                                                            String::new()
                                                         }
                                                     }
                                                 }
@@ -5020,56 +5112,26 @@ fn compute_stream(
                                     let output = match String::from_utf8(output_buffer.clone()) {
                                         Ok(token) => token,
                                         Err(_) => {
-                                            let mutex = CACHED_UTF8_ENCODINGS
-                                                .get_or_init(|| Mutex::new(Vec::new()));
-                                            let mut cached_encodings = mutex.lock().map_err(|e| {
-                                            let err_msg = format!(
-                                                "Fail to acquire the lock of `UTF8_ENCODINGS`. Reason: {e}"
-                                            );
+                                            // Use the per-stream utf8_cache instead of global CACHED_UTF8_ENCODINGS
+                                            utf8_cache.extend_from_slice(&output_buffer[..]);
 
-                                            #[cfg(feature = "logging")]
-                                            error!(target: "stdout", "{}", &err_msg);
-
-                                            LlamaCoreError::Operation(err_msg)
-                                        })?;
-
-                                            cached_encodings.extend_from_slice(&output_buffer[..]);
-
-                                            match String::from_utf8(cached_encodings.to_vec()) {
+                                            match String::from_utf8(utf8_cache.clone()) {
                                                 Ok(token) => {
-                                                    // clear encodings
-                                                    cached_encodings.clear();
-
+                                                    utf8_cache.clear();
                                                     token
                                                 }
                                                 Err(e) => {
-                                                    // TODO This is a temp check. In case, infinite cached encodings happen.
-                                                    if cached_encodings.len() > 4 {
-                                                        let err_msg = format!("Fail to convert a vector of bytes to string. The length of the utf8 bytes exceeds 4. {e}");
-
+                                                    if utf8_cache.len() > 4 {
                                                         #[cfg(feature = "logging")]
-                                                        error!(target: "stdout", "{}", &err_msg);
-
+                                                        error!(target: "stdout", "UTF-8 decode failed, cache too long: {e}");
                                                         #[cfg(feature = "logging")]
-                                                        error!(target: "stdout", "The cached buffer: {:?}", &cached_encodings[..]);
-
-                                                        // let token = String::from_utf8_lossy(
-                                                        //     &cached_encodings,
-                                                        // )
-                                                        // .to_string();
-
-                                                        // clear CACHED_UTF8_ENCODINGS
-                                                        cached_encodings.clear();
-
-                                                        String::from("")
+                                                        error!(target: "stdout", "The cached buffer: {:?}", &utf8_cache[..]);
+                                                        utf8_cache.clear();
                                                     } else {
-                                                        let warn_msg = format!("Fail to convert a vector of bytes to string. {e}");
-
                                                         #[cfg(feature = "logging")]
-                                                        warn!(target: "stdout", "{}", &warn_msg);
-
-                                                        String::from("")
+                                                        warn!(target: "stdout", "UTF-8 decode incomplete: {e}");
                                                     }
+                                                    String::new()
                                                 }
                                             }
                                         }
@@ -5490,4 +5552,151 @@ struct ParseResult {
     raw: String,
     content: Option<String>,
     tool_calls: Vec<ToolCall>,
+}
+
+// ============================================================================
+// Unit Tests for Per-Model Stream Lock
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_model_stream_lock_new() {
+        let lock = ModelStreamLock::new();
+        assert!(!lock.active.load(Ordering::SeqCst));
+        assert!(lock.waker_queue.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_model_stream_lock_acquire_release() {
+        let lock = ModelStreamLock::new();
+
+        // First acquisition should succeed
+        assert!(lock.try_acquire());
+        assert!(lock.active.load(Ordering::SeqCst));
+
+        // Second acquisition should fail (already held)
+        assert!(!lock.try_acquire());
+
+        // Release the lock
+        lock.release();
+        assert!(!lock.active.load(Ordering::SeqCst));
+
+        // After release, acquisition should succeed again
+        assert!(lock.try_acquire());
+    }
+
+    #[test]
+    fn test_different_models_can_acquire_parallel() {
+        let lock_a = Arc::new(ModelStreamLock::new());
+        let lock_b = Arc::new(ModelStreamLock::new());
+
+        // Both locks can be acquired simultaneously
+        assert!(lock_a.try_acquire());
+        assert!(lock_b.try_acquire());
+
+        // Both are active
+        assert!(lock_a.active.load(Ordering::SeqCst));
+        assert!(lock_b.active.load(Ordering::SeqCst));
+
+        // Release both
+        lock_a.release();
+        lock_b.release();
+
+        assert!(!lock_a.active.load(Ordering::SeqCst));
+        assert!(!lock_b.active.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn test_model_stream_lock_default() {
+        let lock = ModelStreamLock::default();
+        assert!(!lock.active.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn test_get_or_create_model_lock() {
+        // First call should create a new lock
+        let lock1 = get_or_create_model_lock("test-model-1").unwrap();
+
+        // Second call with same name should return the same lock
+        let lock2 = get_or_create_model_lock("test-model-1").unwrap();
+
+        // They should be the same Arc (point to same lock)
+        assert!(Arc::ptr_eq(&lock1, &lock2));
+
+        // Different model name should create a different lock
+        let lock3 = get_or_create_model_lock("test-model-2").unwrap();
+        assert!(!Arc::ptr_eq(&lock1, &lock3));
+
+        // Operations on one lock should not affect the other
+        assert!(lock1.try_acquire());
+        assert!(lock3.try_acquire()); // Different model, should succeed
+
+        lock1.release();
+        lock3.release();
+    }
+
+    #[test]
+    fn test_concurrent_access_same_model() {
+        let lock = get_or_create_model_lock("test-concurrent-model").unwrap();
+
+        // Simulate first request acquiring the lock
+        assert!(lock.try_acquire());
+
+        // Simulate second request trying to acquire (should fail)
+        let lock_clone = lock.clone();
+        assert!(!lock_clone.try_acquire());
+
+        // Release from first request
+        lock.release();
+
+        // Now second request can acquire
+        assert!(lock_clone.try_acquire());
+
+        lock_clone.release();
+    }
+
+    #[test]
+    fn test_model_lock_guard() {
+        let lock = Arc::new(ModelStreamLock::new());
+
+        // Acquire the lock
+        assert!(lock.try_acquire());
+        assert!(lock.active.load(Ordering::SeqCst));
+
+        // Create a guard (simulating non-stream mode usage)
+        {
+            let _guard = ModelLockGuard::new(lock.clone());
+            // Lock should still be active while guard exists
+            assert!(lock.active.load(Ordering::SeqCst));
+        }
+        // Guard dropped, lock should be released
+        assert!(!lock.active.load(Ordering::SeqCst));
+
+        // Lock should be acquirable again
+        assert!(lock.try_acquire());
+        lock.release();
+    }
+
+    #[test]
+    fn test_model_lock_guard_ensures_release() {
+        let lock = get_or_create_model_lock("test-guard-model").unwrap();
+
+        // Acquire the lock and create guard
+        assert!(lock.try_acquire());
+        let _guard = ModelLockGuard::new(lock.clone());
+
+        // Another request should fail to acquire
+        let lock2 = get_or_create_model_lock("test-guard-model").unwrap();
+        assert!(!lock2.try_acquire());
+
+        // Drop the guard explicitly
+        drop(_guard);
+
+        // Now the other request should be able to acquire
+        assert!(lock2.try_acquire());
+        lock2.release();
+    }
 }
