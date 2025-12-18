@@ -8,7 +8,7 @@ use crate::{
         gen_chat_id, gen_response_id, get_output_buffer, get_output_buffer_single,
         get_token_info_by_graph, get_token_info_by_graph_name, set_tensor_data_u8,
     },
-    Graph, RunningMode, CACHED_UTF8_ENCODINGS, CHAT_GRAPHS, OUTPUT_TENSOR,
+    Graph, RunningMode, CHAT_GRAPHS, OUTPUT_TENSOR,
 };
 use chat_prompts::{BuildChatPrompt, ChatPrompt, PromptTemplateType};
 use either::{Either, Left, Right};
@@ -3505,11 +3505,19 @@ impl futures::Stream for ChatStream {
             return Poll::Pending;
         }
 
-        if this.cache.is_none() {
+        if let Some(cache) = &mut this.cache {
+            let x = cache.pop_front();
+
+            #[cfg(feature = "logging")]
+            info!(target: "stdout", "Get the next item from the cache for ChatStream: {:?}", &x);
+
+            match x {
+                Some(x) => Poll::Ready(Some(Ok(x))),
+                None => Poll::Ready(None),
+            }
+        } else {
             let res = compute_stream(
                 this.model.clone(),
-                // this.id.clone(),
-                // this.include_usage,
                 &mut this.prompt_too_long_state,
                 &mut this.context_full_state,
                 &mut this.stream_state,
@@ -3528,16 +3536,6 @@ impl futures::Stream for ChatStream {
                     }
                 }
                 Err(e) => Poll::Ready(Some(Err(e))),
-            }
-        } else {
-            let x = this.cache.as_mut().unwrap().pop_front();
-
-            #[cfg(feature = "logging")]
-            info!(target: "stdout", "Get the next item from the cache for ChatStream: {:?}", &x);
-
-            match x {
-                Some(x) => Poll::Ready(Some(Ok(x))),
-                None => Poll::Ready(None),
             }
         }
     }
