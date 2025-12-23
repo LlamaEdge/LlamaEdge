@@ -1,0 +1,32 @@
+[package]
+name = "llamaedge"
+version = "0.1.0"
+edition = "2021"
+description = "LlamaEdge Rust SDK - HTTP client for llama-api-server"
+license = "Apache-2.0"
+repository = "https://github.com/LlamaEdge/LlamaEdge"
+readme = "README.md"
+keywords = ["llm", "llamaedge", "openai", "api", "client"]
+categories = ["api-bindings", "web-programming::http-client"]
+
+[dependencies]
+# 复用现有的数据类型 (从本地路径或 crates.io)
+endpoints = { path = "../endpoints", version = "^0.37" }
+
+# HTTP 客户端
+reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "rustls-tls"] }
+
+# 异步运行时
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+tokio-stream = "0.1"
+futures = { version = "0.3", default-features = false, features = ["async-await", "std"] }
+
+# 序列化
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# 错误处理
+thiserror = "1"
+
+[dev-dependencies]
+tokio-test = "0.4"

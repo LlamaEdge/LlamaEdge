@@ -7,6 +7,9 @@ members = [
     "llama-chat",
     "llama-simple",
 ]
+exclude = [
+    "crates/llamaedge",
+]
 resolver = "2"
 
 [workspace.dependencies]
@@ -28,6 +31,7 @@ once_cell        = "1.18"
 wasmedge-wasi-nn = "0.8.0"
 futures          = { version = "0.3.6", default-features = false, features = ["async-await", "std"] }
 reqwest          = { version = "0.11", default-features = false, features = ["json", "stream", "rustls-tls"] }
+tokio-stream     = "0.1"
 
 [patch.crates-io]
 socket2 = { git = "https://github.com/second-state/socket2.git", branch = "v0.5.x" }
