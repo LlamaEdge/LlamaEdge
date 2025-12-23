@@ -33,6 +33,10 @@ pub enum Error {
     /// Connection failed.
     #[error("Connection failed: {0}")]
     Connection(String),
+
+    /// Stream error.
+    #[error("Stream error: {0}")]
+    Stream(String),
 }
 
 /// A specialized Result type for LlamaEdge SDK operations.

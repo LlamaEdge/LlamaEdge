@@ -2,14 +2,24 @@
 
 use crate::error::{Error, Result};
 use endpoints::{
-    chat::{ChatCompletionObject, ChatCompletionRequest, ChatCompletionRequestBuilder},
+    chat::{
+        ChatCompletionChunk, ChatCompletionObject, ChatCompletionRequest,
+        ChatCompletionRequestBuilder,
+    },
     embeddings::{EmbeddingRequest, EmbeddingsResponse, InputText},
     models::ListModelsResponse,
 };
+use eventsource_stream::Eventsource;
+use futures::stream::{Stream, StreamExt};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
+use std::pin::Pin;
 
 #[allow(unused_imports)]
 use std::time::Duration;
+
+/// Type alias for a boxed stream of chat completion chunks.
+pub type ChatCompletionStream =
+    Pin<Box<dyn Stream<Item = Result<ChatCompletionChunk>> + Send + 'static>>;
 
 /// LlamaEdge API client.
 ///
@@ -230,6 +240,143 @@ impl Client {
             .await?;
 
         self.handle_response(response).await
+    }
+
+    // ========== Streaming Chat API ==========
+
+    /// Sends a simple chat message and returns a stream of response chunks.
+    ///
+    /// This is a convenience method for simple streaming conversations.
+    ///
+    /// # Arguments
+    ///
+    /// * `message` - The user message to send.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use llamaedge::Client;
+    /// use futures::StreamExt;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new("http://localhost:8080");
+    ///     let mut stream = client.chat_stream("Tell me a story").await?;
+    ///
+    ///     while let Some(chunk) = stream.next().await {
+    ///         let chunk = chunk?;
+    ///         if let Some(choice) = chunk.choices.first() {
+    ///             if let Some(ref content) = choice.delta.content {
+    ///                 print!("{}", content);
+    ///             }
+    ///         }
+    ///     }
+    ///     println!();
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn chat_stream(&self, message: &str) -> Result<ChatCompletionStream> {
+        use endpoints::chat::{ChatCompletionRequestMessage, ChatCompletionUserMessageContent};
+
+        let user_message = ChatCompletionRequestMessage::new_user_message(
+            ChatCompletionUserMessageContent::Text(message.to_string()),
+            None,
+        );
+
+        let request = ChatCompletionRequestBuilder::new(&[user_message])
+            .enable_stream(true)
+            .build();
+
+        self.chat_completions_stream(&request).await
+    }
+
+    /// Sends a streaming chat completion request and returns a stream of chunks.
+    ///
+    /// # Arguments
+    ///
+    /// * `request` - The chat completion request. Note: `stream` will be automatically enabled.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use llamaedge::Client;
+    /// use endpoints::chat::{ChatCompletionRequestBuilder, ChatCompletionRequestMessage, ChatCompletionUserMessageContent};
+    /// use futures::StreamExt;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new("http://localhost:8080");
+    ///
+    ///     let user_message = ChatCompletionRequestMessage::new_user_message(
+    ///         ChatCompletionUserMessageContent::Text("Hello!".to_string()),
+    ///         None,
+    ///     );
+    ///     let request = ChatCompletionRequestBuilder::new(&[user_message])
+    ///         .with_model("llama3")
+    ///         .enable_stream(true)
+    ///         .build();
+    ///
+    ///     let mut stream = client.chat_completions_stream(&request).await?;
+    ///     while let Some(chunk) = stream.next().await {
+    ///         let chunk = chunk?;
+    ///         if let Some(choice) = chunk.choices.first() {
+    ///             if let Some(ref content) = choice.delta.content {
+    ///                 print!("{}", content);
+    ///             }
+    ///         }
+    ///     }
+    ///     println!();
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn chat_completions_stream(
+        &self,
+        request: &ChatCompletionRequest,
+    ) -> Result<ChatCompletionStream> {
+        let url = format!("{}/v1/chat/completions", self.base_url);
+
+        let response = self
+            .http_client
+            .post(&url)
+            .headers(self.build_headers())
+            .json(request)
+            .send()
+            .await?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let status_code = status.as_u16();
+            let message = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            return Err(Error::Api {
+                status: status_code,
+                message,
+            });
+        }
+
+        let stream = response
+            .bytes_stream()
+            .eventsource()
+            .filter_map(|event| async {
+                match event {
+                    Ok(event) => {
+                        // Skip [DONE] message
+                        if event.data == "[DONE]" {
+                            return None;
+                        }
+                        // Parse the JSON data
+                        match serde_json::from_str::<ChatCompletionChunk>(&event.data) {
+                            Ok(chunk) => Some(Ok(chunk)),
+                            Err(e) => Some(Err(Error::Json(e))),
+                        }
+                    }
+                    Err(e) => Some(Err(Error::Stream(e.to_string()))),
+                }
+            });
+
+        Ok(Box::pin(stream))
     }
 
     // ========== Embeddings API ==========

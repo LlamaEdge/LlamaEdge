@@ -6,7 +6,7 @@
 //! ## Features
 //!
 //! - Simple and ergonomic API
-//! - Support for chat completions (non-streaming)
+//! - Support for chat completions (streaming and non-streaming)
 //! - Support for embeddings generation
 //! - Support for listing available models
 //! - Configurable timeout and API key authentication
@@ -98,12 +98,13 @@
 mod client;
 mod error;
 
-pub use client::Client;
+pub use client::{ChatCompletionStream, Client};
 pub use error::{Error, Result};
 
 // Re-export commonly used types from endpoints crate
 pub use endpoints::{
     chat::{
+        ChatCompletionChunk, ChatCompletionChunkChoice, ChatCompletionChunkChoiceDelta,
         ChatCompletionObject, ChatCompletionRequest, ChatCompletionRequestBuilder,
         ChatCompletionRequestMessage, ChatCompletionSystemMessage,
         ChatCompletionUserMessageContent,
@@ -111,3 +112,6 @@ pub use endpoints::{
     embeddings::{EmbeddingRequest, EmbeddingsResponse, InputText},
     models::{ListModelsResponse, Model},
 };
+
+// Re-export futures for streaming
+pub use futures::stream::StreamExt;

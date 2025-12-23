@@ -1,0 +1,18 @@
+# LlamaEdge Rust SDK - Cargo Configuration
+#
+# This SDK is a native Rust library supporting macOS, Linux, and Windows.
+# It is intentionally excluded from the workspace to avoid inheriting
+# WASM-specific patches and configurations.
+#
+# IMPORTANT: When building within this monorepo, you must specify the target explicitly:
+#   cargo build --target aarch64-apple-darwin  # macOS ARM64
+#   cargo build --target x86_64-apple-darwin   # macOS Intel
+#   cargo build --target x86_64-unknown-linux-gnu  # Linux
+#   cargo build --target x86_64-pc-windows-msvc    # Windows
+#
+# When this crate is used as a dependency in another project (outside this monorepo),
+# it will build normally without needing to specify a target.
+
+[build]
+# Remove wasm-specific rustflags from parent config
+rustflags = []
