@@ -28,5 +28,8 @@ serde_json = "1.0"
 # 错误处理
 thiserror = "1"
 
+# SSE 解析（用于流式响应）
+eventsource-stream = "0.2"
+
 [dev-dependencies]
 tokio-test = "0.4"
