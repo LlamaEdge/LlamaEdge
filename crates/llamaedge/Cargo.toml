@@ -11,10 +11,10 @@ categories = ["api-bindings", "web-programming::http-client"]
 
 [dependencies]
 # 复用现有的数据类型 (从本地路径或 crates.io)
-endpoints = { path = "../endpoints", version = "^0.37" }
+endpoints = { path = "../endpoints", version = "^0.37", features = ["whisper"] }
 
-# HTTP 客户端
-reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "rustls-tls"] }
+# HTTP 客户端 (multipart for file uploads)
+reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "rustls-tls", "multipart"] }
 
 # 异步运行时
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
