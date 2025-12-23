@@ -2,16 +2,26 @@
 
 use crate::error::{Error, Result};
 use endpoints::{
+    audio::{
+        speech::{SpeechRequest, SpeechVoice},
+        transcription::TranscriptionObject,
+        translation::TranslationObject,
+    },
     chat::{
         ChatCompletionChunk, ChatCompletionObject, ChatCompletionRequest,
         ChatCompletionRequestBuilder,
     },
-    embeddings::{EmbeddingRequest, EmbeddingsResponse, InputText},
+    embeddings::{ChunksRequest, ChunksResponse, EmbeddingRequest, EmbeddingsResponse, InputText},
+    files::{DeleteFileStatus, FileObject, ListFilesResponse},
+    images::{ImageCreateRequest, ListImagesResponse},
     models::ListModelsResponse,
 };
 use eventsource_stream::Eventsource;
 use futures::stream::{Stream, StreamExt};
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
+use reqwest::{
+    header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE},
+    multipart::{Form, Part},
+};
 use std::pin::Pin;
 
 #[allow(unused_imports)]
@@ -501,6 +511,446 @@ impl Client {
             .http_client
             .get(&url)
             .headers(self.build_headers())
+            .send()
+            .await?;
+
+        self.handle_response(response).await
+    }
+
+    // ========== Audio API ==========
+
+    /// Transcribes audio into the input language.
+    ///
+    /// # Arguments
+    ///
+    /// * `audio_data` - The audio file data in bytes.
+    /// * `filename` - The filename of the audio file (e.g., "audio.mp3").
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use llamaedge::Client;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new("http://localhost:8080");
+    ///     let audio_data = std::fs::read("audio.mp3")?;
+    ///     let text = client.transcribe(&audio_data, "audio.mp3").await?;
+    ///     println!("Transcription: {}", text);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn transcribe(&self, audio_data: &[u8], filename: &str) -> Result<String> {
+        let response = self.transcribe_request(audio_data, filename, None).await?;
+        Ok(response.text)
+    }
+
+    /// Transcribes audio with optional language specification.
+    ///
+    /// # Arguments
+    ///
+    /// * `audio_data` - The audio file data in bytes.
+    /// * `filename` - The filename of the audio file.
+    /// * `language` - Optional ISO-639-1 language code (e.g., "en", "zh").
+    pub async fn transcribe_request(
+        &self,
+        audio_data: &[u8],
+        filename: &str,
+        language: Option<&str>,
+    ) -> Result<TranscriptionObject> {
+        let url = format!("{}/v1/audio/transcriptions", self.base_url);
+
+        let file_part = Part::bytes(audio_data.to_vec())
+            .file_name(filename.to_string())
+            .mime_str("audio/mpeg")
+            .map_err(|e| Error::Stream(e.to_string()))?;
+
+        let mut form = Form::new().part("file", file_part);
+
+        if let Some(lang) = language {
+            form = form.text("language", lang.to_string());
+        }
+
+        let mut request = self.http_client.post(&url);
+
+        if let Some(ref api_key) = self.api_key {
+            request = request.header(AUTHORIZATION, format!("Bearer {}", api_key));
+        }
+
+        let response = request.multipart(form).send().await?;
+
+        self.handle_response(response).await
+    }
+
+    /// Translates audio into English.
+    ///
+    /// # Arguments
+    ///
+    /// * `audio_data` - The audio file data in bytes.
+    /// * `filename` - The filename of the audio file.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use llamaedge::Client;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new("http://localhost:8080");
+    ///     let audio_data = std::fs::read("chinese_audio.mp3")?;
+    ///     let english_text = client.translate_audio(&audio_data, "chinese_audio.mp3").await?;
+    ///     println!("Translation: {}", english_text);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn translate_audio(&self, audio_data: &[u8], filename: &str) -> Result<String> {
+        let response = self.translate_audio_request(audio_data, filename).await?;
+        Ok(response.text)
+    }
+
+    /// Translates audio into English and returns the full response.
+    pub async fn translate_audio_request(
+        &self,
+        audio_data: &[u8],
+        filename: &str,
+    ) -> Result<TranslationObject> {
+        let url = format!("{}/v1/audio/translations", self.base_url);
+
+        let file_part = Part::bytes(audio_data.to_vec())
+            .file_name(filename.to_string())
+            .mime_str("audio/mpeg")
+            .map_err(|e| Error::Stream(e.to_string()))?;
+
+        let form = Form::new().part("file", file_part);
+
+        let mut request = self.http_client.post(&url);
+
+        if let Some(ref api_key) = self.api_key {
+            request = request.header(AUTHORIZATION, format!("Bearer {}", api_key));
+        }
+
+        let response = request.multipart(form).send().await?;
+
+        self.handle_response(response).await
+    }
+
+    /// Generates audio from the input text (text-to-speech).
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - The text to generate audio for.
+    /// * `model` - The model to use for speech generation.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use llamaedge::Client;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new("http://localhost:8080");
+    ///     let audio_data = client.speech("Hello, world!", "tts-model").await?;
+    ///     std::fs::write("output.wav", audio_data)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn speech(&self, text: &str, model: &str) -> Result<Vec<u8>> {
+        self.speech_with_voice(text, model, None).await
+    }
+
+    /// Generates audio from text with a specific voice.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - The text to generate audio for.
+    /// * `model` - The model to use for speech generation.
+    /// * `voice` - Optional voice to use (alloy, echo, fable, onyx, nova, shimmer).
+    pub async fn speech_with_voice(
+        &self,
+        text: &str,
+        model: &str,
+        voice: Option<SpeechVoice>,
+    ) -> Result<Vec<u8>> {
+        let url = format!("{}/v1/audio/speech", self.base_url);
+
+        let request = SpeechRequest {
+            model: model.to_string(),
+            input: text.to_string(),
+            voice,
+            response_format: None,
+            speed: None,
+            speaker_id: None,
+            noise_scale: None,
+            length_scale: None,
+            noise_w: None,
+            sentence_silence: None,
+            phoneme_silence: None,
+            json_input: None,
+        };
+
+        let response = self
+            .http_client
+            .post(&url)
+            .headers(self.build_headers())
+            .json(&request)
+            .send()
+            .await?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let status_code = status.as_u16();
+            let message = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            return Err(Error::Api {
+                status: status_code,
+                message,
+            });
+        }
+
+        let bytes = response.bytes().await?;
+        Ok(bytes.to_vec())
+    }
+
+    // ========== Images API ==========
+
+    /// Generates an image from a text prompt.
+    ///
+    /// # Arguments
+    ///
+    /// * `request` - The image creation request.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use llamaedge::Client;
+    /// use endpoints::images::ImageCreateRequestBuilder;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new("http://localhost:8080");
+    ///     let request = ImageCreateRequestBuilder::new("sd-model", "A beautiful sunset")
+    ///         .with_image_size(512, 512)
+    ///         .build();
+    ///     let response = client.create_image(&request).await?;
+    ///     println!("Generated {} images", response.data.len());
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn create_image(&self, request: &ImageCreateRequest) -> Result<ListImagesResponse> {
+        let url = format!("{}/v1/images/generations", self.base_url);
+
+        let response = self
+            .http_client
+            .post(&url)
+            .headers(self.build_headers())
+            .json(request)
+            .send()
+            .await?;
+
+        self.handle_response(response).await
+    }
+
+    /// Generates an image with a simple prompt.
+    ///
+    /// # Arguments
+    ///
+    /// * `prompt` - The text prompt describing the image.
+    /// * `model` - The model to use for image generation.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use llamaedge::Client;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new("http://localhost:8080");
+    ///     let response = client.generate_image("A cat sitting on a windowsill", "sd-model").await?;
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn generate_image(&self, prompt: &str, model: &str) -> Result<ListImagesResponse> {
+        use endpoints::images::ImageCreateRequestBuilder;
+        let request = ImageCreateRequestBuilder::new(model, prompt).build();
+        self.create_image(&request).await
+    }
+
+    // ========== Files API ==========
+
+    /// Lists all uploaded files.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use llamaedge::Client;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new("http://localhost:8080");
+    ///     let files = client.list_files().await?;
+    ///     for file in files.data {
+    ///         println!("File: {} ({})", file.filename, file.id);
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn list_files(&self) -> Result<ListFilesResponse> {
+        let url = format!("{}/v1/files", self.base_url);
+
+        let response = self
+            .http_client
+            .get(&url)
+            .headers(self.build_headers())
+            .send()
+            .await?;
+
+        self.handle_response(response).await
+    }
+
+    /// Uploads a file to the server.
+    ///
+    /// # Arguments
+    ///
+    /// * `file_data` - The file content in bytes.
+    /// * `filename` - The name of the file.
+    /// * `purpose` - The intended purpose (e.g., "assistants", "fine-tune").
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use llamaedge::Client;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new("http://localhost:8080");
+    ///     let file_data = std::fs::read("document.txt")?;
+    ///     let file = client.upload_file(&file_data, "document.txt", "assistants").await?;
+    ///     println!("Uploaded file ID: {}", file.id);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn upload_file(
+        &self,
+        file_data: &[u8],
+        filename: &str,
+        purpose: &str,
+    ) -> Result<FileObject> {
+        let url = format!("{}/v1/files", self.base_url);
+
+        let file_part = Part::bytes(file_data.to_vec())
+            .file_name(filename.to_string())
+            .mime_str("application/octet-stream")
+            .map_err(|e| Error::Stream(e.to_string()))?;
+
+        let form = Form::new()
+            .part("file", file_part)
+            .text("purpose", purpose.to_string());
+
+        let mut request = self.http_client.post(&url);
+
+        if let Some(ref api_key) = self.api_key {
+            request = request.header(AUTHORIZATION, format!("Bearer {}", api_key));
+        }
+
+        let response = request.multipart(form).send().await?;
+
+        self.handle_response(response).await
+    }
+
+    /// Retrieves information about a specific file.
+    ///
+    /// # Arguments
+    ///
+    /// * `file_id` - The ID of the file to retrieve.
+    pub async fn get_file(&self, file_id: &str) -> Result<FileObject> {
+        let url = format!("{}/v1/files/{}", self.base_url, file_id);
+
+        let response = self
+            .http_client
+            .get(&url)
+            .headers(self.build_headers())
+            .send()
+            .await?;
+
+        self.handle_response(response).await
+    }
+
+    /// Deletes a file from the server.
+    ///
+    /// # Arguments
+    ///
+    /// * `file_id` - The ID of the file to delete.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use llamaedge::Client;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new("http://localhost:8080");
+    ///     let status = client.delete_file("file-abc123").await?;
+    ///     println!("Deleted: {}", status.deleted);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn delete_file(&self, file_id: &str) -> Result<DeleteFileStatus> {
+        let url = format!("{}/v1/files/{}", self.base_url, file_id);
+
+        let response = self
+            .http_client
+            .delete(&url)
+            .headers(self.build_headers())
+            .send()
+            .await?;
+
+        self.handle_response(response).await
+    }
+
+    // ========== Chunks API ==========
+
+    /// Splits a file into text chunks for RAG applications.
+    ///
+    /// # Arguments
+    ///
+    /// * `file_id` - The ID of the file to chunk.
+    /// * `filename` - The filename.
+    /// * `chunk_capacity` - The maximum size of each chunk.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use llamaedge::Client;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new("http://localhost:8080");
+    ///     let response = client.create_chunks("file-abc123", "document.txt", 512).await?;
+    ///     println!("Created {} chunks", response.chunks.len());
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn create_chunks(
+        &self,
+        file_id: &str,
+        filename: &str,
+        chunk_capacity: usize,
+    ) -> Result<ChunksResponse> {
+        let url = format!("{}/v1/chunks", self.base_url);
+
+        let request = ChunksRequest {
+            id: file_id.to_string(),
+            filename: filename.to_string(),
+            chunk_capacity,
+        };
+
+        let response = self
+            .http_client
+            .post(&url)
+            .headers(self.build_headers())
+            .json(&request)
             .send()
             .await?;
 

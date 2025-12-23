@@ -9,6 +9,10 @@
 //! - Support for chat completions (streaming and non-streaming)
 //! - Support for embeddings generation
 //! - Support for listing available models
+//! - Audio API (transcription, translation, text-to-speech)
+//! - Image generation API
+//! - Files management API
+//! - Text chunking for RAG applications
 //! - Configurable timeout and API key authentication
 //!
 //! ## Quick Start
@@ -103,13 +107,20 @@ pub use error::{Error, Result};
 
 // Re-export commonly used types from endpoints crate
 pub use endpoints::{
+    audio::{
+        speech::{SpeechRequest, SpeechVoice},
+        transcription::TranscriptionObject,
+        translation::TranslationObject,
+    },
     chat::{
         ChatCompletionChunk, ChatCompletionChunkChoice, ChatCompletionChunkChoiceDelta,
         ChatCompletionObject, ChatCompletionRequest, ChatCompletionRequestBuilder,
         ChatCompletionRequestMessage, ChatCompletionSystemMessage,
         ChatCompletionUserMessageContent,
     },
-    embeddings::{EmbeddingRequest, EmbeddingsResponse, InputText},
+    embeddings::{ChunksRequest, ChunksResponse, EmbeddingRequest, EmbeddingsResponse, InputText},
+    files::{DeleteFileStatus, FileObject, ListFilesResponse},
+    images::{ImageCreateRequest, ImageCreateRequestBuilder, ListImagesResponse},
     models::{ListModelsResponse, Model},
 };
 
