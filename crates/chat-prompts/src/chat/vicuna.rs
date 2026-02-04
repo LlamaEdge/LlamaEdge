@@ -253,6 +253,10 @@ impl VicunaLlavaPrompt {
                             let err_msg = "Audio content is not supported for models that use the `vicuna-llava` prompt template.";
                             return Err(PromptError::UnsupportedContent(err_msg.to_string()));
                         }
+                        ContentPart::File(_part) => {
+                            let err_msg = "File content is not supported for models that use the `vicuna-llava` prompt template.";
+                            return Err(PromptError::UnsupportedContent(err_msg.to_string()));
+                        }
                     }
                 }
 
