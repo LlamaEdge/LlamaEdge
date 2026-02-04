@@ -2271,6 +2271,8 @@ pub enum ContentPart {
     Image(ImageContentPart),
     #[serde(rename = "input_audio")]
     Audio(AudioContentPart),
+    #[serde(rename = "input_file")]
+    File(FileContentPart),
 }
 impl ContentPart {
     pub fn ty(&self) -> &str {
@@ -2278,6 +2280,7 @@ impl ContentPart {
             ContentPart::Text(_) => "text",
             ContentPart::Image(_) => "image_url",
             ContentPart::Audio(_) => "input_audio",
+            ContentPart::File(_) => "input_file",
         }
     }
 }
@@ -2608,6 +2611,121 @@ fn test_chat_deserialize_audio() {
     let audio: Audio = serde_json::from_str(json).unwrap();
     assert_eq!(audio.data, "dummy-base64-encodings");
     assert_eq!(audio.format, AudioFormat::Mp3);
+}
+
+/// Represents the file part of a user message content.
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct FileContentPart {
+    #[serde(rename = "input_file")]
+    file: InputFile,
+}
+impl FileContentPart {
+    pub fn new(file: InputFile) -> Self {
+        Self { file }
+    }
+
+    /// The file data.
+    pub fn file(&self) -> &InputFile {
+        &self.file
+    }
+}
+
+#[test]
+fn test_chat_serialize_file_content_part() {
+    let file_content_part = FileContentPart {
+        file: InputFile {
+            file_id: Some("file-abc123".to_string()),
+            filename: None,
+            file_data: None,
+        },
+    };
+    let json = serde_json::to_string(&file_content_part).unwrap();
+    assert_eq!(json, r#"{"input_file":{"file_id":"file-abc123"}}"#);
+
+    let file_content_part = FileContentPart {
+        file: InputFile {
+            file_id: None,
+            filename: Some("document.pdf".to_string()),
+            file_data: Some("data:application/pdf;base64,dummy-base64".to_string()),
+        },
+    };
+    let json = serde_json::to_string(&file_content_part).unwrap();
+    assert_eq!(
+        json,
+        r#"{"input_file":{"filename":"document.pdf","file_data":"data:application/pdf;base64,dummy-base64"}}"#
+    );
+}
+
+#[test]
+fn test_chat_deserialize_file_content_part() {
+    let json = r#"{"input_file":{"file_id":"file-abc123"}}"#;
+    let file_content_part: FileContentPart = serde_json::from_str(json).unwrap();
+    assert_eq!(
+        file_content_part.file.file_id,
+        Some("file-abc123".to_string())
+    );
+    assert_eq!(file_content_part.file.filename, None);
+    assert_eq!(file_content_part.file.file_data, None);
+
+    let json = r#"{"input_file":{"filename":"document.pdf","file_data":"data:application/pdf;base64,dummy-base64"}}"#;
+    let file_content_part: FileContentPart = serde_json::from_str(json).unwrap();
+    assert_eq!(file_content_part.file.file_id, None);
+    assert_eq!(
+        file_content_part.file.filename,
+        Some("document.pdf".to_string())
+    );
+    assert_eq!(
+        file_content_part.file.file_data,
+        Some("data:application/pdf;base64,dummy-base64".to_string())
+    );
+}
+
+/// Represents a file object in the file content part.
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct InputFile {
+    /// The ID of an uploaded file to use as input.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file_id: Option<String>,
+    /// The name of the file, used when passing the file to the model as a string.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filename: Option<String>,
+    /// The base64 encoded file data, used when passing the file to the model as a string.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file_data: Option<String>,
+}
+
+#[test]
+fn test_chat_serialize_input_file() {
+    let file = InputFile {
+        file_id: Some("file-abc123".to_string()),
+        filename: None,
+        file_data: None,
+    };
+    let json = serde_json::to_string(&file).unwrap();
+    assert_eq!(json, r#"{"file_id":"file-abc123"}"#);
+
+    let file = InputFile {
+        file_id: None,
+        filename: Some("doc.pdf".to_string()),
+        file_data: Some("base64data".to_string()),
+    };
+    let json = serde_json::to_string(&file).unwrap();
+    assert_eq!(json, r#"{"filename":"doc.pdf","file_data":"base64data"}"#);
+}
+
+#[test]
+fn test_chat_deserialize_input_file() {
+    let json = r#"{"file_id":"file-abc123"}"#;
+    let file: InputFile = serde_json::from_str(json).unwrap();
+    assert_eq!(file.file_id, Some("file-abc123".to_string()));
+    assert_eq!(file.filename, None);
+    assert_eq!(file.file_data, None);
+
+    let json = r#"{"filename":"report.pdf","file_data":"base64data"}"#;
+    let file: InputFile = serde_json::from_str(json).unwrap();
+    assert_eq!(file.file_id, None);
+    assert_eq!(file.filename, Some("report.pdf".to_string()));
+    assert_eq!(file.file_data, Some("base64data".to_string()));
 }
 
 /// Sampling methods used for chat completion requests.
