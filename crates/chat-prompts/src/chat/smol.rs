@@ -62,6 +62,11 @@ impl SmolvlPrompt {
                                 "Audio content is not supported for models that use the `smol-vision` prompt template.";
                             return Err(PromptError::UnsupportedContent(err_msg.to_string()));
                         }
+                        ContentPart::File(_part) => {
+                            let err_msg =
+                                "File content is not supported for models that use the `smol-vision` prompt template.";
+                            return Err(PromptError::UnsupportedContent(err_msg.to_string()));
+                        }
                     }
                 }
 

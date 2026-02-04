@@ -3,6 +3,7 @@ use crate::{
     utils::get_image_format,
     BuildChatPrompt,
 };
+use base64::{engine::general_purpose, Engine as _};
 use endpoints::chat::{
     ChatCompletionAssistantMessage, ChatCompletionRequestMessage, ChatCompletionSystemMessage,
     ChatCompletionToolMessage, ChatCompletionUserMessage, ChatCompletionUserMessageContent,
@@ -79,6 +80,11 @@ impl Qwen2vlPrompt {
                         ContentPart::Audio(_part) => {
                             let err_msg =
                                 "Audio content is not supported for models that use the `qwen2-vision` prompt template.";
+                            return Err(PromptError::UnsupportedContent(err_msg.to_string()));
+                        }
+                        ContentPart::File(_part) => {
+                            let err_msg =
+                                "File content is not supported for models that use the `qwen2-vision` prompt template.";
                             return Err(PromptError::UnsupportedContent(err_msg.to_string()));
                         }
                     }
@@ -186,22 +192,58 @@ impl Qwen3NoThinkPrompt {
         chat_history: impl AsRef<str>,
         system_prompt: impl AsRef<str>,
         message: &ChatCompletionUserMessage,
-    ) -> String {
+    ) -> Result<String> {
         let content = match message.content() {
             ChatCompletionUserMessageContent::Text(text) => text.to_string(),
             ChatCompletionUserMessageContent::Parts(parts) => {
                 let mut content = String::new();
                 for part in parts {
-                    if let ContentPart::Text(text_content) = part {
-                        content.push_str(text_content.text());
-                        content.push('\n');
+                    match part {
+                        ContentPart::Text(text_content) => {
+                            content.push_str(text_content.text());
+                            content.push('\n');
+                        }
+                        ContentPart::Image(_part) => {
+                            let err_msg =
+                                "Image content is not supported for models that use the `qwen3-no-think` prompt template.";
+                            return Err(PromptError::UnsupportedContent(err_msg.to_string()));
+                        }
+                        ContentPart::Audio(_part) => {
+                            let err_msg =
+                                "Audio content is not supported for models that use the `qwen3-no-think` prompt template.";
+                            return Err(PromptError::UnsupportedContent(err_msg.to_string()));
+                        }
+                        ContentPart::File(file_content) => {
+                            let input_file = file_content.file();
+
+                            if let Some(file_data) = input_file.file_data.as_ref() {
+                                let filename = match input_file.filename.as_ref() {
+                                    Some(filename) => {
+                                        filename.split('/').next_back().unwrap_or("unknown")
+                                    }
+                                    None => "unknown",
+                                };
+
+                                let base64_str = general_purpose::STANDARD.encode(file_data);
+                                let file_embedding = format!(
+                                    r#"<file name="{file_name}" src="data:application/octet-stream;base64,{base64_str}">"#,
+                                    file_name = filename,
+                                );
+                                content.push_str(&file_embedding);
+                                content.push('\n');
+                            } else {
+                                let err_msg =
+                                    "File content without file data is not supported for models that use the `qwen3-no-think` prompt template.";
+                                return Err(PromptError::UnsupportedContent(err_msg.to_string()));
+                            }
+                        }
                     }
                 }
                 content
             }
         };
 
-        match chat_history.as_ref().is_empty() {
+        let prompt = match chat_history.as_ref().is_empty() {
             true => match system_prompt.as_ref().is_empty() {
                 true => {
                     format!(
@@ -222,7 +264,9 @@ impl Qwen3NoThinkPrompt {
                 chat_history = chat_history.as_ref().trim(),
                 user_message = content.trim(),
             ),
-        }
+        };
+
+        Ok(prompt)
     }
 
     /// create an assistant prompt from a chat completion request message.
@@ -283,7 +327,7 @@ impl BuildChatPrompt for Qwen3NoThinkPrompt {
         for message in messages {
             match message {
                 ChatCompletionRequestMessage::User(message) => {
-                    prompt = self.append_user_message(&prompt, &system_prompt, message);
+                    prompt = self.append_user_message(&prompt, &system_prompt, message)?;
                 }
                 ChatCompletionRequestMessage::Assistant(message) => {
                     prompt = self.append_assistant_message(&prompt, message)?;
@@ -353,7 +397,7 @@ You are provided with function signatures within <tools></tools> XML tags:"#;
         for message in messages {
             match message {
                 ChatCompletionRequestMessage::User(message) => {
-                    prompt = self.append_user_message(&prompt, &system_prompt, message);
+                    prompt = self.append_user_message(&prompt, &system_prompt, message)?;
                 }
                 ChatCompletionRequestMessage::Assistant(message) => {
                     prompt = self.append_assistant_message(&prompt, message)?;
